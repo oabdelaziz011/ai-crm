@@ -79,6 +79,42 @@ function resolveSortValueKey(columnId: string): string {
   return SORT_COLUMN_ALIASES[columnId] ?? columnId.replace(/^col_/, "");
 }
 
+function bookingSequence(row: OperationsRow): number | null {
+  const match = String(row.values.reference ?? "").match(/(\d+)\s*$/);
+  return match ? Number(match[1]) : null;
+}
+
+/** Booking priority: booking number (e.g. BK-000026) first, then creation time. */
+export function compareBookingOrder(a: OperationsRow, b: OperationsRow): number {
+  const as = bookingSequence(a);
+  const bs = bookingSequence(b);
+  if (as != null && bs != null && as !== bs) return as - bs;
+  if (as != null && bs == null) return -1;
+  if (as == null && bs != null) return 1;
+  const at = Date.parse(a.createdAt);
+  const bt = Date.parse(b.createdAt);
+  if (!Number.isNaN(at) && !Number.isNaN(bt) && at !== bt) return at - bt;
+  return a.id.localeCompare(b.id);
+}
+
+function compareByColumn(a: OperationsRow, b: OperationsRow, columnId: string): number {
+  const columnKey = resolveSortValueKey(columnId);
+  if (columnKey === "queue_number" || columnKey === "reference") {
+    return compareBookingOrder(a, b);
+  }
+  const av = a.values[columnKey] ?? a.values[columnId] ?? "";
+  const bv = b.values[columnKey] ?? b.values[columnId] ?? "";
+  if (columnKey === "scheduled_at" || columnKey === "appointment_time") {
+    const at = new Date(String(av)).getTime();
+    const bt = new Date(String(bv)).getTime();
+    if (!Number.isNaN(at) && !Number.isNaN(bt)) return at - bt;
+  }
+  if (columnKey === "waiting_minutes" || columnKey === "duration_minutes" || columnKey === "amount") {
+    return (Number(av) || 0) - (Number(bv) || 0);
+  }
+  return String(av).localeCompare(String(bv), undefined, { numeric: true });
+}
+
 function matchesFilterValue(rowValue: unknown, expected: unknown): boolean {
   if (expected == null || expected === "" || expected === "all") return true;
   if (Array.isArray(expected)) {
@@ -129,42 +165,31 @@ export class QueueDataEngine {
       result = result.filter((row) => matchesFilterValue(row.paymentStatusId, paymentStatusId));
     }
 
-    if (query.sort?.length) {
-      const [{ columnId, direction }] = query.sort;
-      const columnKey = resolveSortValueKey(columnId);
-      result.sort((a, b) => {
-        const av = a.values[columnKey] ?? a.values[columnId] ?? "";
-        const bv = b.values[columnKey] ?? b.values[columnId] ?? "";
-        if (columnKey === "scheduled_at" || columnKey === "appointment_time") {
-          const at = new Date(String(av)).getTime();
-          const bt = new Date(String(bv)).getTime();
-          if (!Number.isNaN(at) && !Number.isNaN(bt)) {
-            return direction === "asc" ? at - bt : bt - at;
-          }
-        }
-        if (columnKey === "waiting_minutes" || columnKey === "duration_minutes" || columnKey === "amount") {
-          const an = Number(av) || 0;
-          const bn = Number(bv) || 0;
-          return direction === "asc" ? an - bn : bn - an;
-        }
-        const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
-        return direction === "asc" ? cmp : -cmp;
-      });
+    const [primary] = query.sort ?? [];
+    if (primary) {
+      const sign = primary.direction === "asc" ? 1 : -1;
+      result.sort(
+        (a, b) => sign * compareByColumn(a, b, primary.columnId) || compareBookingOrder(a, b),
+      );
+    } else {
+      result.sort(compareBookingOrder);
     }
 
     return result;
   }
 
   paginate(rows: OperationsRow[], query: OperationsQueueQuery): OperationsQueuePage {
-    const filtered = this.filterRows(rows, query);
-    const start = (query.page - 1) * query.pageSize;
-    const pageRows = filtered.slice(start, start + query.pageSize).map((row, index) => ({
+    // Priority is ranked over the whole loaded set so it stays stable under filters/search.
+    const priorityById = new Map(
+      [...rows].sort(compareBookingOrder).map((row, index) => [row.id, index + 1]),
+    );
+    const ranked = rows.map((row) => ({
       ...row,
-      values: {
-        ...row.values,
-        queue_number: start + index + 1,
-      },
+      values: { ...row.values, queue_number: priorityById.get(row.id) ?? null },
     }));
+    const filtered = this.filterRows(ranked, query);
+    const start = (query.page - 1) * query.pageSize;
+    const pageRows = filtered.slice(start, start + query.pageSize);
     return {
       rows: pageRows,
       total: filtered.length,

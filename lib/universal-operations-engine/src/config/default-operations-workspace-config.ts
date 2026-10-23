@@ -16,8 +16,8 @@ const CLINIC_TRANSITIONS: OperationsWorkspaceConfig["statusTransitions"] = [
   { fromStatusId: "st_waiting", toStatusId: "st_confirmed" },
   { fromStatusId: "st_confirmed", toStatusId: "st_checked_in" },
   { fromStatusId: "st_waiting", toStatusId: "st_checked_in" },
-  { fromStatusId: "st_checked_in", toStatusId: "st_with_nurse" },
-  { fromStatusId: "st_with_nurse", toStatusId: "st_with_doctor" },
+  { fromStatusId: "st_checked_in", toStatusId: "st_completed" },
+  { fromStatusId: "st_with_nurse", toStatusId: "st_completed" },
   { fromStatusId: "st_with_doctor", toStatusId: "st_completed" },
   { fromStatusId: "st_completed", toStatusId: "st_archived" },
 ];
@@ -46,10 +46,8 @@ const WORKFLOW_STAGES = [
   { id: "booked", labelKey: "workflow.waiting", sortOrder: 0 },
   { id: "confirmed", labelKey: "workflow.confirmed", sortOrder: 1 },
   { id: "checked_in", labelKey: "workflow.checkedIn", sortOrder: 2 },
-  { id: "with_nurse", labelKey: "workflow.withNurse", sortOrder: 3 },
-  { id: "doctor", labelKey: "workflow.doctor", sortOrder: 4 },
-  { id: "completed", labelKey: "workflow.completed", sortOrder: 5 },
-  { id: "archived", labelKey: "workflow.archived", sortOrder: 6 },
+  { id: "completed", labelKey: "workflow.completed", sortOrder: 3 },
+  { id: "archived", labelKey: "workflow.archived", sortOrder: 4 },
 ];
 
 const ALERT_RULES: OperationsWorkspaceConfig["intelligence"]["alertRules"] = [
@@ -152,7 +150,7 @@ function buildExtendedDefaults(
   return {
     views: {
       savedViews: [
-        { id: "view_today", name: "Today", columnIds: [], filters: {}, sort: [{ columnId: "col_scheduled", direction: "asc" }], isDefault: true, isShared: true },
+        { id: "view_today", name: "Today", columnIds: [], filters: {}, sort: [{ columnId: "col_queue_number", direction: "asc" }], isDefault: true, isShared: true },
         { id: "view_waiting", name: "Waiting", columnIds: [], filters: { statusId: "st_checked_in" }, sort: [], isDefault: false, isShared: true },
         { id: "view_unpaid", name: "Unpaid", columnIds: [], filters: { paymentStatusId: "pay_unpaid" }, sort: [], isDefault: false, isShared: true },
       ],
@@ -197,7 +195,7 @@ function buildExtendedDefaults(
     },
     businessContext,
     queueRules: {
-      defaultSort: [{ columnId: "col_scheduled", direction: "asc" }],
+      defaultSort: [{ columnId: "col_queue_number", direction: "asc" }],
       defaultFilters: {},
       pageSize: 50,
       maxWaitingMinutes: 30,

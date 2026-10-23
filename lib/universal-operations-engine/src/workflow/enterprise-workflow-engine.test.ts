@@ -12,16 +12,26 @@ import { workflowRegistry } from "./workflow-registry.js";
 describe("EnterpriseWorkflowEngine — clinic pack", () => {
   const engine = new EnterpriseWorkflowEngine(WORKFLOW_PACK_CLINIC);
 
-  it("allows the happy-path clinic transitions", () => {
+  it("allows the happy-path transitions: check in, then done", () => {
     assert.equal(engine.canTransition("confirmed", "checked_in"), true);
-    assert.equal(engine.canTransition("checked_in", "with_nurse"), true);
-    assert.equal(engine.canTransition("with_nurse", "in_progress"), true);
-    assert.equal(engine.canTransition("in_progress", "completed"), true);
+    assert.equal(engine.canTransition("checked_in", "completed"), true);
     assert.equal(engine.canTransition("completed", "archived"), true);
   });
 
+  it("lets bookings left in legacy nurse/doctor states finish", () => {
+    assert.equal(engine.canTransition("with_nurse", "completed"), true);
+    assert.equal(engine.canTransition("in_progress", "completed"), true);
+  });
+
+  it("has no nurse/doctor steps in the journey", () => {
+    assert.equal(engine.canTransition("checked_in", "with_nurse"), false);
+    assert.equal(engine.canTransition("checked_in", "in_progress"), false);
+    const stageIds = engine.getDefinition().stages.map((stage) => stage.id);
+    assert.deepEqual(stageIds, ["waiting", "checked_in", "completed", "archived"]);
+  });
+
   it("blocks invalid transitions", () => {
-    assert.equal(engine.canTransition("checked_in", "completed"), false);
+    assert.equal(engine.canTransition("confirmed", "completed"), false);
     assert.equal(engine.canTransition("waiting", "in_progress"), false);
     assert.throws(() => engine.assertTransition("archived", "checked_in"), /INVALID_STATUS_TRANSITION/);
   });
@@ -38,10 +48,11 @@ describe("EnterpriseWorkflowEngine — clinic pack", () => {
     });
     assert.equal(nurseDenied, undefined);
 
-    const doctorComplete = engine.findTransitionForAction("appointments.complete_visit", "in_progress", {
-      actorRole: "doctor",
+    const receptionComplete = engine.findTransitionForAction("appointments.complete_visit", "checked_in", {
+      actorRole: "reception",
     });
-    assert.ok(doctorComplete);
+    assert.ok(receptionComplete);
+    assert.equal(receptionComplete.to, "completed");
   });
 
   it("exposes KPI buckets without UI hardcoding", () => {

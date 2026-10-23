@@ -42,32 +42,21 @@ export const WORKFLOW_PACK_CLINIC: WorkflowDefinition = {
     {
       id: "checked_in",
       labelKey: "universalOperations.workspace.workflow.checkedIn",
-      statusInternalNames: ["checked_in"],
+      // with_nurse / in_progress / with_doctor are legacy states that existing bookings may still hold.
+      statusInternalNames: ["checked_in", "with_nurse", "in_progress", "with_doctor"],
       sortOrder: 1,
-    },
-    {
-      id: "with_nurse",
-      labelKey: "universalOperations.workspace.workflow.withNurse",
-      statusInternalNames: ["with_nurse"],
-      sortOrder: 2,
-    },
-    {
-      id: "with_doctor",
-      labelKey: "universalOperations.workspace.workflow.withDoctor",
-      statusInternalNames: ["in_progress", "with_doctor"],
-      sortOrder: 3,
     },
     {
       id: "completed",
       labelKey: "universalOperations.workspace.workflow.completed",
       statusInternalNames: ["completed"],
-      sortOrder: 4,
+      sortOrder: 2,
     },
     {
       id: "archived",
       labelKey: "universalOperations.workspace.workflow.archived",
       statusInternalNames: ["archived", "cancelled", "no_show"],
-      sortOrder: 5,
+      sortOrder: 3,
     },
   ],
   kpiBuckets: {
@@ -139,62 +128,11 @@ export const WORKFLOW_PACK_CLINIC: WorkflowDefinition = {
       paymentStatuses: ["unpaid", "pending", "partial"],
     },
     {
-      id: "clinic.send_to_nurse",
-      from: ["checked_in"],
-      to: "with_nurse",
-      actionId: "appointments.send_to_nurse",
-      requiredPermissions: ["operations.write"],
-      actorRoles: ["reception", "manager"],
-      confirmation: {
-        titleKey: "universalOperations.actions.confirm.sendToNurseTitle",
-        descriptionKey: "universalOperations.actions.confirm.sendToNurseDescription",
-      },
-      timelineEvent: {
-        type: "patient_sent_to_nurse",
-        labelKey: "universalOperations.timeline.events.patientSentToNurse",
-      },
-      realtimeRefresh: true,
-    },
-    {
-      id: "clinic.complete_triage",
-      from: ["with_nurse"],
-      actionId: "appointments.complete_triage",
-      requiredPermissions: ["operations.write"],
-      actorRoles: ["nurse", "manager"],
-      confirmation: {
-        titleKey: "universalOperations.actions.confirm.completeTriageTitle",
-        descriptionKey: "universalOperations.actions.confirm.completeTriageDescription",
-      },
-      timelineEvent: {
-        type: "triage_completed",
-        labelKey: "universalOperations.timeline.events.triageCompleted",
-      },
-      realtimeRefresh: true,
-    },
-    {
-      id: "clinic.send_to_doctor",
-      from: ["with_nurse"],
-      to: "in_progress",
-      actionId: "appointments.send_to_doctor",
-      requiredPermissions: ["operations.write"],
-      actorRoles: ["nurse", "manager"],
-      confirmation: {
-        titleKey: "universalOperations.actions.confirm.sendToDoctorTitle",
-        descriptionKey: "universalOperations.actions.confirm.sendToDoctorDescription",
-      },
-      timelineEvent: {
-        type: "patient_sent_to_doctor",
-        labelKey: "universalOperations.timeline.events.patientSentToDoctor",
-      },
-      realtimeRefresh: true,
-    },
-    {
       id: "clinic.complete_visit",
-      from: ["in_progress", "with_doctor"],
+      from: ["checked_in", "with_nurse", "in_progress", "with_doctor"],
       to: "completed",
       actionId: "appointments.complete_visit",
       requiredPermissions: ["operations.write", "operations.queue.complete"],
-      actorRoles: ["doctor", "manager"],
       confirmation: {
         titleKey: "universalOperations.actions.confirm.completeTitle",
         descriptionKey: "universalOperations.actions.confirm.completeDescription",

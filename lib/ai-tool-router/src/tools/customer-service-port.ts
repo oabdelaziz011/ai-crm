@@ -54,4 +54,18 @@ export type ToolCustomerServicePort = {
   getConversationChannelType?(input: {
     conversationId: string;
   }): Promise<string | null>;
+  /**
+   * Create or reuse the conversation lead after a customer is resolved.
+   * Hosts omit this when the turn is not an explicit purchase.
+   */
+  ensurePurchaseLead?(input: {
+    companyId: string;
+    userId: string;
+    conversationId: string;
+    customerId: string;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    texts: readonly string[];
+  }): Promise<{ leadId: string; created: boolean } | null>;
 };

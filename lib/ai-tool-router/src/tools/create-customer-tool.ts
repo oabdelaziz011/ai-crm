@@ -17,6 +17,7 @@ import {
   type CustomerPhoneIdentityColumns,
 } from "../utils/customer-phone-identity-dual-write.js";
 import { resolvePhoneIdentity } from "../utils/phone-identity-resolver.js";
+import { messageHasExplicitPurchase } from "../utils/explicit-purchase.js";
 
 const INPUT_SCHEMA = {
   type: "object",
@@ -203,6 +204,33 @@ async function linkAndStampTrusted(
   });
 }
 
+async function attachPurchaseLead(
+  customerService: ToolCustomerServicePort,
+  context: ToolExecutionContext,
+  customer: { id: string; name: string },
+  phone: string,
+  email: string | null,
+): Promise<{ leadId: string; created: boolean } | null> {
+  if (!customerService.ensurePurchaseLead) return null;
+  const texts = (context.trustedConversationTexts ?? []).filter((text) => text.trim().length > 0);
+  if (!messageHasExplicitPurchase(texts)) return null;
+  try {
+    return await customerService.ensurePurchaseLead({
+      companyId: context.companyId,
+      userId: context.userId ?? "",
+      conversationId: context.conversationId,
+      customerId: customer.id,
+      name: customer.name,
+      phone,
+      email,
+      texts,
+    });
+  } catch (error) {
+    console.warn("[purchase-lead] ensure failed", error instanceof Error ? error.message : "unknown");
+    return null;
+  }
+}
+
 export function createCreateCustomerTool(customerService: ToolCustomerServicePort): Tool {
   return {
     supports(state: ConversationState) {
@@ -293,13 +321,17 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
           customer.id,
           customer.name,
         );
+        const purchaseLead = await attachPurchaseLead(customerService, context, customer, phone, email);
         return {
           success: true,
           customerId: customer.id,
           existing: true,
+          ...(purchaseLead ? { leadId: purchaseLead.leadId, leadCreated: purchaseLead.created } : {}),
           customerName: customer.name,
           customerGreeting: buildExistingCustomerGreetingAr(customer.name),
-          message: "Customer already exists. Use this customerId for create_booking.",
+          message: purchaseLead
+            ? "Customer already exists. Use leadId for qualify_lead. Do not pass customerId as a lead id."
+            : "Customer already exists. Use this customerId for create_booking.",
         };
       }
 
@@ -350,13 +382,23 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
           created.customer.id,
           created.customer.name,
         );
+        const purchaseLead = await attachPurchaseLead(
+          customerService,
+          context,
+          created.customer,
+          phone,
+          email,
+        );
 
         return {
           success: true,
           customerId: created.customer.id,
+          ...(purchaseLead ? { leadId: purchaseLead.leadId, leadCreated: purchaseLead.created } : {}),
           customerName: created.customer.name,
           customerGreeting: buildNewCustomerGreetingAr(name),
-          message: "Customer created successfully",
+          message: purchaseLead
+            ? "Customer created. Use leadId for qualify_lead. Do not pass customerId as a lead id."
+            : "Customer created successfully",
         };
       } catch (error) {
         // Concurrency: UNIQUE(company_id, phone_e164) — loser re-resolves existing customer.
@@ -380,13 +422,23 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
               raced.customer.id,
               raced.customer.name,
             );
+            const purchaseLead = await attachPurchaseLead(
+              customerService,
+              context,
+              raced.customer,
+              phone,
+              email,
+            );
             return {
               success: true,
               customerId: raced.customer.id,
               existing: true,
+              ...(purchaseLead ? { leadId: purchaseLead.leadId, leadCreated: purchaseLead.created } : {}),
               customerName: raced.customer.name,
               customerGreeting: buildExistingCustomerGreetingAr(raced.customer.name),
-              message: "Customer already exists. Use this customerId for create_booking.",
+              message: purchaseLead
+                ? "Customer already exists. Use leadId for qualify_lead. Do not pass customerId as a lead id."
+                : "Customer already exists. Use this customerId for create_booking.",
             };
           }
         }
@@ -396,31 +448,7 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
   };
 }
 
-export const CREATE_CUSTOMER_TOOL_KEY = "create_customer" as const;
-
-export const CREATE_CUSTOMER_LLM_TOOL_DEFINITION = {
-  type: "function" as const,
-  function: {
-    name: CREATE_CUSTOMER_TOOL_KEY,
-    description:
-      "Create or resolve a customer in the CRM for booking. Requires customer name and phone (E.164 preferred, or local national with optional ISO-2 region). Never invents country from company locale. If the phone already exists, returns that customerId and preserves the existing CRM name. On WhatsApp, phone must match the current sender; identity uses the Meta sender E.164.",
-    parameters: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Full customer name" },
-        phone: {
-          type: "string",
-          description:
-            "Customer phone. Prefer E.164 (+966…). Local nationals require region (ISO-2) unless WhatsApp sender identity is available.",
-        },
-        region: {
-          type: "string",
-          description: "Optional ISO-3166-1 alpha-2 region for local/national numbers. Never company country.",
-        },
-        email: { type: "string", description: "Optional customer email" },
-      },
-      required: ["name", "phone"],
-      additionalProperties: false,
-    },
-  },
-};
+export {
+  CREATE_CUSTOMER_LLM_TOOL_DEFINITION,
+  CREATE_CUSTOMER_TOOL_KEY,
+} from "./create-customer-tool-definition.js";

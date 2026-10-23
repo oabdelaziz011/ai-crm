@@ -70,12 +70,24 @@ export const QUALIFY_LEAD_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: QUALIFY_LEAD_TOOL_KEY,
-    description: "Mark a lead as qualified with an optional score.",
+    description:
+      "Ask the server to qualify a lead from the stored conversation. " +
+      "Boolean arguments are ignored. Product interest or a quote request alone is not a sale, " +
+      "and this tool does not move a lead to won or proposal_sent. " +
+      "If qualificationApplied is false, do not tell the customer they are qualified.",
     parameters: {
       type: "object",
       properties: {
         leadId: { type: "string" },
         score: { type: "number" },
+        explicitBuyingIntent: { type: "boolean" },
+        productInterest: { type: "boolean" },
+        statedNeed: { type: "boolean" },
+        contactAvailable: { type: "boolean" },
+        companyIdentified: { type: "boolean" },
+        businessUseCase: { type: "boolean" },
+        notAFit: { type: "boolean" },
+        conflictingSignals: { type: "boolean" },
       },
       required: ["leadId"],
       additionalProperties: false,
@@ -161,6 +173,7 @@ export const SCORE_LEAD_LLM: LlmFunctionToolDefinition = {
       properties: {
         leadId: { type: "string" },
         score: { type: "number" },
+        explanation: { type: "string" },
       },
       required: ["leadId", "score"],
       additionalProperties: false,

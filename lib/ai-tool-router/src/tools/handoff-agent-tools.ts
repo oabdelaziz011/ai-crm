@@ -56,6 +56,12 @@ function createEscalationTool(ports: HandoffAgentToolPorts): Tool {
       return {
         success: true,
         escalated: true,
+        assigned: result.assigned,
+        queued: result.queued,
+        assigneeUserId: result.assigneeUserId ?? null,
+        departmentName: result.departmentName ?? null,
+        departmentMissing: result.departmentMissing === true,
+        idempotent: result.idempotent === true,
         reason,
         triggerCode,
         requestId: result.requestId,

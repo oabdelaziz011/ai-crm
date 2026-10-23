@@ -30,8 +30,29 @@ export type LeadAgentToolPorts = {
     companyId: string;
     userId: string;
     leadId: string;
+    conversationId?: string | null;
     score?: number;
-  }): Promise<{ lead: LeadRecord }>;
+    /** Optional sales evidence for P1c policy enforcement. */
+    evidence?: {
+      productInterest?: boolean;
+      statedNeed?: boolean;
+      explicitBuyingIntent?: boolean;
+      intendedNextStep?: string | null;
+      contactAvailable?: boolean;
+      companyIdentified?: boolean;
+      businessUseCase?: boolean;
+      purchaseTiming?: boolean;
+      budgetKnown?: boolean;
+      decisionAuthorityKnown?: boolean;
+      notAFit?: boolean;
+      conflictingSignals?: boolean;
+    };
+    /**
+     * Server-loaded customer texts. Model arguments must not be copied into evidence.
+     */
+    conversationTexts?: readonly string[];
+    qualificationPolicyMode?: "enforce" | "human_override";
+  }): Promise<{ lead: LeadRecord; qualificationApplied?: boolean; policy?: unknown }>;
 
   convertLead(input: {
     companyId: string;
@@ -67,7 +88,15 @@ export type LeadAgentToolPorts = {
     userId: string;
     leadId: string;
     score: number;
+    explanation?: string | null;
   }): Promise<{ lead: LeadRecord }>;
+
+  /** When present, merge requires a shared phone or email. Company id comes from the server context. */
+  getLead?(input: {
+    companyId: string;
+    userId: string;
+    leadId: string;
+  }): Promise<{ lead: LeadRecord | null }>;
 
   suggestNextAction(input: {
     companyId: string;

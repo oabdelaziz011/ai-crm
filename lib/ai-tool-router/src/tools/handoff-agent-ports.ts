@@ -8,7 +8,16 @@ export type HandoffAgentToolPorts = {
     reason: string;
     targetQueueId?: string;
     aiAssistantId?: string;
-  }): Promise<{ ownership: { ownerType: string; ownerLabel: string }; requestId: string }>;
+  }): Promise<{
+    ownership: { ownerType: string; ownerLabel: string };
+    requestId: string;
+    assigned: boolean;
+    queued: boolean;
+    assigneeUserId?: string;
+    departmentName?: string | null;
+    departmentMissing?: boolean;
+    idempotent?: boolean;
+  }>;
 
   queueForHuman(input: {
     companyId: string;

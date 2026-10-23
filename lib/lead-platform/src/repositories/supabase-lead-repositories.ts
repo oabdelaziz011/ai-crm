@@ -158,6 +158,7 @@ export function createSupabaseLeadRepository(client: SupabaseClient): LeadReposi
           priority: input.priority ?? "normal",
           estimated_value: input.estimatedValue ?? null,
           conversation_id: input.conversationId ?? null,
+          customer_id: input.customerId ?? null,
           language: input.language ?? null,
           territory: input.territory ?? null,
           department: input.department ?? null,
@@ -176,7 +177,11 @@ export function createSupabaseLeadRepository(client: SupabaseClient): LeadReposi
         })
         .select("*")
         .single();
-      if (error) throw new Error(error.message);
+      if (error) {
+        const err = new Error(error.message) as Error & { code?: string };
+        if (typeof error.code === "string") err.code = error.code;
+        throw err;
+      }
       return mapLead(data);
     },
 

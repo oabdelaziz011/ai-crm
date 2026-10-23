@@ -34,6 +34,7 @@ export interface LeadRepository {
     priority?: LeadPriority;
     estimatedValue?: number | null;
     conversationId?: string | null;
+    customerId?: string | null;
     language?: string | null;
     territory?: string | null;
     department?: string | null;

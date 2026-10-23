@@ -82,3 +82,21 @@ export interface LeadAssigneeResolverPort {
     language?: string | null;
   }): Promise<Array<{ userId: string; activeLeadCount: number; lastAssignedAt: string | null }>>;
 }
+
+/**
+ * Optional Opportunity stage sync after an authoritative Lead stage change.
+ * Implementations must use OpportunityCommandService (no client-only updates, no provider sends).
+ */
+export interface LeadOpportunityStageSyncPort {
+  onLeadLifecycleChanged(input: {
+    companyId: string;
+    leadId: string;
+    fromLifecycleStatus: string;
+    toLifecycleStatus: string;
+    actorUserId: string | null;
+  }): Promise<{
+    status: string;
+    reason: string;
+    opportunityId?: string | null;
+  }>;
+}

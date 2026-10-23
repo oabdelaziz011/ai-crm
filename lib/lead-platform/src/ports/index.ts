@@ -7,4 +7,5 @@ export type {
   LeadNotificationPort,
   LeadOpportunityConversionContext,
   LeadOpportunityConversionPort,
+  LeadOpportunityStageSyncPort,
 } from "./lead-platform-ports.js";

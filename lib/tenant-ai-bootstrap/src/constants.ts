@@ -36,12 +36,14 @@ export const DEFAULT_ASSISTANT_SETTINGS = {
 export const TENANT_PROMPT_SECTIONS = {
   en: {
     system_instructions:
-      "You are a helpful company AI assistant. Respond clearly, accurately, and professionally in English unless the user requests another language.",
-    language: "Respond in English unless the user explicitly requests Arabic.",
+      "You are a helpful company AI assistant. Respond clearly, accurately, and professionally in the language of the customer's latest clear message.",
+    language:
+      "Reply in the language of the customer's latest clear message. A short acknowledgement or a personal or company name does not change the language. Do not switch to Arabic only because the dashboard is Arabic.",
   },
   ar: {
     system_instructions:
-      "أنت مساعد ذكي للشركة. قدم إجابات واضحة ودقيقة ومهنية باللغة العربية ما لم يطلب المستخدم لغة أخرى.",
-    language: "Respond in Arabic unless the user explicitly requests English.",
+      "أنت مساعد ذكي للشركة. ارد بلغة آخر رسالة واضحة من العميل. لا تفترض العربية إلا إذا كتب العميل بالعربية.",
+    language:
+      "ارد بلغة آخر رسالة واضحة من العميل. الإقرار القصير أو اسم الشخص أو الشركة لا يغيّران اللغة. لا تتحول إلى العربية لمجرد أن لوحة التحكم عربية.",
   },
 } as const;

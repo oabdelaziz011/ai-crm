@@ -74,6 +74,22 @@ describe("ConversationLifecycleEngine", () => {
     assert.equal(state, "NEW");
   });
 
+  it("treats an AI employee owner as AI handling even if the overlay still says assigned", () => {
+    const state = resolveLifecycleState({
+      conversationId: "1",
+      backendState: "waiting_user",
+      assignedUserId: "user-1",
+      aiAssistantId: "ai-1",
+      metadata: {
+        lifecycle: {
+          state: "ASSIGNED",
+          owner: { kind: "ai_employee", id: "ai-employee-1", label: "AI Flow" },
+        },
+      },
+    });
+    assert.equal(state, "AI_HANDLING");
+  });
+
   it("maps transferred_to_human without assignee to WAITING_QUEUE", () => {
     const state = resolveLifecycleState({
       conversationId: "1",

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isImportPhoneWritable, resolveImportPhoneIdentity } from "@workspace/ai-tool-router";
 import { getBookingDomainServices } from "@/lib/scheduling/booking-domain";
 import { getSchedulingServices } from "@/lib/scheduling";
 import type {
@@ -23,6 +24,7 @@ export class PublicBookingService {
     resourceId: string,
     serviceId: string,
     date: string,
+    durationMinutes?: number | null,
   ): Promise<PortalSlotView[]> {
     const scheduling = getSchedulingServices();
     const resolved = await scheduling.slotGenerationEngine.getAvailableSlots(
@@ -30,7 +32,10 @@ export class PublicBookingService {
       resourceId,
       serviceId,
       date,
-      { respectBookingRules: true },
+      {
+        respectBookingRules: true,
+        durationMinutes: durationMinutes && durationMinutes > 0 ? durationMinutes : undefined,
+      },
     );
     return resolved.slots.map((startTime) => ({
       startTime,
@@ -65,7 +70,16 @@ export class PublicBookingService {
     request: PortalBookingRequest,
     ownerUserId?: string | null,
   ): Promise<PortalBookingResult> {
-    const rateKey = `${request.companyId}:${request.customer.phone}`;
+    const phonePreview = resolveImportPhoneIdentity({
+      phone: request.customer.phone,
+      rowRegion: request.customer.phoneRegion ?? null,
+      source: "explicit",
+    });
+    if (!isImportPhoneWritable(phonePreview) || !phonePreview.identity?.phone_e164) {
+      throw new Error("INVALID_PHONE");
+    }
+
+    const rateKey = `${request.companyId}:${phonePreview.identity.phone_e164}`;
     if (!portalBookingRateLimiter.isAllowed(rateKey)) {
       throw new Error("Too many booking attempts. Please try again later.");
     }
@@ -84,6 +98,8 @@ export class PublicBookingService {
       serviceId: request.serviceId,
       date: request.date,
       slotStart: request.slotStart,
+      pricingRuleId: request.pricingRuleId,
+      visitType: request.visitType,
     });
 
     if (!validation.valid) {
@@ -100,6 +116,8 @@ export class PublicBookingService {
       source: "public_booking",
       notes: request.notes ?? null,
       branchId: request.branchId ?? null,
+      pricingRuleId: request.pricingRuleId,
+      visitType: request.visitType,
       createdBy: null,
     });
 

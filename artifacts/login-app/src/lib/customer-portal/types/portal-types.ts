@@ -81,6 +81,8 @@ export type PortalBookingRequest = {
   customer: PortalCustomerInput;
   branchId?: string | null;
   notes?: string | null;
+  pricingRuleId?: string | null;
+  visitType?: string | null;
 };
 
 export type PortalBookingResult = {

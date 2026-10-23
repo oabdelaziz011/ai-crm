@@ -12,6 +12,7 @@ import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContex
 import { extractResponseContent } from "@workspace/runtime-integration";
 import { readAgentEmployeeExecutionContext } from "@/lib/ai-employees/utilities/agent-employee-execution-context";
 import { runWithEmployeeToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
+import { createConversationSalesQualificationTurn } from "@/lib/channel-platform/conversation-sales-qualification-turn";
 
 function mapCompanyChannelRecord(record: {
   id: string;
@@ -190,26 +191,110 @@ export function createChannelConversationPort(
         departmentId: input.departmentId ?? null,
       });
 
-      void import("@/lib/lead-intelligence/conversation-event-publisher.js")
-        .then(({ publishConversationStarted }) =>
-          publishConversationStarted({
-            companyId: input.companyId,
-            conversationId: created.id,
-            channelType: String(input.channelType ?? created.channel_type ?? "unknown"),
-            externalUserId:
-              typeof meta.senderExternalId === "string" ? meta.senderExternalId : null,
-            externalThreadId,
-            phone: typeof meta.phone === "string" ? meta.phone : null,
-            email: typeof meta.email === "string" ? meta.email : null,
-            actorUserId: ctx.userId ?? null,
-            createdAt: created.created_at ?? new Date().toISOString(),
-          }),
-        )
-        .catch((error) => {
-          console.error("[ConversationStarted] publish failed", error);
-        });
+      if (meta.deferConversationStarted !== true) {
+        void import("@/lib/lead-intelligence/conversation-event-publisher.js")
+          .then(({ publishConversationStarted }) => {
+            const channelType = String(input.channelType ?? created.channel_type ?? "unknown");
+            const senderExternalId =
+              typeof meta.senderExternalId === "string" ? meta.senderExternalId : null;
+            const explicitPhone = typeof meta.phone === "string" ? meta.phone : null;
+            const derivedPhone =
+              explicitPhone ||
+              ((channelType === "whatsapp" || channelType === "sms") && senderExternalId
+                ? senderExternalId
+                : null);
+            const customerId =
+              typeof meta.trustedChannelCustomerId === "string"
+                ? meta.trustedChannelCustomerId
+                : typeof created.customer_id === "string"
+                  ? created.customer_id
+                  : null;
+            return publishConversationStarted({
+              companyId: input.companyId,
+              conversationId: created.id,
+              channelType,
+              externalUserId: senderExternalId,
+              externalThreadId,
+              phone: derivedPhone,
+              email: typeof meta.email === "string" ? meta.email : null,
+              customerId,
+              actorUserId: ctx.userId ?? null,
+              createdAt: created.created_at ?? new Date().toISOString(),
+            });
+          })
+          .catch((error) => {
+            console.error("[ConversationStarted] publish failed", error);
+          });
+      }
 
       return { id: created.id };
+    },
+
+    async flushDeferredConversationStarted(input) {
+      if (!options?.supabaseClient) return { published: false };
+      const client = options.supabaseClient;
+      const { data: conv, error } = await client
+        .from("conversations")
+        .select("id, company_id, channel_type, customer_id, metadata, created_at")
+        .eq("id", input.conversationId)
+        .eq("company_id", input.companyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!conv) return { published: false };
+      const meta =
+        conv.metadata && typeof conv.metadata === "object" && !Array.isArray(conv.metadata)
+          ? ({ ...(conv.metadata as Record<string, unknown>) } as Record<string, unknown>)
+          : {};
+      if (meta.deferConversationStarted !== true) return { published: false };
+      if (meta.conversationStartedPublishedAt) return { published: false };
+
+      const channelType = String(
+        input.channelType || conv.channel_type || meta.channelType || "unknown",
+      );
+      const senderExternalId =
+        input.externalUserId ??
+        (typeof meta.senderExternalId === "string" ? meta.senderExternalId : null);
+      const externalThreadId =
+        input.externalThreadId ??
+        (typeof meta.externalThreadId === "string" ? meta.externalThreadId : null);
+      const explicitPhone = input.phone ?? (typeof meta.phone === "string" ? meta.phone : null);
+      const derivedPhone =
+        explicitPhone ||
+        ((channelType === "whatsapp" || channelType === "sms") && senderExternalId
+          ? senderExternalId
+          : null);
+      const customerId =
+        input.customerId?.trim() ||
+        (typeof conv.customer_id === "string" ? conv.customer_id : null) ||
+        (typeof meta.trustedChannelCustomerId === "string" ? meta.trustedChannelCustomerId : null);
+
+      await import("@/lib/lead-intelligence/conversation-event-publisher.js").then(
+        ({ publishConversationStarted }) =>
+          publishConversationStarted({
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            channelType,
+            externalUserId: senderExternalId,
+            externalThreadId,
+            phone: derivedPhone,
+            email: input.email ?? (typeof meta.email === "string" ? meta.email : null),
+            customerId,
+            actorUserId: input.actorUserId ?? ctx.userId ?? null,
+            createdAt: conv.created_at ?? new Date().toISOString(),
+          }),
+      );
+
+      meta.deferConversationStarted = false;
+      meta.conversationStartedPublishedAt = new Date().toISOString();
+      if (customerId) meta.trustedChannelCustomerId = customerId;
+      const { error: updateError } = await client
+        .from("conversations")
+        .update({ metadata: meta, updated_at: new Date().toISOString() })
+        .eq("id", input.conversationId)
+        .eq("company_id", input.companyId);
+      if (updateError) throw new Error(updateError.message);
+      return { published: true };
     },
 
     async addIncomingMessage(input) {
@@ -236,6 +321,7 @@ export function createChannelConversationPort(
               channelType: conversation.channel_type ?? null,
               contentPreview: String(input.content ?? "").slice(0, 280),
               messageCount: null,
+              customerId: conversation.customer_id ?? null,
               actorUserId: ctx.userId ?? null,
               receivedAt: message.created_at ?? new Date().toISOString(),
             }),
@@ -318,6 +404,24 @@ export function createChannelConversationPort(
       return { applied: true, messageId: target.id };
     },
 
+    async findMessageByExternalId(input) {
+      const externalMessageId = input.externalMessageId?.trim();
+      if (!externalMessageId) return null;
+      const existing = await services.messages.findByConversationAndExternalMessageId(
+        ctx,
+        input.conversationId,
+        externalMessageId,
+      );
+      if (!existing || existing.message_type !== "outgoing" || !existing.content?.trim()) return null;
+      return {
+        id: existing.id,
+        conversationId: existing.conversation_id,
+        messageType: existing.message_type,
+        content: existing.content,
+        createdAt: existing.created_at,
+      };
+    },
+
     async addOutgoingMessage(input) {
       const message = await services.messages.addMessage(ctx, {
         conversationId: input.conversationId,
@@ -363,6 +467,14 @@ export function createChannelRuntimePort(
       responseContent: string;
       correlationId: string | null;
     }>;
+    afterCustomerTurn?: (input: {
+      companyId: string;
+      conversationId: string;
+      messageText: string;
+      correlationId?: string;
+      pageContext?: Record<string, unknown> | null;
+      actorUserId: string | null;
+    }) => Promise<void>;
   },
 ): ChannelRuntimePort {
   return {
@@ -421,10 +533,30 @@ export function createChannelRuntimePort(
           {
             allowedToolKeys: executionContext.allowedToolKeys,
             employeeId: executionContext.aiEmployeeId,
+            showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
           },
           executeRuntime,
         );
       })();
+
+      if (options?.afterCustomerTurn) {
+        try {
+          await options.afterCustomerTurn({
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            messageText: input.messageText,
+            correlationId: input.correlationId,
+            pageContext: input.runtimeConfig.pageContext,
+            actorUserId,
+          });
+        } catch (error) {
+          console.warn("[conversation-sales-qualification]", {
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            err: error instanceof Error ? error.message : "unknown",
+          });
+        }
+      }
 
       return {
         executionId: response.executionId,
@@ -471,10 +603,14 @@ export function createChannelPlatformPortsWithContext(
     registry: createChannelRegistryPort(deps.channelRegistry, ctx.registry),
     conversation: createChannelConversationPort(deps.conversation, ctx.conversation, {
       resolveCompanyAssistantId,
+      supabaseClient: deps.supabaseClient,
     }),
     runtime: createChannelRuntimePort(deps.runtime, ctx.runtime, {
       resolveRuntimeActorUserId: options?.resolveRuntimeActorUserId,
       unifiedExecute: options?.unifiedExecute,
+      afterCustomerTurn: deps.supabaseClient
+        ? createConversationSalesQualificationTurn(deps.supabaseClient)
+        : undefined,
     }),
   };
 }

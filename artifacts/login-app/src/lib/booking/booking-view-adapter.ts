@@ -9,10 +9,11 @@ import type { Booking, BookingStatus } from "@/lib/types";
 export type SchedulingBookingListRow = SchedulingBooking & {
   customers?: Pick<{ id: string; name: string }, "id" | "name"> | null;
   scheduling_services?: Pick<
-    { id: string; name: string; duration_minutes: number },
-    "id" | "name" | "duration_minutes"
+    { id: string; name: string; duration_minutes: number; service_kind?: string | null },
+    "id" | "name" | "duration_minutes" | "service_kind"
   > | null;
   scheduling_resources?: Pick<{ id: string; name: string }, "id" | "name"> | null;
+  branches?: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
 export type AppBooking = Booking & {
@@ -40,6 +41,15 @@ export function mapSchedulingStatus(status: SchedulingBooking["status"]): Bookin
   return STATUS_MAP[status];
 }
 
+function relationName(
+  value: { name?: string | null } | { name?: string | null }[] | null | undefined,
+): string | null {
+  if (!value) return null;
+  const row = Array.isArray(value) ? value[0] : value;
+  const name = row?.name?.trim();
+  return name || null;
+}
+
 export function schedulingBookingToAppBooking(
   row: SchedulingBookingListRow,
   fallbackUserId = "",
@@ -63,7 +73,11 @@ export function schedulingBookingToAppBooking(
     resource_id: row.resource_id,
     scheduling_status: row.status,
     source: row.source,
+    visit_type: row.visit_type ?? null,
+    branch_name: relationName(row.branches),
     confirmation_number: row.confirmation_number ?? null,
+    service_kind:
+      row.scheduling_services?.service_kind === "sales_demo" ? "sales_demo" : "operational",
   };
 }
 

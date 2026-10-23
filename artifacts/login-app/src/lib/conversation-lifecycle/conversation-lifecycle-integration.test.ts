@@ -126,6 +126,32 @@ describe("Lifecycle Integration", () => {
     assert.equal(getActiveEscalation(result.metadata!), null);
   });
 
+  it("assigns to an AI employee by releasing the previous human", () => {
+    const result = executeLifecycleTransition(
+      { record: record({ id: "1", assigned_user_id: "user-1" }) },
+      "assign",
+      {
+        assignment: {
+          targetType: "ai_employee",
+          targetId: "ai-employee-1",
+          targetLabel: "AI Flow",
+          method: "manual",
+          assignedByUserId: "user-1",
+        },
+        actorUserId: "user-1",
+      },
+    );
+    assert.equal(result.success, true);
+    assert.equal(result.assignedUserId ?? null, null);
+    assert.equal(result.backendHint?.kind, "release");
+    const lifecycle = result.metadata?.lifecycle as
+      | { state?: string; owner?: { kind?: string; id?: string } }
+      | undefined;
+    assert.equal(lifecycle?.state, "AI_HANDLING");
+    assert.equal(lifecycle?.owner?.kind, "ai_employee");
+    assert.equal(lifecycle?.owner?.id, "ai-employee-1");
+  });
+
   it("returns to AI via lifecycle transition", () => {
     const input = { record: record({ id: "1" }) };
     const result = executeLifecycleTransition(input, "return_to_ai", {

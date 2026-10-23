@@ -136,16 +136,54 @@ export class CustomerInvoiceRepository {
   }
 
   async assignInvoiceNumber(companyId: string, invoiceId: string): Promise<string> {
-    const { data, error } = await this.client.rpc("financial_next_invoice_number", {
-      p_company_id: companyId,
-    });
-    if (error) throw new Error(error.message);
-    const invoiceNumber = String(data);
-    await this.updateStatus(companyId, invoiceId, "issued", {
-      invoice_number: invoiceNumber,
-      issued_at: new Date().toISOString(),
-    });
-    return invoiceNumber;
+    return this.ensureInvoiceNumber(companyId, invoiceId, "issued");
+  }
+
+  /**
+   * Writes the next company invoice number when the row has none.
+   * Paid and partial invoices keep their status. A colliding sequence retries.
+   */
+  async ensureInvoiceNumber(
+    companyId: string,
+    invoiceId: string,
+    currentStatus: InvoiceLifecycleStatus,
+  ): Promise<string> {
+    const current = await this.getById(companyId, invoiceId);
+    if (current?.invoiceNumber) return current.invoiceNumber;
+
+    const status: InvoiceLifecycleStatus =
+      currentStatus === "draft" || currentStatus === "pending" ? "issued" : currentStatus;
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const { data, error } = await this.client.rpc("financial_next_invoice_number", {
+        p_company_id: companyId,
+      });
+      if (error) throw new Error(error.message);
+      const invoiceNumber = String(data ?? "").trim();
+      if (!invoiceNumber) throw new Error("invoice number was not generated");
+
+      const { data: saved, error: updateError } = await this.client
+        .from("invoices")
+        .update({
+          status,
+          invoice_number: invoiceNumber,
+          issued_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", invoiceId)
+        .eq("company_id", companyId)
+        .select("invoice_number")
+        .maybeSingle();
+      if (updateError) {
+        if (updateError.code === "23505") continue;
+        throw new Error(updateError.message);
+      }
+      const savedNumber = saved?.invoice_number ? String(saved.invoice_number).trim() : "";
+      if (savedNumber) return savedNumber;
+      throw new Error("invoice number was not saved");
+    }
+
+    throw new Error("invoice number was not saved");
   }
 
   async recordPayment(companyId: string, invoiceId: string, paidCents: number, totalCents: number): Promise<void> {

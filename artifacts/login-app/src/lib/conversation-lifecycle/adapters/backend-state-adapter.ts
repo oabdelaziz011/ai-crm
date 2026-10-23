@@ -38,6 +38,16 @@ export function writeLifecycleOverlay(
 export function resolveLifecycleState(context: LifecycleContext): LifecycleState {
   const overlay = readLifecycleOverlay(context.metadata);
 
+  // Assigning back to an AI employee must not keep the previous human's ASSIGNED toolbar.
+  if (
+    overlay?.owner?.kind === "ai_employee" &&
+    overlay.state !== "CLOSED" &&
+    overlay.state !== "RESOLVED" &&
+    overlay.state !== "ESCALATED"
+  ) {
+    return "AI_HANDLING";
+  }
+
   if (overlay?.state) {
     if (overlay.state === "REOPENED" && context.backendState === "closed") {
       return "REOPENED";

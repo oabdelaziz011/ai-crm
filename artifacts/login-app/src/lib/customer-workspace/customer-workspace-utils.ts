@@ -14,7 +14,7 @@ export function customerInitials(name: string): string {
     .join("");
 }
 
-function normalizeInvoiceStatus(status: string | null | undefined): string {
+export function normalizeInvoiceStatus(status: string | null | undefined): string {
   return String(status ?? "").trim().toLowerCase();
 }
 

@@ -31,6 +31,8 @@ const ALLOWED_MIME = new Set([
   "image/jpeg",
   "image/webp",
   "image/svg+xml",
+  "video/mp4",
+  "video/webm",
 ]);
 
 const EXT_MIME: Record<string, string> = {
@@ -39,6 +41,8 @@ const EXT_MIME: Record<string, string> = {
   jpeg: "image/jpeg",
   webp: "image/webp",
   svg: "image/svg+xml",
+  mp4: "video/mp4",
+  webm: "video/webm",
 };
 
 function sanitizeFileName(name: string): string {

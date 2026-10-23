@@ -48,6 +48,7 @@ export const SCHEDULING_BOOKING_LIST_COLUMNS = `
   source,
   notes,
   confirmation_number,
+  visit_type,
   rescheduled_from_id,
   version,
   created_by,
@@ -56,6 +57,7 @@ export const SCHEDULING_BOOKING_LIST_COLUMNS = `
   created_at,
   updated_at,
   customers(id, name),
-  scheduling_services(id, name, duration_minutes),
-  scheduling_resources(id, name)
+  scheduling_services(id, name, duration_minutes, service_kind),
+  scheduling_resources(id, name),
+  branches(id, name)
 `;

@@ -20,6 +20,7 @@ import {
   type CampaignFeatureEntitlementPort,
 } from "./meta-messaging-capability";
 import { MarketingCampaignRepository } from "./repository";
+import { shouldResumeFailedCampaignRecipient } from "./campaign-recipient-resume";
 import {
   CampaignThreadEligibilityResolver,
   renderMetaMessagingCampaignText,
@@ -873,6 +874,9 @@ export class MarketingCampaignService {
     }
 
     if (recipient.status === "failed") {
+      if (!shouldResumeFailedCampaignRecipient(recipient)) {
+        return null;
+      }
       await this.repo.updateRecipient(recipient.id, input.companyId, {
         status: "pending",
         notification_queue_id: null,

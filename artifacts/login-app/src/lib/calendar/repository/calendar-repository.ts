@@ -12,10 +12,29 @@ export type ListCalendarEventsParams = {
   statuses?: SchedulingBookingStatus[];
 };
 
+/** PostgREST caps each response (default 1000 rows), so ranges are read in batches. */
+const LIST_BATCH_SIZE = 1000;
+
 export class CalendarRepository {
   constructor(private readonly client: SupabaseClient) {}
 
   async listEventsInRange(params: ListCalendarEventsParams): Promise<CalendarEventRecord[]> {
+    const records: CalendarEventRecord[] = [];
+    for (let from = 0; ; from += LIST_BATCH_SIZE) {
+      const { data, error } = await this.buildRangeQuery(params)
+        .order("id", { ascending: true })
+        .range(from, from + LIST_BATCH_SIZE - 1);
+      if (error) {
+        throw new Error(error.message);
+      }
+      const batch = (data ?? []) as unknown as CalendarEventRecord[];
+      records.push(...batch);
+      if (batch.length < LIST_BATCH_SIZE) break;
+    }
+    return records;
+  }
+
+  private buildRangeQuery(params: ListCalendarEventsParams) {
     let query = this.client
       .from("scheduling_bookings")
       .select(
@@ -34,6 +53,7 @@ export class CalendarRepository {
         notes,
         version,
         created_by,
+        created_at,
         amount_cents,
         currency,
         visit_type,
@@ -71,11 +91,6 @@ export class CalendarRepository {
       query = query.in("status", params.statuses);
     }
 
-    const { data, error } = await query;
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return (data ?? []) as unknown as CalendarEventRecord[];
+    return query;
   }
 }

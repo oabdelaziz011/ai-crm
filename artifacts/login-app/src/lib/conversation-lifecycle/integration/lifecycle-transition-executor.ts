@@ -289,7 +289,7 @@ export function executeLifecycleTransition(
     const overlay = readLifecycleOverlay(assignedMetadata) ?? {};
     metadata = writeLifecycleOverlay(assignedMetadata, {
       ...overlay,
-      state: plan.validation.toState,
+      state: assignment.targetType === "ai_employee" ? "AI_HANDLING" : plan.validation.toState,
     });
   }
 
@@ -402,10 +402,17 @@ export function executeLifecycleTransition(
     assignedUserId = actorUserId;
   }
 
+  // The plan hint is built from the previous owner. Assigning to an AI employee
+  // must release that human, not re-assign them through department governance.
+  const backendHint =
+    payload.assignment?.targetType === "ai_employee"
+      ? ({ kind: "release" } as const)
+      : plan.backendHint;
+
   return {
     success: true,
     metadata,
-    backendHint: plan.backendHint,
+    backendHint,
     validation: plan.validation,
     assignedUserId,
   };

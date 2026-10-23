@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./factory/runtime-engine-ports": "./src/factory/runtime-engine-ports.ts",
+    "./factory/persist-outgoing-once": "./src/factory/persist-outgoing-once.ts",
     "./coordinator/test-utils": "./src/coordinator/test-utils.ts"
   },
   "scripts": {

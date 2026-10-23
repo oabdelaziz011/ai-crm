@@ -25,11 +25,35 @@ import type {
 } from "../types.js";
 import { createCorrelationId } from "../utils/runtime-utils.js";
 
+/**
+ * A WhatsApp turn may load history after the customer already sent the next message.
+ * Keep messages through this turn's incoming row so the reply answers that message.
+ * An unknown anchor keeps the window: the current question must not disappear.
+ */
+export function messagesThroughAnchor<T extends { id: string }>(
+  messages: readonly T[],
+  anchorMessageId: string | null | undefined,
+): T[] {
+  const anchor = anchorMessageId?.trim() ?? "";
+  if (!anchor) return [...messages];
+  const index = messages.findIndex((message) => message.id === anchor);
+  if (index < 0) return [...messages];
+  return messages.slice(0, index + 1);
+}
+
 function assertPermission(ctx: ServiceContext, permission: string, correlationId?: string): void {
   if (ctx.isSuperAdmin) return;
   if (!ctx.hasPermission(permission)) {
     throw new PermissionDeniedError(permission, correlationId);
   }
+}
+
+function persistedUuid(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
 }
 
 function assertCompanyAccess(ctx: ServiceContext, companyId: string, correlationId?: string): void {
@@ -150,29 +174,36 @@ export class EnterpriseRuntimeCoordinator {
           (hasLegacyVector || hasQuestionRetrieval) &&
           !intent.requiresHuman
         ) {
-          const retrievalResult = await this.runStage(
-            ctx,
-            execution.id,
-            "retrieval",
-            stepDtos,
-            correlationId,
-            async () =>
-              this.ports.retrieval.runRetrieval(ctx, {
-                companyId: input.companyId,
-                correlationId,
-                question: input.messageText,
-                embeddingConnectionId: knowledgeRetrieval.embeddingConnectionId,
-                vectorStoreConnectionId:
-                  knowledgeRetrieval.vectorStoreConnectionId ?? knowledgeRetrieval.connectionId,
-                connectionId: knowledgeRetrieval.connectionId,
-                collectionId: knowledgeRetrieval.collectionId,
-                queryVector: knowledgeRetrieval.queryVector,
-                embeddingId: knowledgeRetrieval.embeddingId,
-              }),
-          );
-          vectorQueryExecutionId = retrievalResult.vectorQueryExecutionId;
-          retrieval = retrievalResult.retrieval;
-          retrievalExecutionId = retrieval.executionId;
+          try {
+            const retrievalResult = await this.runStage(
+              ctx,
+              execution.id,
+              "retrieval",
+              stepDtos,
+              correlationId,
+              async () =>
+                this.ports.retrieval.runRetrieval(ctx, {
+                  companyId: input.companyId,
+                  correlationId,
+                  question: input.messageText,
+                  embeddingConnectionId: knowledgeRetrieval.embeddingConnectionId,
+                  vectorStoreConnectionId:
+                    knowledgeRetrieval.vectorStoreConnectionId ?? knowledgeRetrieval.connectionId,
+                  connectionId: knowledgeRetrieval.connectionId,
+                  collectionId: knowledgeRetrieval.collectionId,
+                  queryVector: knowledgeRetrieval.queryVector,
+                  embeddingId: knowledgeRetrieval.embeddingId,
+                }),
+            );
+            vectorQueryExecutionId = persistedUuid(retrievalResult.vectorQueryExecutionId);
+            retrieval = retrievalResult.retrieval;
+            retrievalExecutionId = persistedUuid(retrieval.executionId);
+          } catch {
+            // A knowledge lookup failure must not drop the customer reply.
+            retrieval = null;
+            vectorQueryExecutionId = null;
+            retrievalExecutionId = null;
+          }
         } else {
           await this.skipStage(execution.id, "retrieval", stepDtos, {
             reason: policy.knowledgeRetrievalEnabled ? "knowledge_params_missing" : "knowledge_disabled",
@@ -181,10 +212,15 @@ export class EnterpriseRuntimeCoordinator {
 
         // Channel threads (WhatsApp) need a wider window so cancel lists + phone
         // survive while the customer picks a BK- reference across several turns.
-        const recentMessages = await this.ports.conversation.listRecentMessages(
+        const loadedMessages = await this.ports.conversation.listRecentMessages(
           input.conversationId,
           input.pageContext?.channelKey ? 24 : 12,
         );
+        const anchorIncomingMessageId =
+          typeof input.pageContext?.anchorIncomingMessageId === "string"
+            ? input.pageContext.anchorIncomingMessageId
+            : undefined;
+        const recentMessages = messagesThroughAnchor(loadedMessages, anchorIncomingMessageId);
 
         // 5. Prompt
         prompt = await this.runStage(ctx, execution.id, "prompt", stepDtos, correlationId, async () =>
@@ -207,6 +243,7 @@ export class EnterpriseRuntimeCoordinator {
             conversationId: input.conversationId,
             promptBuildId: prompt!.buildId,
             providerConnectionId: input.providerConnectionId,
+            pageContext: input.pageContext,
             policy: input.executionPolicy,
             onStreamChunk: input.onStreamChunk,
             abortSignal: input.abortSignal,
@@ -281,6 +318,7 @@ export class EnterpriseRuntimeCoordinator {
         metadata: {
           conversationState,
           conversationId: conversation.id,
+          ...(aiExecution?.deliveryOutcome ? { deliveryOutcome: aiExecution.deliveryOutcome } : {}),
         },
       });
 
@@ -301,6 +339,7 @@ export class EnterpriseRuntimeCoordinator {
         providerKey: providerKey ?? aiExecution?.providerKey ?? null,
         responseContent,
         outgoingMessageId,
+        replyImages: aiExecution?.replyImages,
         steps: stepDtos,
         tokenUsage: aiExecution?.tokenUsage ?? {
           promptTokens: 0,

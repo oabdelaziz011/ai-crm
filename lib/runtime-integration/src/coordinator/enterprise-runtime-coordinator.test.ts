@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { PermissionDeniedError, ValidationError } from "../errors.js";
+import { PermissionDeniedError, RuntimeDomainError, ValidationError, createRuntimeErrorDescriptor } from "../errors.js";
 import { RUNTIME_PIPELINE_STAGES } from "../constants.js";
+import { messagesThroughAnchor } from "./enterprise-runtime-coordinator.js";
 import { createContext, createTestEnvironment } from "./test-utils.js";
 
 describe("EnterpriseRuntimeCoordinator", () => {
@@ -124,5 +125,76 @@ describe("EnterpriseRuntimeCoordinator", () => {
 
     assert.equal(env.errors.length, 1);
     assert.equal(env.executions[0]?.execution_status, "failed");
+  });
+
+  it("keeps a provider failure distinct from a persistence failure", async () => {
+    const providerEnv = createTestEnvironment();
+    providerEnv.ports.execution.execute = async () => {
+      throw new Error("provider_rate_limit_exceeded");
+    };
+    await assert.rejects(() =>
+      providerEnv.coordinator.execute(createContext(), {
+        companyId: "company-1",
+        conversationId: "conv-1",
+        messageText: "Hello",
+        correlationId: "corr-provider",
+      }),
+    );
+    assert.equal(providerEnv.errors[0]?.error_code, "RUNTIME_UNKNOWN");
+    assert.equal(providerEnv.errors[0]?.error_category, "runtime");
+    assert.equal(providerEnv.executions[0]?.execution_status, "failed");
+    assert.equal(providerEnv.messages.some((message) => message.role === "assistant"), false);
+
+    const persistenceEnv = createTestEnvironment();
+    persistenceEnv.ports.conversation.addOutgoingMessage = async () => {
+      throw new RuntimeDomainError(
+        createRuntimeErrorDescriptor(
+          "PERSISTENCE_FAILED",
+          "persistence",
+          "The assistant reply could not be saved.",
+          "database unavailable",
+          true,
+        ),
+        "corr-persist",
+      );
+    };
+    await assert.rejects(() =>
+      persistenceEnv.coordinator.execute(createContext(), {
+        companyId: "company-1",
+        conversationId: "conv-1",
+        messageText: "Hello",
+        correlationId: "corr-persist",
+      }),
+    );
+    assert.equal(persistenceEnv.errors[0]?.error_code, "PERSISTENCE_FAILED");
+    assert.equal(persistenceEnv.errors[0]?.error_category, "persistence");
+    assert.equal(persistenceEnv.errors[0]?.human_message.includes("provider_rate_limit_exceeded"), false);
+    assert.equal(persistenceEnv.executions[0]?.execution_status, "failed");
+  });
+});
+
+describe("messagesThroughAnchor", () => {
+  const history = [
+    { id: "policy", role: "customer", content: "قولي سياسه الشركه" },
+    { id: "booking", role: "customer", content: "عايز احجز" },
+  ];
+
+  it("drops messages that arrived after this turn", () => {
+    assert.deepEqual(
+      messagesThroughAnchor(history, "policy").map((message) => message.id),
+      ["policy"],
+    );
+  });
+
+  it("keeps the full window when this turn is the latest message", () => {
+    assert.deepEqual(
+      messagesThroughAnchor(history, "booking").map((message) => message.id),
+      ["policy", "booking"],
+    );
+  });
+
+  it("keeps the window when no anchor was recorded", () => {
+    assert.equal(messagesThroughAnchor(history, "  ").length, 2);
+    assert.equal(messagesThroughAnchor(history, undefined).length, 2);
   });
 });

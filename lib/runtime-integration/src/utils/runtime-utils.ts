@@ -1,3 +1,8 @@
+import {
+  composeEmployeeSystemInstructions,
+  employeeCalendarDate,
+} from "@workspace/ai-prompt-orchestrator";
+
 export function createCorrelationId(existing?: string): string {
   return existing ?? crypto.randomUUID();
 }
@@ -54,4 +59,38 @@ export function mapRetrievalSnapshotToKnowledgeContext(
     citations: retrieval.citations,
     chunks,
   };
+}
+
+export type EmployeePromptRetrieval = {
+  executionId: string;
+  chunkCount: number;
+  totalTokens: number;
+  contextText?: string;
+  confidence?: number;
+  searchMode?: "vector" | "keyword" | "hybrid";
+  citations?: Array<Record<string, unknown>>;
+  chunks: Array<{ content: string; metadata: Record<string, unknown> }>;
+};
+
+/**
+ * Webhook and dashboard share one knowledge block: promptContext.knowledge.
+ * Chunks are not also copied into the system instructions, so the model does
+ * not see two copies. A missing retrieval leaves knowledge unset and keeps the core prompt.
+ */
+export function assembleEmployeePromptKnowledge(input: {
+  mode: "webhook" | "dashboard";
+  companyInstructions?: string | null;
+  catalogAddon?: string | null;
+  senderHint?: string | null;
+  retrieval: EmployeePromptRetrieval | null;
+}) {
+  const knowledge = mapRetrievalSnapshotToKnowledgeContext(input.retrieval);
+  const systemInstructions = composeEmployeeSystemInstructions({
+    companyInstructions: input.companyInstructions,
+    catalogAddon: input.catalogAddon,
+    senderHint: input.senderHint,
+    retrievalLines: [],
+    currentDate: employeeCalendarDate(),
+  });
+  return { mode: input.mode, systemInstructions, knowledge };
 }

@@ -210,6 +210,10 @@ export type ExecutionSnapshot = {
   latencyMs: number;
   tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number };
   responseContent: string;
+  /** Present when the reply was built from verified tool outcomes after a provider failure. */
+  deliveryOutcome?: "provider_fallback";
+  /** Public product photos collected from tool deliveryImages (WhatsApp side channel). */
+  replyImages?: ReadonlyArray<{ url: string; caption: string }>;
 };
 
 export type ProviderSnapshot = {

@@ -56,6 +56,8 @@ export type RuntimeExecutionResponse = {
   responseContent: string;
   /** Server-persisted outgoing conversation_messages.id from the persistence stage. */
   outgoingMessageId?: string | null;
+  /** Public product photos for WhatsApp (one product), sent after the text reply. */
+  replyImages?: ReadonlyArray<{ url: string; caption: string }>;
   steps: RuntimeStep[];
   tokenUsage: {
     promptTokens: number;
@@ -88,6 +90,7 @@ export function toRuntimeExecutionResponse(input: {
   providerKey: string | null;
   responseContent: string;
   outgoingMessageId?: string | null;
+  replyImages?: ReadonlyArray<{ url: string; caption: string }>;
   steps: RuntimeStep[];
   tokenUsage: RuntimeExecutionResponse["tokenUsage"];
 }): RuntimeExecutionResponse {
@@ -101,6 +104,7 @@ export function toRuntimeExecutionResponse(input: {
     providerKey: input.providerKey,
     responseContent: input.responseContent,
     outgoingMessageId: input.outgoingMessageId ?? null,
+    ...(input.replyImages?.length ? { replyImages: input.replyImages } : {}),
     steps: input.steps,
     tokenUsage: input.tokenUsage,
   };

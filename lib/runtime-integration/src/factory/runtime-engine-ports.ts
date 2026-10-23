@@ -4,14 +4,15 @@ import type { AIExecutionServices, EnterpriseAIRuntimeService } from "@workspace
 import type { AIProviderServices } from "@workspace/ai-provider-layer";
 import type { PromptOrchestratorServices } from "@workspace/ai-prompt-orchestrator";
 import { detectReplyLanguage } from "@workspace/ai-prompt-orchestrator";
+import { assembleEmployeePromptKnowledge } from "../utils/runtime-utils.js";
 import type { RetrievalServices } from "@workspace/retrieval-engine";
 import type { VectorQueryServices } from "@workspace/vector-query";
 import type { Customer360Dto, Customer360Loader } from "@workspace/customer-360";
 import type { KnowledgeRuntimeProvider } from "@workspace/knowledge-runtime";
+import { persistOutgoingOnce } from "./persist-outgoing-once.js";
 import type { RuntimeEnginePorts } from "../ports/runtime-ports.js";
 import type { ServiceContext } from "../types.js";
 import {
-  formatRetrievalInstructions,
   mapRetrievalSnapshotToKnowledgeContext,
 } from "../utils/runtime-utils.js";
 
@@ -130,11 +131,25 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
         };
       },
       async addOutgoingMessage(ctx, input) {
-        const message = await deps.conversation.messages.addMessage(asConversationContext(ctx), {
-          conversationId: input.conversationId,
-          messageType: "outgoing",
-          content: input.content,
-          metadata: input.metadata,
+        const correlationId =
+          typeof input.metadata?.correlationId === "string" ? input.metadata.correlationId : null;
+        const { message } = await persistOutgoingOnce({
+          correlationId,
+          insert: (externalMessageId) =>
+            deps.conversation.messages.addMessage(asConversationContext(ctx), {
+              conversationId: input.conversationId,
+              messageType: "outgoing",
+              contentType: "text",
+              content: input.content,
+              metadata: input.metadata,
+              externalMessageId,
+            }),
+          findExisting: (externalMessageId) =>
+            deps.conversation.messages.findByConversationAndExternalMessageId(
+              asConversationContext(ctx),
+              input.conversationId,
+              externalMessageId,
+            ),
         });
         return {
           id: message.id,
@@ -295,7 +310,7 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
           stream: input.policy?.streaming,
           onStreamChunk: input.onStreamChunk,
           abortSignal: input.abortSignal,
-          promptContext: {},
+          promptContext: input.pageContext ? { pageContext: input.pageContext } : {},
         });
 
         return {
@@ -310,6 +325,8 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
             totalTokens: result.tokenUsage.total_tokens,
           },
           responseContent: result.responseText,
+          ...(result.deliveryOutcome ? { deliveryOutcome: result.deliveryOutcome } : {}),
+          ...(result.replyImages?.length ? { replyImages: result.replyImages } : {}),
         };
       },
     },
@@ -413,11 +430,12 @@ export function createRuntimeEnginePortsWithContext(
 
         const snapshot = knowledgeRuntime.toRetrievalSnapshot(context);
         if (!snapshot) {
+          const executionId = context.executionId?.trim() ?? "";
           return {
             vectorQueryExecutionId: context.vectorQueryExecutionId,
             retrieval: {
-              executionId: context.executionId || "none",
-              contextId: context.executionId || "none",
+              executionId,
+              contextId: executionId,
               chunkCount: 0,
               totalTokens: 0,
               chunks: [],
@@ -472,22 +490,26 @@ export function createRuntimeEnginePortsWithContext(
           );
         }
 
-        const replyLanguage = detectReplyLanguage(input.messageText);
+        const earlierUserTexts = input.recentMessages
+          .filter((message) => message.role === "customer")
+          .map((message) => message.content)
+          .filter((content) => content.trim() !== input.messageText.trim());
+        const replyLanguage = detectReplyLanguage(input.messageText, earlierUserTexts);
         const catalogPromptAddon =
           typeof input.pageContext?.schedulingCatalogPrompt === "string"
             ? input.pageContext.schedulingCatalogPrompt.trim()
             : "";
-        const employeeSystemPrompt = [
-          typeof input.pageContext?.systemPrompt === "string"
-            ? input.pageContext.systemPrompt.trim()
-            : "",
-          catalogPromptAddon,
-          senderHint.senderPhone
+        const assembledPrompt = assembleEmployeePromptKnowledge({
+          mode: options.promptMode,
+          companyInstructions:
+            typeof input.pageContext?.systemPrompt === "string" ? input.pageContext.systemPrompt : "",
+          catalogAddon: catalogPromptAddon,
+          senderHint: senderHint.senderPhone
             ? `CHANNEL SENDER:\n- WhatsApp phone: ${senderHint.senderPhone}\n- Use this number for search_customer / create_customer unless the customer gives a different mobile.`
             : "",
-        ]
-          .filter(Boolean)
-          .join("\n\n");
+          retrieval: input.retrieval,
+        });
+        const systemInstructions = assembledPrompt.systemInstructions;
 
         const built = await runtime.buildPrompt(asConversationContext(promptCtx), {
           companyId: input.companyId,
@@ -512,15 +534,11 @@ export function createRuntimeEnginePortsWithContext(
             intentDecision: {
               intent_key: input.intent.intentKey,
               confidence: input.intent.confidence,
-              matched_tool: input.intent.matchedTool,
-              reason: input.intent.reason,
+            matched_tool: input.intent.matchedTool,
+            reason: input.intent.reason,
             },
-            knowledge: mapRetrievalSnapshotToKnowledgeContext(input.retrieval),
-            ...(options.promptMode === "dashboard" && input.retrieval
-              ? { systemInstructions: formatRetrievalInstructions(input.retrieval.chunks) }
-              : employeeSystemPrompt
-                ? { systemInstructions: [employeeSystemPrompt] }
-                : {}),
+            knowledge: assembledPrompt.knowledge,
+            systemInstructions,
             language: replyLanguage,
             pageContext: input.pageContext,
             assembledContext: input.pageContext?.assembledContext,
@@ -624,6 +642,7 @@ export function createRuntimeEnginePortsWithContext(
             ...(priorSchedulingToolExecutions.length > 0
               ? { priorSchedulingToolExecutions }
               : {}),
+            ...(input.pageContext ? { pageContext: input.pageContext } : {}),
           },
         });
 
@@ -639,6 +658,8 @@ export function createRuntimeEnginePortsWithContext(
             totalTokens: result.tokenUsage.total_tokens,
           },
           responseContent: result.responseText,
+          ...(result.deliveryOutcome ? { deliveryOutcome: result.deliveryOutcome } : {}),
+          ...(result.replyImages?.length ? { replyImages: result.replyImages } : {}),
         };
       },
     },

@@ -4,7 +4,7 @@
  * Production start remains scripts/start-with-env.mjs (no watch).
  */
 import { spawn, execFileSync } from "node:child_process";
-import { watch, existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { watch, existsSync, readFileSync, statSync, writeFileSync, unlinkSync } from "node:fs";
 import { resolve, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -155,6 +155,7 @@ const listenPort = Number(childEnv.PORT ?? "3000");
 let server = null;
 let building = false;
 let pendingRebuild = false;
+let lastBuildStartedAt = 0;
 let shuttingDown = false;
 
 function readGitCommit() {
@@ -239,6 +240,7 @@ async function rebuildAndMaybeRestart({ clean, reason }) {
 
   building = true;
   pendingRebuild = false;
+  lastBuildStartedAt = Date.now();
 
   console.log(`[api-server:dev] Building${reason ? ` (${reason})` : ""}...`);
 
@@ -272,6 +274,19 @@ function shouldIgnoreWatchPath(filename) {
   );
 }
 
+/**
+ * Windows reports last-access/attribute updates as "change" events, so merely reading
+ * sources (search, tests, Vite) would rebuild and restart the API. Only content written
+ * after the last build started counts; missing paths (deletes/renames) still rebuild.
+ */
+function isUnmodifiedSinceLastBuild(changedPath) {
+  try {
+    return statSync(changedPath).mtimeMs < lastBuildStartedAt;
+  } catch {
+    return false;
+  }
+}
+
 /** @type {ReturnType<typeof setTimeout> | null} */
 let debounceTimer = null;
 
@@ -290,6 +305,7 @@ const watchers = watchRoots.map((root) => {
     const watcher = watch(root, { recursive: true }, (_eventType, filename) => {
       if (shouldIgnoreWatchPath(filename ?? undefined)) return;
       const changed = filename ? resolve(root, filename) : root;
+      if (isUnmodifiedSinceLastBuild(changed)) return;
       scheduleRebuild(changed);
     });
     watcher.on("error", (error) => {

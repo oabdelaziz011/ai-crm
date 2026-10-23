@@ -214,7 +214,38 @@ describe("Public Web Chat — live local E2E (real InboundMessagePipeline)", () 
     assert.equal(conversation.length, 1);
     assert.equal(conversation[0].company_id, CO_B);
     assert.equal(conversation[0].metadata.publicWebChat, true);
+    assert.equal(conversation[0].metadata.channelProvider, "valueor.web_widget");
+    assert.equal(conversation[0].channel_type, "web_chat");
     const conversationId = conversation[0].id as string;
+
+    // Scenario R — inbox list scope (mirrors supabase-conversation-repository includePublicWebChat filter)
+    const inboxVisible = await db.query(
+      `select id, company_id, channel_type,
+              metadata->>'publicWebChat' as public_web_chat,
+              metadata->>'channelProvider' as channel_provider
+         from public.conversations
+        where company_id = $1
+          and deleted_at is null
+          and channel_type = 'web_chat'
+          and metadata->>'publicWebChat' = 'true'
+          and metadata->>'channelProvider' = 'valueor.web_widget'
+          and id = $2`,
+      [CO_B, conversationId],
+    );
+    assert.equal(inboxVisible.rows.length, 1);
+
+    const otherCompany = "d0000010-0001-4001-8001-000000000001";
+    const crossCompany = await db.query(
+      `select id from public.conversations
+        where company_id = $1
+          and deleted_at is null
+          and channel_type = 'web_chat'
+          and metadata->>'publicWebChat' = 'true'
+          and metadata->>'channelProvider' = 'valueor.web_widget'
+          and id = $2`,
+      [otherCompany, conversationId],
+    );
+    assert.equal(crossCompany.rows.length, 0);
 
     const incoming = await db.query(
       `select content, message_type from public.conversation_messages where conversation_id = $1 order by sequence_number`,

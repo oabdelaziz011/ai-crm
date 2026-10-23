@@ -52,3 +52,20 @@ export const DEFAULT_STAGE_PROBABILITY: Record<(typeof OPPORTUNITY_STAGE_KEYS)[n
   won: 100,
   lost: 0,
 };
+
+/**
+ * Authoritative Opportunity stage transitions (by stage_key).
+ * Terminal stages (won/lost) do not allow further stage moves; archive is separate.
+ */
+export const DEFAULT_OPPORTUNITY_STAGE_TRANSITIONS: Record<
+  (typeof OPPORTUNITY_STAGE_KEYS)[number],
+  ReadonlyArray<(typeof OPPORTUNITY_STAGE_KEYS)[number]>
+> = {
+  qualification: ["discovery", "proposal", "lost"],
+  discovery: ["qualification", "proposal", "negotiation", "lost"],
+  proposal: ["discovery", "negotiation", "contract", "lost"],
+  negotiation: ["proposal", "contract", "won", "lost"],
+  contract: ["negotiation", "won", "lost"],
+  won: [],
+  lost: [],
+};

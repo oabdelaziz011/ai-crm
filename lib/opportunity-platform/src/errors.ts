@@ -1,8 +1,11 @@
 export class OpportunityValidationError extends Error {
   readonly code = "OPPORTUNITY_VALIDATION";
-  constructor(message: string) {
+  /** Machine-stable reason for structured API / UI handling. */
+  readonly reason: string | null;
+  constructor(message: string, reason: string | null = null) {
     super(message);
     this.name = "OpportunityValidationError";
+    this.reason = reason;
   }
 }
 

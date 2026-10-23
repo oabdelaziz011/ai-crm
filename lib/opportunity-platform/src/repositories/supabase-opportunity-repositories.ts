@@ -6,12 +6,27 @@ import type {
   OpportunityStageKey,
   OpportunityStageRecord,
 } from "../types.js";
+import { OPPORTUNITY_VISIBLE_LEAD_LIFECYCLES } from "../services/demo-opportunity-visibility.js";
 import type {
   CreateOpportunityInput,
   LeadCustomerEmailMatch,
   OpportunityRepository,
   UpdateOpportunityInput,
 } from "./opportunity-repository-port.js";
+
+const VISIBLE_LEAD_LIFECYCLE_FILTER = `(${OPPORTUNITY_VISIBLE_LEAD_LIFECYCLES.join(",")})`;
+
+function leadsInOpportunityColumn<
+  T extends { in: (column: string, values: readonly string[]) => T },
+>(query: T): T {
+  return query.in("lifecycle_status", OPPORTUNITY_VISIBLE_LEAD_LIFECYCLES);
+}
+
+function leadsNotYetInOpportunityColumn<T extends { or: (filters: string) => T }>(query: T): T {
+  return query.or(
+    `lifecycle_status.is.null,lifecycle_status.not.in.${VISIBLE_LEAD_LIFECYCLE_FILTER}`,
+  );
+}
 
 function normalizeLeadEmail(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -65,6 +80,7 @@ function mapOpportunity(row: Record<string, unknown>): OpportunityRecord {
     name: String(row.name),
     leadId: row.lead_id ? String(row.lead_id) : null,
     customerId: row.customer_id ? String(row.customer_id) : null,
+    primaryProductId: row.primary_product_id ? String(row.primary_product_id) : null,
     primaryContactName: String(row.primary_contact_name ?? ""),
     ownerUserId: row.owner_user_id ? String(row.owner_user_id) : null,
     companyName: row.company_name != null ? String(row.company_name) : null,
@@ -184,6 +200,7 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
           name: input.name,
           lead_id: input.leadId ?? null,
           customer_id: input.customerId ?? null,
+          primary_product_id: input.primaryProductId ?? null,
           primary_contact_name: input.primaryContactName ?? "",
           owner_user_id: input.ownerUserId ?? null,
           company_name: input.companyName ?? null,
@@ -236,6 +253,7 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
       if (input.probabilityReason !== undefined) patch.probability_reason = input.probabilityReason;
       if (input.expectedCloseDate !== undefined) patch.expected_close_date = input.expectedCloseDate;
       if (input.customerId !== undefined) patch.customer_id = input.customerId;
+      if (input.primaryProductId !== undefined) patch.primary_product_id = input.primaryProductId;
       if (input.wonAt !== undefined) patch.won_at = input.wonAt;
       if (input.lostAt !== undefined) patch.lost_at = input.lostAt;
       if (input.lostReason !== undefined) patch.lost_reason = input.lostReason;
@@ -278,6 +296,20 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
       return data ? mapOpportunity(data as Record<string, unknown>) : null;
     },
 
+    async listDemoVisibilityBlockedLeadIds(companyId) {
+      const { data, error } = await leadsNotYetInOpportunityColumn(
+        client
+          .from("leads")
+          .select("id")
+          .eq("company_id", companyId)
+          .is("deleted_at", null),
+      );
+      if (error) throw error;
+      return (data ?? [])
+        .map((row) => (row.id ? String(row.id) : ""))
+        .filter(Boolean);
+    },
+
     async listOpportunities(input) {
       let query = client
         .from("opportunities")
@@ -291,9 +323,40 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
       if (input.stageId) query = query.eq("stage_id", input.stageId);
       if (input.ownerUserId) query = query.eq("owner_user_id", input.ownerUserId);
       if (input.leadId) query = query.eq("lead_id", input.leadId);
+      if (input.customerId) query = query.eq("customer_id", input.customerId);
+      if (input.primaryProductId) query = query.eq("primary_product_id", input.primaryProductId);
+      const outcome = input.outcome ?? (input.openOnly ? "open" : undefined);
+      if (outcome === "open") {
+        query = query.is("won_at", null).is("lost_at", null);
+      } else if (outcome === "won") {
+        query = query.not("won_at", "is", null);
+      } else if (outcome === "lost") {
+        query = query.not("lost_at", "is", null);
+      }
       if (input.query?.trim()) {
         const q = `%${input.query.trim()}%`;
         query = query.or(`name.ilike.${q},company_name.ilike.${q},primary_contact_name.ilike.${q}`);
+      }
+      if (input.applyDemoVisibilityGate || input.leadLifecycleStatus?.trim()) {
+        let leadQuery = client
+          .from("leads")
+          .select("id")
+          .eq("company_id", input.companyId)
+          .is("deleted_at", null);
+        if (input.applyDemoVisibilityGate) {
+          leadQuery = leadsInOpportunityColumn(leadQuery);
+        }
+        const lifecycle = input.leadLifecycleStatus?.trim().toLowerCase();
+        if (lifecycle) leadQuery = leadQuery.eq("lifecycle_status", lifecycle);
+        const { data: visibleRows, error: visibleError } = await leadQuery;
+        if (visibleError) throw visibleError;
+        const visibleLeadIds = (visibleRows ?? [])
+          .map((row) => (row.id ? String(row.id) : ""))
+          .filter(Boolean);
+        if (!visibleLeadIds.length) {
+          return { items: [], total: 0 };
+        }
+        query = query.in("lead_id", visibleLeadIds);
       }
 
       const { data, error, count } = await query;
@@ -301,6 +364,55 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
       return {
         items: (data ?? []).map((row) => mapOpportunity(row as Record<string, unknown>)),
         total: count ?? 0,
+      };
+    },
+
+    async findOpenByCustomerProduct(input) {
+      const { data, error } = await client
+        .from("opportunities")
+        .select("*")
+        .eq("company_id", input.companyId)
+        .eq("customer_id", input.customerId)
+        .eq("primary_product_id", input.primaryProductId)
+        .is("deleted_at", null)
+        .is("won_at", null)
+        .is("lost_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapOpportunity(data as Record<string, unknown>) : null;
+    },
+
+    async getCatalogProductInCompany(companyId, productId) {
+      const { data, error } = await client
+        .from("catalog_products")
+        .select("id, company_id, name")
+        .eq("company_id", companyId)
+        .eq("id", productId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        id: String(data.id),
+        companyId: String(data.company_id),
+        name: String(data.name ?? ""),
+      };
+    },
+
+    async getCustomerInCompany(companyId, customerId) {
+      const { data, error } = await client
+        .from("customers")
+        .select("id, company_id")
+        .eq("company_id", companyId)
+        .eq("id", customerId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        id: String(data.id),
+        companyId: String(data.company_id),
       };
     },
 
@@ -366,6 +478,7 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
         territory: data.territory != null ? String(data.territory) : null,
         isQualified:
           Boolean(data.is_qualified) || lifecycleStatus.toLowerCase() === "qualified",
+        lifecycleStatus: lifecycleStatus || null,
         score: Number(data.score ?? 0),
         aiSummary: String(data.ai_summary ?? ""),
         metadata: (data.metadata as Record<string, unknown>) ?? {},
@@ -376,11 +489,14 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
       const normalized = normalizeLeadEmail(email);
       if (!normalized) return { kind: "none" };
 
+      // Tenant-scoped + active-only. Ambiguous active matches fail closed (duplicate).
+      // Inactive/blocked customers are ignored so we never silently attach the wrong party.
       const { count, error: countError } = await client
         .from("customers")
         .select("id", { count: "exact", head: true })
         .eq("company_id", companyId)
-        .eq("email", normalized);
+        .eq("email", normalized)
+        .or("status.eq.active,status.is.null");
       if (countError) throw countError;
 
       const matchCount = count ?? 0;
@@ -392,6 +508,7 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
         .select("id")
         .eq("company_id", companyId)
         .eq("email", normalized)
+        .or("status.eq.active,status.is.null")
         .limit(1)
         .maybeSingle();
       if (error) throw error;

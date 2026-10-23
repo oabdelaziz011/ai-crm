@@ -13,6 +13,7 @@ export type CreateOpportunityInput = {
   name: string;
   leadId?: string | null;
   customerId?: string | null;
+  primaryProductId?: string | null;
   primaryContactName?: string;
   ownerUserId?: string | null;
   companyName?: string | null;
@@ -58,6 +59,7 @@ export type UpdateOpportunityInput = {
   probabilityReason?: string;
   expectedCloseDate?: string | null;
   customerId?: string | null;
+  primaryProductId?: string | null;
   wonAt?: string | null;
   lostAt?: string | null;
   lostReason?: string | null;
@@ -86,10 +88,54 @@ export interface OpportunityRepository {
     stageId?: string;
     ownerUserId?: string;
     leadId?: string;
+    customerId?: string;
+    primaryProductId?: string;
+    /** When true, only rows with won_at and lost_at both null. */
+    openOnly?: boolean;
+    /** Terminal outcome filter (mutually exclusive with openOnly when won/lost). */
+    outcome?: "open" | "won" | "lost";
     query?: string;
+    /** Kanban lifecycle (`leads.lifecycle_status`), e.g. demo_completed. */
+    leadLifecycleStatus?: string;
+    /**
+     * When true, exclude Opportunities whose Lead has not reached `demo_completed`
+     * (Kanban فرصة). Internal command reuse must pass false.
+     */
+    applyDemoVisibilityGate?: boolean;
     limit: number;
     offset: number;
   }): Promise<{ items: OpportunityRecord[]; total: number }>;
+
+  /** Lead ids whose Opportunities must stay hidden until Kanban فرصة (`demo_completed`). */
+  listDemoVisibilityBlockedLeadIds(companyId: string): Promise<string[]>;
+
+  /**
+   * Find an open opportunity for the commercial uniqueness key
+   * (company + customer + primary_product). Returns null when any key part is missing.
+   */
+  findOpenByCustomerProduct(input: {
+    companyId: string;
+    customerId: string;
+    primaryProductId: string;
+  }): Promise<OpportunityRecord | null>;
+
+  /**
+   * Tenant-scoped catalog product lookup. Returns null when the product is missing,
+   * soft-deleted, or belongs to another company (cross-company rejection).
+   */
+  getCatalogProductInCompany(
+    companyId: string,
+    productId: string,
+  ): Promise<{ id: string; companyId: string; name: string } | null>;
+
+  /**
+   * Tenant-scoped customer lookup. Returns null when the customer is missing or
+   * belongs to another company (cross-company rejection). Never invents identity.
+   */
+  getCustomerInCompany(
+    companyId: string,
+    customerId: string,
+  ): Promise<{ id: string; companyId: string } | null>;
 
   addHistory(input: {
     companyId: string;
@@ -123,6 +169,8 @@ export interface OpportunityRepository {
     language: string | null;
     territory: string | null;
     isQualified: boolean;
+    /** Persisted leads.lifecycle_status — used for Opportunities module visibility. */
+    lifecycleStatus?: string | null;
     score: number;
     aiSummary: string;
     metadata: Record<string, unknown>;

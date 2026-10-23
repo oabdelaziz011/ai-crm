@@ -11,6 +11,11 @@ import {
 } from "../errors.js";
 import type { ProductRepository } from "../repositories/product-repository-port.js";
 import {
+  normalizePriceTaxMode,
+  parseTaxPercentInput,
+  type ProductPriceTaxMode,
+} from "../product-tax.js";
+import {
   computeLineAmounts,
   computeMarginPercent,
   resolveEffectivePrice,
@@ -21,6 +26,63 @@ import {
   type ProductServiceContext,
   type ProductType,
 } from "../types.js";
+import { normalizeProductAliases } from "../product-aliases.js";
+import { isProductAliasGenerationEnabled } from "../product-alias-generation-flag.js";
+import {
+  productAliasContentFingerprint,
+  withAliasGenerationMeta,
+  type ProductAliasContentFields,
+} from "../product-alias-generation.js";
+import type { ProductAliasGenerationSchedulerPort } from "./product-alias-generation-service.js";
+
+function resolvedAliases(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  try {
+    return normalizeProductAliases(value);
+  } catch (error) {
+    throw new ProductValidationError(error instanceof Error ? error.message : "Invalid aliases.");
+  }
+}
+
+function aliasContentFields(input: {
+  name: string;
+  description?: string | null;
+  productType?: string | null;
+  categoryId?: string | null;
+  brand?: string | null;
+  tags?: readonly string[] | null;
+}): ProductAliasContentFields {
+  return {
+    name: input.name,
+    description: input.description,
+    productType: input.productType,
+    categoryId: input.categoryId,
+    brand: input.brand,
+    tags: input.tags,
+  };
+}
+
+function resolvedTaxPercent(value: unknown, fallback = 0): number {
+  if (value === undefined) return fallback;
+  const parsed = parseTaxPercentInput(value);
+  if (parsed == null) throw new ProductValidationError("Tax percent must be between 0 and 100.");
+  return parsed;
+}
+
+const PRODUCT_IMAGE_LIMIT = 5;
+const CATALOG_IMAGE_URL =
+  /^(https:\/\/\S+|http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/storage\/v1\/object\/public\/company-branding\/\S+)$/;
+
+function catalogImageUrls(urls: readonly string[]): string[] {
+  const images: string[] = [];
+  for (const raw of urls) {
+    const url = raw.trim();
+    if (!url || url.length > 2048 || !CATALOG_IMAGE_URL.test(url) || images.includes(url)) continue;
+    images.push(url);
+    if (images.length >= PRODUCT_IMAGE_LIMIT) break;
+  }
+  return images;
+}
 
 export type ProductEventPublisherPort = {
   publishCreated(input: {
@@ -101,8 +163,43 @@ export class ProductCommandService {
       products: ProductRepository;
       events: ProductEventPublisherPort;
       opportunityHistory?: OpportunityHistoryRecorderPort;
+      /** Optional background AI alias generation (never blocks create/update success). */
+      aliasGeneration?: ProductAliasGenerationSchedulerPort;
+      /**
+       * Optional browser/host flag reader. Prefer this in Vite so `import.meta.env`
+       * is evaluated in the app bundle (not an optimized workspace dependency).
+       */
+      isAliasGenerationEnabled?: () => boolean;
     },
   ) {}
+
+  private isAliasGenerationActive(): boolean {
+    try {
+      if (!this.deps.aliasGeneration) return false;
+      if (this.deps.isAliasGenerationEnabled) {
+        return Boolean(this.deps.isAliasGenerationEnabled());
+      }
+      return isProductAliasGenerationEnabled();
+    } catch {
+      // Browser/runtime flag failures must never block product create/update.
+      return false;
+    }
+  }
+
+  private scheduleAliasGeneration(input: {
+    companyId: string;
+    productId: string;
+    fingerprint: string;
+    requestedAt: string;
+    actorUserId: string | null;
+  }): void {
+    if (!this.isAliasGenerationActive()) return;
+    try {
+      this.deps.aliasGeneration!.schedule(input);
+    } catch {
+      // Generation must never fail product save.
+    }
+  }
 
   async createCategory(
     ctx: ProductServiceContext,
@@ -141,10 +238,17 @@ export class ProductCommandService {
       basePrice?: number;
       currency?: string;
       taxClass?: string;
+      priceTaxMode?: ProductPriceTaxMode;
+      taxPercent?: number;
       cost?: number | null;
       subscriptionInterval?: CatalogProductRecord["subscriptionInterval"];
       subscriptionPrice?: number | null;
+      unit?: string;
+      trackInventory?: boolean;
+      stockQuantity?: number | null;
       tags?: string[];
+      aliases?: string[];
+      imageUrls?: string[];
     },
   ): Promise<{ product: CatalogProductRecord }> {
     const actor = assertActor(ctx);
@@ -159,23 +263,57 @@ export class ProductCommandService {
 
     const basePrice = input.basePrice ?? 0;
     const marginPercent = computeMarginPercent(basePrice, input.cost ?? null);
+    const priceTaxMode = normalizePriceTaxMode(input.priceTaxMode);
+    const taxPercent = resolvedTaxPercent(input.taxPercent);
+
+    const name = input.name.trim();
+    const description = input.description;
+    const brand = input.brand;
+    const tags = input.tags;
+    const categoryId = input.categoryId ?? null;
+    const shouldGenerateAliases = this.isAliasGenerationActive() && Boolean(name);
+    const fingerprint = productAliasContentFingerprint(
+      aliasContentFields({
+        name,
+        description,
+        productType,
+        categoryId,
+        brand,
+        tags,
+      }),
+    );
+    const requestedAt = new Date().toISOString();
+    const metadata = shouldGenerateAliases
+      ? withAliasGenerationMeta(
+          {},
+          { status: "pending", fingerprint, requestedAt },
+        )
+      : undefined;
 
     const product = await this.deps.products.createProduct({
       companyId: input.companyId,
-      categoryId: input.categoryId ?? null,
+      categoryId,
       productType,
-      name: input.name.trim(),
+      name,
       sku: input.sku.trim(),
-      brand: input.brand,
-      description: input.description,
+      brand,
+      description,
       basePrice,
       currency: input.currency ?? "USD",
       taxClass: input.taxClass,
+      priceTaxMode,
+      taxPercent,
       cost: input.cost ?? null,
       marginPercent,
       subscriptionInterval: input.subscriptionInterval ?? null,
       subscriptionPrice: input.subscriptionPrice ?? null,
-      tags: input.tags,
+      unit: input.unit?.trim() || "each",
+      trackInventory: input.trackInventory ?? false,
+      stockQuantity: input.trackInventory ? (input.stockQuantity ?? 0) : null,
+      tags,
+      aliases: resolvedAliases(input.aliases) ?? [],
+      imageUrls: catalogImageUrls(input.imageUrls ?? []),
+      metadata,
       createdBy: actor,
     });
 
@@ -196,6 +334,16 @@ export class ProductCommandService {
       actorUserId: actor,
     });
 
+    if (shouldGenerateAliases) {
+      this.scheduleAliasGeneration({
+        companyId: input.companyId,
+        productId: product.id,
+        fingerprint,
+        requestedAt,
+        actorUserId: actor,
+      });
+    }
+
     return { product };
   }
 
@@ -212,12 +360,18 @@ export class ProductCommandService {
       basePrice?: number;
       currency?: string;
       taxClass?: string;
+      priceTaxMode?: ProductPriceTaxMode;
+      taxPercent?: number;
       cost?: number | null;
       isActive?: boolean;
       productType?: ProductType;
       subscriptionInterval?: CatalogProductRecord["subscriptionInterval"];
       subscriptionPrice?: number | null;
+      unit?: string;
+      trackInventory?: boolean;
+      stockQuantity?: number | null;
       tags?: string[];
+      aliases?: string[];
       documentUrls?: string[];
       imageUrls?: string[];
     },
@@ -229,12 +383,46 @@ export class ProductCommandService {
     const existing = await this.deps.products.getProduct(input.companyId, input.productId);
     if (!existing) throw new ProductNotFoundError(input.productId);
 
-    const needsPricing = input.basePrice !== undefined || input.cost !== undefined;
+    const needsPricing =
+      input.basePrice !== undefined ||
+      input.cost !== undefined ||
+      input.priceTaxMode !== undefined ||
+      input.taxPercent !== undefined;
     if (needsPricing) assertPermission(ctx, PRODUCT_PERMISSIONS.pricing);
 
     const basePrice = input.basePrice ?? existing.basePrice;
     const cost = input.cost !== undefined ? input.cost : existing.cost;
     const marginPercent = computeMarginPercent(basePrice, cost);
+    const priceTaxMode =
+      input.priceTaxMode === undefined ? undefined : normalizePriceTaxMode(input.priceTaxMode);
+    const taxPercent =
+      input.taxPercent === undefined ? undefined : resolvedTaxPercent(input.taxPercent);
+
+    const nextContent = aliasContentFields({
+      name: input.name ?? existing.name,
+      description: input.description ?? existing.description,
+      productType: input.productType ?? existing.productType,
+      categoryId: input.categoryId !== undefined ? input.categoryId : existing.categoryId,
+      brand: input.brand ?? existing.brand,
+      tags: input.tags ?? existing.tags,
+    });
+    const nextFingerprint = productAliasContentFingerprint(nextContent);
+    const previousFingerprint = productAliasContentFingerprint(existing);
+    const contentChangedForAliases = nextFingerprint !== previousFingerprint;
+    const nextIsActive = input.isActive === undefined ? existing.isActive : input.isActive;
+    const shouldGenerateAliases =
+      this.isAliasGenerationActive() &&
+      contentChangedForAliases &&
+      nextIsActive &&
+      Boolean(nextContent.name.trim());
+    const requestedAt = new Date().toISOString();
+    const metadata = shouldGenerateAliases
+      ? withAliasGenerationMeta(existing.metadata, {
+          status: "pending",
+          fingerprint: nextFingerprint,
+          requestedAt,
+        })
+      : undefined;
 
     const product = await this.deps.products.updateProduct({
       companyId: input.companyId,
@@ -248,15 +436,23 @@ export class ProductCommandService {
       basePrice: input.basePrice,
       currency: input.currency,
       taxClass: input.taxClass,
+      priceTaxMode,
+      taxPercent,
       cost: input.cost,
       marginPercent,
       isActive: input.isActive,
       productType: input.productType,
       subscriptionInterval: input.subscriptionInterval,
       subscriptionPrice: input.subscriptionPrice,
+      unit: input.unit,
+      trackInventory: input.trackInventory,
+      stockQuantity:
+        input.trackInventory === false ? null : input.stockQuantity,
       tags: input.tags,
+      aliases: resolvedAliases(input.aliases),
       documentUrls: input.documentUrls,
-      imageUrls: input.imageUrls,
+      imageUrls: input.imageUrls === undefined ? undefined : catalogImageUrls(input.imageUrls),
+      metadata,
     });
 
     const changedFields = Object.keys(input).filter(
@@ -299,6 +495,32 @@ export class ProductCommandService {
       });
     }
 
+    if (priceTaxMode !== undefined && priceTaxMode !== existing.priceTaxMode) {
+      await this.deps.products.addHistory({
+        companyId: input.companyId,
+        productId: product.id,
+        eventType: "price_changed",
+        fieldName: "price_tax_mode",
+        previousValue: existing.priceTaxMode,
+        newValue: priceTaxMode,
+        summary: `Price tax mode changed to ${priceTaxMode}`,
+        actorUserId: actor,
+      });
+    }
+
+    if (taxPercent !== undefined && taxPercent !== existing.taxPercent) {
+      await this.deps.products.addHistory({
+        companyId: input.companyId,
+        productId: product.id,
+        eventType: "price_changed",
+        fieldName: "tax_percent",
+        previousValue: String(existing.taxPercent),
+        newValue: String(taxPercent),
+        summary: `Tax percent changed to ${taxPercent}`,
+        actorUserId: actor,
+      });
+    }
+
     if (input.categoryId !== undefined && input.categoryId !== existing.categoryId) {
       await this.deps.products.addHistory({
         companyId: input.companyId,
@@ -318,6 +540,71 @@ export class ProductCommandService {
         actorUserId: actor,
       });
     }
+
+    if (shouldGenerateAliases) {
+      this.scheduleAliasGeneration({
+        companyId: input.companyId,
+        productId: product.id,
+        fingerprint: nextFingerprint,
+        requestedAt,
+        actorUserId: actor,
+      });
+    }
+
+    return { product };
+  }
+
+  /**
+   * Re-run AI alias generation for an existing product without requiring a content edit.
+   * Used after a failed provider call. Never blocks product usability if generation fails again.
+   */
+  async regenerateProductAliases(
+    ctx: ProductServiceContext,
+    input: { companyId: string; productId: string },
+  ): Promise<{ product: CatalogProductRecord }> {
+    const actor = assertActor(ctx);
+    assertCompany(ctx, input.companyId);
+    assertPermission(ctx, PRODUCT_PERMISSIONS.edit);
+
+    if (!this.isAliasGenerationActive()) {
+      throw new ProductValidationError("Automatic alias generation is not enabled.");
+    }
+
+    const existing = await this.deps.products.getProduct(input.companyId, input.productId);
+    if (!existing) throw new ProductNotFoundError(input.productId);
+    if (!existing.isActive) {
+      throw new ProductValidationError("Alias generation requires an active product.");
+    }
+
+    const fingerprint = productAliasContentFingerprint(
+      aliasContentFields({
+        name: existing.name,
+        description: existing.description,
+        productType: existing.productType,
+        categoryId: existing.categoryId,
+        brand: existing.brand,
+        tags: existing.tags,
+      }),
+    );
+    const requestedAt = new Date().toISOString();
+    const product = await this.deps.products.updateProduct({
+      companyId: input.companyId,
+      productId: input.productId,
+      updatedBy: actor,
+      metadata: withAliasGenerationMeta(existing.metadata, {
+        status: "pending",
+        fingerprint,
+        requestedAt,
+      }),
+    });
+
+    this.scheduleAliasGeneration({
+      companyId: input.companyId,
+      productId: product.id,
+      fingerprint,
+      requestedAt,
+      actorUserId: actor,
+    });
 
     return { product };
   }

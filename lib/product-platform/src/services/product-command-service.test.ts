@@ -15,6 +15,8 @@ const product: CatalogProductRecord = {
   basePrice: 100,
   currency: "USD",
   taxClass: "standard",
+  priceTaxMode: "inclusive",
+  taxPercent: 0,
   cost: null,
   marginPercent: null,
   isActive: true,
@@ -24,9 +26,12 @@ const product: CatalogProductRecord = {
   stockQuantity: null,
   unit: "each",
   tags: [],
+  aliases: [],
   imageUrls: [],
   documentUrls: [],
   metadata: {},
+  createdBy: null,
+  updatedBy: null,
   createdAt: "",
   updatedAt: "",
 };
@@ -171,5 +176,209 @@ describe("ProductCommandService.attachProductToOpportunity", () => {
     assert.equal(history[0]?.eventType, "product_attached");
     assert.match(String(history[0]?.summary), /Widget/);
     assert.match(String(history[0]?.summary), /Qty:/);
+  });
+});
+
+describe("ProductCommandService alias generation scheduling", () => {
+  const noopEvents = {
+    async publishCreated() {},
+    async publishUpdated() {},
+    async publishArchived() {},
+    async publishPriceChanged() {},
+    async publishCategoryChanged() {},
+    async publishOpportunityProductsAdded() {},
+  };
+
+  it("schedules generation after create when flag is on", async () => {
+    const previous = process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+    process.env.VALUEOR_PRODUCT_ALIAS_GENERATION = "true";
+    const scheduled: Array<Record<string, unknown>> = [];
+    try {
+      const products = createRepository({
+        createProduct: async (input) => ({
+          ...product,
+          id: "prod-new",
+          name: input.name,
+          description: input.description ?? "",
+          metadata: (input.metadata as Record<string, unknown>) ?? {},
+          aliases: input.aliases ?? [],
+        }),
+        addHistory: async () => ({
+          id: "h1",
+          companyId: "company-1",
+          productId: "prod-new",
+          eventType: "product_created",
+          fieldName: null,
+          previousValue: null,
+          newValue: null,
+          summary: "",
+          payload: {},
+          actorUserId: null,
+          createdAt: "",
+        }),
+      });
+      const service = new ProductCommandService({
+        products,
+        events: noopEvents,
+        aliasGeneration: {
+          schedule(job) {
+            scheduled.push({ ...job });
+          },
+        },
+      });
+
+      await service.createProduct(ctx, {
+        companyId: "company-1",
+        name: "Accounting Module",
+        sku: "ACC-1",
+        description: "Invoices and expenses",
+      });
+
+      assert.equal(scheduled.length, 1);
+      assert.equal(scheduled[0]?.productId, "prod-new");
+      assert.ok(typeof scheduled[0]?.fingerprint === "string");
+    } finally {
+      if (previous === undefined) delete process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+      else process.env.VALUEOR_PRODUCT_ALIAS_GENERATION = previous;
+    }
+  });
+
+  it("does not schedule when only aliases change", async () => {
+    const previous = process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+    process.env.VALUEOR_PRODUCT_ALIAS_GENERATION = "true";
+    const scheduled: unknown[] = [];
+    try {
+      const products = createRepository({
+        getProduct: async () => product,
+        updateProduct: async () => ({ ...product, aliases: ["Manual"] }),
+        addHistory: async () => ({
+          id: "h1",
+          companyId: "company-1",
+          productId: "prod-1",
+          eventType: "product_updated",
+          fieldName: null,
+          previousValue: null,
+          newValue: null,
+          summary: "",
+          payload: {},
+          actorUserId: null,
+          createdAt: "",
+        }),
+      });
+      const service = new ProductCommandService({
+        products,
+        events: noopEvents,
+        aliasGeneration: {
+          schedule() {
+            scheduled.push(true);
+          },
+        },
+      });
+
+      await service.updateProduct(ctx, {
+        companyId: "company-1",
+        productId: "prod-1",
+        aliases: ["Manual alias"],
+      });
+
+      assert.equal(scheduled.length, 0);
+    } finally {
+      if (previous === undefined) delete process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+      else process.env.VALUEOR_PRODUCT_ALIAS_GENERATION = previous;
+    }
+  });
+
+  it("does not schedule when flag is off", async () => {
+    const previous = process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+    delete process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+    const scheduled: unknown[] = [];
+    try {
+      const products = createRepository({
+        createProduct: async (input) => ({
+          ...product,
+          name: input.name,
+          metadata: (input.metadata as Record<string, unknown>) ?? {},
+        }),
+        addHistory: async () => ({
+          id: "h1",
+          companyId: "company-1",
+          productId: "prod-1",
+          eventType: "product_created",
+          fieldName: null,
+          previousValue: null,
+          newValue: null,
+          summary: "",
+          payload: {},
+          actorUserId: null,
+          createdAt: "",
+        }),
+      });
+      const service = new ProductCommandService({
+        products,
+        events: noopEvents,
+        aliasGeneration: {
+          schedule() {
+            scheduled.push(true);
+          },
+        },
+      });
+
+      await service.createProduct(ctx, {
+        companyId: "company-1",
+        name: "Accounting Module",
+        sku: "ACC-2",
+      });
+
+      assert.equal(scheduled.length, 0);
+    } finally {
+      if (previous === undefined) delete process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+      else process.env.VALUEOR_PRODUCT_ALIAS_GENERATION = previous;
+    }
+  });
+
+  it("regenerateProductAliases sets pending and schedules without content change", async () => {
+    const previous = process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+    process.env.VALUEOR_PRODUCT_ALIAS_GENERATION = "true";
+    const scheduled: Array<Record<string, unknown>> = [];
+    try {
+      const failedProduct = {
+        ...product,
+        metadata: {
+          aliasGeneration: {
+            status: "failed",
+            fingerprint: "old",
+            requestedAt: "2026-01-01T00:00:00.000Z",
+            errorCode: "provider_error",
+          },
+        },
+      };
+      const products = createRepository({
+        getProduct: async () => failedProduct,
+        updateProduct: async (input) => ({
+          ...failedProduct,
+          metadata: (input.metadata as Record<string, unknown>) ?? failedProduct.metadata,
+        }),
+      });
+      const service = new ProductCommandService({
+        products,
+        events: noopEvents,
+        aliasGeneration: {
+          schedule(job) {
+            scheduled.push({ ...job });
+          },
+        },
+      });
+
+      const { product: updated } = await service.regenerateProductAliases(ctx, {
+        companyId: "company-1",
+        productId: "prod-1",
+      });
+
+      assert.equal(scheduled.length, 1);
+      assert.equal((updated.metadata as { aliasGeneration?: { status?: string } }).aliasGeneration?.status, "pending");
+    } finally {
+      if (previous === undefined) delete process.env.VALUEOR_PRODUCT_ALIAS_GENERATION;
+      else process.env.VALUEOR_PRODUCT_ALIAS_GENERATION = previous;
+    }
   });
 });

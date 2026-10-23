@@ -1,4 +1,5 @@
 import type { PRODUCT_TYPES, SUBSCRIPTION_INTERVALS } from "./constants.js";
+import type { ProductPriceTaxMode } from "./product-tax.js";
 
 export type ProductType = (typeof PRODUCT_TYPES)[number];
 export type SubscriptionInterval = (typeof SUBSCRIPTION_INTERVALS)[number];
@@ -35,6 +36,8 @@ export type CatalogProductRecord = {
   basePrice: number;
   currency: string;
   taxClass: string;
+  priceTaxMode: ProductPriceTaxMode;
+  taxPercent: number;
   cost: number | null;
   marginPercent: number | null;
   isActive: boolean;
@@ -44,6 +47,8 @@ export type CatalogProductRecord = {
   stockQuantity: number | null;
   unit: string;
   tags: string[];
+  /** Optional synonyms / trade names for AI catalog search. Empty when unused. */
+  aliases: string[];
   imageUrls: string[];
   documentUrls: string[];
   metadata: Record<string, unknown>;

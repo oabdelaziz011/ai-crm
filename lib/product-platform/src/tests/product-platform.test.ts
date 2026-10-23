@@ -6,7 +6,10 @@ import { computeLineAmounts, computeMarginPercent, resolveEffectivePrice } from 
 describe("product-platform foundation", () => {
   it("exposes permissions and product types", () => {
     assert.equal(PRODUCT_PERMISSIONS.pricing, "products.pricing");
-    assert.deepEqual([...PRODUCT_TYPES], ["product", "service", "subscription", "bundle", "addon"]);
+    assert.deepEqual(
+      [...PRODUCT_TYPES],
+      ["product", "service", "subscription", "bundle", "addon", "real_estate"],
+    );
   });
 
   it("computes line amounts with discount and tax", () => {

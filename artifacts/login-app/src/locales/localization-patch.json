@@ -121,7 +121,7 @@
         "booked": "Booked",
         "confirmed": "Confirmed",
         "checked_in": "Checked In",
-        "doctor": "Doctor",
+        "doctor": "Service Provider",
         "cashier": "Cashier",
         "completed": "Completed"
       },
@@ -161,7 +161,7 @@
         "rec_upgrade": "VIP customer — premium service package has high acceptance rate.",
         "rec_reassign": "Wait time exceeds target — alternate resource available.",
         "rec_whatsapp": "Customer prefers WhatsApp — recent interactions were via messaging.",
-        "rec_task": "Lab results pending — create follow-up task for nursing team.",
+        "rec_task": "Lab results pending — create follow-up task for the responsible team.",
         "rec_escalate": "Elevated churn risk detected from engagement patterns."
       }
     },
@@ -245,7 +245,7 @@
           "taskCompleted": {
             "title": "Task Completed",
             "description": "Lab results uploaded for Sara Hassan",
-            "actor": "Nurse · Hana"
+            "actor": "Service Team · Hana"
           },
           "aiSummary": {
             "title": "AI Summary Generated",
@@ -410,7 +410,7 @@
         "booked": "محجوز",
         "confirmed": "مؤكد",
         "checked_in": "تم تسجيل الحضور",
-        "doctor": "الطبيب",
+        "doctor": "مقدم الخدمة",
         "cashier": "الصندوق",
         "completed": "مكتمل"
       },
@@ -450,7 +450,7 @@
         "rec_upgrade": "عميل VIP — باقة الخدمة المميزة لها معدل قبول مرتفع.",
         "rec_reassign": "وقت الانتظار يتجاوز الهدف — مورد بديل متاح.",
         "rec_whatsapp": "يفضل العميل واتساب — آخر التفاعلات كانت عبر الرسائل.",
-        "rec_task": "نتائج المختبر معلقة — أنشئ مهمة متابعة لفريق التمريض.",
+        "rec_task": "نتائج المختبر معلقة — أنشئ مهمة متابعة للفريق المختص.",
         "rec_escalate": "تم رصد مخاطر انقطاع مرتفعة من أنماط التفاعل."
       }
     },
@@ -534,7 +534,7 @@
           "taskCompleted": {
             "title": "اكتملت المهمة",
             "description": "تم رفع نتائج المختبر لسارة حسن",
-            "actor": "الممرضة · هana"
+            "actor": "فريق الخدمة · هناء"
           },
           "aiSummary": {
             "title": "تم إنشاء ملخص ذكاء",

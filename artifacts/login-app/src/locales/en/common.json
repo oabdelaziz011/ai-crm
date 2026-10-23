@@ -3,13 +3,191 @@
     "name": "ValueOR",
     "dashboard": "Dashboard"
   },
+  "productDemos": {
+    "subtitle": "Manage product demo offerings, work days, slots, and bookings.",
+    "permissionDenied": "You do not have permission to view product demo scheduling.",
+    "manageDenied": "View only. Managing offerings and work days needs the demo scheduling manage permission.",
+    "bookDenied": "View only. Confirming or cancelling a booking needs the demo booking permission.",
+    "retry": "Retry",
+    "requestFailed": "Request failed",
+    "forbidden": "You do not have permission to do that.",
+    "presenterRequired": "Assign a presenter before marking work days.",
+    "presenterNotAssigned": "That presenter is not assigned to this offering.",
+    "presenterNotInCompany": "The presenter must be a user in the same company.",
+    "timezones": {
+      "Africa/Cairo": "Cairo",
+      "Asia/Riyadh": "Riyadh",
+      "Asia/Dubai": "Dubai",
+      "Asia/Kuwait": "Kuwait",
+      "Asia/Qatar": "Doha",
+      "Asia/Bahrain": "Manama",
+      "Asia/Amman": "Amman",
+      "Asia/Beirut": "Beirut",
+      "Africa/Casablanca": "Casablanca",
+      "Africa/Tunis": "Tunis",
+      "Europe/Istanbul": "Istanbul",
+      "Europe/London": "London",
+      "UTC": "UTC"
+    },
+    "invalidWindow": "End time must be after start time.",
+    "noOfferings": "No offerings yet.",
+    "untitled": "Untitled",
+    "noSlots": "No slots for this offering.",
+    "noBookings": "No bookings found.",
+    "noProducts": "No active products.",
+    "noUsers": "No users available to assign as presenter.",
+    "noPublishedSlots": "No published slots for this product. Publish slots from the scheduling tab first.",
+    "selectOfferingHint": "Choose an offering in the table to manage work days and slots.",
+    "workDay": "Work day",
+    "offDay": "Day off",
+    "weekHint": "Green is a work day. Gray is a day off. Slots are not generated on days off.",
+    "assignedPresenters": "Presenters",
+    "noPresentersYet": "No presenter assigned yet. A work day cannot be saved until one is assigned.",
+    "needPresenter": "Choose a presenter and assign them before saving a work day.",
+    "needIdentity": "Choose a lead or a customer from the list before confirming the booking.",
+    "createdCount": "Created {{count}} slots and published {{published}}.",
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived",
+      "blocked": "Blocked",
+      "booked": "Booked",
+      "cancelled": "Cancelled",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "no_show": "No show"
+    },
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "scheduling": {
+      "createTitle": "Create offering",
+      "product": "Product",
+      "selectProduct": "Select product…",
+      "titleOptional": "Title (optional)",
+      "titlePlaceholder": "Product demo",
+      "duration": "Duration (minutes)",
+      "timezone": "Timezone",
+      "create": "Create offering",
+      "created": "Offering created",
+      "offerings": "Offerings",
+      "columns": {
+        "title": "Title",
+        "product": "Product",
+        "duration": "Duration",
+        "status": "Status",
+        "actions": "Actions",
+        "start": "Start",
+        "presenter": "Presenter",
+        "capacity": "Capacity"
+      },
+      "durationValue": "{{count}} min",
+      "publish": "Publish",
+      "unpublish": "Unpublish",
+      "published": "Published",
+      "drafted": "Set to draft",
+      "manage": "Manage",
+      "view": "View",
+      "availabilityTitle": "Presenter and work days",
+      "presenter": "Presenter",
+      "selectUser": "Select user…",
+      "assign": "Assign presenter",
+      "assigned": "Presenter assigned",
+      "start": "From",
+      "end": "To",
+      "markWork": "Work day",
+      "markOff": "Day off",
+      "saveHours": "Save hours",
+      "savedWork": "Work day saved",
+      "savedOff": "Day off saved",
+      "daysAhead": "Days ahead",
+      "publishDates": "Days to publish appointments",
+      "calendarHelp": "Click a day on the calendar. A green day is a day when demo appointments will be published. A gray day is off and will not be published.",
+      "noneSelected": "No days selected yet. Click work days on the calendar below.",
+      "selectedSummary": "Appointments will be published on {{count}} days",
+      "slotWindow": "From {{start}} to {{end}}, each appointment is {{minutes}} minutes",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "dateOff": "That day is off. Mark it as a work day in the week above before selecting it.",
+      "publishSelected": "Publish appointments for the selected days",
+      "generate": "Generate and publish slots",
+      "generated": "Slots generated",
+      "generateNeedsWorkDay": "Mark at least one work day before generating slots.",
+      "pageOf": "Page {{page}} of {{pages}}",
+      "filterDay": "Day",
+      "allDays": "All days",
+      "filterStatus": "Status",
+      "dayHeading": "Appointments on {{date}}",
+      "daySlotCount": "{{count}} appointments, all shown on this page",
+      "slotsPageHint": "Each page shows one full day. A day is never split across pages.",
+      "noSlotsFiltered": "No appointments for this day or status.",
+      "dayPage": "Day {{page}} of {{pages}}",
+      "slots": "Slots",
+      "block": "Block",
+      "slotPublished": "Slot published",
+      "slotUnpublished": "Slot unpublished",
+      "slotBlocked": "Slot blocked"
+    },
+    "bookings": {
+      "bookTitle": "Book a demo",
+      "product": "Product",
+      "selectProduct": "Select product…",
+      "slot": "Published slot",
+      "loadingSlots": "Loading…",
+      "selectSlot": "Select slot…",
+      "remaining": "{{count}} left",
+      "slotDay": "Appointment day",
+      "selectSlotDay": "Choose a day…",
+      "slotDayHint": "Choose the day first, then pick a time from that day's appointments.",
+      "whoTitle": "Who is attending the demo?",
+      "whoHelp": "Pick the person by name. You do not need to type an id.",
+      "partyLead": "Lead",
+      "partyCustomer": "Customer",
+      "selectLead": "Choose a lead…",
+      "selectCustomer": "Choose a customer…",
+      "searchParty": "Search by name or phone",
+      "noLeads": "No leads found.",
+      "noCustomers": "No customers found.",
+      "notes": "Notes",
+      "confirm": "Confirm booking",
+      "confirmed": "Booking confirmed",
+      "failed": "Booking failed",
+      "status": "Status",
+      "all": "All",
+      "search": "Search",
+      "searchPlaceholder": "Lead / customer / notes",
+      "refresh": "Refresh",
+      "columns": {
+        "product": "Product",
+        "party": "Customer / lead",
+        "presenter": "Presenter",
+        "time": "Time",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "customer": "Customer {{id}}",
+      "lead": "Lead {{id}}",
+      "cancel": "Cancel",
+      "cancelled": "Booking cancelled",
+      "cancelFailed": "Cancel failed",
+      "noAction": "No action"
+    }
+  },
   "pagination": {
     "previous": "Previous",
     "next": "Next",
     "pageInfo": "Page {{page}} of {{totalPages}}",
     "navLabel": "Pagination",
     "previousAria": "Go to previous page",
-    "nextAria": "Go to next page"
+    "nextAria": "Go to next page",
+    "range": "{{start}}–{{end}} of {{total}}"
   },
   "appShell": {
     "sidebar": {
@@ -185,12 +363,17 @@
     "bookings": "Bookings",
     "calendar": "Calendar",
     "scheduling": "Scheduling",
+    "productDemos": "Product demos",
+    "productDemoScheduling": "Demo scheduling",
+    "productDemoBookings": "Demo bookings",
     "appointments": "Appointments",
     "universalOperations": "Operations Hub",
     "leads": "Leads",
+    "sales": "Sales",
     "opportunities": "Opportunities",
     "products": "Products",
     "quotes": "Quotes",
+    "quoteSendRequests": "Quote send approvals",
     "communication": "Outbound Queue",
     "campaigns": "Campaigns",
     "invoices": "Invoices & Financial Billing",
@@ -232,7 +415,8 @@
     "demoScenarios": "Demo Scenarios",
     "company": "Company",
     "companyHub": "Company",
-    "companyWorkspace": "Workspace"
+    "companyWorkspace": "Workspace",
+    "website": "Website"
   },
   "demo": {
     "scenarios": {
@@ -1077,6 +1261,7 @@
     "dashboard": "Dashboard",
     "notFound": "Page Not Found",
     "accessDenied": "Access Denied",
+    "website": "Website",
     "booking": "Book Appointment",
     "bookingFlow": "Booking",
     "portal": "Customer Portal",
@@ -1086,6 +1271,426 @@
     "privacyPolicy": "ValueOR Privacy Policy",
     "dataDeletion": "Data Deletion",
     "terms": "Terms of Service"
+  },
+  "websiteBuilder": {
+    "title": "Website",
+    "subtitle": "One site for this company. Booking, contact, and chat write into the same workspace.",
+    "noCompany": "Choose a company to edit its website.",
+    "loadFailed": "The website could not be loaded.",
+    "featureOff": "This company plan does not include the website yet. Publishing stays off until Web Presence is enabled.",
+    "slug": "Company name in the link",
+    "useCompanyName": "Company name",
+    "reservedHost": "Reserved address: {{host}}. It goes live with hosting. The preview uses this app until then.",
+    "openSite": "Open the published site",
+    "previewAfterPublish": "The public page opens after you publish.",
+    "headline": "Headline",
+    "description": "About",
+    "sections": "Sections",
+    "section": {
+      "about": "About",
+      "gallery": "Gallery",
+      "services": "Services",
+      "hours": "Hours",
+      "location": "Location",
+      "contact": "Contact",
+      "booking": "Booking",
+      "video": "Video",
+      "features": "Features",
+      "testimonials": "Testimonials",
+      "products": "Products",
+      "chat": "Web Chat"
+    },
+    "chatTitle": "Web Chat",
+    "chatHelp": "Messages from the site appear in Omnichannel as Live Chat. A request for a person stays on the same conversation.",
+    "greeting": "Greeting",
+    "aiToggle": "AI employee replies first",
+    "employee": "Published AI employee",
+    "employeePlaceholder": "Select an employee",
+    "saveDraft": "Save draft",
+    "publish": "Publish",
+    "update": "Update site",
+    "unpublish": "Unpublish",
+    "published": "The site is published.",
+    "saved": "Draft saved.",
+    "saveFailed": "The site was not saved.",
+    "blockers": {
+      "slug_invalid": "Use a short company name in English letters, such as valueor.",
+      "slug_taken": "This company name is already used by another site.",
+      "origin_invalid": "Open the app from localhost to publish chat. A network IP cannot be an allowed chat origin.",
+      "page_feature_off": "Enable the website feature for this company before publishing.",
+      "chat_feature_off": "Enable the web chat feature before publishing chat.",
+      "ai_employee_required": "Choose a published AI employee, or turn AI replies off.",
+      "workflow_required": "Choose a workflow before publishing chat that a workflow answers."
+    },
+    "builder": {
+      "statusDraft": "Draft",
+      "statusPublished": "Published",
+      "preview": "Preview",
+      "copyUrl": "Copy",
+      "primaryCta": "Primary button",
+      "secondaryCta": "Secondary button",
+      "aboutHeading": "About heading",
+      "bullets": "Points, one per line",
+      "featureTitle": "Feature",
+      "featureText": "Detail",
+      "personName": "Name",
+      "quote": "Quote",
+      "contactHeading": "Contact heading",
+      "bookingHeading": "Booking heading",
+      "bookingCta": "Booking button",
+      "colorsTitle": "Colors and identity",
+      "colorsHelp": "An empty color keeps the company brand.",
+      "logo": "Logo",
+      "logoMissing": "No logo on the company brand yet.",
+      "logoFromBrand": "The logo comes from the company brand.",
+      "heroImage": "Hero image",
+      "aboutImage": "About image",
+      "heroImageChoose": "Choose image",
+      "buttonStyle": "Button style",
+      "buttonSolid": "Solid",
+      "buttonSoft": "Soft",
+      "radius": "Corner radius",
+      "radiusMd": "Small",
+      "radiusLg": "Medium",
+      "radiusFull": "Pill",
+      "viewport": {
+        "desktop": "Desktop",
+        "tablet": "Tablet",
+        "mobile": "Mobile"
+      },
+      "emptyFeatures": "Add a feature before this section appears on the published site.",
+      "emptyTestimonials": "Add a quote before this section appears on the published site.",
+      "summary": {
+        "services": "{{count}} services on the site",
+        "gallery": "{{count}} photos",
+        "features": "{{count}} features",
+        "testimonials": "{{count}} quotes",
+        "configured": "Configured",
+        "missing": "Not configured",
+        "booking": "Uses the existing booking page",
+        "on": "On",
+        "off": "Off",
+        "brand": "Company brand",
+        "header": "{{count}} header buttons"
+      },
+      "color": {
+        "primary": "Primary",
+        "secondary": "Secondary",
+        "background": "Background",
+        "text": "Text",
+        "heading": "Headings"
+      },
+      "template": {
+        "clinical": "Clinical",
+        "editorial": "Editorial",
+        "midnight": "Midnight",
+        "atelier": "Atelier"
+      },
+      "templateHint": {
+        "clinical": "Split header, calm teal, service cards.",
+        "editorial": "Centered serif header and warm paper.",
+        "midnight": "Dark page with a floating pill header.",
+        "atelier": "Large type over a quiet cream page."
+      },
+      "headerStyle": "Header layout",
+      "headerStyleValue": {
+        "classic": "Classic",
+        "center": "Center logo",
+        "modern": "Modern",
+        "minimal": "Minimal",
+        "split": "Split",
+        "transparent": "Transparent",
+        "overlay": "Image overlay",
+        "pill": "Floating pill"
+      },
+      "titleScale": "Title size",
+      "bodyScale": "Text size",
+      "scale": {
+        "sm": "Small",
+        "md": "Medium",
+        "lg": "Large",
+        "xl": "Extra large"
+      },
+      "dragSection": "Drag to reorder",
+      "visual": {
+        "blocks": "Blocks",
+        "addSection": "Add section",
+        "hide": "Hide",
+        "show": "Show",
+        "shown": "Visible",
+        "hidden": "Hidden",
+        "inspector": "Inspector",
+        "templates": "Templates",
+        "headerTitle": "Header",
+        "heroTitle": "Hero",
+        "headerNav": "Header links",
+        "showBooking": "Booking button in the header",
+        "addPiece": "Add",
+        "removePiece": "Remove",
+        "imagePlace": "Image position",
+        "place": {
+          "left": "Left",
+          "center": "Center",
+          "right": "Right"
+        },
+        "selected": "Selected",
+        "undo": "Undo",
+        "redo": "Redo",
+        "unsupported": "This block is not stored on the website yet.",
+        "align": "Alignment",
+        "emphasis": "Emphasis",
+        "iconShape": "Icon shape",
+        "iconFill": "Icon fill",
+        "round": "Round",
+        "square": "Square",
+        "filled": "Filled",
+        "outline": "Outline",
+        "fixed": "Fixed",
+        "fixedImage": "Hero image stays in its column",
+        "fixedStrip": "Feature strip stays under the hero",
+        "fixedHours": "Hours come from the branch and cannot be dragged",
+        "fixedLocation": "Address comes from the branch and cannot be dragged",
+        "fixedForm": "Form fields stay fixed",
+        "slot": {
+          "title": "Move heading",
+          "text": "Move description",
+          "buttons": "Move buttons"
+        },
+        "block": {
+          "hero-title": "Heading",
+          "hero-text": "Text",
+          "hero-image": "Image",
+          "gallery": "Gallery",
+          "services": "Services",
+          "features": "Features",
+          "testimonials": "Reviews",
+          "hours": "Working hours",
+          "location": "Location",
+          "contact": "Contact form",
+          "booking": "Booking button",
+          "social": "Social icons",
+          "chat": "Web chat",
+          "faq": "FAQ",
+          "video": "Video",
+          "products": "Products",
+          "divider": "Divider"
+        }
+      },
+      "channel": {
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "whatsapp": "WhatsApp",
+        "phone": "Phone",
+        "email": "Email",
+        "telegram": "Telegram",
+        "tiktok": "TikTok",
+        "x": "X",
+        "youtube": "YouTube",
+        "snapchat": "Snapchat",
+        "linkedin": "LinkedIn"
+      },
+      "channelHint": {
+        "facebook": "https://facebook.com/...",
+        "instagram": "https://instagram.com/...",
+        "whatsapp": "+20 100 123 4567",
+        "phone": "+20 100 123 4567",
+        "email": "hello@clinic.com",
+        "telegram": "clinicname",
+        "tiktok": "https://tiktok.com/@...",
+        "x": "https://x.com/...",
+        "youtube": "https://youtube.com/@...",
+        "snapchat": "https://snapchat.com/add/...",
+        "linkedin": "https://linkedin.com/company/..."
+      },
+      "cta": {
+        "booking": "Booking",
+        "services": "Services",
+        "contact": "Contact",
+        "about": "About",
+        "gallery": "Gallery",
+        "none": "No action"
+      },
+      "localPath": "Opens at {{path}} until hosting is live.",
+      "readOnly": "You can view this website. Saving needs the manage permission.",
+      "loading": "Loading the website…",
+      "homeTitle": "Home",
+      "homeHelp": "The address visitors will use, and the first line on the page.",
+      "sectionsTitle": "Page sections",
+      "sectionsHelp": "Turn a section on, then open it to see where its content comes from.",
+      "hidden": "Hidden",
+      "sectionOff": "Hidden on the site until you turn it on.",
+      "sectionBody": {
+        "about": "This text is the About section on the site.",
+        "gallery": "These photos move across the page so a visitor can see the company. Choose whether they travel left or right.",
+        "services": "Services are read from the company catalog. They are not edited here.",
+        "hours": "Hours are read from the company profile.",
+        "location": "The address is read from the company profile.",
+        "contact": "The form creates a lead. It does not start a chat.",
+        "booking": "Booking opens the available times inside this page."
+      },
+      "emptyAbout": "Add a short description so the About section is not blank.",
+      "galleryDirection": "Movement",
+      "galleryLeft": "Move left",
+      "galleryRight": "Move right",
+      "galleryAdd": "Add photos",
+      "galleryEmpty": "Add photos and they will move across the published page.",
+      "galleryCaption": "Caption {{index}}",
+      "galleryRemove": "Remove photo",
+      "galleryPrev": "Previous photo",
+      "galleryNext": "Next photo",
+      "galleryLimit": "Eight photos is the limit",
+      "galleryType": "Use a JPEG, PNG, or WebP photo.",
+      "galleryUploadFailed": "The photo was not added.",
+      "emptyServices": "No active services in the catalog yet.",
+      "emptyHours": "No hours are set on the company profile.",
+      "emptyVideo": "Upload a video from the section panel to show it here.",
+      "frame": {
+        "layout": "Section layout",
+        "uploadVideo": "Upload video",
+        "uploading": "Uploading",
+        "removeVideo": "Remove video",
+        "caption": "Caption",
+        "controls": "Controls",
+        "play": "Play",
+        "pause": "Pause",
+        "autoplay": "Autoplay",
+        "loop": "Loop",
+        "muted": "Muted",
+        "uploadFailed": "The video could not be uploaded"
+      },
+      "frameValue": {
+        "shelf": "Shelf",
+        "catalog": "Catalog",
+        "spotlight": "Spotlight",
+        "list": "List",
+        "tiles": "Tiles"
+      },
+      "emptyLocation": "No address is set on the company profile.",
+      "emptyProducts": "Add products in the product catalog and they will appear here.",
+      "productCatalog": "The name and price come from the product catalog. Leave the photo empty to show the catalog photos, or upload one here to replace them on the site.",
+      "productDescription": "Product description",
+      "productDescriptionPlaceholder": "Description shown only on the website",
+      "showPrice": "Show the price",
+      "productImage": "Website photo",
+      "productImageUsingCatalog": "The site shows this product's catalog photos.",
+      "productImageUsingOverride": "The site shows this photo instead of the catalog photos. Remove it to use the catalog again.",
+      "placeSource": "What the site shows",
+      "placeSourceValue": {
+        "branch": "Address from the system",
+        "custom": "A location I enter"
+      },
+      "placeCustom": "Address or place name",
+      "placeHint": "Clicking the address opens the map with the location mark.",
+      "addPlace": "Add a location",
+      "removePlace": "Remove",
+      "backToEditor": "Back to the editor",
+      "serviceCount": "{{count}} services will appear on the site.",
+      "chatCardHelp": "Visitors open this from the site. Messages land in Omnichannel as Live Chat.",
+      "chatPreviewNote": "Preview only. Visitors chat on the published site.",
+      "chatOffPreview": "Turn Web Chat on to show the launcher.",
+      "noEmployees": "No published AI employee is ready to reply.",
+      "serviceImage": "Service photo",
+      "openHours": "Set hours in the company",
+      "openLocation": "Set the address in the company",
+      "headerTitle": "Header",
+      "headerLabel": "Button",
+      "headerDetail": "Text shown in the popup",
+      "headerPopupHint": "Hover or click the button to open this text. It stays on the page.",
+      "headerAdd": "Add header button",
+      "socialTitle": "Social links",
+      "socialPlaceLabel": "Where they appear",
+      "socialPlace": {
+        "header": "Header",
+        "hero": "Under the hero",
+        "services": "By services",
+        "hours": "By hours",
+        "contact": "Contact",
+        "footer": "Footer",
+        "floating": "Floating"
+      },
+      "chatAnchor": "Chat movement",
+      "chatAnchorValue": {
+        "fixed": "Fixed in place",
+        "flow": "Scrolls with the page"
+      },
+      "chatSide": "Chat side",
+      "chatSideValue": {
+        "end": "Left",
+        "start": "Right"
+      },
+      "responder": "Who replies to the visitor?",
+      "responderAi": "AI Employee",
+      "responderWorkflow": "Workflow",
+      "workflowPlaceholder": "Select a workflow",
+      "noWorkflows": "There is no active workflow yet.",
+      "addressMissing": "Add a site address to show the page URL.",
+      "days": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday"
+      }
+    },
+    "visitor": {
+      "notFound": "This site is not published.",
+      "noServices": "Services will appear here when the company publishes them.",
+      "book": "Book an appointment",
+      "bookingDate": "Date",
+      "slot": "Available time",
+      "chooseSlot": "Choose a time",
+      "day": "Day",
+      "chooseDay": "Choose a day",
+      "time": "Time",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "nameParts": "Enter the first name and the family name.",
+      "provider": "Provider",
+      "resource": "Resource",
+      "chooseResource": "Choose a resource",
+      "loadingResources": "Loading resources…",
+      "noResources": "No resource is assigned to this service.",
+      "branch": "Branch",
+      "chooseBranch": "Choose a branch",
+      "noBranchServices": "No services are linked to a resource at this branch.",
+      "chooseVisitType": "Choose a visit type",
+      "loadingVisitTypes": "Loading visit types…",
+      "gender": "Gender",
+      "visitType": "Visit",
+      "genderValue": {
+        "male": "Male",
+        "female": "Female"
+      },
+      "visitValue": {
+        "first": "First visit",
+        "consult": "Consultation"
+      },
+      "noSlots": "No open times in the next two weeks.",
+      "confirmBooking": "Confirm booking",
+      "bookingConfirmed": "The appointment is in the company calendar.",
+      "bookingFailed": "The appointment was not saved.",
+      "bookingType": "Choose a booking type",
+      "pickBookingType": "Choose a service first. Available days and times appear next.",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "invalidPhone": "Enter a valid mobile number with its country.",
+      "message": "Message",
+      "sendContact": "Send",
+      "contactSent": "Thanks. The team has your message.",
+      "chatTitle": "Chat",
+      "assistant": "An assistant can reply first.",
+      "close": "Close chat",
+      "send": "Send",
+      "askPerson": "Talk to a person",
+      "askPersonMessage": "I would like to speak with someone.",
+      "chatUnavailable": "Chat is unavailable right now.",
+      "unavailable": "This is unavailable right now.",
+      "invalid": "Check the name, a way to reach you, and the message.",
+      "rate_limited": "Too many requests. Please wait and try again."
+    }
   },
   "pages": {
     "accessDenied": {
@@ -1238,6 +1843,14 @@
       "resourceRequired": "Resource is required",
       "selectService": "Select a service",
       "selectResource": "Select a resource",
+      "serviceType": "Service type *",
+      "serviceTypeRequired": "Service type is required",
+      "phoneRequired": "Mobile number is required",
+      "matchedCustomer": "This booking is saved on the same customer: {{name}}",
+      "selectServiceType": "Select a service type",
+      "loadingServiceTypes": "Loading service types…",
+      "serviceTypeEmpty": "This service has no pricing rule yet. The booking uses the service default price.",
+      "minutesShort": "min",
       "date": "Date *",
       "dateTime": "Date & Time *",
       "dateRequired": "Date is required",
@@ -1655,7 +2268,8 @@
       "title": "Customer Profile",
       "subtitle": "Unified customer profile center",
       "sections": {
-        "contactDetails": "Contact Details"
+        "contactDetails": "Contact Details",
+        "lastBooking": "Latest booking"
       },
       "tabs": {
         "overview": "Overview",
@@ -1701,6 +2315,14 @@
         "bookings": "Bookings",
         "invoices": "Invoices",
         "lastInteraction": "Last Interaction"
+      },
+      "lastBooking": {
+        "empty": "No booking is on this profile yet.",
+        "branch": "Branch",
+        "service": "Service",
+        "resource": "Resource",
+        "date": "Latest booking date",
+        "serviceType": "Service type"
       },
       "placeholders": {
         "bookings": "Customer bookings will appear here in a future release.",
@@ -1773,8 +2395,8 @@
           },
           "details": {
             "patientCheckedIn": "Patient checked in.",
-            "patientSentToNurse": "Patient sent to nurse.",
-            "patientSentToDoctor": "Patient sent to doctor.",
+            "patientSentToNurse": "Service started for the customer.",
+            "patientSentToDoctor": "Customer transferred to the service provider.",
             "visitCompleted": "Visit completed.",
             "operationArchived": "Operation archived.",
             "triageCompleted": "Triage completed."
@@ -1926,7 +2548,7 @@
       },
       "bookingStatus": {
         "checkedIn": "Checked in",
-        "withNurse": "With nurse",
+        "withNurse": "In progress",
         "inProgress": "In progress",
         "completed": "Completed",
         "noShow": "No-show",
@@ -2146,6 +2768,11 @@
       "bookings": {
         "emptyTitle": "No bookings yet",
         "emptyDescription": "Schedule the first appointment for this customer.",
+        "emptyDemosTitle": "No sales demos yet",
+        "emptyDemosDescription": "Product demo bookings for this customer will appear here.",
+        "filterAll": "All",
+        "filterOperational": "Clinic / services",
+        "filterDemos": "Sales demos",
         "current": "Today",
         "upcoming": "Upcoming",
         "past": "Past",
@@ -2159,8 +2786,19 @@
         "period": "Period",
         "colReference": "Reference",
         "colService": "Service",
+        "colServiceType": "Service type",
+        "colBranch": "Branch",
+        "colChannel": "Channel",
         "colWhen": "When",
-        "colStatus": "Status"
+        "colStatus": "Status",
+        "channels": {
+          "public_booking": "Website",
+          "crm": "Operations",
+          "whatsapp": "WhatsApp",
+          "ai_assistant": "Assistant",
+          "call_center": "Call center",
+          "api": "API"
+        }
       },
       "invoices": {
         "emptyTitle": "No invoices yet",
@@ -2378,9 +3016,38 @@
     },
     "channels": {
       "title": "Channel Administration",
-      "subtitle": "Connect company channels through the Enterprise Channel Platform",
+      "subtitle": "Connect WhatsApp, Messenger, Instagram, and Web Chat. Each channel shows its platform, tokens, and whether it is live.",
       "addChannel": "Add channel",
       "empty": "No channels configured yet. Add your first channel to start receiving messages.",
+      "platformLine": "{{type}} · {{provider}}",
+      "onePurposeHint": "This channel is for {{type}} only — not mixed with other platforms.",
+      "deleteChannel": "Delete channel",
+      "workingStatus": {
+        "working": "Working",
+        "notReady": "Enabled — not connected yet",
+        "liveCredentials": "Live credentials"
+      },
+      "identity": {
+        "sectionTitle": "Tokens & IDs",
+        "phoneNumberId": "Phone Number ID",
+        "pageId": "Page ID",
+        "fromEmail": "From email",
+        "verifyToken": "Webhook verify token",
+        "webhookUrl": "Webhook URL",
+        "externalAccountId": "Channel ID",
+        "copy": "Copy",
+        "copied": "Copied {{label}}",
+        "copyFailed": "Could not copy",
+        "missing": "No token/ID is stored on this channel yet. Open settings for this platform and save credentials.",
+        "none": "No extra tokens on this channel."
+      },
+      "duplicates": {
+        "banner": "{{count}} duplicate channel(s) share the same WhatsApp number / Page / email. Keep one and delete the rest.",
+        "removeAll": "Delete duplicates now",
+        "removedTitle": "Duplicate channels deleted",
+        "removedHint": "Removed {{count}} duplicate channel(s). The live channel stays.",
+        "removeError": "Could not delete the duplicate channel"
+      },
       "featureNotEntitled": "This channel type is not included in your plan. Contact your administrator to enable it.",
       "featureNotEntitledBadge": "Not entitled",
       "default": "Default",
@@ -2408,14 +3075,24 @@
       "apiVersion": "API version",
       "inboundRouting": {
         "pageHint": "For each messaging channel, choose who answers customers: an automation workflow or an AI employee. Only one path runs at a time.",
+        "notApplicable": "Inbound AI/automation routing applies to messaging channels. {{type}} uses its own settings.",
         "label": "Who replies",
         "loading": "Loading reply routing…",
         "modeWorkflow": "Automation workflow",
         "modeAi": "AI employee",
+        "connectedWorkflow": "Connected to workflow: {{name}}",
+        "connectedEmployee": "Connected to AI employee: {{name}}",
+        "badgeWorkflow": "Workflow: {{name}}",
+        "badgeEmployee": "AI: {{name}}",
+        "badgeAiUnlinked": "AI — no employee linked",
         "workflowHint": "Active workflow: {{name}}. Inbound messages skip the AI employee while this is on.",
-        "aiHint": "Workflow is off. A published AI employee with a WhatsApp channel tag will answer inbound messages.",
+        "aiHint": "Workflow is off. Link a published AI employee to this channel so it can answer inbound messages.",
+        "aiHintNamed": "AI employee “{{name}}” answers inbound messages on this channel.",
         "aiHintWithAssignedFlow": "Workflow “{{name}}” is assigned but off. Turn it on to route replies through automation again.",
+        "noEmployeeLinked": "No published AI employee is linked to this channel yet.",
         "unnamedWorkflow": "Selected workflow",
+        "useEmployee": "AI employee",
+        "useWorkflow": "Workflow",
         "disableWorkflow": "Disable workflow",
         "enableWorkflow": "Enable workflow",
         "assignWorkflow": "Assign workflow",
@@ -2836,6 +3513,7 @@
         "calendar": "Calendar",
         "scheduling": "Scheduling",
         "ticketSla": "Ticket SLA",
+        "salesFollowUp": "Sales Follow-up",
         "platformAi": "Platform AI"
       },
       "tickets": {
@@ -2860,6 +3538,84 @@
             "warningHelp": "Mark tickets as at-risk this many hours before SLA is due. Default 1 hour."
           }
         }
+      },
+      "salesFollowUp": {
+        "title": "Sales follow-up automation",
+        "subtitle": "Configure delayed follow-up messages for eligible leads. Disabled until you turn it on.",
+        "defaultOffHint": "Existing companies stay off by default. Draft mode prepares a message for approval; Automatic only sends after every eligibility check passes.",
+        "enabled": "Enable sales follow-up automation",
+        "enabledHelp": "When off, the scheduler never sends and never claims a delivery.",
+        "approvalMode": "Message approval mode",
+        "approvalDraft": "Draft for approval",
+        "approvalAutomatic": "Automatic send",
+        "approvalDraftHelp": "Eligible attempts become drafts. Staff must approve before any customer message is sent.",
+        "approvalAutomaticHelp": "Eligible attempts may use the existing channel outbound path after a fresh eligibility check.",
+        "channels": "Allowed channels",
+        "channel": {
+          "whatsapp": "WhatsApp",
+          "web_chat": "Web Chat",
+          "email": "Email",
+          "instagram": "Instagram",
+          "facebook": "Facebook / Messenger",
+          "sms": "SMS"
+        },
+        "firstDelayMinutes": "Minutes before the first follow-up",
+        "maxAttempts": "Maximum attempts",
+        "maxAttemptsHelp": "Maximum follow-ups for this lead (including the first): {{count}}. Each step is one follow-up.",
+        "timezone": "Company timezone",
+        "timezoneOptional": "Optional — default UTC",
+        "timezoneHelp": "Optional. Pick an IANA timezone from the list (for example Africa/Cairo). If left empty, UTC is used for business hours. Do not rely on the server clock as the company timezone.",
+        "companyDailyLimit": "Company daily send limit",
+        "channelsHelp": "Select at least one channel (for example WhatsApp) before enabling automation. Only select channels that are connected and allowed to send for this company.",
+        "channelsRequired": "Check at least one allowed channel (such as WhatsApp), then click Save.",
+        "channelsRequiredTitle": "Choose a channel first",
+        "scheduleStepsRequired": "Add at least one enabled follow-up step before turning automation on.",
+        "scheduleTitle": "Follow-up schedule",
+        "scheduleHelp": "Each step runs after the listed delay from the eligibility event (for example lead qualification). Delays are absolute from that event, not stacked on the previous send.",
+        "anchorHelp": "Eligibility starts when a lead is qualified with a conversation. Customer reply, conversion, opt-out, or closed request can cancel remaining steps.",
+        "addStep": "Add step",
+        "removeStep": "Remove step",
+        "resetSchedule": "Reset to 24h / 3d / 7d",
+        "stepLabel": "Follow-up {{n}}",
+        "stepAmount": "Delay",
+        "stepUnit": "Unit",
+        "stepEnabled": "Enabled",
+        "unitMinutes": "Minutes",
+        "unitHours": "Hours",
+        "unitDays": "Days",
+        "businessHoursStart": "Follow-up window start",
+        "businessHoursEnd": "Follow-up window end",
+        "businessDays": "Business days",
+        "businessHoursHelp": "Jobs that become due outside this window are deferred to the next open time.",
+        "weekday": {
+          "0": "Sun",
+          "1": "Mon",
+          "2": "Tue",
+          "3": "Wed",
+          "4": "Thu",
+          "5": "Fri",
+          "6": "Sat"
+        },
+        "workerRunning": "Background worker: running ({{send}}).",
+        "workerStopped": "Background worker: not running on this API process. Enabling the toggle alone does not start the worker.",
+        "workerSendOn": "provider send allowed",
+        "workerSendOff": "provider send blocked — safe local mode",
+        "stopConditions": "Stop conditions",
+        "stopOnCustomerReply": "Stop when the customer replies",
+        "stopOnConversion": "Stop when the lead converts",
+        "stopOnPurchase": "Stop after a purchase",
+        "stopOnOptOut": "Stop after opt-out",
+        "stopOnClosedRequest": "Stop when the request is closed",
+        "stopOnReassignment": "Stop when the lead is reassigned",
+        "save": "Save follow-up settings",
+        "saved": "Sales follow-up settings saved",
+        "saveFailed": "Could not save sales follow-up settings",
+        "readOnly": "You need settings.edit or leads.manage to change these settings.",
+        "openDraftsQueue": "Open follow-up drafts inbox",
+        "openDraftsQueueHelp": "Review, edit, approve, or reject AI drafts under Leads → Follow-up drafts.",
+        "unconfiguredTitle": "Follow-up is not configured yet",
+        "unconfiguredBody": "No follow-up settings have been saved for this company, so follow-up is off. Nothing is enabled automatically. Review the options below, then turn on the enable option and save.",
+        "disabledNotice": "Follow-up is saved as disabled. No follow-ups are scheduled until you enable it and save."
       },
       "security": {
         "changePassword": "Change Password",
@@ -4511,7 +5267,7 @@
         "buttonLabel": "at least one button label",
         "createBooking": {
           "service": "service",
-          "doctor": "doctor",
+          "doctor": "service provider",
           "location": "location",
           "appointmentDate": "appointment date",
           "appointmentTime": "appointment time",
@@ -5286,7 +6042,7 @@
     "crm": {
       "createBooking": {
         "service": "Service",
-        "doctor": "Doctor",
+        "doctor": "Service Provider",
         "location": "Location",
         "appointmentDate": "Appointment date",
         "appointmentTime": "Appointment time",
@@ -6034,6 +6790,7 @@
       "avatarUrlPlaceholder": "https://…/photo.png",
       "avatarUrlHint": "Optional image URL shown next to this employee in the list and profile. Leave empty to use initials.",
       "description": "Description",
+      "descriptionHint": "An internal note for your team. After you save, it is stored and shown on the employee profile and in search. It does not change customer replies; the Instructions tab, System prompt, is what guides the employee.",
       "welcomeMessage": "Welcome Message",
       "welcomeMessagePlaceholder": "أهلاً وسهلاً بك 👋\nأنا المساعد الذكي، كيف يمكنني مساعدتك اليوم؟",
       "welcomeMessageHint": "The message this AI Employee sends when a customer starts a conversation for the first time. Leave empty to use the platform default.",
@@ -6083,6 +6840,8 @@
       },
       "knowledgeHint": "Optional: assign company knowledge sources this employee may search when answering.",
       "toolsHint": "Choose system actions this employee may call. Only capabilities included in your company plan are listed. Channel-connected employees hide actions that are not ready on WhatsApp/webhook yet.",
+      "showProductPrices": "Show product prices",
+      "showProductPricesHint": "When this is off, product lookup results omit prices, and the employee must not quote one or call a product free.",
       "provider": "Provider",
       "knowledge": "Knowledge",
       "tools": "Tools",
@@ -6111,21 +6870,25 @@
         "knowledge": "Knowledge",
         "communication": "Communication",
         "automation": "Automation",
-        "handoff": "Handoff"
+        "handoff": "Handoff",
+        "products": "Products"
       },
       "channelRouting": {
         "title": "Channel routing",
-        "hint": "Choose which messaging channels this employee can auto-reply on. Publish from Lifecycle when ready.",
+        "hint": "Link this employee to any channel you created (WhatsApp / Messenger / Instagram / Web Chat). Choose AI vs automation from the Channels page.",
         "omnichannel": "All messaging channels",
         "tickets": "Handle support tickets",
-        "companyChannels": "Company channel connections",
-        "noCompanyChannels": "No WhatsApp / Messenger / Instagram company channels yet. Configure them under Channels.",
+        "companyChannels": "Your created channels",
+        "companyChannelsHint": "Pick the channel by name. The label shows whether it is WhatsApp, Messenger, Instagram, or Web Chat.",
+        "noCompanyChannels": "No enabled WhatsApp / Messenger / Instagram / Web Chat channels yet. Create them under Channels first.",
         "noneSelected": "No channels selected",
         "publishHint": "After creating the profile, open Lifecycle and Publish so inbound messages can use this employee.",
         "channels": {
           "whatsapp": "WhatsApp",
           "messenger": "Messenger",
           "instagram": "Instagram",
+          "web_chat": "Web Chat",
+          "email": "Email",
           "channel": "Channel"
         }
       },
@@ -6145,9 +6908,14 @@
       },
       "skills": {
         "title": "Skills",
-        "hint": "Skills bundle instructions, tools, and knowledge for a specific job. Optional.",
+        "hint": "A skill is an optional package for one job: a name, a description, and the tools selected above. Those tools are what the employee uses when it replies.",
         "loading": "Loading skills…",
-        "empty": "No skills in this company yet. You can continue without skills.",
+        "empty": "This company has no skills yet. Type a name below, add it, then tick it and save.",
+        "addPlaceholder": "Skill name, for example: Answer from knowledge",
+        "addDescriptionPlaceholder": "Short description of what this skill does",
+        "addAction": "Add skill",
+        "adding": "Adding…",
+        "addError": "Could not add the skill. Check that you can edit skills.",
         "readOnly": "You can view the assigned skills but you do not have permission to change them.",
         "unavailableKept": "{{count}} assigned skill(s) are no longer listed and stay assigned until you change them."
       },
@@ -6789,7 +7557,7 @@
       "capabilities": "Capabilities & routing tags",
       "transferableFlow": {
         "title": "Employee transferable workflow",
-        "hint": "Pick one automation flow. The employee answers first; booking/appointment requests auto-transfer into the flow. Keep the channel workflow toggle off.",
+        "hint": "Who answers WhatsApp is chosen on the Channels page: the AI employee button or the workflow button. Only one runs.",
         "placeholder": "Select a workflow…",
         "none": "No workflow transfer",
         "save": "Save transferable workflow",
@@ -6893,7 +7661,9 @@
         "search_lead": "Search Leads",
         "merge_lead": "Merge Leads",
         "score_lead": "Score Lead",
-        "suggest_next_action": "Suggest Next Action"
+        "suggest_next_action": "Suggest Next Action",
+        "search_products": "Search Products",
+        "get_product_details": "Product Details"
       },
       "descriptions": {
         "search_customer": "Find customers by name, phone, or email.",
@@ -6934,7 +7704,9 @@
         "escalate_to_human": "Escalate the conversation to a human agent.",
         "queue_handoff": "Place the conversation in a handoff queue.",
         "return_to_ai": "Return ownership to the AI employee.",
-        "transfer_to_workflow": "Transfer the conversation to an automation workflow."
+        "transfer_to_workflow": "Transfer the conversation to an automation workflow.",
+        "search_products": "Search active products by name, SKU, brand, description, tag, or category (text only).",
+        "get_product_details": "Show details for up to 3 active products, for answers or comparisons (text only)."
       }
     },
     "workspace": {
@@ -7080,12 +7852,12 @@
     "myPortal": "My portal",
     "workingHours": "Working hours",
     "services": "Services",
-    "doctors": "Doctors",
+    "doctors": "Service Providers",
     "contactForPrice": "Contact for price",
     "step": "Step",
     "steps": {
       "service": "Select service",
-      "doctor": "Select doctor",
+      "doctor": "Select service provider",
       "date": "Select date",
       "time": "Select time",
       "customer": "Your information",
@@ -7266,7 +8038,19 @@
       "overdue": "Overdue report",
       "due": "Outstanding report",
       "debtors": "Debtor customers",
-      "average": "Average invoice"
+      "average": "Average invoice",
+      "period": "Period",
+      "today": "Today",
+      "week": "Week",
+      "month": "Month",
+      "custom": "Custom range",
+      "from": "From",
+      "to": "To",
+      "total": "Total",
+      "paid": "Paid",
+      "remaining": "Remaining",
+      "invoiceCount": "Invoices",
+      "bookingCount": "Bookings"
     },
     "payAmount": "Amount",
     "payMethod": "Payment method",
@@ -7297,7 +8081,7 @@
     "financialTitle": "Financial KPIs",
     "revenue": "Revenue",
     "refundRate": "Refund rate",
-    "perDoctor": "Revenue / doctor",
+    "perDoctor": "Revenue / service provider",
     "perBranch": "Revenue / branch",
     "taxSummary": "Tax collected",
     "collections": "Collections",
@@ -7315,7 +8099,7 @@
     "noAlerts": "No active alerts.",
     "dismiss": "Dismiss",
     "branchTitle": "Branch Intelligence",
-    "doctorTitle": "Doctor Intelligence",
+    "doctorTitle": "Service Provider Intelligence",
     "forecastTitle": "Forecasts",
     "revenueForecast7d": "7-day revenue forecast",
     "bookingsForecast7d": "7-day bookings forecast",
@@ -7938,7 +8722,9 @@
       "routeMissingSession": "No active channel session is linked to this conversation.",
       "routeMissingThread": "This conversation is missing outbound routing.",
       "routeMissingChannel": "The channel connection is not configured.",
-      "dispatchFailed": "The message could not be delivered to the customer channel."
+      "dispatchFailed": "The message could not be delivered to the customer channel.",
+      "noteSaveFailed": "The internal note could not be saved.",
+      "serverUnreachable": "Could not reach the server. Try sending again."
     },
     "experience": {
       "justNow": "Just now",
@@ -8929,7 +9715,7 @@
         "pending": "Pending",
         "confirmed": "Booked",
         "checked_in": "Checked In",
-        "with_nurse": "With nurse",
+        "with_nurse": "In progress",
         "in_progress": "In session",
         "completed": "Completed",
         "archived": "Archived",
@@ -8959,7 +9745,9 @@
         "phone": "Phone",
         "email": "Email",
         "service": "Service",
+        "branch": "Branch",
         "resource": "Resource",
+        "serviceType": "Service type",
         "time": "Time",
         "duration": "Duration",
         "price": "Price",
@@ -8979,7 +9767,7 @@
         "confirm": "Confirm Cancellation",
         "reasons": {
           "customer_request": "Customer Request",
-          "doctor_unavailable": "Doctor Unavailable",
+          "doctor_unavailable": "Service Provider Unavailable",
           "clinic_closed": "Clinic Closed",
           "no_show": "No Show",
           "other": "Other"
@@ -9029,7 +9817,7 @@
         "hourlyDistribution": "Hourly Distribution"
       },
       "conflicts": {
-        "doctor": "Doctor/resource schedule conflict",
+        "doctor": "Service provider/resource schedule conflict",
         "room": "Room schedule conflict",
         "equipment": "Equipment schedule conflict",
         "service": "Service scheduling conflict",
@@ -9069,6 +9857,7 @@
     "validation": {
       "generic": "Please check the form and try again.",
       "resourceNameRequired": "Resource name is required.",
+      "branchRequired": "Select a branch.",
       "timezoneRequired": "Timezone is required.",
       "invalidTimezone": "Select a valid business timezone.",
       "invalidSlotInterval": "Slot interval must be between 5 and 480 minutes.",
@@ -9094,6 +9883,10 @@
       "createTitle": "New Resource",
       "editTitle": "Edit Resource",
       "noBranch": "No branch (company-wide)",
+      "timezones": {
+        "cairo": "Cairo"
+      },
+      "commercialInvalid": "Enter a price above zero and a duration in minutes for each service.",
       "created": "Resource created.",
       "updated": "Resource updated.",
       "deleted": "Resource removed.",
@@ -9105,12 +9898,16 @@
         "branch": "Branch",
         "status": "Status",
         "timezone": "Timezone",
+        "serviceDuration": "Duration (minutes)",
+        "servicePrice": "Price",
         "description": "Description"
       },
       "types": {
         "doctor": "Doctor",
         "employee": "Employee",
         "therapist": "Therapist",
+        "instructor": "Instructor",
+        "engineer": "Engineer",
         "room": "Room",
         "chair": "Chair",
         "equipment": "Equipment",
@@ -9160,7 +9957,13 @@
         "duration": "Duration (minutes)",
         "price": "Price",
         "currency": "Currency",
-        "status": "Status"
+        "status": "Status",
+        "serviceKind": "Service kind",
+        "serviceKindHint": "Sales demos use separate AI tools and do not appear as clinic appointments."
+      },
+      "kinds": {
+        "operational": "Operational",
+        "sales_demo": "Sales demo"
       },
       "pricing": {
         "title": "Pricing Rules",
@@ -11459,7 +12262,7 @@
       "pending": "Pending",
       "confirmed": "Confirmed",
       "checked_in": "Checked In",
-      "with_nurse": "With nurse",
+      "with_nurse": "In progress",
       "in_progress": "In session",
       "completed": "Completed",
       "archived": "Archived",
@@ -11950,7 +12753,7 @@
     "knowledge": {
       "enable": "Enable AI Knowledge",
       "enableDesc": "Allow the assistant to use company knowledge in future releases.",
-      "futureNote": "This section will later include FAQs, services, pricing, doctors, and clinic information."
+      "futureNote": "This section will later include FAQs, services, pricing, team members, and business information."
     },
     "integrations": {
       "comingSoon": "Coming soon",
@@ -12089,6 +12892,8 @@
       "doctor": "Doctor",
       "employee": "Employee",
       "therapist": "Therapist",
+      "instructor": "Instructor",
+      "engineer": "Engineer",
       "room": "Room",
       "chair": "Chair",
       "equipment": "Equipment"
@@ -12133,7 +12938,8 @@
       "completed": "Completed",
       "archived": "Cancelled",
       "cancelled": "Cancelled",
-      "no_show": "Cancelled",
+      "no_show": "Did not attend",
+      "rescheduled": "Rescheduled",
       "confirmed": "Scheduled",
       "pending": "Waiting"
     },
@@ -12173,6 +12979,36 @@
         "wallet": "Wallet",
         "other": "Other"
       }
+    },
+    "receipt": {
+      "title": "Payment receipt",
+      "number": "Receipt no.",
+      "invoice": "Invoice",
+      "issuedAt": "Receipt date",
+      "booking": "Booking",
+      "customer": "Customer",
+      "phone": "Phone",
+      "service": "Service",
+      "visitType": "Visit type",
+      "provider": "Provider",
+      "appointment": "Appointment",
+      "branch": "Branch",
+      "description": "Description",
+      "amount": "Amount",
+      "discount": "Discount",
+      "tax": "Tax",
+      "total": "Total",
+      "paid": "Collected",
+      "balance": "Balance",
+      "payments": "Payments",
+      "method": "Method",
+      "thanks": "Thank you",
+      "paidFull": "Paid in full",
+      "paidPartial": "Partially paid",
+      "subtitle": "Payment received for the service",
+      "paymentDetails": "Payment details",
+      "taxId": "Tax ID",
+      "emptyPayments": "No collected payment is recorded for this booking."
     },
     "currency": {
       "SAR": "SAR",
@@ -12265,7 +13101,7 @@
       "actions": {
         "checkIn": "Check In",
         "start": "Start",
-        "complete": "Complete",
+        "complete": "Done",
         "cancel": "Cancel",
         "collectPayment": "Collect Payment",
         "customer360": "Customer 360",
@@ -12294,6 +13130,14 @@
       "selectAll": "Select all rows",
       "rowCount": "{{count}} rows",
       "selectedCount": "{{count}} selected",
+      "pagination": {
+        "summary": "{{from}}–{{to}} of {{total}} bookings",
+        "pageInfo": "Page {{page}} of {{totalPages}}",
+        "previous": "Previous",
+        "next": "Next",
+        "pageSize": "{{count}} / page",
+        "pageSizeLabel": "Bookings per page"
+      },
       "rowActions": "Row actions",
       "openWorkspace": "Open workspace",
       "density": "Row density",
@@ -12311,12 +13155,12 @@
         "custom": "Custom Date"
       },
       "filters": {
-        "doctor": "Doctor",
-        "service": "Service",
+        "doctor": "Resource",
+        "service": "Service type",
         "status": "Status",
         "branch": "Branch",
-        "allDoctors": "All doctors",
-        "allServices": "All services",
+        "allDoctors": "All resources",
+        "allServices": "All service types",
         "allStatuses": "All statuses",
         "allBranches": "All branches"
       },
@@ -12329,16 +13173,20 @@
         "visitType": "Visit Type",
         "phone": "Phone",
         "service": "Service",
-        "assignee": "Doctor",
-        "doctor": "Doctor",
+        "assignee": "Assignee",
+        "doctor": "Service Provider",
         "status": "Status",
         "paymentStatus": "Payment Status",
         "waiting": "Waiting Time",
         "waitingTime": "Waiting Time",
+        "peopleAhead": "Ahead in queue",
         "duration": "Duration",
         "amount": "Amount",
         "branch": "Branch",
         "actions": "Actions"
+      },
+      "peopleAhead": {
+        "next": "Next in line"
       },
       "tooltips": {
         "search": "Search operations",
@@ -12354,7 +13202,7 @@
     },
     "terminologyByTemplate": {
       "clinic": {
-        "customer": "Patient"
+        "customer": "Customer"
       },
       "training_center": {
         "customer": "Student"
@@ -12394,13 +13242,13 @@
       "workflow": {
         "waiting": "Waiting",
         "checkedIn": "Checked in",
-        "withNurse": "With nurse",
-        "withDoctor": "With doctor",
-        "completed": "Completed",
+        "withNurse": "In progress",
+        "withDoctor": "In progress",
+        "completed": "Done",
         "archived": "Archived",
         "planning": "Planning",
         "assigned": "Assigned",
-        "inProgress": "With doctor"
+        "inProgress": "In progress"
       },
       "widgets": {
         "operationSummary": "Operation Summary",
@@ -12450,7 +13298,7 @@
     },
     "workflows": {
       "clinic": {
-        "label": "Clinic patient journey"
+        "label": "Operation journey"
       },
       "construction": {
         "label": "Construction job lifecycle (example)"
@@ -12483,10 +13331,10 @@
         "openCustomer360": "Open Customer360",
         "viewCustomer": "View Customer",
         "checkIn": "Check In",
-        "sendToNurse": "Send To Nurse",
+        "sendToNurse": "Start Service",
         "completeTriage": "Complete Triage",
-        "sendToDoctor": "Send To Doctor",
-        "completeVisit": "Complete Visit",
+        "sendToDoctor": "Transfer To Service Provider",
+        "completeVisit": "Mark as Done",
         "archive": "Archive",
         "markNoShow": "Mark No-Show",
         "cancelAppointment": "Cancel",
@@ -12513,13 +13361,13 @@
         "cancel": "Cancel",
         "checkInTitle": "Check in this operation?",
         "checkInDescription": "The customer will be marked as checked in.",
-        "sendToNurseTitle": "Send patient to nurse?",
-        "sendToNurseDescription": "Status will change to With Nurse.",
+        "sendToNurseTitle": "Start service for this customer?",
+        "sendToNurseDescription": "Status will change to In Progress.",
         "completeTriageTitle": "Complete triage?",
         "completeTriageDescription": "Triage completion will be recorded on the timeline.",
-        "sendToDoctorTitle": "Send patient to doctor?",
-        "sendToDoctorDescription": "Status will change to With Doctor.",
-        "completeTitle": "Complete this visit?",
+        "sendToDoctorTitle": "Transfer customer to the service provider?",
+        "sendToDoctorDescription": "Status will change to In Progress.",
+        "completeTitle": "Mark this operation as done?",
         "completeDescription": "The operation will be marked completed.",
         "archiveTitle": "Archive this operation?",
         "archiveDescription": "The completed visit will move to Archived.",
@@ -12908,8 +13756,8 @@
     "roles": {
       "receptionist": "Receptionist",
       "cashier": "Cashier",
-      "nurse": "Nurse",
-      "doctor": "Doctor",
+      "nurse": "Service Assistant",
+      "doctor": "Service Provider",
       "manager": "Manager"
     },
     "header": {
@@ -13075,7 +13923,7 @@
     "journey.appointment": "Appointment",
     "journey.deposit": "Deposit Paid",
     "journey.waiting": "Waiting",
-    "journey.doctor": "Doctor",
+    "journey.doctor": "Service Provider",
     "journey.completed": "Completed",
     "journey.website": "Website",
     "journey.candidate": "Candidate",
@@ -13090,8 +13938,8 @@
     "workflow.waiting": "Waiting",
     "workflow.confirmed": "Confirmed",
     "workflow.checkedIn": "Checked In",
-    "workflow.withNurse": "With Nurse",
-    "workflow.doctor": "Doctor",
+    "workflow.withNurse": "In Progress",
+    "workflow.doctor": "Service Provider",
     "workflow.cashier": "Cashier",
     "workflow.completed": "Completed",
     "workflow.archived": "Archived",
@@ -13116,7 +13964,7 @@
       "booked": "Booked",
       "confirmed": "Confirmed",
       "checked_in": "Checked In",
-      "doctor": "Doctor",
+      "doctor": "Service Provider",
       "cashier": "Cashier",
       "completed": "Completed"
     },
@@ -13156,7 +14004,7 @@
       "rec_upgrade": "VIP customer — premium service package has high acceptance rate.",
       "rec_reassign": "Wait time exceeds target — alternate resource available.",
       "rec_whatsapp": "Customer prefers WhatsApp — recent interactions were via messaging.",
-      "rec_task": "Lab results pending — create follow-up task for nursing team.",
+      "rec_task": "Lab results pending — create follow-up task for the responsible team.",
       "rec_escalate": "Elevated churn risk detected from engagement patterns."
     }
   },
@@ -13336,7 +14184,7 @@
         "taskCompleted": {
           "title": "Task Completed",
           "description": "Lab results uploaded for Sara Hassan",
-          "actor": "Nurse · Hana"
+          "actor": "Service Team · Hana"
         },
         "aiSummary": {
           "title": "AI Summary Generated",
@@ -13465,7 +14313,8 @@
       "kanban": "Kanban",
       "pipeline": "Pipeline",
       "timeline": "Timeline",
-      "dashboard": "Dashboard"
+      "dashboard": "Dashboard",
+      "followUpDrafts": "Follow-up drafts"
     },
     "workspace": {
       "title": "Leads",
@@ -13564,7 +14413,9 @@
       "count": "{{shown}} / {{total}} leads",
       "openOwnerWorkspace": "Open Employee360 for {{name}}",
       "openCompany360": "Open Company360 for {{name}}",
-      "assignOwnerHint": "Choose an owner for {{name}}.",
+      "ownerUnknownLabel": "Unknown owner",
+      "unknownSource": "Unknown source",
+      "assignOwnerHint": "Assignment is to a user (employee), not a department. The department next to the name is context only. Choose an owner for {{name}}.",
       "createActivityHint": "Log an activity note for {{name}}.",
       "activityCreated": "Activity saved",
       "deleteConfirmTitle": "Delete this lead?",
@@ -13582,7 +14433,9 @@
         "archiveFailed": "Could not archive lead",
         "deleteFailed": "Could not delete lead",
         "actionUnsupported": "This action is not available",
-        "whatsappPlatformFailed": "Opened external WhatsApp — Conversation Center unavailable"
+        "whatsappPlatformFailed": "Opened external WhatsApp — Conversation Center unavailable",
+        "completeDemoFailed": "Could not complete demo",
+        "demoCompletedStageMissing": "Opportunity stage is not configured for this pipeline"
       },
       "rowActions": {
         "menuAriaLabel": "Lead actions",
@@ -13591,6 +14444,8 @@
         "edit": "Edit",
         "createActivity": "Create activity",
         "createOpportunity": "Create opportunity",
+        "createQuote": "Create quote",
+        "quoteNeedsOpportunity": "Move the lead to the Opportunity column on the kanban first, then create the quote.",
         "call": "Call",
         "whatsapp": "WhatsApp",
         "email": "Email",
@@ -13608,7 +14463,9 @@
           "assignment": "Assignment",
           "conversion": "Conversion",
           "dangerous": "Dangerous"
-        }
+        },
+        "completeDemo": "Complete demo",
+        "demoCompleted": "Demo marked complete"
       }
     },
     "columns": {
@@ -13643,6 +14500,7 @@
       "contacted": "Contacted",
       "qualified": "Qualified",
       "demo_scheduled": "Demo scheduled",
+      "demo_completed": "Opportunity",
       "proposal_sent": "Proposal sent",
       "proposal": "Proposal sent",
       "negotiation": "Negotiation",
@@ -13849,6 +14707,7 @@
       "contacted": "Contacted",
       "qualified": "Qualified",
       "demo_scheduled": "Demo scheduled",
+      "demo_completed": "Opportunity",
       "proposal": "Proposal sent",
       "proposal_sent": "Proposal sent",
       "negotiation": "Negotiation",
@@ -13858,6 +14717,57 @@
       "lost": "Lost",
       "archived": "Archived",
       "nurturing": "Nurturing"
+    },
+    "followUpDrafts": {
+      "title": "Sales follow-up drafts",
+      "subtitle": "Review AI-composed follow-ups before they reach the customer. Approving sends through the existing channel pipeline.",
+      "refresh": "Refresh",
+      "empty": "No follow-up items in this view.",
+      "states": {
+        "unconfigured": {
+          "title": "Sales follow-up is not configured yet",
+          "body": "No follow-up settings have been saved for this company, so no drafts are created. An administrator must enable and save follow-up first."
+        },
+        "disabled": {
+          "title": "Sales follow-up is disabled",
+          "body": "Follow-up is turned off, so no new drafts are created. Existing drafts, if any, stay listed here."
+        },
+        "openSettings": "Open Settings → Sales → Follow-up"
+      },
+      "loadError": "Could not load follow-up drafts",
+      "noPermission": "You cannot view follow-up drafts",
+      "noPermissionBody": "Ask an administrator for leads.view permission.",
+      "message": "Proposed message",
+      "scheduledFor": "Scheduled for",
+      "reason": "Why scheduled",
+      "productInterest": "Product interest: {{name}}",
+      "attempt": "Attempt {{n}}",
+      "openLead": "Open lead",
+      "save": "Save edits",
+      "saved": "Draft updated",
+      "saveFailed": "Could not save draft",
+      "approveSend": "Approve & send",
+      "approved": "Follow-up approved and sent",
+      "approveFailed": "Could not approve follow-up",
+      "reject": "Reject",
+      "rejected": "Draft rejected",
+      "rejectFailed": "Could not reject draft",
+      "reschedule": "Reschedule",
+      "rescheduled": "Draft rescheduled",
+      "rescheduleFailed": "Could not reschedule",
+      "filters": {
+        "pending_review": "Pending review",
+        "sent": "Sent",
+        "failed": "Failed",
+        "cancelled": "Cancelled",
+        "all": "All"
+      },
+      "status": {
+        "pending_review": "Pending review",
+        "sent": "Sent",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
     }
   },
   "leads360": {
@@ -14128,7 +15038,7 @@
       "lead": "Lead",
       "owner": "Owner",
       "name": "Opportunity name",
-      "stage": "Stage",
+      "stage": "Status",
       "pipeline": "Pipeline",
       "amount": "Expected revenue",
       "currency": "Currency",
@@ -14225,7 +15135,7 @@
     "subtitle": "Manage deals from qualification to close — products and quotes live on each opportunity.",
     "nav": {
       "pipeline": "Pipeline",
-      "table": "Table",
+      "table": "Opportunities",
       "timeline": "Timeline"
     },
     "permissionDenied": "You cannot view opportunities",
@@ -14413,6 +15323,66 @@
       "won": "Won",
       "lost": "Lost",
       "unknown": "Stage"
+    },
+    "table": {
+      "permissionTitle": "You do not have permission to view opportunities",
+      "permissionBody": "Ask an admin for opportunities.view access.",
+      "errorTitle": "Could not load opportunities",
+      "errorBody": "Try again in a moment.",
+      "emptyTitle": "No opportunities yet",
+      "emptyBody": "An opportunity appears here after the lead is moved to the Opportunity column on the leads kanban.",
+      "searchPlaceholder": "Search opportunity, customer, or contact…",
+      "stageChanged": "Stage updated",
+      "filters": {
+        "search": "Search",
+        "stage": "Status",
+        "owner": "Owner",
+        "outcome": "Result",
+        "allStages": "All statuses",
+        "allOwners": "All owners",
+        "allOutcomes": "All",
+        "outcomeOpen": "Open",
+        "outcomeWon": "Won",
+        "outcomeLost": "Lost"
+      },
+      "columns": {
+        "opportunity": "Opportunity / customer",
+        "product": "Product / service",
+        "stage": "Status",
+        "expectedRevenue": "Expected revenue",
+        "probability": "Probability",
+        "owner": "Owner",
+        "updatedAt": "Last updated",
+        "actions": "Actions"
+      },
+      "fallbacks": {
+        "noCustomer": "No customer linked",
+        "noProduct": "No product linked"
+      },
+      "rowActions": {
+        "menu": "Row actions",
+        "open": "Open Opportunity360",
+        "openNamed": "Open {{name}}",
+        "changeStage": "Change stage",
+        "archive": "Archive"
+      },
+      "lostDialog": {
+        "title": "Mark opportunity as lost",
+        "description": "Provide a reason before marking “{{name}}” as lost.",
+        "reasonLabel": "Lost reason",
+        "reasonPlaceholder": "e.g. Budget cut, chose competitor…",
+        "confirm": "Mark lost"
+      },
+      "errors": {
+        "stageChangeFailed": "Could not change stage",
+        "lostReasonRequired": "A lost reason is required"
+      },
+      "pagination": {
+        "empty": "0 results",
+        "range": "{{from}}–{{to}} of {{total}}",
+        "previous": "Previous",
+        "next": "Next"
+      }
     }
   },
   "tickets": {
@@ -14709,7 +15679,7 @@
   "products": {
     "subtitle": "Reusable catalog of products and services for opportunities and quotes.",
     "create": "New product",
-    "createHint": "Capture what sales will sell and price — details can be refined later in Product 360.",
+    "createHint": "Capture what sales will sell and price — details can be refined later on the product page.",
     "addCategory": "Add category",
     "categoryHint": "Categories keep the catalog browseable when attaching products to quotes.",
     "createAction": "Create",
@@ -14722,11 +15692,48 @@
     "emptyBody": "Add products once, then attach them to opportunities and quotes.",
     "loading": "Loading catalog…",
     "searchPlaceholder": "Search products…",
+    "view": {
+      "list": "List",
+      "grid": "Squares"
+    },
+    "images": {
+      "title": "Photos",
+      "hint": "Up to five photos. They appear in the squares view and are sent on WhatsApp when someone asks the assistant about this one product.",
+      "add": "Add photo",
+      "remove": "Remove photo",
+      "type": "Use a JPEG, PNG, or WebP image.",
+      "uploading": "Uploading…",
+      "saved": "Photos saved",
+      "saveFailed": "Could not save the photos"
+    },
     "integrationHint": "Products feed Opportunity lines and Quote builder.",
     "openOpportunities": "Open opportunities",
     "sections": {
       "identity": "Product identity",
-      "commercial": "Commercial terms"
+      "commercial": "Commercial terms",
+      "billing": "Billing",
+      "inventory": "Unit and inventory"
+    },
+    "toggle": {
+      "label": "Active",
+      "hint": "Inactive products stay in the catalog but are hidden from the AI assistant and the public website.",
+      "on": "Activated",
+      "off": "Deactivated",
+      "failed": "Could not update product status"
+    },
+    "billing": {
+      "mode": "Pricing model",
+      "oneTime": "One-time",
+      "recurring": "Subscription",
+      "interval": "Billing cycle",
+      "subscriptionPrice": "Subscription price",
+      "hint": "For services sold monthly (or yearly), set a subscription price. Customers asking about price will see this amount with the billing cycle.",
+      "intervals": {
+        "month": "Monthly",
+        "year": "Yearly",
+        "quarter": "Quarterly"
+      },
+      "pricePer": "{{price}} / {{interval}}"
     },
     "actions": {
       "generateSku": "Generate SKU"
@@ -14747,10 +15754,17 @@
       "category": "Category",
       "basePrice": "Sell price",
       "currency": "Currency",
+      "priceTaxMode": "Tax treatment",
+      "taxPercent": "Tax rate",
       "description": "Short description",
       "brand": "Brand",
+      "aliases": "Search aliases / synonyms",
       "cost": "Cost (optional)",
-      "categoryName": "Category name"
+      "categoryName": "Category name",
+      "unit": "Unit",
+      "trackInventory": "Track inventory",
+      "stockQuantity": "On-hand quantity",
+      "tags": "Tags"
     },
     "placeholders": {
       "name": "e.g. Clinic consultation package",
@@ -14758,11 +15772,48 @@
       "category": "No category",
       "description": "What the customer receives — used by sales on quotes",
       "brand": "Optional brand or line",
+      "aliases": "One per line, e.g.\nAccounting Suite\nالسيستم المحاسبي\nBuchhaltung Pro",
       "cost": "Internal cost",
       "categoryName": "e.g. Services"
     },
+    "descriptionEditor": {
+      "bold": "Bold (WhatsApp *text*)",
+      "italic": "Italic (WhatsApp _text_)",
+      "hint": "Press Enter for a new line on WhatsApp. Use Bold/Italic — WhatsApp shows them to the customer. Text colors are not supported by WhatsApp (Meta limitation)."
+    },
     "hints": {
-      "cost": "Used to estimate margin. Leave blank if unknown."
+      "cost": "Used to estimate margin. Leave blank if unknown.",
+      "aliases": "Filled automatically from the name and description before you save. You can review or edit them. Bare words like “system” alone are blocked.",
+      "inventory": "Turn tracking on when this item is sold from counted stock.",
+      "priceTaxMode": "Say whether the sell price you entered already includes tax.",
+      "priceTaxModeUnspecified": "Affects how the AI describes this product only. It will not mention tax to customers. Accounting and price calculations are not changed.",
+      "taxPercent": "Enter the rate. Net and gross are calculated automatically."
+    },
+    "aliasGeneration": {
+      "pending": "Generating search aliases…",
+      "completed": "Search aliases ready.",
+      "failed": "Could not generate aliases right now. Existing aliases were kept.",
+      "afterSave": "After you save the product, search aliases are generated automatically and appear on the product page.",
+      "previewHint": "Enter the name and description — search aliases fill in here automatically before you save.",
+      "retry": "Retry alias generation",
+      "generate": "Generate search aliases",
+      "retrying": "Retrying…",
+      "retryStarted": "Alias generation started.",
+      "retryFailed": "Could not start alias generation."
+    },
+    "tax": {
+      "inclusive": "Price includes tax",
+      "exclusive": "Price excludes tax",
+      "unspecified": "Do not mention tax",
+      "internalBreakdown": "Internal calculation",
+      "net": "Net",
+      "amount": "Tax amount",
+      "customerTotal": "Customer total",
+      "customerHint": "Chat and the website show only this total. Tax treatment is answered when the customer asks whether tax is included."
+    },
+    "inventory": {
+      "tracked": "Yes — track quantity",
+      "notTracked": "No — not stocked"
     },
     "status": {
       "active": "Active",
@@ -14773,11 +15824,132 @@
       "service": "Service",
       "subscription": "Subscription",
       "bundle": "Bundle",
-      "addon": "Add-on"
+      "addon": "Add-on",
+      "realEstate": "Real estate"
     },
     "filter": {
       "allTypes": "All types",
       "allStatus": "All statuses"
+    },
+    "workspace": {
+      "close": "Close",
+      "sku": "SKU",
+      "margin": "Margin",
+      "tax": "Tax",
+      "retry": "Retry",
+      "loadError": "Could not load product",
+      "loadErrorBody": "Check your connection and try again.",
+      "noDescription": "No description yet.",
+      "sections": {
+        "identity": "Product details",
+        "pricing": "Pricing",
+        "inventory": "Inventory"
+      },
+      "edit": "Edit details",
+      "save": "Save",
+      "saved": "Product details saved",
+      "saveFailed": "Could not save the product",
+      "delete": "Delete",
+      "deleteTitle": "Delete product",
+      "deleteBody": "\"{{name}}\" will be removed from the catalog and will not appear in search or WhatsApp. This cannot be undone from this screen.",
+      "deleted": "Product deleted",
+      "deleteFailed": "Could not delete the product",
+      "tabs": {
+        "overview": "Overview",
+        "pricing": "Pricing",
+        "availability": "Availability",
+        "documents": "Documents",
+        "ai": "Insights",
+        "audit": "Audit"
+      },
+      "fields": {
+        "type": "Type",
+        "category": "Category",
+        "status": "Status",
+        "brand": "Brand",
+        "unit": "Unit",
+        "cost": "Cost",
+        "inventory": "Inventory",
+        "price": "Sell price",
+        "customerPrice": "Customer total",
+        "taxMode": "Tax treatment",
+        "taxPercent": "Tax rate",
+        "netPrice": "Net"
+      },
+      "units": {
+        "each": "Each",
+        "piece": "Piece",
+        "box": "Box",
+        "pack": "Pack",
+        "kg": "kg",
+        "g": "g",
+        "liter": "Liter",
+        "meter": "Meter",
+        "sqm": "Square meter",
+        "hour": "Hour",
+        "day": "Day"
+      },
+      "taxClasses": {
+        "standard": "Standard"
+      },
+      "inventoryTracked": "{{count}} {{unit}}",
+      "inventoryNotTracked": "Not tracked",
+      "events": {
+        "product_created": "Product created",
+        "product_updated": "Product updated",
+        "price_changed": "Price changed",
+        "category_changed": "Category changed",
+        "product_archived": "Product archived",
+        "regional_price_changed": "Regional price changed",
+        "bundle_updated": "Bundle updated"
+      },
+      "pricing": {
+        "global": "List price",
+        "subscription": "Subscription · {{price}} / {{interval}}",
+        "intervals": {
+          "month": "month",
+          "year": "year",
+          "quarter": "quarter"
+        },
+        "regional": "Regional prices",
+        "regionFallback": "Region",
+        "emptyRegional": "No regional prices yet.",
+        "country": "Country",
+        "countryPlaceholder": "SA",
+        "localPrice": "Local price",
+        "addRegional": "Add regional price"
+      },
+      "availability": {
+        "title": "Availability",
+        "body": "Country and market availability follows the regional prices recorded for this product."
+      },
+      "documents": {
+        "emptyTitle": "No documents yet",
+        "emptyBody": "Product images and documents will appear here."
+      },
+      "history": {
+        "emptyTitle": "No history yet",
+        "emptyBody": "Price and category changes appear here."
+      },
+      "ai": {
+        "marketsTitle": "Most sold markets",
+        "marketsBody": "This insight appears when sales history is available.",
+        "winRateTitle": "Typical win rate",
+        "winRateBody": "This insight needs closed-won opportunities.",
+        "bundlesTitle": "Suggested bundles",
+        "bundlesBody": "Bundle suggestions appear here when enough deals exist."
+      },
+      "audit": {
+        "empty": "No audit entries.",
+        "emptyTitle": "No audit events yet",
+        "emptyBody": "User actions on this product appear here.",
+        "unknownActor": "Unknown user",
+        "columns": {
+          "actor": "User",
+          "action": "Action",
+          "timestamp": "Time"
+        }
+      }
     }
   },
   "quotes": {
@@ -14807,6 +15979,39 @@
         "no_whatsapp_conversation": "The customer hasn't messaged you on WhatsApp yet.",
         "whatsapp_window_closed": "The customer's last WhatsApp message is older than 24 hours.",
         "unknown": "Unavailable."
+      }
+    },
+    "sendRequests": {
+      "title": "Quote send approvals",
+      "subtitle": "AI requested quote sends waiting for a human with quotes.send. Approval delivers only through the existing send service.",
+      "empty": "No pending AI send requests for this company.",
+      "refresh": "Refresh",
+      "backToQuotes": "Back to quotes",
+      "preview": "Preview quote",
+      "previewTitle": "Quote preview",
+      "approveSend": "Approve & send",
+      "reject": "Reject",
+      "cancel": "Cancel",
+      "company": "Company",
+      "total": "Total",
+      "requestedAt": "Requested",
+      "quoteStatus": "Quote status",
+      "notSentHint": "not sent to customer yet",
+      "confirmApproveTitle": "Send this quote?",
+      "confirmApproveBody": "Approve sending {{quote}} via {{channel}}. This uses the live send service and may message the customer on Local only when outbound is allowed.",
+      "confirmRejectTitle": "Reject send request?",
+      "confirmRejectBody": "Reject the AI send request for {{quote}}. No message will be sent.",
+      "rejectSuccess": "Send request rejected",
+      "rejectFailed": "Could not reject send request",
+      "approveNotSent": "Approval finished but delivery was not confirmed as sent.",
+      "loadFailed": "Could not load send requests",
+      "loadFailedBody": "Check your connection and try again.",
+      "permissionDenied": "You cannot approve quote sends",
+      "permissionDeniedBody": "Ask an administrator for the quotes.send permission.",
+      "status": {
+        "pending_human_approval": "Pending approval",
+        "sent": "Sent",
+        "failed": "Send failed"
       }
     },
     "subtitle": "Commercial quotes linked to opportunities and the product catalog.",

@@ -14,6 +14,9 @@ import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashbo
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { schedulingServicesKey } from "@/hooks/scheduling/keys";
+import { supabase } from "@/lib/supabase";
+import { persistServiceCommercialEdits } from "@/lib/scheduling/services/persist-service-commercial";
 import {
   invalidateCapabilityQueries,
   syncResourceServicesFor,
@@ -77,12 +80,18 @@ export function SchedulingResourceProfilePage() {
     );
   }
 
-  const handleSaveDetails = async ({ values, serviceIds }: ResourceFormSubmitPayload) => {
+  const handleSaveDetails = async ({ values, serviceIds, serviceCommercial }: ResourceFormSubmitPayload) => {
     if (!companyId) return;
     try {
       await updateResource.mutateAsync({ id: resource.id, values });
       await syncResourceServicesFor(companyId, resource.id, serviceIds);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      await persistServiceCommercialEdits(companyId, user.id, serviceCommercial);
       invalidateCapabilityQueries(qc, companyId);
+      void qc.invalidateQueries({ queryKey: schedulingServicesKey(companyId) });
       setEditOpen(false);
       toast({ title: t("scheduling.resources.updated") });
     } catch (e) {

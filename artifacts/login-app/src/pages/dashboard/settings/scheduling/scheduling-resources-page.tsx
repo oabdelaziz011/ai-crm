@@ -28,6 +28,9 @@ import {
   useSchedulingResources,
   useUpdateSchedulingResource,
 } from "@/hooks/scheduling/use-scheduling-resources";
+import { supabase } from "@/lib/supabase";
+import { persistServiceCommercialEdits } from "@/lib/scheduling/services/persist-service-commercial";
+import { schedulingServicesKey } from "@/hooks/scheduling/keys";
 import type { SchedulingResource } from "@/lib/scheduling/types";
 import { schedulingResourceProfileHref } from "@/config/scheduling-route-registry";
 import { nestedSectionHref } from "@/lib/routing";
@@ -72,7 +75,7 @@ export function SchedulingResourcesPage() {
     setModalOpen(true);
   };
 
-  const handleSubmit = async ({ values, serviceIds }: ResourceFormSubmitPayload) => {
+  const handleSubmit = async ({ values, serviceIds, serviceCommercial }: ResourceFormSubmitPayload) => {
     if (!companyId) return;
 
     const onError = (message: string) => {
@@ -86,7 +89,13 @@ export function SchedulingResourcesPage() {
         : (await createResource.mutateAsync(values)).id;
 
       await syncResourceServicesFor(companyId, resourceId, serviceIds);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      await persistServiceCommercialEdits(companyId, user.id, serviceCommercial);
       invalidateCapabilityQueries(qc, companyId);
+      void qc.invalidateQueries({ queryKey: schedulingServicesKey(companyId) });
 
       setModalOpen(false);
       toast({

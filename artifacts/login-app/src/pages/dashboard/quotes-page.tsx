@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuotesList, useQuoteCommands } from "@/hooks/quotes/use-quote-commands";
+import { useCanSendQuotes } from "@/hooks/quotes/use-quote-send";
 import { useOpportunityList } from "@/hooks/opportunities/use-opportunity-commands";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,7 @@ export function QuotesPage() {
   const { toast } = useToast();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const canCreate = isSuperAdmin || hasPermission("quotes.create");
+  const canSend = useCanSendQuotes();
   const list = useQuotesList({ currentOnly: true });
   const opportunities = useOpportunityList({ limit: 50 });
   const commands = useQuoteCommands();
@@ -88,6 +90,11 @@ export function QuotesPage() {
           <p className="text-[12px] text-muted-foreground/90">{t("quotes.integrationHint")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {canSend ? (
+            <Button asChild type="button" variant="outline" size="sm" className="rounded-xl">
+              <Link href="~/dashboard/quotes/send-requests">{t("navigation.quoteSendRequests")}</Link>
+            </Button>
+          ) : null}
           <Button asChild type="button" variant="outline" size="sm" className="rounded-xl">
             <Link href="~/dashboard/products">{t("quotes.openCatalog")}</Link>
           </Button>

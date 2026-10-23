@@ -142,6 +142,10 @@ export function SchedulingServicesPage() {
                   {service.name}
                 </Link>
                 <p className="text-xs text-muted-foreground mt-0.5">
+                  {t(`scheduling.services.kinds.${service.service_kind === "sales_demo" ? "sales_demo" : "operational"}`, {
+                    defaultValue: service.service_kind === "sales_demo" ? "Sales demo" : "Operational",
+                  })}
+                  {" · "}
                   {t("scheduling.services.durationLabel", { minutes: service.duration_minutes })}
                   {" · "}
                   {t("scheduling.services.priceLabel", {

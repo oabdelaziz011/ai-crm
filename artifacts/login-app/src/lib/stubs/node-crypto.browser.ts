@@ -24,9 +24,18 @@ export function createHash(..._args: unknown[]): never {
   return unavailable("createHash");
 }
 
+export function randomUUID(): string {
+  const webCrypto = globalThis.crypto;
+  if (webCrypto && typeof webCrypto.randomUUID === "function") {
+    return webCrypto.randomUUID();
+  }
+  return unavailable("randomUUID");
+}
+
 export default {
   createHmac,
   timingSafeEqual,
   randomBytes,
   createHash,
+  randomUUID,
 };

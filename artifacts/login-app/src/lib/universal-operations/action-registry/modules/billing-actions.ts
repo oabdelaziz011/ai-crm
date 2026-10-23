@@ -1,10 +1,10 @@
 import { Banknote, FileText, Printer, RotateCcw } from "lucide-react";
 import type { OperationsActionDefinition } from "../types";
+import { printOperationsReceipt } from "@/lib/universal-operations/print-operations-receipt";
 import {
   hasOutstandingBalance,
   isBillingEnabled,
   isPaymentIn,
-  isStatusIn,
   rowAmountCents,
 } from "../context-helpers";
 
@@ -96,13 +96,19 @@ export const billingActions: OperationsActionDefinition[] = [
     requiredPermissions: ["payment.write", "invoices.view", "operations.write"],
     clinicRoles: ["accountant", "reception", "manager"],
     permissionMode: "disable",
-    supportedStatuses: ["completed"],
-    comingSoon: true,
     surfaces: ["menu", "quickBar"],
-    visible: (runtime) => isBillingEnabled(runtime) && isStatusIn(runtime, ["completed"]),
-    enabled: () => false,
-    execute: async () => {
-      throw new Error("Coming soon");
+    toastOnSuccess: false,
+    visible: (runtime) =>
+      isBillingEnabled(runtime) &&
+      Boolean(runtime.row.customerId) &&
+      isPaymentIn(runtime, ["paid", "partial"]),
+    enabled: (runtime) =>
+      isBillingEnabled(runtime) &&
+      Boolean(runtime.row.customerId) &&
+      rowAmountCents(runtime.row) > 0 &&
+      isPaymentIn(runtime, ["paid", "partial"]),
+    execute: async (runtime) => {
+      await printOperationsReceipt(runtime.row);
     },
   },
 ];

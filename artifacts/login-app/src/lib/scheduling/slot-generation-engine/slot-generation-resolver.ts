@@ -58,6 +58,7 @@ export class SlotGenerationResolver {
       snapshot.durationMinutes,
       snapshot.existingBookings,
       rules,
+      { date: snapshot.date, timezone: snapshot.timezone },
     );
 
     const generatedSlots = SlotFormatter.toGeneratedSlots(slots, snapshot.durationMinutes);

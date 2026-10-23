@@ -23,7 +23,6 @@ const ENTERPRISE_KPIS: OperationsDashboardKpiConfig[] = [
   { id: "kpi_appointments_today", label: "Appointments Today", metricKey: "appointments_today", visible: true },
   { id: "kpi_waiting", label: "Waiting", metricKey: "waiting", visible: true },
   { id: "kpi_checked_in", label: "Checked In", metricKey: "checked_in", visible: true },
-  { id: "kpi_in_progress", label: "In Progress", metricKey: "in_progress", visible: true },
   { id: "kpi_late", label: "Late", metricKey: "late", visible: true },
   { id: "kpi_completed", label: "Completed", metricKey: "completed", visible: true },
   { id: "kpi_cancelled", label: "Cancelled", metricKey: "cancelled", visible: true },
@@ -115,7 +114,7 @@ function resolveMetricValue(
       return countByStatusKeys(rows, ["waiting", "scheduled", "pending", "booked", "confirmed"]);
     }
     case "checked_in":
-      return countByStatusKeys(rows, ["checked_in"]);
+      return countByStatusKeys(rows, ["checked_in", "in_progress", "with_nurse", "with_doctor"]);
     case "in_progress": {
       const activeIds = statusIdsForBucket(config, templateKey, "in_progress");
       if (activeIds.size) return rows.filter((r) => activeIds.has(r.statusId)).length;

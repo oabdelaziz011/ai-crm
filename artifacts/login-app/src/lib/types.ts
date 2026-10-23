@@ -277,8 +277,13 @@ export type Booking = {
   resource_id?: string | null;
   scheduling_status?: string;
   source?: string;
+  visit_type?: string | null;
+  /** Branch name when the row comes from scheduling_bookings. */
+  branch_name?: string | null;
   /** Company-scoped reference, e.g. BK-000123 (scheduling bookings). */
   confirmation_number?: string | null;
+  /** From joined scheduling_services.service_kind (defaults operational). */
+  service_kind?: "operational" | "sales_demo" | null;
 };
 
 export type InvoiceStatus =

@@ -21,7 +21,11 @@ const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export const resourceFormSchema = z.object({
   name: z.string().trim().min(1, "scheduling.validation.resourceNameRequired").max(120),
   resource_type: z.enum(SCHEDULING_RESOURCE_TYPES),
-  branch_id: z.string().uuid().nullable().optional(),
+  branch_id: z
+    .string({ required_error: "scheduling.validation.branchRequired" })
+    .trim()
+    .min(1, "scheduling.validation.branchRequired")
+    .uuid("scheduling.validation.branchRequired"),
   status: z.enum(SCHEDULING_RESOURCE_STATUSES).default("active"),
   timezone: z.string().trim().min(1, "scheduling.validation.timezoneRequired"),
   description: z.string().trim().max(2000).nullable().optional(),

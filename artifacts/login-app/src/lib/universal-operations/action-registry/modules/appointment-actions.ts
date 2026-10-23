@@ -1,4 +1,4 @@
-import { Archive, CheckCheck, ClipboardPlus, LogIn, Stethoscope, UserRoundPlus, UserX, XCircle } from "lucide-react";
+import { Archive, CheckCheck, LogIn, UserX, XCircle } from "lucide-react";
 import type { OperationsActionDefinition } from "../types";
 
 /**
@@ -20,60 +20,6 @@ export const appointmentActions: OperationsActionDefinition[] = [
     enabled: () => true,
     execute: async (runtime) => {
       await runtime.commands.checkIn(runtime.row.id);
-    },
-  },
-  {
-    id: "appointments.send_to_nurse",
-    titleKey: "universalOperations.actions.items.sendToNurse",
-    icon: UserRoundPlus,
-    group: "workflow",
-    order: 20,
-    requiredPermissions: ["operations.write"],
-    permissionMode: "disable",
-    surfaces: ["menu", "quickBar"],
-    dialog: "confirm",
-    visible: () => true,
-    enabled: () => true,
-    execute: async (runtime) => {
-      await runtime.commands.transitionClinicStatus({
-        bookingId: runtime.row.id,
-        status: "with_nurse",
-      });
-    },
-  },
-  {
-    id: "appointments.complete_triage",
-    titleKey: "universalOperations.actions.items.completeTriage",
-    icon: ClipboardPlus,
-    group: "workflow",
-    order: 25,
-    requiredPermissions: ["operations.write"],
-    permissionMode: "disable",
-    surfaces: ["menu", "quickBar"],
-    dialog: "confirm",
-    visible: () => true,
-    enabled: () => true,
-    execute: async (runtime) => {
-      await runtime.commands.completeTriage({ bookingId: runtime.row.id });
-    },
-  },
-  {
-    id: "appointments.send_to_doctor",
-    titleKey: "universalOperations.actions.items.sendToDoctor",
-    icon: Stethoscope,
-    group: "workflow",
-    order: 30,
-    requiredPermissions: ["operations.write"],
-    permissionMode: "disable",
-    surfaces: ["menu", "quickBar"],
-    dialog: "confirm",
-    visible: () => true,
-    enabled: () => true,
-    execute: async (runtime) => {
-      await runtime.commands.transitionClinicStatus({
-        bookingId: runtime.row.id,
-        status: "in_progress",
-      });
     },
   },
   {

@@ -48,24 +48,34 @@ export class SlotContextLoader {
       updated_by: null,
     };
 
+    const bufferWindow = {
+      bufferBeforeMinutes: rules.buffer_before_minutes,
+      bufferAfterMinutes: rules.buffer_after_minutes,
+    };
     const existingBookings = await this.bookingRepo.listByResourceAndDate(
       companyId,
       resourceId,
       date,
       availability.timezone,
+      bufferWindow,
     );
+
+    const durationMinutes =
+      options.durationMinutes && options.durationMinutes > 0
+        ? options.durationMinutes
+        : service?.duration_minutes ?? 0;
 
     return {
       resourceId,
       serviceId,
       date,
       timezone: availability.timezone,
-      durationMinutes: service?.duration_minutes ?? 0,
+      durationMinutes,
       periods: availability.periods,
       availabilityReasons: availability.reasons,
       availabilityAvailable: availability.available,
       bookingRules: {
-        durationMinutes: service?.duration_minutes ?? 0,
+        durationMinutes,
         slotIntervalMinutes: rules.slot_interval_minutes,
         bufferBeforeMinutes: rules.buffer_before_minutes,
         bufferAfterMinutes: rules.buffer_after_minutes,
@@ -127,7 +137,16 @@ export class SlotContextLoader {
       resourceIds,
       date,
       timezone,
+      {
+        bufferBeforeMinutes: rules.buffer_before_minutes,
+        bufferAfterMinutes: rules.buffer_after_minutes,
+      },
     );
+
+    const durationMinutes =
+      options.durationMinutes && options.durationMinutes > 0
+        ? options.durationMinutes
+        : service?.duration_minutes ?? 0;
 
     return resourceIds.map((resourceId, index) => {
       const availability = availabilities[index];
@@ -136,12 +155,12 @@ export class SlotContextLoader {
         serviceId,
         date,
         timezone: availability.timezone,
-        durationMinutes: service?.duration_minutes ?? 0,
+        durationMinutes,
         periods: availability.periods,
         availabilityReasons: availability.reasons,
         availabilityAvailable: availability.available,
         bookingRules: {
-          durationMinutes: service?.duration_minutes ?? 0,
+          durationMinutes,
           slotIntervalMinutes: rules.slot_interval_minutes,
           bufferBeforeMinutes: rules.buffer_before_minutes,
           bufferAfterMinutes: rules.buffer_after_minutes,

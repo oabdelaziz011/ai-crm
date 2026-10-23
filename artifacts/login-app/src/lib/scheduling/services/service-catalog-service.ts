@@ -50,6 +50,7 @@ export class ServiceCatalogService {
         : Math.round((bootstrap?.price ?? 0) * 100),
       currency: (defaultRule?.currency ?? bootstrap?.currency ?? "USD").toUpperCase(),
       status: general.status,
+      service_kind: general.service_kind ?? "operational",
       created_by: userId,
       updated_by: userId,
     };
@@ -106,6 +107,7 @@ export class ServiceCatalogService {
       description: general.description ?? null,
       category: general.category ?? null,
       status: general.status,
+      service_kind: general.service_kind ?? "operational",
       updated_by: userId,
     };
 

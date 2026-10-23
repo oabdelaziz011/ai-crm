@@ -14,15 +14,13 @@ export const communicationActions: OperationsActionDefinition[] = [
     permissionMode: "disable",
     toastOnSuccess: false,
     visible: (runtime) => Boolean(runtime.row.customerId),
-    enabled: (runtime) => Boolean(runtime.row.customerId),
-    execute: (runtime) => {
+    enabled: (runtime) => Boolean(runtime.row.customerId && (rowPhone(runtime.row) || runtime.row.customerId)),
+    execute: async (runtime) => {
       if (!runtime.row.customerId) return;
-      runtime.navigate(
-        operationsEntityWorkspaceHref(runtime.row.customerId, {
-          tab: "communication",
-          operationId: runtime.row.id,
-        }),
-      );
+      await runtime.communication.openWhatsApp({
+        customerId: runtime.row.customerId,
+        phone: rowPhone(runtime.row),
+      });
     },
   },
   {

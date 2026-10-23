@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   COMPANY_DEFAULT_CURRENCY,
+  SCHEDULING_SERVICE_KINDS,
   SCHEDULING_SERVICE_STATUSES,
   SERVICE_PRICING_CURRENCIES,
 } from "@/lib/scheduling/types";
@@ -10,6 +11,7 @@ export const serviceGeneralFormSchema = z.object({
   category: z.string().trim().max(120).nullable().optional(),
   description: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(SCHEDULING_SERVICE_STATUSES).default("active"),
+  service_kind: z.enum(SCHEDULING_SERVICE_KINDS).default("operational"),
 });
 
 export type ServiceGeneralFormValues = z.infer<typeof serviceGeneralFormSchema>;

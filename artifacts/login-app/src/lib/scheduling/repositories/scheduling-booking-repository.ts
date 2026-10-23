@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { BookingRepository } from "@/lib/scheduling/booking-domain/booking-repository";
+import { BookingRepository, type BookingDayWindow } from "@/lib/scheduling/booking-domain/booking-repository";
 import type { ExistingBooking } from "@/lib/scheduling/slot-generation-engine/types";
 
 /**
@@ -18,8 +18,9 @@ export class SchedulingBookingRepository {
     resourceId: string,
     date: string,
     timezone: string,
+    window?: BookingDayWindow,
   ): Promise<ExistingBooking[]> {
-    return this.bookingRepo.listByResourceAndDate(companyId, resourceId, date, timezone);
+    return this.bookingRepo.listByResourceAndDate(companyId, resourceId, date, timezone, window);
   }
 
   async listByResourcesAndDate(
@@ -27,8 +28,9 @@ export class SchedulingBookingRepository {
     resourceIds: string[],
     date: string,
     timezone: string,
+    window?: BookingDayWindow,
   ): Promise<Map<string, ExistingBooking[]>> {
-    return this.bookingRepo.listByResourcesAndDate(companyId, resourceIds, date, timezone);
+    return this.bookingRepo.listByResourcesAndDate(companyId, resourceIds, date, timezone, window);
   }
 
   static dayQueryBounds = BookingRepository.dayQueryBounds;

@@ -89,6 +89,8 @@ export type RuntimeToolRouteInput = {
   toolKey: string;
   input: Record<string, unknown>;
   triggeredBy?: "router" | "agent" | "automation" | "llm";
+  /** Server-owned customer texts. Model arguments must not replace these. */
+  conversationTexts?: readonly string[];
 };
 
 export type RuntimeToolRouteResult = {

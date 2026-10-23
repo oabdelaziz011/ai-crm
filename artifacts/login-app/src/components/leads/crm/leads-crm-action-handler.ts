@@ -34,6 +34,8 @@ export type LeadTableActionHandlerDeps = {
       }) => Promise<LeadConversionUiOutcome>;
     };
     archive: { mutateAsync: (input: { leadId: string }) => Promise<unknown> };
+    /** Resolves demo_completed stage and advances demo_scheduled → demo_completed. */
+    completeDemo?: { mutateAsync: (input: { leadId: string }) => Promise<unknown> };
   };
   /** Shows the outcome (toast + Open customer) and opens the opportunity; defaults to a plain toast. */
   onConverted?: (outcome: LeadConversionUiOutcome, mode: LeadConversionUiMode) => void;
@@ -46,6 +48,7 @@ export type LeadTableActionHandlerDeps = {
   setAssignOpen: (open: boolean) => void;
   setActivityOpen: (open: boolean) => void;
   setDeleteOpen: (open: boolean) => void;
+  createQuote?: (row: LeadWorkspaceRow) => Promise<void>;
   setSelectedLead: (updater: (current: LeadWorkspaceRow | null) => LeadWorkspaceRow | null) => void;
   whatsApp: {
     hasIntegration: boolean;
@@ -167,6 +170,18 @@ export async function executeLeadTableActionRoute(
         }
         return;
       }
+      if (route.command === "createQuote") {
+        if (!deps.createQuote) {
+          failToast(t("leads.table.errors.actionUnsupported"));
+          return;
+        }
+        try {
+          await deps.createQuote(row);
+        } catch (error) {
+          failToast(t("quotes.createFailed"), error);
+        }
+        return;
+      }
       if (route.command === "archive") {
         try {
           await commands.archive.mutateAsync({ leadId: row.id });
@@ -174,6 +189,28 @@ export async function executeLeadTableActionRoute(
           deps.setSelectedLead((current) => (current?.id === row.id ? null : current));
         } catch (error) {
           failToast(t("leads.table.errors.archiveFailed"), error);
+        }
+        return;
+      }
+      if (route.command === "completeDemo") {
+        if (!commands.completeDemo) {
+          failToast(t("leads.table.errors.actionUnsupported"));
+          return;
+        }
+        try {
+          await commands.completeDemo.mutateAsync({ leadId: row.id });
+          toast({
+            title: t("leads.table.rowActions.demoCompleted", {
+              defaultValue: "Demo marked complete",
+            }),
+          });
+        } catch (error) {
+          failToast(
+            t("leads.table.errors.completeDemoFailed", {
+              defaultValue: "Could not complete demo",
+            }),
+            error,
+          );
         }
         return;
       }

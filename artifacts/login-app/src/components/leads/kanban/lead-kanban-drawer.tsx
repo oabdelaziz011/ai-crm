@@ -7,7 +7,7 @@ import {
   type KanbanDrawerTab,
 } from "@/components/enterprise/kanban";
 import { formatBillingCurrency } from "@/lib/billing/format";
-import { formatRelativeActivity } from "./lead-kanban-mappers";
+import { formatRelativeActivity, leadWorkspaceTitle } from "./lead-kanban-mappers";
 import { translateLeadStageLabel } from "./lead-stage-label";
 
 export function LeadKanbanDrawer({
@@ -187,7 +187,7 @@ export function LeadKanbanDrawer({
     <KanbanDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={lead?.name || lead?.contactPerson || t("leads.workspace.panelTitle")}
+      title={lead ? leadWorkspaceTitle(lead) : t("leads.workspace.panelTitle")}
       subtitle={lead?.companyName}
       tabs={tabs}
       actions={actions}

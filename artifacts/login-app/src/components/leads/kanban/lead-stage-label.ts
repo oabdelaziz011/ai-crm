@@ -16,6 +16,11 @@ const ENGLISH_NAME_TO_KEY: Record<string, string> = {
   demo_scheduled: "demo_scheduled",
   demoscheduled: "demo_scheduled",
   "demo scheduled": "demo_scheduled",
+  demo_completed: "demo_completed",
+  democompleted: "demo_completed",
+  "demo completed": "demo_completed",
+  // Display rename: Kanban column "Opportunity" / "فرصة" still maps to lifecycle demo_completed.
+  opportunity: "demo_completed",
   proposal: "proposal_sent",
   proposal_sent: "proposal_sent",
   "proposal sent": "proposal_sent",

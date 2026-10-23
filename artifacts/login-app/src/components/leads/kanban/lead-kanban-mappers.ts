@@ -62,6 +62,20 @@ export function formatRelativeActivity(
   return date.toLocaleDateString(locale);
 }
 
+/**
+ * Visible lead title shared by the Kanban card and the open Lead360 dialog.
+ * The persisted title is `name`. Contact stays a separate field so a title
+ * edit still changes the card and the dialog while the contact is unchanged.
+ */
+export function leadWorkspaceTitle(lead: {
+  name?: string | null;
+  contactPerson?: string | null;
+}): string {
+  const title = lead.name?.trim();
+  if (title) return title;
+  return lead.contactPerson?.trim() || "";
+}
+
 export function mapLeadToKanbanCard(
   t: TFunction,
   lead: LeadWorkspaceRow,
@@ -75,7 +89,7 @@ export function mapLeadToKanbanCard(
   return {
     id: lead.id,
     columnId: lead.stageId,
-    title: lead.name || lead.contactPerson,
+    title: leadWorkspaceTitle(lead),
     subtitle: lead.companyName,
     valueLabel: formatLeadMoney(lead.expectedValue),
     scoreLabel: translateLeadScoreLabel(t, tone),

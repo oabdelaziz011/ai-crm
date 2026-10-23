@@ -8,7 +8,16 @@ import type { LeadTableActionId } from "./leads-crm-row-actions.ts";
 export type LeadTableActionRoute =
   | { kind: "openLead360"; tab: "overview" | "activity" | "ai" }
   | { kind: "openDialog"; dialog: "edit" | "assign" | "activity" | "deleteConfirm" | "createOpportunity" }
-  | { kind: "command"; command: "createOpportunity" | "convert" | "convertWithOpportunity" | "archive" }
+  | {
+      kind: "command";
+      command:
+        | "createOpportunity"
+        | "createQuote"
+        | "convert"
+        | "convertWithOpportunity"
+        | "archive"
+        | "completeDemo";
+    }
   | { kind: "openOpportunity360"; after: "createFromLead" }
   | { kind: "external"; channel: "call" | "whatsapp" | "email" }
   | { kind: "whatsapp"; channel: "platform-or-external" };
@@ -21,8 +30,12 @@ export function routeLeadTableAction(action: LeadTableActionId): LeadTableAction
       return { kind: "openDialog", dialog: "edit" };
     case "createActivity":
       return { kind: "openDialog", dialog: "activity" };
+    case "completeDemo":
+      return { kind: "command", command: "completeDemo" };
     case "createOpportunity":
       return { kind: "openDialog", dialog: "createOpportunity" };
+    case "createQuote":
+      return { kind: "command", command: "createQuote" };
     case "call":
       return { kind: "external", channel: "call" };
     case "whatsapp":

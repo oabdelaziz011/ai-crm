@@ -7,6 +7,7 @@ import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-la
 import type { LeadReadModel } from "@workspace/application-layer";
 import type { Lead360AiPanelDto } from "@/lib/lead-intelligence/lead360-ai-types";
 import { cn } from "@/lib/utils";
+import { leadWorkspaceTitle } from "@/components/leads/kanban/lead-kanban-mappers";
 import { normalizeLeadScore } from "./lead360-ui";
 
 function formatRelative(value: string | null | undefined, locale: string): string {
@@ -40,7 +41,7 @@ export function Lead360Header({
     lifecycleStatus: lead.lifecycleStatus,
     slug: lead.stage,
   });
-  const displayName = lead.contactPerson || lead.name;
+  const displayName = leadWorkspaceTitle(lead);
 
   return (
     <header className="shrink-0 border-b border-border/60 bg-gradient-to-b from-muted/25 via-muted/10 to-transparent px-5 py-5 sm:px-8">

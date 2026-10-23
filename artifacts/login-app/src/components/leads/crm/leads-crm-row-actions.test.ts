@@ -18,6 +18,7 @@ const fullPerms = {
   canEdit: true,
   canAssign: true,
   canCreateOpportunity: true,
+  canCreateQuote: true,
   canConvert: true,
   canArchive: true,
   canDelete: true,
@@ -40,39 +41,23 @@ describe("resolveLeadTableActions", () => {
       "whatsapp",
       "email",
       "assign",
-      "createOpportunity",
-      "convert",
+      "createQuote",
       "archive",
       "delete",
     ]);
   });
 
-  it("offers Customer + Opportunity only with both convert permissions and keeps customer-only convert", () => {
-    const withBoth = resolveLeadTableActions({
+  it("does not offer create-opportunity or convert actions", () => {
+    const ids = resolveLeadTableActions({
       permissions: { ...fullPerms, canConvertWithOpportunity: true },
       hasPhone: false,
       hasEmail: false,
+      lifecycleStatus: "demo_completed",
     }).map((a) => a.id);
-    assert.ok(withBoth.includes("convertWithOpportunity"));
-    assert.ok(withBoth.includes("convert"));
-    assert.ok(withBoth.indexOf("convertWithOpportunity") < withBoth.indexOf("convert"));
-
-    const withoutOpportunityPermission = resolveLeadTableActions({
-      permissions: { ...fullPerms, canConvertWithOpportunity: false },
-      hasPhone: false,
-      hasEmail: false,
-    }).map((a) => a.id);
-    assert.ok(!withoutOpportunityPermission.includes("convertWithOpportunity"));
-    assert.ok(withoutOpportunityPermission.includes("convert"));
-
-    const converted = resolveLeadTableActions({
-      permissions: { ...fullPerms, canConvertWithOpportunity: true },
-      hasPhone: false,
-      hasEmail: false,
-      isConverted: true,
-    }).map((a) => a.id);
-    assert.ok(!converted.includes("convertWithOpportunity"));
-    assert.ok(!converted.includes("convert"));
+    assert.ok(!ids.includes("createOpportunity"));
+    assert.ok(!ids.includes("convertWithOpportunity"));
+    assert.ok(!ids.includes("convert"));
+    assert.ok(ids.includes("createQuote"));
   });
 
   it("hides RBAC-denied actions", () => {
@@ -137,56 +122,51 @@ describe("resolveLeadTableActions", () => {
     assert.equal(actions.length, 0);
   });
 
-  it("shows createOpportunity disabled when lead is not qualified and has no customer", () => {
-    const actions = resolveLeadTableActions({
+  it("disables createQuote until the lead reaches the Opportunity kanban column", () => {
+    const early = resolveLeadTableActions({
       permissions: fullPerms,
       hasPhone: false,
       hasEmail: false,
-      isQualified: false,
-      customerId: null,
-    });
-    const action = actions.find((a) => a.id === "createOpportunity");
-    assert.ok(action);
-    assert.equal(action?.disabled, true);
-  });
+      lifecycleStatus: "qualified",
+    }).find((action) => action.id === "createQuote");
+    assert.equal(early?.disabled, true);
 
-  it("includes createOpportunity for qualified leads", () => {
-    const actions = resolveLeadTableActions({
+    const ready = resolveLeadTableActions({
       permissions: fullPerms,
       hasPhone: false,
       hasEmail: false,
-      isQualified: true,
-    });
-    assert.ok(actions.some((action) => action.id === "createOpportunity"));
-  });
-
-  it("includes createOpportunity for converted leads with customer id", () => {
-    const actions = resolveLeadTableActions({
-      permissions: fullPerms,
-      hasPhone: false,
-      hasEmail: false,
-      isQualified: false,
-      customerId: "cust-1",
-    });
-    assert.ok(actions.some((action) => action.id === "createOpportunity"));
+      lifecycleStatus: "demo_completed",
+    }).find((action) => action.id === "createQuote");
+    assert.equal(ready?.disabled, false);
   });
 });
 
 describe("isLeadEligibleForOpportunityCreation", () => {
   it("matches backend eligibility rules", () => {
-    assert.equal(isLeadEligibleForOpportunityCreation({ isQualified: true }), true);
+    assert.equal(isLeadEligibleForOpportunityCreation({ isQualified: true, hasEmail: true }), true);
+    assert.equal(isLeadEligibleForOpportunityCreation({ isQualified: true, hasEmail: false }), false);
     assert.equal(isLeadEligibleForOpportunityCreation({ customerId: "cust-1" }), true);
     assert.equal(isLeadEligibleForOpportunityCreation({ isQualified: false, customerId: null }), false);
   });
 
-  it("treats lifecycleStatus qualified as eligible when the flag lags", () => {
+  it("treats lifecycleStatus qualified as eligible when the flag lags and email can resolve customer", () => {
     assert.equal(
       isLeadEligibleForOpportunityCreation({
         isQualified: false,
         customerId: null,
         lifecycleStatus: "qualified",
+        hasEmail: true,
       }),
       true,
+    );
+    assert.equal(
+      isLeadEligibleForOpportunityCreation({
+        isQualified: false,
+        customerId: null,
+        lifecycleStatus: "qualified",
+        hasEmail: false,
+      }),
+      false,
     );
   });
 });
@@ -209,7 +189,7 @@ describe("resolveLeadTableActions conversion rules", () => {
     });
     const ids = actions.map((a) => a.id);
     assert.ok(!ids.includes("convert"));
-    assert.ok(ids.includes("createOpportunity"));
+    assert.ok(!ids.includes("createOpportunity"));
   });
 
   it("keeps convert for unconverted qualified leads (customerId null)", () => {
@@ -230,8 +210,8 @@ describe("resolveLeadTableActions conversion rules", () => {
       }),
     });
     const ids = actions.map((a) => a.id);
-    assert.ok(ids.includes("convert"));
-    assert.ok(ids.includes("createOpportunity"));
+    assert.ok(!ids.includes("convert"));
+    assert.ok(!ids.includes("createOpportunity"));
   });
 
   it("keeps convert for customer-linked leads that are not yet finalized as converted", () => {
@@ -250,8 +230,8 @@ describe("resolveLeadTableActions conversion rules", () => {
       isConverted,
     });
     const ids = actions.map((a) => a.id);
-    assert.ok(ids.includes("convert"));
-    assert.ok(ids.includes("createOpportunity"));
+    assert.ok(!ids.includes("convert"));
+    assert.ok(!ids.includes("createOpportunity"));
   });
 
   it("Kanban Convert visibility uses the same isLeadAlreadyConverted rule", () => {
@@ -285,7 +265,57 @@ describe("resolveLeadTableActions conversion rules", () => {
       hasEmail: false,
       isQualified: true,
     });
-    assert.ok(actions.some((a) => a.id === "createOpportunity"));
+    assert.ok(!actions.some((a) => a.id === "createOpportunity"));
+    assert.ok(!actions.some((a) => a.id === "convert"));
+  });
+
+  it("shows Complete Demo only for demo_scheduled leads with leads.edit", () => {
+    const withDemo = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      lifecycleStatus: "demo_scheduled",
+    });
+    assert.ok(withDemo.some((a) => a.id === "completeDemo"));
+
+    const without = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      lifecycleStatus: "demo_completed",
+    });
+    assert.ok(!without.some((a) => a.id === "completeDemo"));
+  });
+
+  it("blocks Create Opportunity while demo is still scheduled", () => {
+    assert.equal(
+      isLeadEligibleForOpportunityCreation({
+        isQualified: true,
+        hasEmail: true,
+        lifecycleStatus: "demo_scheduled",
+      }),
+      false,
+    );
+    assert.equal(
+      isLeadEligibleForOpportunityCreation({
+        isQualified: true,
+        hasEmail: true,
+        lifecycleStatus: "demo_completed",
+      }),
+      true,
+    );
+
+    const actions = resolveLeadTableActions({
+      permissions: { ...fullPerms, canConvertWithOpportunity: true },
+      hasPhone: false,
+      hasEmail: false,
+      isQualified: true,
+      lifecycleStatus: "demo_scheduled",
+    });
+    assert.ok(!actions.some((action) => action.id === "createOpportunity"));
+    assert.ok(!actions.some((action) => action.id === "convertWithOpportunity"));
+    const quote = actions.find((action) => action.id === "createQuote");
+    assert.equal(quote?.disabled, true);
   });
 });
 
@@ -345,6 +375,7 @@ describe("routeLeadTableAction", () => {
     ["edit", { kind: "openDialog", dialog: "edit" }],
     ["createActivity", { kind: "openDialog", dialog: "activity" }],
     ["createOpportunity", { kind: "openDialog", dialog: "createOpportunity" }],
+    ["createQuote", { kind: "command", command: "createQuote" }],
     ["call", { kind: "external", channel: "call" }],
     ["whatsapp", { kind: "whatsapp", channel: "platform-or-external" }],
     ["email", { kind: "external", channel: "email" }],

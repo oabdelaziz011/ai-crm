@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import type { TFunction } from "i18next";
 import {
   translateLeadLifecycleStatusSafe,
@@ -9,6 +11,8 @@ import { translateLeadPipelineLabel } from "./lead-pipeline-label.ts";
 import {
   formatLeadMoney,
   leadMatchesSearch,
+  leadWorkspaceTitle,
+  mapLeadToKanbanCard,
   resolveLeadScoreTone,
 } from "./lead-kanban-mappers.ts";
 import type { LeadWorkspaceRow } from "@workspace/universal-operations-engine";
@@ -63,6 +67,8 @@ describe("lead stage localization", () => {
       "leads.lifecycle.contacted": "تم التواصل",
       "leads.stages.proposal_sent": "تم إرسال عرض السعر",
       "leads.stages.demo_scheduled": "عرض توضيحي",
+      "leads.stages.demo_completed": "فرصة",
+      "leads.lifecycle.demo_completed": "فرصة",
     });
 
     assert.equal(translateLeadStageLabel(t, { name: "New", slug: "new", lifecycleStatus: "new" }), "جديد");
@@ -86,6 +92,36 @@ describe("lead stage localization", () => {
       translateLeadLifecycleStatusSafe(t, "demo_scheduled"),
       "عرض توضيحي",
     );
+  });
+
+  it("maps demo_completed Kanban column to فرصة / Opportunity without renaming the persisted key", () => {
+    const ar = makeT({
+      "leads.stages.demo_completed": "فرصة",
+      "leads.lifecycle.demo_completed": "فرصة",
+    });
+    const en = makeT({
+      "leads.stages.demo_completed": "Opportunity",
+      "leads.lifecycle.demo_completed": "Opportunity",
+    });
+
+    assert.equal(
+      translateLeadStageLabel(ar, {
+        name: "Demo Completed",
+        slug: "demo_completed",
+        lifecycleStatus: "demo_completed",
+      }),
+      "فرصة",
+    );
+    assert.equal(translateLeadLifecycleStatusSafe(ar, "demo_completed"), "فرصة");
+    assert.equal(
+      translateLeadStageLabel(en, {
+        name: "Opportunity",
+        slug: "demo_completed",
+        lifecycleStatus: "demo_completed",
+      }),
+      "Opportunity",
+    );
+    assert.equal(translateLeadLifecycleStatusSafe(en, "demo_completed"), "Opportunity");
   });
 });
 
@@ -175,5 +211,37 @@ describe("lead kanban mappers", () => {
     assert.equal(count("s2"), 2);
     assert.equal(value("s1"), 50);
     assert.equal(value("s2"), 300);
+  });
+});
+
+describe("kanban card and Lead360 title sync", () => {
+  it("keeps the card and the open dialog on the lead title when the contact stays", () => {
+    setCompanyLocaleRuntime({ currency: "EGP", intlLocale: "en-US" });
+    const t = makeT({
+      "leads.scoreBand.warm": "warm",
+      "leads.kanban.card.ownerUnassigned": "unassigned",
+      "leads.kanban.card.lastActivityNone": "none",
+      "leads.kanban.counters.notes": "notes",
+      "leads.kanban.counters.tags": "tags",
+      "leads.kanban.counters.tasks": "tasks",
+    });
+    const before = lead({ name: "Title A", contactPerson: "Same Contact" });
+    const after = lead({ name: "Title B", contactPerson: "Same Contact" });
+
+    assert.equal(leadWorkspaceTitle(before), "Title A");
+    assert.equal(leadWorkspaceTitle(after), "Title B");
+    assert.equal(mapLeadToKanbanCard(t, before).title, "Title A");
+    assert.equal(mapLeadToKanbanCard(t, after).title, "Title B");
+    assert.notEqual(mapLeadToKanbanCard(t, after).title, after.contactPerson);
+
+    const header = readFileSync(fileURLToPath(new URL("../lead360/lead360-header.tsx", import.meta.url)), "utf8");
+    const overview = readFileSync(
+      fileURLToPath(new URL("../lead360/lead360-workspace.tsx", import.meta.url)),
+      "utf8",
+    );
+    assert.match(header, /leadWorkspaceTitle\(lead\)/);
+    assert.match(overview, /leadWorkspaceTitle\(lead\)/);
+    assert.doesNotMatch(header, /contactPerson \|\| lead\.name/);
+    assert.doesNotMatch(overview, /contactPerson \|\| lead\.name/);
   });
 });

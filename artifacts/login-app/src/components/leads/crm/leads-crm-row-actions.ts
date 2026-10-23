@@ -7,7 +7,9 @@ export type LeadTableActionId =
   | "openLead360"
   | "edit"
   | "createActivity"
+  | "completeDemo"
   | "createOpportunity"
+  | "createQuote"
   | "call"
   | "whatsapp"
   | "email"
@@ -30,6 +32,7 @@ export type LeadTableActionPermissions = {
   canEdit: boolean;
   canAssign: boolean;
   canCreateOpportunity: boolean;
+  canCreateQuote?: boolean;
   canConvert: boolean;
   /** leads.convert AND opportunities.convert — Lead → Customer + Opportunity. */
   canConvertWithOpportunity?: boolean;
@@ -82,17 +85,42 @@ export function isLeadAlreadyConverted(input: {
   return status === "converted" || status === "won";
 }
 
-/** Matches backend createFromLead eligibility — qualified leads or converted accounts. */
+/**
+ * Matches backend createFromLead eligibility.
+ * Qualified/converted alone is not enough — customer_id or an email (for unambiguous
+ * tenant match) must be available so createFromLead can resolve identity.
+ */
 export function isLeadEligibleForOpportunityCreation(input: {
   isQualified?: boolean;
   customerId?: string | null;
   lifecycleStatus?: string | null;
+  /** When true, backend may resolve customer via unambiguous email match. */
+  hasEmail?: boolean;
 }): boolean {
-  if (input.customerId?.trim()) return true;
+  const status = (input.lifecycleStatus ?? "").trim().toLowerCase();
+  // Demo-led journeys require Complete Demo before Convert to Opportunity.
+  if (status === "demo_scheduled") return false;
+  const hasCustomer = Boolean(input.customerId?.trim());
+  const canResolveCustomer = hasCustomer || Boolean(input.hasEmail);
+  if (!canResolveCustomer) return false;
+  if (hasCustomer) return true;
   if (input.isQualified) return true;
   // Stage lifecycle can be qualified while the denormalized flag lags behind.
-  const status = (input.lifecycleStatus ?? "").trim().toLowerCase();
-  return status === "qualified";
+  return status === "qualified" || status === "demo_completed";
+}
+
+const QUOTE_READY_LIFECYCLES = new Set([
+  "demo_completed",
+  "proposal_sent",
+  "negotiation",
+  "won",
+  "lost",
+  "converted",
+  "closed",
+]);
+
+export function isLeadReadyForQuote(lifecycleStatus: string | null | undefined): boolean {
+  return QUOTE_READY_LIFECYCLES.has((lifecycleStatus ?? "").trim().toLowerCase());
 }
 
 export function resolveLeadTableActions(input: {
@@ -104,15 +132,7 @@ export function resolveLeadTableActions(input: {
   customerId?: string | null;
   lifecycleStatus?: string | null;
 }): LeadTableActionDef[] {
-  const {
-    permissions: p,
-    hasPhone,
-    hasEmail,
-    isConverted = false,
-    isQualified = false,
-    customerId = null,
-    lifecycleStatus = null,
-  } = input;
+  const { permissions: p, hasPhone, hasEmail, lifecycleStatus = null } = input;
   const actions: LeadTableActionDef[] = [];
 
   if (p.canView) {
@@ -129,6 +149,14 @@ export function resolveLeadTableActions(input: {
       labelKey: "leads.table.rowActions.createActivity",
       group: "editing",
     });
+    const status = (lifecycleStatus ?? "").trim().toLowerCase();
+    if (status === "demo_scheduled") {
+      actions.push({
+        id: "completeDemo",
+        labelKey: "leads.table.rowActions.completeDemo",
+        group: "editing",
+      });
+    }
   }
   if (p.canView) {
     if (hasPhone) {
@@ -154,30 +182,12 @@ export function resolveLeadTableActions(input: {
       group: "assignment",
     });
   }
-  if (p.canCreateOpportunity) {
+  if (p.canCreateQuote) {
     actions.push({
-      id: "createOpportunity",
-      labelKey: "leads.table.rowActions.createOpportunity",
+      id: "createQuote",
+      labelKey: "leads.table.rowActions.createQuote",
       group: "conversion",
-      disabled: !isLeadEligibleForOpportunityCreation({
-        isQualified,
-        customerId,
-        lifecycleStatus,
-      }),
-    });
-  }
-  if (p.canConvert && p.canConvertWithOpportunity && !isConverted) {
-    actions.push({
-      id: "convertWithOpportunity",
-      labelKey: "leads.table.rowActions.convertWithOpportunity",
-      group: "conversion",
-    });
-  }
-  if (p.canConvert && !isConverted) {
-    actions.push({
-      id: "convert",
-      labelKey: "leads.table.rowActions.convert",
-      group: "conversion",
+      disabled: !isLeadReadyForQuote(lifecycleStatus),
     });
   }
   if (p.canArchive) {

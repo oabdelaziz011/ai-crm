@@ -3,7 +3,18 @@ import type { TFunction } from "i18next";
 import { cn } from "@/lib/utils";
 import { translateLeadLifecycleStatus } from "@/lib/i18n/workspace-mock-labels";
 
-export type LeadsCrmMetricId = "all" | "new" | "qualified" | "proposal" | "won" | "lost";
+export type LeadsCrmMetricId =
+  | "all"
+  | "new"
+  | "qualified"
+  | "contacted"
+  | "demo"
+  | "opportunity"
+  | "proposal"
+  | "negotiation"
+  | "won"
+  | "lost"
+  | "converted";
 
 export type LeadsCrmMetric = {
   id: LeadsCrmMetricId;
@@ -11,15 +22,32 @@ export type LeadsCrmMetric = {
   lifecycleStatus: string | null;
 };
 
-const METRIC_ORDER: LeadsCrmMetricId[] = ["all", "new", "qualified", "proposal", "won", "lost"];
+const METRIC_ORDER: LeadsCrmMetricId[] = [
+  "all",
+  "new",
+  "qualified",
+  "contacted",
+  "demo",
+  "proposal",
+  "opportunity",
+  "negotiation",
+  "won",
+  "lost",
+  "converted",
+];
 
 export const LEADS_CRM_METRIC_LIFECYCLE: Record<LeadsCrmMetricId, string | null> = {
   all: null,
   new: "new",
   qualified: "qualified",
+  contacted: "contacted",
+  demo: "demo_scheduled",
+  opportunity: "demo_completed",
   proposal: "proposal_sent",
-  won: "converted",
+  negotiation: "negotiation",
+  won: "won",
   lost: "lost",
+  converted: "converted",
 };
 
 export function buildLeadsCrmMetrics(
@@ -32,23 +60,6 @@ export function buildLeadsCrmMetrics(
     if (id === "all") {
       return { id, count: totalLeads, lifecycleStatus: null };
     }
-    if (id === "won") {
-      return {
-        id,
-        count: (Number(counts.converted ?? 0) || 0) + (Number(counts.won ?? 0) || 0),
-        lifecycleStatus: "converted",
-      };
-    }
-    if (id === "proposal") {
-      return {
-        id,
-        count:
-          (Number(counts.proposal_sent ?? 0) || 0) +
-          (Number(counts.proposal ?? 0) || 0) +
-          (Number(counts.negotiation ?? 0) || 0),
-        lifecycleStatus: "proposal_sent",
-      };
-    }
     return {
       id,
       count: Number(counts[lifecycleStatus!] ?? 0) || 0,
@@ -59,12 +70,10 @@ export function buildLeadsCrmMetrics(
 
 function metricLabel(t: TFunction<"common">, id: LeadsCrmMetricId): string {
   if (id === "all") return t("leads.workspace.filterAll");
-  if (id === "won") return t("leads.lifecycle.won");
-  if (id === "proposal") return t("leads.lifecycle.proposal");
   return translateLeadLifecycleStatus(t, LEADS_CRM_METRIC_LIFECYCLE[id] ?? id);
 }
 
-/** Six equal-width metric cards — full-width CRM filter strip. */
+/** Equal-width metric cards — full-width CRM filter strip. */
 export function LeadsCrmMetricsRow({
   metrics,
   activeId,
@@ -79,7 +88,7 @@ export function LeadsCrmMetricsRow({
   return (
     <div
       role="tablist"
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 lg:gap-2.5"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 lg:gap-2.5"
     >
       {metrics.map((metric) => {
         const active = metric.id === activeId;

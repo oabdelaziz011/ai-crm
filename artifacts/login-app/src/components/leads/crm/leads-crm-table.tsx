@@ -4,6 +4,8 @@ import {
   ArrowUp,
   ArrowUpDown,
   BriefcaseBusiness,
+  CheckCircle2,
+  FileText,
   Mail,
   MessageCircle,
   MoreHorizontal,
@@ -19,6 +21,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { LeadWorkspaceRow } from "@workspace/universal-operations-engine";
+import { isContactStatusSlogan, isPlaceholderContactName } from "@workspace/lead-platform";
 import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
 import { EmployeeIdentityCard } from "@/components/employee-identity/employee-identity-card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +33,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { LeadsAvatar } from "@/components/leads/workspace/leads-avatar";
 import { LeadsStageBadge } from "@/components/leads/workspace/leads-stage-badge";
 import { formatBillingCurrency } from "@/lib/billing/format";
@@ -62,7 +64,9 @@ const ACTION_ICONS: Record<LeadTableActionId, LucideIcon> = {
   openLead360: UserRound,
   edit: Pencil,
   createActivity: StickyNote,
+  completeDemo: CheckCircle2,
   createOpportunity: BriefcaseBusiness,
+  createQuote: FileText,
   call: Phone,
   whatsapp: MessageCircle,
   email: Mail,
@@ -82,8 +86,22 @@ function formatDate(value: string | null | undefined, locale: string): string {
   );
 }
 
+function formatLeadValue(amount: number | null | undefined, currency: string | null | undefined): string {
+  if (amount == null || Number.isNaN(Number(amount))) return "—";
+  return formatBillingCurrency(amount, currency || undefined);
+}
+
 function priorityLabel(t: (key: string) => string, priority: LeadWorkspaceRow["priority"]): string {
   return t(`leads.workspace.priority.${priority}`);
+}
+
+function secondaryContactLine(row: LeadWorkspaceRow): string | null {
+  const person = row.contactPerson?.trim();
+  if (!person) return null;
+  // Hide WhatsApp "About" slogans (e.g. هنا للمساعدة) and channel placeholders.
+  if (isPlaceholderContactName(person) || isContactStatusSlogan(person)) return null;
+  if (person.toLowerCase() === row.name.trim().toLowerCase()) return null;
+  return person;
 }
 
 function TableEmptyBody({
@@ -137,17 +155,11 @@ function SortableContactHeader({
   column,
   sort,
   onSortChange,
-  filter,
-  onFilterChange,
-  filterPlaceholder,
 }: {
   label: string;
   column: LeadContactSortColumn;
   sort: LeadContactSortState;
   onSortChange: (next: LeadContactSortState) => void;
-  filter: string;
-  onFilterChange: (value: string) => void;
-  filterPlaceholder: string;
 }) {
   const active = sort?.column === column;
   const Icon = !active ? ArrowUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown;
@@ -172,13 +184,6 @@ function SortableContactHeader({
         {label}
         <Icon className="size-3 opacity-70" aria-hidden />
       </button>
-      <Input
-        value={filter}
-        onChange={(event) => onFilterChange(event.target.value)}
-        placeholder={filterPlaceholder}
-        className="mt-1.5 h-7 rounded-md border-border/60 bg-background px-2 text-[11px] shadow-none"
-        onClick={(event) => event.stopPropagation()}
-      />
     </th>
   );
 }
@@ -275,8 +280,6 @@ export function LeadsCrmTable({
   permissions,
   contactSort,
   onContactSortChange,
-  contactFilters,
-  onContactFiltersChange,
   onSelect,
   onCreate,
   canCreate,
@@ -290,8 +293,6 @@ export function LeadsCrmTable({
   permissions: LeadTableActionPermissions;
   contactSort: LeadContactSortState;
   onContactSortChange: (next: LeadContactSortState) => void;
-  contactFilters: LeadContactColumnFilters;
-  onContactFiltersChange: (next: LeadContactColumnFilters) => void;
   onSelect: (row: LeadWorkspaceRow) => void;
   onCreate: () => void;
   canCreate: boolean;
@@ -326,33 +327,18 @@ export function LeadsCrmTable({
                 column="customerName"
                 sort={contactSort}
                 onSortChange={onContactSortChange}
-                filter={contactFilters.customerName}
-                onFilterChange={(value) =>
-                  onContactFiltersChange({ ...contactFilters, customerName: value })
-                }
-                filterPlaceholder={t("leads.table.columnSearch.customerName")}
               />
               <SortableContactHeader
                 label={t("leads.columns.email")}
                 column="email"
                 sort={contactSort}
                 onSortChange={onContactSortChange}
-                filter={contactFilters.email}
-                onFilterChange={(value) =>
-                  onContactFiltersChange({ ...contactFilters, email: value })
-                }
-                filterPlaceholder={t("leads.table.columnSearch.email")}
               />
               <SortableContactHeader
                 label={t("leads.columns.mobile")}
                 column="mobile"
                 sort={contactSort}
                 onSortChange={onContactSortChange}
-                filter={contactFilters.mobile}
-                onFilterChange={(value) =>
-                  onContactFiltersChange({ ...contactFilters, mobile: value })
-                }
-                filterPlaceholder={t("leads.table.columnSearch.mobile")}
               />
               {trailingColumns.map((label, index) => (
                 <th
@@ -374,6 +360,7 @@ export function LeadsCrmTable({
               rows.map((row) => {
                 const active = row.id === selectedLeadId;
                 const ownerIdentity = row.ownerId ? ownersByUserId.get(row.ownerId) : undefined;
+                const contactSubtitle = secondaryContactLine(row);
                 const stageLabel = translateLeadStageLabel(t, {
                   name: row.stage,
                   lifecycleStatus: row.lifecycleStatus,
@@ -402,6 +389,11 @@ export function LeadsCrmTable({
                           <div className="truncate text-[13px] font-medium text-foreground underline-offset-2 hover:underline">
                             {row.name}
                           </div>
+                          {contactSubtitle ? (
+                            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                              {contactSubtitle}
+                            </div>
+                          ) : null}
                           {row.tags.length > 0 ? (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {row.tags.slice(0, 3).map((tag) => (
@@ -419,12 +411,21 @@ export function LeadsCrmTable({
                     </td>
 
                     <td className="border-b border-border/40 px-3.5 py-3 text-muted-foreground">
-                      <span className="block min-w-[140px] truncate">{row.email || "—"}</span>
+                      <span
+                        className="block min-w-[140px] truncate"
+                        title={row.email?.trim() || undefined}
+                      >
+                        {row.email?.trim() || "—"}
+                      </span>
                     </td>
 
                     <td className="border-b border-border/40 px-3.5 py-3 text-muted-foreground">
-                      <span className="block min-w-[120px] truncate tabular-nums">
-                        {row.phone || "—"}
+                      <span
+                        className="block min-w-[120px] truncate text-start tabular-nums"
+                        dir="ltr"
+                        title={row.phone?.trim() || undefined}
+                      >
+                        {row.phone?.trim() || "—"}
                       </span>
                     </td>
 
@@ -453,14 +454,14 @@ export function LeadsCrmTable({
                         <EmployeeIdentityCard
                           userId={row.ownerId}
                           identity={ownerIdentity ?? null}
-                          fallbackName={row.owner}
+                          fallbackName={row.owner || t("leads.table.ownerUnknownLabel")}
                           showEmail={false}
                           showJobTitle
                           size="sm"
                           className="min-w-[160px] items-center"
                           onNameClick={() => onOwnerOpen(row.ownerId!)}
                           nameAriaLabel={t("leads.table.openOwnerWorkspace", {
-                            name: row.owner || ownerIdentity?.fullName || "",
+                            name: row.owner || ownerIdentity?.fullName || row.ownerId,
                           })}
                         />
                       ) : (
@@ -478,13 +479,19 @@ export function LeadsCrmTable({
                       {priorityLabel(t, row.priority)}
                     </td>
                     <td className="border-b border-border/40 px-3.5 py-3 text-muted-foreground capitalize">
-                      {row.temperature ? t(`leads.scoreBand.${row.temperature}`) : "—"}
+                      {t(`leads.scoreBand.${row.temperature ?? row.scoreBand}`)}
                     </td>
                     <td className="border-b border-border/40 px-3.5 py-3 font-medium tabular-nums text-foreground">
-                      {formatBillingCurrency(row.expectedValue)}
+                      {formatLeadValue(row.expectedValue, row.currency)}
                     </td>
                     <td className="border-b border-border/40 px-3.5 py-3 text-muted-foreground">
-                      {row.source || "—"}
+                      <span
+                        className="block max-w-[140px] truncate"
+                        title={row.source?.trim() || undefined}
+                      >
+                        {row.source?.trim() ||
+                          (row.sourceId ? t("leads.table.unknownSource") : "—")}
+                      </span>
                     </td>
                     <td className="border-b border-border/40 px-3.5 py-3 text-muted-foreground">
                       {formatDate(row.expectedCloseDate, i18n.language)}

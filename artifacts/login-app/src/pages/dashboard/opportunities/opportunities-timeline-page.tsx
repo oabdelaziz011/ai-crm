@@ -14,8 +14,9 @@ import {
   useActiveOpportunityPipelineId,
   useOpportunityPipelineContext,
 } from "@/hooks/opportunities/use-opportunity-pipeline";
+import { translateLeadLifecycleStatusSafe } from "@/components/leads/kanban/lead-stage-label";
+import { LeadsStageBadge } from "@/components/leads/workspace/leads-stage-badge";
 import { localizeOpportunityStageName } from "@/lib/sales/sales-localize";
-import { useAuthUser } from "@/hooks/use-rbac";
 import { cn } from "@/lib/utils";
 
 function flattenBoardOpportunities(
@@ -35,9 +36,7 @@ function flattenBoardOpportunities(
 
 export function OpportunitiesTimelinePage() {
   const { t, i18n } = useTranslation("common");
-  const { setSelectedId, setCreateOpen } = useOpportunitiesWorkspace();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
-  const canCreate = isSuperAdmin || hasPermission("opportunities.create");
+  const { setSelectedId } = useOpportunitiesWorkspace();
   const { pipelineId, isLoading: pipelinesLoading } = useActiveOpportunityPipelineId();
   const pipelineContext = useOpportunityPipelineContext(pipelineId);
   const rows = useMemo(
@@ -65,14 +64,6 @@ export function OpportunitiesTimelinePage() {
           icon={<History className="size-6" aria-hidden />}
           title={t("opportunities.timeline.emptyTitle")}
           description={t("opportunities.timeline.emptyBody")}
-          primaryAction={
-            canCreate
-              ? {
-                  label: t("opportunities.create"),
-                  onClick: () => setCreateOpen(true),
-                }
-              : undefined
-          }
         />
       ) : (
         <ol className="relative space-y-0">
@@ -109,16 +100,21 @@ export function OpportunitiesTimelinePage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-muted/70 px-2 py-0.5 text-[11px] font-medium">
-                      {localizeOpportunityStageName(
-                        t,
-                        resolveOpportunityStageLabel(
-                          pipelineContext.stageById,
-                          opp.stageId,
-                          opp.stage,
-                        ),
-                      )}
-                    </span>
+                    <LeadsStageBadge
+                      label={
+                        opp.leadId && opp.leadLifecycleStatus
+                          ? translateLeadLifecycleStatusSafe(t, opp.leadLifecycleStatus)
+                          : localizeOpportunityStageName(
+                              t,
+                              resolveOpportunityStageLabel(
+                                pipelineContext.stageById,
+                                opp.stageId,
+                                opp.stage,
+                              ),
+                            )
+                      }
+                      lifecycleStatus={opp.leadLifecycleStatus}
+                    />
                     <span className="text-[12px] tabular-nums text-muted-foreground">
                       {formatOpportunityMoney(opp.expectedRevenue, opp.currency)}
                     </span>

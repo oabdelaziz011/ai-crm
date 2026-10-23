@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { LeadWorkspaceRow } from "@workspace/universal-operations-engine";
 import {
@@ -12,11 +12,25 @@ import {
 } from "@/hooks/leads/use-leads-workspace";
 import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
 import { useLeadConversionFeedback } from "@/hooks/leads/use-lead-conversion-feedback";
-import { useOpportunityCommands } from "@/hooks/opportunities/use-opportunity-commands";
+import { useOpportunityCommands, useOpportunityServices } from "@/hooks/opportunities/use-opportunity-commands";
+import { useQuoteCommands } from "@/hooks/quotes/use-quote-commands";
+import { unwrapQueryResult } from "@/lib/application-layer/application-layer-result";
 import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-admin";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useToast } from "@/hooks/use-toast";
+import { completeSalesDemoRequest } from "@/lib/leads/complete-demo-api";
+import { compareLeadKanbanStages } from "@/components/leads/kanban/lead-kanban-stage-order";
+import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { Lead360Workspace } from "@/components/leads/lead360/lead360-workspace";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   LeadsCreateDialog,
   type LeadsCreateOption,
@@ -65,6 +79,8 @@ import type { EmployeeIdentity } from "@/lib/employee-identity/types";
 import { formatAssignableEmployeeLabel } from "@/lib/assignment-governance/assignable-employees";
 import { isWhatsAppCompanyChannel } from "@/lib/omnichannel/tenant/diagnose-inbox-empty-state";
 import { supabase } from "@/lib/supabase";
+
+const LEADS_PAGE_SIZE = 25;
 
 function exportLeadsCsv(rows: LeadWorkspaceRow[], filename: string) {
   const headers = [
@@ -128,9 +144,26 @@ export function LeadsTablePage() {
   const { user, company } = useAuth();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const canCreate = isSuperAdmin || hasPermission("leads.create");
   const commands = useLeadCommands();
+  const quoteCommands = useQuoteCommands();
+  const { servicesFactory, contextFactory } = useOpportunityServices();
   const opportunityCommands = useOpportunityCommands();
+
+  const completeDemoMutation = useMutation({
+    mutationFn: async ({ leadId }: { leadId: string }) => completeSalesDemoRequest(leadId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["leads"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead"] }),
+        queryClient.invalidateQueries({ queryKey: ["leadMetrics"] }),
+        queryClient.invalidateQueries({ queryKey: ["kanban"] }),
+        queryClient.invalidateQueries({ queryKey: ["leads-workspace"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead360-workspace"] }),
+      ]);
+    },
+  });
 
   const tablePermissions = useMemo(
     () => ({
@@ -138,6 +171,7 @@ export function LeadsTablePage() {
       canEdit: isSuperAdmin || hasPermission("leads.edit"),
       canAssign: isSuperAdmin || hasPermission("leads.assign"),
       canCreateOpportunity: isSuperAdmin || hasPermission("opportunities.convert"),
+      canCreateQuote: isSuperAdmin || hasPermission("quotes.create"),
       canConvert: isSuperAdmin || hasPermission("leads.convert"),
       canConvertWithOpportunity:
         isSuperAdmin || (hasPermission("leads.convert") && hasPermission("opportunities.convert")),
@@ -169,6 +203,7 @@ export function LeadsTablePage() {
     email: "",
     mobile: "",
   });
+  const [page, setPage] = useState(1);
   const { data: companyChannels = [] } = useCompanyChannelsAdmin();
   const { services: conversationServices, context: conversationContext } = useConversationServices();
   const hasWhatsAppIntegration = useMemo(
@@ -216,11 +251,15 @@ export function LeadsTablePage() {
     }
   }, [pipelineId, pipelines]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, lifecycleStatus, pipelineId, contactFilters.customerName, contactFilters.email, contactFilters.mobile]);
+
   const { data, isLoading } = useLeadsQueue({
     search: search || undefined,
     lifecycleStatus,
     pipelineId: pipelineId ?? undefined,
-    limit: 100,
+    limit: 500,
   });
 
   const rows = useMemo(() => {
@@ -249,6 +288,12 @@ export function LeadsTablePage() {
     });
   }, [contactFilters, contactSort, data]);
 
+  const totalPages = Math.max(1, Math.ceil(rows.length / LEADS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = rows.slice((currentPage - 1) * LEADS_PAGE_SIZE, currentPage * LEADS_PAGE_SIZE);
+  const rangeStart = rows.length === 0 ? 0 : (currentPage - 1) * LEADS_PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * LEADS_PAGE_SIZE, rows.length);
+
   const crmMetrics = useMemo(
     () =>
       buildLeadsCrmMetrics(
@@ -258,12 +303,17 @@ export function LeadsTablePage() {
     [metrics, data?.total, rows.length],
   );
 
+  const orderedStages = useMemo(
+    () => [...(stages ?? [])].sort(compareLeadKanbanStages),
+    [stages],
+  );
+
   const stageOptions = useMemo((): LeadsCreateOption[] => {
-    if (stages?.length) {
-      return stages.map((stage) => ({ id: stage.id, label: stage.name }));
+    if (orderedStages.length) {
+      return orderedStages.map((stage) => ({ id: stage.id, label: stage.name }));
     }
     return [];
-  }, [stages]);
+  }, [orderedStages]);
 
   const ownerOptions = useMemo((): LeadsCreateOption[] => {
     return (assignableOwnersQuery.data ?? []).map((owner) => ({
@@ -282,6 +332,8 @@ export function LeadsTablePage() {
   const ownersByUserId = useMemo(() => {
     const map = new Map<string, EmployeeIdentity>();
     for (const owner of companyOwners ?? []) {
+      // assigned_user_id may be profile id or auth userId — index both.
+      map.set(owner.id, owner);
       if (owner.userId) map.set(owner.userId, owner);
     }
     return map;
@@ -293,7 +345,11 @@ export function LeadsTablePage() {
       t,
       toast,
       failToast,
-      commands,
+      commands: {
+        convert: commands.convert,
+        archive: commands.archive,
+        completeDemo: completeDemoMutation,
+      },
       onConverted: onLeadConverted,
       openLead360,
       setOpportunityId,
@@ -308,6 +364,25 @@ export function LeadsTablePage() {
       setActivityOpen,
       setDeleteOpen,
       setSelectedLead,
+      createQuote: async (leadRow) => {
+        const listed = unwrapQueryResult(
+          await servicesFactory().opportunity.listOpportunities(
+            { leadId: leadRow.id, limit: 5, offset: 0 },
+            contextFactory(),
+          ),
+        );
+        const opportunity = listed.items[0];
+        if (!opportunity) {
+          toast({
+            title: t("leads.table.rowActions.quoteNeedsOpportunity"),
+            variant: "destructive",
+          });
+          return;
+        }
+        await quoteCommands.createFromOpportunity.mutateAsync({ opportunityId: opportunity.id });
+        toast({ title: t("quotes.createSuccess") });
+        setOpportunityId(opportunity.id);
+      },
       whatsApp: {
         hasIntegration: hasWhatsAppIntegration,
         channelId: whatsAppChannelId,
@@ -397,15 +472,86 @@ export function LeadsTablePage() {
         }}
       />
 
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-[180px] flex-1 space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground" htmlFor="leads-filter-name">
+            {t("leads.columns.customerName")}
+          </label>
+          <Input
+            id="leads-filter-name"
+            value={contactFilters.customerName}
+            onChange={(event) =>
+              setContactFilters({ ...contactFilters, customerName: event.target.value })
+            }
+            placeholder={t("leads.table.columnSearch.customerName")}
+            className="h-9"
+          />
+        </div>
+        <div className="min-w-[180px] flex-1 space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground" htmlFor="leads-filter-email">
+            {t("leads.columns.email")}
+          </label>
+          <Input
+            id="leads-filter-email"
+            value={contactFilters.email}
+            onChange={(event) => setContactFilters({ ...contactFilters, email: event.target.value })}
+            placeholder={t("leads.table.columnSearch.email")}
+            className="h-9"
+          />
+        </div>
+        <div className="min-w-[160px] flex-1 space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground" htmlFor="leads-filter-mobile">
+            {t("leads.columns.mobile")}
+          </label>
+          <Input
+            id="leads-filter-mobile"
+            value={contactFilters.mobile}
+            onChange={(event) => setContactFilters({ ...contactFilters, mobile: event.target.value })}
+            placeholder={t("leads.table.columnSearch.mobile")}
+            className="h-9"
+          />
+        </div>
+        <div className="w-[200px] space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground" htmlFor="leads-filter-stage">
+            {t("leads.columns.stage")}
+          </label>
+          <Select
+            value={orderedStages.find((stage) => stage.lifecycleStatus === lifecycleStatus)?.id ?? "__all__"}
+            onValueChange={(value) => {
+              if (value === "__all__") {
+                setLifecycleStatus(undefined);
+                setActiveMetricId("all");
+                return;
+              }
+              const stage = orderedStages.find((item) => item.id === value);
+              const next = stage?.lifecycleStatus || undefined;
+              setLifecycleStatus(next);
+              const match = crmMetrics.find((metric) => metric.lifecycleStatus === (next ?? null));
+              setActiveMetricId(match?.id ?? "all");
+            }}
+          >
+            <SelectTrigger id="leads-filter-stage" className="h-9" aria-label={t("leads.columns.stage")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t("leads.workspace.filterAll")}</SelectItem>
+              {orderedStages.map((stage) => (
+                <SelectItem key={stage.id} value={stage.id}>
+                  {translateLeadStageLabel(t, stage)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <LeadsCrmTable
-        rows={rows}
+        rows={pageRows}
         selectedLeadId={selectedLead?.id ?? null}
         ownersByUserId={ownersByUserId}
         permissions={tablePermissions}
         contactSort={contactSort}
         onContactSortChange={setContactSort}
-        contactFilters={contactFilters}
-        onContactFiltersChange={setContactFilters}
         onSelect={(row) => openLead360(row, "overview")}
         onCreate={() => setCreateOpen(true)}
         canCreate={canCreate}
@@ -416,6 +562,19 @@ export function LeadsTablePage() {
           setLocation(companyWorkspaceHref("employees"));
         }}
         onRowAction={handleRowAction}
+      />
+
+      <ListPagination
+        className="px-1"
+        page={currentPage}
+        totalPages={totalPages}
+        total={rows.length}
+        onPrevious={() => setPage((value) => Math.max(1, value - 1))}
+        onNext={() => setPage((value) => Math.min(totalPages, value + 1))}
+        previousLabel={t("pagination.previous")}
+        nextLabel={t("pagination.next")}
+        pageInfoLabel={t("pagination.pageInfo", { page: currentPage, totalPages })}
+        summaryLabel={t("pagination.range", { start: rangeStart, end: rangeEnd, total: rows.length })}
       />
 
       <Lead360Workspace

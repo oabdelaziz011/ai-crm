@@ -12,11 +12,18 @@ import {
   formatRelativeActivity,
 } from "@/components/leads/kanban/lead-kanban-mappers";
 import { EnterpriseEmptyState } from "@/components/enterprise";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { cn } from "@/lib/utils";
+
+const TIMELINE_PAGE_SIZE = 20;
 
 export function LeadsTimelinePage() {
   const { t, i18n } = useTranslation("common");
-  const { data, isLoading } = useLeadsQueue({ limit: 50 });
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useLeadsQueue({
+    limit: TIMELINE_PAGE_SIZE,
+    offset: (page - 1) * TIMELINE_PAGE_SIZE,
+  });
   const [lead360Id, setLead360Id] = useState<string | null>(null);
 
   const rows = useMemo(
@@ -26,6 +33,10 @@ export function LeadsTimelinePage() {
       ),
     [data?.rows],
   );
+  const total = data?.total ?? rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / TIMELINE_PAGE_SIZE));
+  const rangeStart = total === 0 ? 0 : (page - 1) * TIMELINE_PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * TIMELINE_PAGE_SIZE, total);
 
   if (isLoading) return <DashboardPageFallback />;
 
@@ -127,6 +138,18 @@ export function LeadsTimelinePage() {
           })}
         </ol>
       )}
+
+      <ListPagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPrevious={() => setPage((value) => Math.max(1, value - 1))}
+        onNext={() => setPage((value) => Math.min(totalPages, value + 1))}
+        previousLabel={t("pagination.previous")}
+        nextLabel={t("pagination.next")}
+        pageInfoLabel={t("pagination.pageInfo", { page, totalPages })}
+        summaryLabel={t("pagination.range", { start: rangeStart, end: rangeEnd, total })}
+      />
 
       <Lead360Workspace
         leadId={lead360Id}

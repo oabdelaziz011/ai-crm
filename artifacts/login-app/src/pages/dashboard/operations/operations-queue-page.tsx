@@ -12,14 +12,19 @@ import { OperationsWorkspacePanel } from "@/components/universal-operations/pane
 import { OperationsRowActionsMenu } from "@/components/universal-operations/action-registry/operations-row-actions-menu";
 import { ActionConfirmationDialog } from "@/components/universal-operations/action-registry/action-confirmation-dialog";
 import { CollectPaymentDialog } from "@/components/universal-operations/action-registry/collect-payment-dialog";
+import { ReceiptPreviewDialog } from "@/components/universal-operations/action-registry/receipt-preview-dialog";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import { useCompanyLocaleContext } from "@/context/company-locale-context";
 import { useOperationsActionEngine, useUniversalOperationsQueue } from "@/hooks/universal-operations";
+import { useRecordOneDayNoShows } from "@/lib/scheduling/operations/hooks/use-one-day-no-show";
 import { useCustomer360Role } from "@/hooks/universal-operations/use-customer360-workspace";
 import { useWorkspacePlatformOptional } from "@/context/workspace-platform-context";
 import { useCustomersEnrichment } from "@/hooks/use-customers";
+import { useSchedulingResources } from "@/hooks/scheduling/use-scheduling-resources";
+import { useSchedulingServices } from "@/hooks/scheduling/use-scheduling-services";
+import { useBranches } from "@/lib/company/branches/hooks/use-branches";
 import { translateOperationsQueueColumnHeader } from "@/lib/i18n/operations-queue-labels";
 import { resolveQueueKpis, type ResolvedQueueKpi } from "@/lib/universal-operations/operations-queue-kpis";
 import {
@@ -30,7 +35,6 @@ import { resolveQueueTimezone } from "@/lib/scheduling/operations/utilities/cale
 import { cn } from "@/lib/utils";
 import type { TFunction } from "i18next";
 
-/** Operator-facing column order — Queue 2.1 / 2.2. */
 const OPERATOR_COLUMN_ORDER = [
   "reference",
   "queue_number",
@@ -43,8 +47,18 @@ const OPERATOR_COLUMN_ORDER = [
   "phone",
   "status",
   "payment_status",
-  "waiting_minutes",
+  "people_ahead",
   "actions",
+] as const;
+
+const QUEUE_STATUS_FILTERS = [
+  "pending",
+  "confirmed",
+  "checked_in",
+  "completed",
+  "cancelled",
+  "no_show",
+  "rescheduled",
 ] as const;
 
 const ACTIONS_COLUMN: OperationsColumnDefinition = {
@@ -70,18 +84,45 @@ const ACTIONS_COLUMN: OperationsColumnDefinition = {
   pinned: "right",
 };
 
+const PEOPLE_AHEAD_COLUMN: OperationsColumnDefinition = {
+  id: "col_people_ahead",
+  internalName: "people_ahead",
+  displayName: "Ahead in queue",
+  icon: "Users",
+  type: "number",
+  visible: true,
+  required: false,
+  sortable: false,
+  filterable: false,
+  searchable: false,
+  exportable: true,
+  reportable: false,
+  aiIndexed: false,
+  width: 110,
+  alignment: "center",
+  defaultValue: null,
+  validation: null,
+  permissions: [],
+  position: 998,
+  pinned: null,
+};
+
+function operatorColumnsByName(columns: OperationsColumnDefinition[]) {
+  const byName = new Map<string, OperationsColumnDefinition>();
+  for (const column of CLINIC_COLUMNS) byName.set(column.internalName, column);
+  for (const column of columns) byName.set(column.internalName, column);
+  if (!byName.has("people_ahead")) byName.set("people_ahead", PEOPLE_AHEAD_COLUMN);
+  if (!byName.has("actions")) byName.set("actions", ACTIONS_COLUMN);
+  return byName;
+}
+
 function withOperatorColumns(
   columns: OperationsColumnDefinition[],
   t: TFunction,
   templateKey: string,
   hiddenColumnIds: string[],
 ): OperationsColumnDefinition[] {
-  const byName = new Map<string, OperationsColumnDefinition>();
-  for (const column of CLINIC_COLUMNS) byName.set(column.internalName, column);
-  for (const column of columns) byName.set(column.internalName, column);
-  if (!byName.has("actions")) {
-    byName.set("actions", ACTIONS_COLUMN);
-  }
+  const byName = operatorColumnsByName(columns);
 
   const hidden = new Set(hiddenColumnIds);
   const next: OperationsColumnDefinition[] = [];
@@ -95,7 +136,11 @@ function withOperatorColumns(
       templateKey,
       column.displayName,
     );
-    if (internalName === "queue_number" || internalName === "customer") {
+    if (internalName === "queue_number") {
+      next.push({ ...column, displayName, pinned: "left", visible: true, sortable: true });
+      continue;
+    }
+    if (internalName === "customer") {
       next.push({ ...column, displayName, pinned: "left", visible: true });
       continue;
     }
@@ -125,7 +170,7 @@ function withOperatorColumns(
 
 function QueueKpiStrip({ kpis }: { kpis: ResolvedQueueKpi[] }) {
   return (
-    <div className="grid shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-border/60 bg-background sm:grid-cols-3 lg:grid-cols-9">
+    <div className="grid shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-border/60 bg-background sm:grid-cols-4 lg:grid-cols-8">
       {kpis.map((kpi, index) => (
         <div
           key={kpi.id}
@@ -162,7 +207,12 @@ export function OperationsQueuePage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedRow, setSelectedRow] = useState<OperationsRow | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const companyId = profile?.company_id ?? null;
+  useRecordOneDayNoShows(companyId, Boolean(companyId));
+  const branchQuery = useBranches(companyId, { status: "active" });
   const { data: customers = [] } = useCustomersEnrichment();
+  const { data: systemResources = [] } = useSchedulingResources(companyId);
+  const { data: systemServices = [] } = useSchedulingServices(companyId);
   const { currency: companyCurrency } = useCompanyLocaleContext();
 
   const {
@@ -175,7 +225,11 @@ export function OperationsQueuePage() {
     setQuery,
     updateSearch,
     updateSort,
-    loadMore,
+    setPage,
+    setPageSize,
+    totalPages,
+    showsWholeDay,
+    filteredRows,
     preferences,
     setPreferences,
     refetch,
@@ -218,9 +272,7 @@ export function OperationsQueuePage() {
   );
 
   const chooserColumns = useMemo(() => {
-    const byName = new Map<string, OperationsColumnDefinition>();
-    for (const column of CLINIC_COLUMNS) byName.set(column.internalName, column);
-    for (const column of columns) byName.set(column.internalName, column);
+    const byName = operatorColumnsByName(columns);
     return OPERATOR_COLUMN_ORDER.filter((name) => name !== "actions")
       .map((name) => byName.get(name))
       .filter(Boolean) as OperationsColumnDefinition[];
@@ -240,8 +292,8 @@ export function OperationsQueuePage() {
   }, [rows, selectedRow]);
 
   const kpis = useMemo(
-    () => resolveQueueKpis(config, rows, page?.total ?? rows.length, t, templateKey, companyCurrency),
-    [companyCurrency, config, page?.total, rows, t, templateKey],
+    () => resolveQueueKpis(config, filteredRows, filteredRows.length, t, templateKey, companyCurrency),
+    [companyCurrency, config, filteredRows, t, templateKey],
   );
 
   const datePreset = (String(query.filters?.datePreset ?? "today") as QueueDatePreset) || "today";
@@ -321,30 +373,28 @@ export function OperationsQueuePage() {
   );
 
   const filterOptions = useMemo(() => {
-    const doctors = new Set<string>();
-    const services = new Set<string>();
-    const branches = new Set<string>();
-    for (const row of rows) {
-      const doctor = String(row.values.resource ?? "").trim();
-      const service = String(row.values.service ?? "").trim();
-      const branch = String(row.values.branch ?? "").trim();
-      if (doctor && doctor !== "—") doctors.add(doctor);
-      if (service && service !== "—") services.add(service);
-      if (branch && branch !== "—") branches.add(branch);
-    }
-    for (const resource of config?.resources ?? []) {
-      if (resource.active !== false && resource.name) doctors.add(resource.name);
-    }
-    for (const service of config?.services ?? []) {
-      if (service.active !== false && service.name) services.add(service.name);
-    }
+    const resources = systemResources
+      .filter((resource) => resource.status === "active")
+      .map((resource) => resource.name.trim())
+      .filter(Boolean);
+    const services = systemServices
+      .filter((service) => service.status === "active")
+      .map((service) => service.name.trim())
+      .filter(Boolean);
+    const branches = (branchQuery.data ?? [])
+      .map((branch) => branch.name.trim())
+      .filter(Boolean);
     return {
-      doctors: [...doctors].sort((a, b) => a.localeCompare(b)),
-      services: [...services].sort((a, b) => a.localeCompare(b)),
-      branches: [...branches].sort((a, b) => a.localeCompare(b)),
-      statuses: (config?.statuses ?? []).filter((status) => status.internalName !== "archived"),
+      doctors: [...new Set(resources)].sort((a, b) => a.localeCompare(b)),
+      services: [...new Set(services)].sort((a, b) => a.localeCompare(b)),
+      branches: [...new Set(branches)].sort((a, b) => a.localeCompare(b)),
+      statuses: QUEUE_STATUS_FILTERS.map((status) => ({
+        id: status,
+        displayName: status,
+        internalName: status,
+      })),
     };
-  }, [config?.resources, config?.services, config?.statuses, rows]);
+  }, [branchQuery.data, systemResources, systemServices]);
 
   return (
     <div className="flex h-[calc(100vh-5.5rem)] min-h-[32rem] w-full flex-col gap-4 overflow-hidden">
@@ -379,8 +429,18 @@ export function OperationsQueuePage() {
           activeRowId={activeRow?.id ?? null}
           onRowClick={openAppointmentDrawer}
           onRowDoubleClick={openAppointmentDrawer}
-          onLoadMore={loadMore}
-          hasMore={page?.hasMore}
+          pagination={
+            page
+              ? {
+                  page: page.page,
+                  pageSize: page.pageSize,
+                  total: page.total,
+                  totalPages,
+                  onPageChange: setPage,
+                  onPageSizeChange: showsWholeDay ? undefined : setPageSize,
+                }
+              : undefined
+          }
           density={preferences.density === "spacious" ? "comfortable" : preferences.density}
           onDensityChange={(density) => setPreferences((prev) => ({ ...prev, density }))}
           className="min-h-0 min-w-0 flex-1 border-0 shadow-none"
@@ -472,6 +532,12 @@ export function OperationsQueuePage() {
         busy={actionEngine.executingId === "billing.collect_payment"}
         onConfirm={actionEngine.confirmCollectPayment}
         onCancel={actionEngine.cancelCollectPayment}
+      />
+
+      <ReceiptPreviewDialog
+        open={Boolean(actionEngine.pendingReceiptRow)}
+        row={actionEngine.pendingReceiptRow}
+        onClose={actionEngine.closeReceiptPreview}
       />
 
       <BookingModal

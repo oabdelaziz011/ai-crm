@@ -1080,6 +1080,9 @@ export async function executeCreateBooking(
       notes: input.notes ?? null,
       createdBy: input.userId,
       branchId: input.branchId ?? null,
+      visitType: input.visitType ?? null,
+      // Clinic path must never create sales_demo bookings.
+      expectedServiceKind: "operational",
     });
 
     return {
@@ -1092,6 +1095,7 @@ export async function executeCreateBooking(
       status: result.booking.status,
       startAt: result.booking.start_at,
       endAt: result.booking.end_at,
+      resourceId: result.booking.resource_id ?? input.resourceId,
     };
   } catch (error) {
     if (isBookingDomainError(error)) {
@@ -1106,6 +1110,236 @@ export async function executeCreateBooking(
         customerFacingMessage: codes.includes("booking_conflict") || codes.includes("slot_unavailable")
           ? "الموعد ده محجوز أو غير متاح. اختار معاد تاني."
           : "ما قدرناش نكمّل الحجز. جرّب معاد أو بيانات تانية.",
+      };
+    }
+    throw error;
+  }
+}
+
+async function assertSalesDemoService(
+  client: SupabaseClient,
+  companyId: string,
+  serviceId: string,
+): Promise<{ ok: true; name: string; durationMinutes: number } | { ok: false; message: string }> {
+  const { data, error } = await client
+    .from("scheduling_services")
+    .select("id, name, duration_minutes, status, service_kind")
+    .eq("id", serviceId)
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) {
+    return { ok: false, message: "Demo service not found." };
+  }
+  const kind = String((data as { service_kind?: string }).service_kind ?? "operational");
+  if (kind !== "sales_demo") {
+    return {
+      ok: false,
+      message:
+        "This service is operational/clinic, not a sales demo. Use clinic booking tools instead.",
+    };
+  }
+  if (String(data.status) !== "active") {
+    return { ok: false, message: "Demo service is not active." };
+  }
+  return {
+    ok: true,
+    name: String(data.name ?? ""),
+    durationMinutes: Number(data.duration_minutes) || 30,
+  };
+}
+
+export async function executeListDemoTypes(
+  client: SupabaseClient,
+  input: { companyId: string; userId: string },
+): Promise<{
+  success: boolean;
+  demos: Array<{
+    serviceId: string;
+    name: string;
+    durationMinutes: number;
+    description: string | null;
+  }>;
+  message?: string;
+}> {
+  const { data, error } = await client
+    .from("scheduling_services")
+    .select("id, name, description, duration_minutes, status")
+    .eq("company_id", input.companyId)
+    .eq("service_kind", "sales_demo")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .order("name");
+  if (error) throw new Error(error.message);
+  const demos = (data ?? []).map((row) => ({
+    serviceId: String(row.id),
+    name: String(row.name ?? ""),
+    durationMinutes: Number(row.duration_minutes) || 30,
+    description: row.description == null ? null : String(row.description),
+  }));
+  return {
+    success: true,
+    demos,
+    message: demos.length === 0 ? "No sales demo types are configured for this company." : undefined,
+  };
+}
+
+export async function executeSearchDemoAvailability(
+  client: SupabaseClient,
+  engines: SchedulingEnginePort,
+  input: SearchAvailabilityInput,
+): Promise<SearchAvailabilityResult> {
+  const kind = await assertSalesDemoService(client, input.companyId, input.serviceId);
+  if (!kind.ok) {
+    return {
+      success: false,
+      serviceId: input.serviceId,
+      durationMinutes: 0,
+      availableDates: [],
+      resources: [],
+      message: kind.message,
+    };
+  }
+  return executeSearchAvailability(client, engines, input);
+}
+
+export async function executeFindNextDemo(
+  client: SupabaseClient,
+  engines: SchedulingEnginePort,
+  input: FindNextAvailableInput,
+): Promise<FindNextAvailableResult> {
+  const kind = await assertSalesDemoService(client, input.companyId, input.serviceId);
+  if (!kind.ok) {
+    return {
+      success: false,
+      searchedWindow: input.daysAhead ?? 7,
+      message: kind.message,
+      slot: null,
+    };
+  }
+  return executeFindNextAvailable(client, engines, input);
+}
+
+export async function executeCreateDemoBooking(
+  client: SupabaseClient,
+  engines: SchedulingEnginePort,
+  bookingDomain: BookingDomainServicePort,
+  input: {
+    companyId: string;
+    userId: string;
+    customerId: string;
+    serviceId: string;
+    resourceId?: string;
+    date: string;
+    slotStart: string;
+    branchId?: string;
+    notes?: string;
+    clientRequestId?: string;
+    source?: CreateBookingInput["source"];
+  },
+): Promise<CreateBookingResult> {
+  const kind = await assertSalesDemoService(client, input.companyId, input.serviceId);
+  if (!kind.ok) {
+    return {
+      success: false,
+      errors: ["service_kind_mismatch"],
+      message: kind.message,
+      customerFacingMessage: "الخدمة دي مش عرض منتج. استخدم أدوات حجز العيادات للخدمات العادية.",
+    };
+  }
+
+  let resourceId = typeof input.resourceId === "string" ? input.resourceId.trim() : "";
+  if (!resourceId) {
+    const next = await executeFindNextAvailable(client, engines, {
+      companyId: input.companyId,
+      userId: input.userId,
+      serviceId: input.serviceId,
+      branchId: input.branchId,
+      daysAhead: 14,
+    });
+    // Prefer the requested date/slot when find-next returns a different day —
+    // still need a resource: scan for the specific slot via search when possible.
+    if (next.success && next.slot?.resourceId) {
+      // If caller fixed date+slot, verify that resource can take that slot; else use next.slot.
+      resourceId = next.slot.resourceId;
+      if (next.slot.date === input.date && next.slot.start === input.slotStart) {
+        // exact match
+      } else {
+        const search = await executeSearchAvailability(client, engines, {
+          companyId: input.companyId,
+          userId: input.userId,
+          serviceId: input.serviceId,
+          date: input.date,
+          daysAhead: 1,
+        });
+        const match = search.resources.find((r) =>
+          r.slots.some((s) => s.date === input.date && s.start === input.slotStart),
+        );
+        if (match) {
+          resourceId = match.resourceId;
+        } else {
+          return {
+            success: false,
+            errors: ["slot_unavailable"],
+            message:
+              "No eligible resource is free for that demo slot. Offer another available demo time.",
+            customerFacingMessage: "الموعد ده مش متاح لعرض المنتج. اختار معاد تاني.",
+          };
+        }
+      }
+    } else {
+      return {
+        success: false,
+        errors: ["slot_unavailable"],
+        message: next.message ?? "No demo slot available for auto-assign.",
+        customerFacingMessage: "مفيش مواعيد عرض متاحة دلوقتي.",
+      };
+    }
+  }
+
+  try {
+    const result = await bookingDomain.createBooking({
+      companyId: input.companyId,
+      customerId: input.customerId,
+      resourceId,
+      serviceId: input.serviceId,
+      date: input.date,
+      slotStart: input.slotStart,
+      source: input.source ?? "ai_assistant",
+      notes: input.notes ?? null,
+      createdBy: input.userId,
+      branchId: input.branchId ?? null,
+      clientRequestId: input.clientRequestId ?? null,
+      expectedServiceKind: "sales_demo",
+    });
+
+    return {
+      success: true,
+      bookingId: result.booking.id,
+      confirmationNumber:
+        result.booking.confirmation_number == null
+          ? null
+          : String(result.booking.confirmation_number).trim() || null,
+      status: result.booking.status,
+      startAt: result.booking.start_at,
+      endAt: result.booking.end_at,
+      resourceId: result.booking.resource_id ?? resourceId,
+      serviceName: kind.name,
+    };
+  } catch (error) {
+    if (isBookingDomainError(error)) {
+      const codes = error.codes;
+      return {
+        success: false,
+        errors: codes,
+        message: codes.join(", "),
+        customerFacingMessage:
+          codes.includes("booking_conflict") || codes.includes("slot_unavailable")
+            ? "الموعد ده محجوز أو غير متاح لعرض المنتج. اختار معاد تاني."
+            : codes.includes("service_kind_mismatch")
+              ? "الخدمة دي مش عرض منتج."
+              : "ما قدرناش نحجز عرض المنتج.",
       };
     }
     throw error;
@@ -1295,8 +1529,36 @@ export async function executeSearchBookings(
   const trusted = typeof input.trustedCustomerId === "string" ? input.trustedCustomerId.trim() : "";
 
   let customerIds: string[] = [];
-  // Trusted conversation customer wins over raw WhatsApp phone lookup.
+  // Trusted conversation customer is the ownership boundary. A phone in the tool
+  // args must match that customer — message text is never proof of ownership.
   if (trusted) {
+    if (phone) {
+      const mismatch = await trustedCustomerPhoneConflicts(client, {
+        companyId: input.companyId,
+        trustedCustomerId: trusted,
+        phone,
+      });
+      if (mismatch === "not_found") {
+        return {
+          success: false,
+          bookings: [],
+          total: 0,
+          errors: ["CUSTOMER_CONTEXT_REQUIRED"],
+          message: "We could not verify the customer for this conversation.",
+        };
+      }
+      if (mismatch === "conflict") {
+        // Fail closed without enumerating whether the supplied phone exists elsewhere.
+        return {
+          success: false,
+          bookings: [],
+          total: 0,
+          errors: ["IDENTITY_PHONE_MISMATCH"],
+          message:
+            "The phone number in this message does not match the verified customer on this conversation. Ask which identity they mean, or continue with the number linked to this chat — do not list bookings for either side.",
+        };
+      }
+    }
     customerIds = [trusted];
   } else if (phone) {
     customerIds = await resolveCustomerIdsByPhone(client, input.companyId, phone);
@@ -1334,7 +1596,7 @@ export async function executeSearchBookings(
 
   let query = client
     .from("scheduling_bookings")
-    .select("id, customer_id, status, start_at, confirmation_number, resource_id, service_id")
+    .select("id, customer_id, status, start_at, timezone, confirmation_number, resource_id, service_id")
     .eq("company_id", input.companyId)
     .gte("start_at", cutoff.toISOString())
     .is("deleted_at", null)
@@ -1399,9 +1661,12 @@ export async function executeSearchBookings(
       customerName: customerNames.get(customerId) ?? "Customer",
       reference: confirmation || undefined,
       scheduledAt: String(row.start_at),
+      timezone: typeof row.timezone === "string" && row.timezone.trim() ? row.timezone.trim() : undefined,
       status: String(row.status),
       employeeName: resourceId ? resourceNames.get(resourceId) || undefined : undefined,
       serviceName: serviceId ? serviceNames.get(serviceId) || undefined : undefined,
+      resourceId: resourceId ?? undefined,
+      serviceId: serviceId ?? undefined,
     };
   });
 
@@ -1432,6 +1697,43 @@ function bookingPhonesMatch(left: string, right: string): boolean {
   const minLen = Math.min(a.length, b.length);
   if (minLen < 9) return false;
   return a.slice(-9) === b.slice(-9);
+}
+
+/**
+ * Compare an explicit phone argument against the trusted conversation customer.
+ * Returns conflict when digits are present on both sides and do not match.
+ * Digits that cannot be normalized are treated as conflict (fail closed).
+ */
+async function trustedCustomerPhoneConflicts(
+  client: SupabaseClient,
+  input: { companyId: string; trustedCustomerId: string; phone: string },
+): Promise<"ok" | "conflict" | "not_found"> {
+  const suppliedDigits = normalizeBookingPhoneDigits(input.phone);
+  if (!suppliedDigits) {
+    // Non-normalizable phone-like input still conflicts with a trusted identity.
+    return "conflict";
+  }
+
+  const { data, error } = await client
+    .from("customers")
+    .select("id, phone, phone_e164")
+    .eq("company_id", input.companyId)
+    .eq("id", input.trustedCustomerId)
+    .maybeSingle();
+
+  if (error || !data) return "not_found";
+
+  const candidates = [data.phone, data.phone_e164]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.trim());
+
+  if (candidates.length === 0) {
+    // Trusted customer has no stored phone — cannot confirm match; fail closed.
+    return "conflict";
+  }
+
+  const matches = candidates.some((candidate) => bookingPhonesMatch(candidate, input.phone));
+  return matches ? "ok" : "conflict";
 }
 
 async function resolveCustomerIdsByPhone(
@@ -1989,6 +2291,7 @@ export function createSchedulingToolPorts(
   client: SupabaseClient,
   engines: SchedulingEnginePort,
   bookingDomain?: BookingDomainServicePort,
+  productDemoBridge?: import("./product-demo-tool-bridge.js").ProductDemoToolBridge | null,
 ): SchedulingToolPorts {
   return {
     searchAvailability(input) {
@@ -2035,6 +2338,63 @@ export function createSchedulingToolPorts(
         throw new Error("Booking domain service is not configured for scheduling tools.");
       }
       return executeCheckOutBooking(client, bookingDomain, input);
+    },
+    listDemoTypes(input) {
+      if (productDemoBridge) {
+        return import("./product-demo-tool-bridge.js").then(({ bridgeListDemoTypes }) =>
+          bridgeListDemoTypes(productDemoBridge, input),
+        );
+      }
+      return executeListDemoTypes(client, input);
+    },
+    searchDemoAvailability(input) {
+      if (productDemoBridge) {
+        return import("./product-demo-tool-bridge.js").then(({ bridgeSearchDemoAvailability }) =>
+          bridgeSearchDemoAvailability(productDemoBridge, {
+            companyId: input.companyId,
+            userId: input.userId,
+            serviceId: input.serviceId,
+            date: input.date,
+            daysAhead: input.daysAhead,
+          }),
+        );
+      }
+      return executeSearchDemoAvailability(client, engines, input);
+    },
+    findNextDemo(input) {
+      if (productDemoBridge) {
+        return import("./product-demo-tool-bridge.js").then(({ bridgeFindNextDemo }) =>
+          bridgeFindNextDemo(productDemoBridge, {
+            companyId: input.companyId,
+            userId: input.userId,
+            serviceId: input.serviceId,
+            daysAhead: input.daysAhead,
+          }),
+        );
+      }
+      return executeFindNextDemo(client, engines, input);
+    },
+    createDemoBooking(input) {
+      if (productDemoBridge) {
+        return import("./product-demo-tool-bridge.js").then(({ bridgeCreateDemoBooking }) =>
+          bridgeCreateDemoBooking(productDemoBridge, {
+            companyId: input.companyId,
+            userId: input.userId,
+            customerId: input.customerId,
+            serviceId: input.serviceId,
+            resourceId: input.resourceId,
+            date: input.date,
+            slotStart: input.slotStart,
+            notes: input.notes,
+            clientRequestId: input.clientRequestId,
+            conversationId: input.conversationId,
+          }),
+        );
+      }
+      if (!bookingDomain) {
+        throw new Error("Booking domain service is not configured for scheduling tools.");
+      }
+      return executeCreateDemoBooking(client, engines, bookingDomain, input);
     },
   };
 }

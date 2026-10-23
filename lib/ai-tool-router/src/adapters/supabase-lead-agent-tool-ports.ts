@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createLeadPlatformServices,
+  extractSalesEvidenceFromConversation,
   LEAD_PERMISSIONS,
   type LeadPlatformServices,
   type LeadServiceContext,
@@ -44,7 +45,14 @@ export function createLeadAgentToolPortsFromPlatform(platform: LeadPlatformServi
       return commands.updateLead(buildToolContext(input.userId, input.companyId), input);
     },
     qualifyLead(input) {
-      return commands.qualifyLead(buildToolContext(input.userId, input.companyId), input);
+      const texts = (input.conversationTexts ?? []).filter((text) => text.trim().length > 0);
+      return commands.qualifyLead(buildToolContext(input.userId, input.companyId), {
+        companyId: input.companyId,
+        leadId: input.leadId,
+        score: input.score,
+        evidence: texts.length > 0 ? extractSalesEvidenceFromConversation(texts) : {},
+        qualificationPolicyMode: input.qualificationPolicyMode === "human_override" ? "human_override" : "enforce",
+      });
     },
     convertLead(input) {
       return commands.convertLead(buildToolContext(input.userId, input.companyId), input);
@@ -75,6 +83,12 @@ export function createLeadAgentToolPortsFromPlatform(platform: LeadPlatformServi
         companyId: input.companyId,
         leadId: input.leadId,
         score: input.score,
+      });
+    },
+    getLead(input) {
+      return queries.getLead(buildToolContext(input.userId, input.companyId), {
+        companyId: input.companyId,
+        leadId: input.leadId,
       });
     },
     async suggestNextAction(input) {

@@ -81,13 +81,21 @@ function createMemoryBookingClient(seed: { scheduling: Row[]; legacy?: Row[] }) 
   return client as unknown as SupabaseClient;
 }
 
+/** Inside a 60-day search window on any calendar day. Production still uses a rolling cutoff. */
+function isoDaysBefore(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  date.setUTCHours(10, 0, 0, 0);
+  return date.toISOString();
+}
+
 const seedScheduling: Row[] = [
   {
     id: "bk-a",
     company_id: "company-a",
     customer_id: "customer-a",
     status: "confirmed",
-    start_at: "2026-08-15T10:00:00.000Z",
+    start_at: isoDaysBefore(10),
     service_id: "svc-1",
     deleted_at: null,
   },
@@ -96,7 +104,7 @@ const seedScheduling: Row[] = [
     company_id: "company-a",
     customer_id: "customer-b",
     status: "confirmed",
-    start_at: "2026-08-16T10:00:00.000Z",
+    start_at: isoDaysBefore(9),
     service_id: "svc-1",
     deleted_at: null,
   },
@@ -105,7 +113,7 @@ const seedScheduling: Row[] = [
     company_id: "company-b",
     customer_id: "customer-a",
     status: "confirmed",
-    start_at: "2026-08-17T10:00:00.000Z",
+    start_at: isoDaysBefore(8),
     service_id: "svc-1",
     deleted_at: null,
   },

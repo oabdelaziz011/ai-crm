@@ -10,7 +10,7 @@ import { listRegisteredToolHandlerKeys as listHandlerKeys } from "./tool-handler
 
 describe("llm-tool-catalog", () => {
   it("registers every known tool with a classification", () => {
-    assert.equal(TOOL_REGISTRY.length, 46);
+    assert.equal(TOOL_REGISTRY.length, 55);
     for (const entry of TOOL_REGISTRY) {
       assert.ok(entry.key);
       assert.ok(entry.classification);
@@ -26,12 +26,19 @@ describe("llm-tool-catalog", () => {
       leadAgentPorts: {} as never,
       handoffAgentPorts: {} as never,
       workflowTransferPorts: {} as never,
+      productAgentPorts: {} as never,
+      quoteAgentPorts: {} as never,
     });
 
     const exposure = resolveLlmToolExposure(registered);
     assert.ok(exposure.allowedToolKeys.includes("create_customer"));
     assert.ok(exposure.allowedToolKeys.includes("create_booking"));
     assert.ok(exposure.allowedToolKeys.includes("search_ticket"));
+    assert.ok(exposure.allowedToolKeys.includes("search_products"));
+    assert.ok(exposure.allowedToolKeys.includes("get_product_details"));
+    assert.ok(exposure.allowedToolKeys.includes("create_draft_quote"));
+    assert.ok(exposure.allowedToolKeys.includes("request_send_quote"));
+    assert.ok(exposure.allowedToolKeys.includes("get_quote_delivery_status"));
     assert.equal(exposure.excludedMocks.length, 7);
     assert.equal(exposure.protectedConfirmation.length, 2);
     assert.equal(exposure.gaps.length, 0);
@@ -41,7 +48,7 @@ describe("llm-tool-catalog", () => {
     const registered = listHandlerKeys({ customerService: {} as never });
     const exposure = resolveLlmToolExposure(registered);
     assert.deepEqual(exposure.allowedToolKeys, [CREATE_CUSTOMER_TOOL_KEY]);
-    assert.equal(exposure.gaps.length, 36);
+    assert.equal(exposure.gaps.length, 45);
   });
 
   it("builds audit report with newly exposed tools", () => {
@@ -53,6 +60,8 @@ describe("llm-tool-catalog", () => {
       leadAgentPorts: {} as never,
       handoffAgentPorts: {} as never,
       workflowTransferPorts: {} as never,
+      productAgentPorts: {} as never,
+      quoteAgentPorts: {} as never,
     });
     const report = buildToolRouterAuditReport(registered);
     assert.ok(report.llmExposure.exposedCount >= 24);

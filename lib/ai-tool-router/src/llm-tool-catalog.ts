@@ -1,4 +1,4 @@
-import { CREATE_CUSTOMER_LLM_TOOL_DEFINITION, CREATE_CUSTOMER_TOOL_KEY } from "./tools/create-customer-tool.js";
+import { CREATE_CUSTOMER_LLM_TOOL_DEFINITION, CREATE_CUSTOMER_TOOL_KEY } from "./tools/create-customer-tool-definition.js";
 import {
   ADD_TICKET_COMMENT_LLM,
   ASSIGN_TICKET_LLM,
@@ -42,7 +42,7 @@ export type ToolRegistryEntry = {
   displayName: string;
   category: string;
   classification: ToolClassification;
-  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer";
+  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer" | "product_agent";
   description: string;
   requiredPermissions: string[];
   llmDefinition?: LlmFunctionToolDefinition;
@@ -214,7 +214,7 @@ const CREATE_BOOKING_LLM: LlmFunctionToolDefinition = {
   function: {
     name: "create_booking",
     description:
-      "Create a confirmed scheduling booking for a customer, service, resource, and slot. Persists to canonical scheduling tables only.",
+      "Create a confirmed scheduling booking for a customer, service, resource, and slot. Persists to canonical scheduling tables only. For sales product demos use create_demo_booking instead.",
     parameters: {
       type: "object",
       properties: {
@@ -227,6 +227,80 @@ const CREATE_BOOKING_LLM: LlmFunctionToolDefinition = {
         notes: { type: "string", description: "Optional booking notes" },
       },
       required: ["customerId", "serviceId", "resourceId", "date", "slotStart"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const LIST_DEMO_TYPES_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "list_demo_types",
+    description:
+      "List sales demo types. Call this when the customer wants a demo and the demo service id is unknown. Never ask the customer for a UUID. Never use clinic services for product demos.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+};
+
+const SEARCH_DEMO_AVAILABILITY_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "search_demo_availability",
+    description:
+      "Search availability for a sales demo service only. Rejects clinic/operational service IDs.",
+    parameters: {
+      type: "object",
+      properties: {
+        serviceId: { type: "string", description: "Sales demo service UUID" },
+        resourceId: { type: "string" },
+        branchId: { type: "string" },
+        date: { type: "string" },
+        daysAhead: { type: "number" },
+      },
+      required: ["serviceId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const FIND_NEXT_DEMO_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "find_next_demo",
+    description: "Find the earliest available sales demo slot for a demo service.",
+    parameters: {
+      type: "object",
+      properties: {
+        serviceId: { type: "string" },
+        resourceId: { type: "string" },
+        branchId: { type: "string" },
+        daysAhead: { type: "number" },
+      },
+      required: ["serviceId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const CREATE_DEMO_BOOKING_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "create_demo_booking",
+    description:
+      "Book a sales demo once the demo service, date, and start time are known. Do not ask for or invent a customer id, time, or confirmation number — the server uses the trusted customer. resourceId is optional. Call once. After success, a human continues and you stop selling. If booking or handoff is unconfirmed, say so and do not book again. Do not use create_booking for demos.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerId: { type: "string", description: "Omit. The server uses the trusted conversation customer." },
+        serviceId: { type: "string", description: "Sales demo service id from list_demo_types" },
+        resourceId: { type: "string", description: "Optional; auto-assigned when omitted" },
+        date: { type: "string", description: "Calendar date YYYY-MM-DD resolved from the supplied current date. Ask if missing. Do not guess a year." },
+        slotStart: { type: "string", description: "Requested start time. Ask the customer if missing." },
+        branchId: { type: "string" },
+        notes: { type: "string" },
+        clientRequestId: { type: "string" },
+      },
+      required: ["serviceId", "date", "slotStart"],
       additionalProperties: false,
     },
   },
@@ -427,6 +501,104 @@ const FIND_DUPLICATES_LLM: LlmFunctionToolDefinition = {
   },
 };
 
+const SEARCH_PRODUCTS_LLM = {
+  type: "function",
+  function: {
+    name: "search_products",
+    description:
+      "REQUIRED before stating a published price, exact specification, availability, or comparison. Read-only search of this company's active catalog. Do not answer those facts from earlier prompt text. General company knowledge that is not a current catalog fact does not need this tool. Returns at most 5 matches. Only describe returned products. If price.status is not_listed, tell the customer the price is not confirmed — never show not_listed or the words Not listed, and never call it free. Never claim stock, variants, warranty, delivery, or discounts.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Product name, SKU, brand, or keywords from the customer's message" },
+        categoryId: { type: "string", description: "Optional category id returned by a previous search_products result" },
+        limit: { type: "number", description: "Maximum results (1-5, default 5)" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const GET_PRODUCT_DETAILS_LLM = {
+  type: "function",
+  function: {
+    name: "get_product_details",
+    description:
+      "REQUIRED for exact specifications or a comparison once productIds are known from search_products. Read-only, 1 to 3 products. Only state fields in the result. If price.status is not_listed, say the price is not confirmed. Never show not_listed or Not listed. Do not invent variants, warranty, delivery, or stock.",
+    parameters: {
+      type: "object",
+      properties: {
+        productIds: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 3,
+          description: "1 to 3 productId values returned by search_products",
+        },
+      },
+      required: ["productIds"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const CREATE_DRAFT_QUOTE_LLM = {
+  type: "function",
+  function: {
+    name: "create_draft_quote",
+    description:
+      "Create an INTERNAL draft quote when the customer explicitly asks for a quotation and the product is known from search_products. Quantity defaults to 1; ask only if they want more than one. Draft only: never sends, approves, orders, or takes payment. Do not invent prices. On success, say only that a draft was prepared for the team, then call request_send_quote.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Optional draft title" },
+        quantity: { type: "number", description: "Optional quantity (1-100, default 1). No discounts." },
+        productId: {
+          type: "string",
+          description: "Optional productId; must match verified product interest on the lead",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const REQUEST_SEND_QUOTE_LLM = {
+  type: "function",
+  function: {
+    name: "request_send_quote",
+    description:
+      "Queue human approval to send a draft quote. Does NOT send it. Call after create_draft_quote when the customer asked for a quotation. Human approval is the default. Never say the quote was approved or sent unless a later delivery status says sent.",
+    parameters: {
+      type: "object",
+      properties: {
+        quoteId: { type: "string", description: "Optional quote id; defaults to the conversation draft" },
+        channel: {
+          type: "string",
+          enum: ["email", "whatsapp"],
+          description: "Preferred delivery channel for the human approver (default email)",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const GET_QUOTE_DELIVERY_STATUS_LLM = {
+  type: "function",
+  function: {
+    name: "get_quote_delivery_status",
+    description:
+      "Read the real delivery state of a quote from platform records (draft, pending_human_approval, sending, sent, failed). Never invent sent. Use when the customer asks whether the quote was sent.",
+    parameters: {
+      type: "object",
+      properties: {
+        quoteId: { type: "string", description: "Optional quote id; defaults to the conversation quote" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   {
     key: "knowledge_lookup",
@@ -497,6 +669,46 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     description: "Production booking creation via BookingDomainService.",
     requiredPermissions: ["tools.execute", "bookings.create"],
     llmDefinition: CREATE_BOOKING_LLM,
+  },
+  {
+    key: "list_demo_types",
+    displayName: "List Demo Types",
+    category: "scheduling",
+    classification: "read_only",
+    handlerSource: "scheduling_agent",
+    description: "List sales_demo scheduling services for product demos.",
+    requiredPermissions: ["tools.execute", "availability.search"],
+    llmDefinition: LIST_DEMO_TYPES_LLM,
+  },
+  {
+    key: "search_demo_availability",
+    displayName: "Search Demo Availability",
+    category: "scheduling",
+    classification: "read_only",
+    handlerSource: "scheduling_agent",
+    description: "Availability search restricted to sales_demo services.",
+    requiredPermissions: ["tools.execute", "availability.search"],
+    llmDefinition: SEARCH_DEMO_AVAILABILITY_LLM,
+  },
+  {
+    key: "find_next_demo",
+    displayName: "Find Next Demo",
+    category: "scheduling",
+    classification: "read_only",
+    handlerSource: "scheduling_agent",
+    description: "Earliest sales demo slot for a demo service.",
+    requiredPermissions: ["tools.execute", "availability.search"],
+    llmDefinition: FIND_NEXT_DEMO_LLM,
+  },
+  {
+    key: "create_demo_booking",
+    displayName: "Create Demo Booking",
+    category: "scheduling",
+    classification: "production_ready",
+    handlerSource: "scheduling_agent",
+    description: "Create sales demo booking with optional auto-assign and idempotency.",
+    requiredPermissions: ["tools.execute", "bookings.create"],
+    llmDefinition: CREATE_DEMO_BOOKING_LLM,
   },
   {
     key: "search_bookings",
@@ -889,6 +1101,59 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     description: "Suggests the next best sales action for a lead.",
     requiredPermissions: ["tools.execute", "leads.view"],
     llmDefinition: SUGGEST_NEXT_ACTION_LLM,
+  },
+  {
+    key: "search_products",
+    displayName: "Search Products",
+    category: "products",
+    classification: "read_only",
+    handlerSource: "product_agent",
+    description: "Searches the company's active product catalog (catalog_products) without internal cost data.",
+    requiredPermissions: ["tools.execute", "products.view"],
+    llmDefinition: SEARCH_PRODUCTS_LLM,
+  },
+  {
+    key: "get_product_details",
+    displayName: "Get Product Details",
+    category: "products",
+    classification: "read_only",
+    handlerSource: "product_agent",
+    description: "Returns customer-facing details for up to 3 active company products.",
+    requiredPermissions: ["tools.execute", "products.view"],
+    llmDefinition: GET_PRODUCT_DETAILS_LLM,
+  },
+  {
+    key: "create_draft_quote",
+    displayName: "Create Draft Quote",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "quote_agent",
+    description:
+      "Creates an internal draft quote from verified product interest and an open opportunity. Never sends or approves.",
+    requiredPermissions: ["tools.execute", "quotes.create"],
+    llmDefinition: CREATE_DRAFT_QUOTE_LLM,
+  },
+  {
+    key: "request_send_quote",
+    displayName: "Request Send Quote",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "quote_agent",
+    description:
+      "Queues a human send-approval request for a draft quote. Never sends; delivery requires quotes.send via QuoteSendService.",
+    requiredPermissions: ["tools.execute", "quotes.edit"],
+    llmDefinition: REQUEST_SEND_QUOTE_LLM,
+  },
+  {
+    key: "get_quote_delivery_status",
+    displayName: "Get Quote Delivery Status",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "quote_agent",
+    description:
+      "Reads real quote delivery state from quote status, send attempts, and AI send-request metadata.",
+    requiredPermissions: ["tools.execute", "quotes.view"],
+    llmDefinition: GET_QUOTE_DELIVERY_STATUS_LLM,
   },
 ];
 

@@ -17,12 +17,15 @@ describe("createHandoffAgentToolPorts", () => {
 
     const platform = {
       commands: {
-        escalateConversation: async (ctx: (typeof contexts)[number], input: { companyId: string }) => {
+        requestCustomerHandoff: async (ctx: (typeof contexts)[number], input: { companyId: string }) => {
           contexts.push(ctx);
           assert.equal(input.companyId, "company-a");
           return {
             request: { id: "req-1" },
-            ownership: { ownerType: "queue", ownerLabel: "Q1" },
+            ownership: { ownerType: "human_agent", ownerLabel: "Agent" },
+            assigned: true,
+            queued: false,
+            assigneeUserId: "agent-1",
           };
         },
         queueConversation: async () => {
@@ -55,6 +58,7 @@ describe("createHandoffAgentToolPorts", () => {
     assert.equal(contexts[0]?.companyId, "company-a");
     assert.equal(contexts[0]?.userId, "actor-1");
     assert.equal(contexts[0]?.hasPermission("handoff.escalate"), true);
+    assert.equal(contexts[0]?.hasPermission("handoff.assign"), true);
     assert.equal(contexts[0]?.hasPermission("platform.admin"), false);
     assert.equal(contexts[0]?.hasPermission("companies.delete"), false);
   });

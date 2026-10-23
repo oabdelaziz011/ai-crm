@@ -388,7 +388,7 @@ describe("Phase 5J.1 customer mutation ownership", () => {
       const result = await tools.update_customer.execute(baseContext(), {
         customerId: CUST_A1,
         field: "phone",
-        value: "999",
+        value: "+201012345678",
         companyId: COMPANY_B,
       });
       assert.equal(result.success, true);

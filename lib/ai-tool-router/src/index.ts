@@ -65,11 +65,13 @@ export * from "./adapters/supabase-crm-agent-tool-ports.js";
 export * from "./adapters/scheduling-tool-ports.js";
 export * from "./tools/scheduling-agent-ports.js";
 export * from "./tools/scheduling-agent-tools.js";
+export * from "./tools/sales-demo-scheduling-tools.js";
 export * from "./tools/ticket-agent-ports.js";
 export * from "./tools/ticket-agent-tools.js";
 export * from "./tools/ticket-tool-definitions.js";
 export * from "./tools/ticket-update-field-normalizer.js";
 export * from "./utils/customer-phone-normalization.js";
+export * from "./utils/explicit-purchase.js";
 export * from "./utils/phone-identity-resolver.js";
 export * from "./utils/customer-phone-identity-dual-write.js";
 export * from "./utils/customer-phone-search.js";
@@ -90,3 +92,27 @@ export * from "./tools/handoff-agent-tools.js";
 export * from "./adapters/supabase-handoff-agent-tool-ports.js";
 export * from "./tools/workflow-transfer-tools.js";
 export * from "./adapters/workflow-transfer-tool-ports.js";
+export * from "./tools/product-tool-definitions.js";
+export * from "./tools/product-agent-ports.js";
+export * from "./tools/catalog-search-language.js";
+export * from "./tools/product-alias-search-flag.js";
+export * from "./tools/product-agent-tools.js";
+export * from "./tools/product-recommendation.js";
+export * from "./tools/product-advisor-policy.js";
+export * from "./tools/quote-tool-definitions.js";
+export * from "./tools/quote-agent-ports.js";
+export * from "./tools/quote-draft-from-interest.js";
+export * from "./tools/quote-delivery-status.js";
+export * from "./tools/quote-send-request.js";
+export * from "./tools/quote-agent-tools.js";
+export * from "./tools/lead-merge-identity.js";
+export * from "./adapters/supabase-product-agent-tool-ports.js";
+export * from "./adapters/supabase-quote-agent-ports.js";
+export {
+  bridgeCreateDemoBooking,
+  bridgeFindNextDemo,
+  bridgeListDemoTypes,
+  bridgeSearchDemoAvailability,
+  productDemoClockInCairo,
+  type ProductDemoToolBridge,
+} from "./adapters/product-demo-tool-bridge.js";

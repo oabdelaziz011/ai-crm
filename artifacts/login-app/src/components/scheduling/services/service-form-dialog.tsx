@@ -31,6 +31,7 @@ import {
 import { useCompanyLocaleContext } from "@/context/company-locale-context";
 import {
   COMPANY_DEFAULT_CURRENCY,
+  SCHEDULING_SERVICE_KINDS,
   SCHEDULING_SERVICE_STATUSES,
   type SchedulingResource,
   type SchedulingService,
@@ -112,6 +113,7 @@ export function ServiceFormDialog({
       category: "",
       description: "",
       status: "active",
+      service_kind: "operational",
     },
   });
 
@@ -128,6 +130,7 @@ export function ServiceFormDialog({
       category: service?.category ?? "",
       description: service?.description ?? "",
       status: service?.status ?? "active",
+      service_kind: service?.service_kind === "sales_demo" ? "sales_demo" : "operational",
     });
     setResourceIds([]);
     hydratedMappedForServiceRef.current = null;
@@ -293,6 +296,32 @@ export function ServiceFormDialog({
                     ))}
                   </select>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="service-kind" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+                  {t("scheduling.services.fields.serviceKind", { defaultValue: "Service kind" })}
+                </Label>
+                <select
+                  id="service-kind"
+                  disabled={!canEdit}
+                  className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm ${alignClass}`}
+                  style={fieldAlignStyle}
+                  {...form.register("service_kind")}
+                >
+                  {SCHEDULING_SERVICE_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {t(`scheduling.services.kinds.${kind}`, {
+                        defaultValue: kind === "sales_demo" ? "Sales demo" : "Operational",
+                      })}
+                    </option>
+                  ))}
+                </select>
+                <p className={`text-xs text-muted-foreground ${alignClass}`} style={fieldAlignStyle}>
+                  {t("scheduling.services.fields.serviceKindHint", {
+                    defaultValue:
+                      "Sales demos use separate AI tools and do not appear as clinic appointments.",
+                  })}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="service-description" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>

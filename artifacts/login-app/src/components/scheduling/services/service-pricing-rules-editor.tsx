@@ -15,6 +15,7 @@ import {
   SERVICE_PRICING_CURRENCIES,
   type SchedulingPricingRuleType,
 } from "@/lib/scheduling/types";
+import { pricingTypeLabel } from "@/lib/scheduling/pricing-type-label";
 import type { PricingRuleFormValues } from "@/lib/scheduling/validation/service-schemas";
 import { cn } from "@/lib/utils";
 
@@ -137,7 +138,7 @@ export function ServicePricingRulesEditor({
 
       {!typesLoading && !typesUnavailable ? (
         <div className="overflow-x-auto rounded-md border border-border/60">
-          <table className="w-full min-w-[40rem] border-collapse text-sm">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-start text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                 <th className="px-2 py-2">
@@ -186,7 +187,7 @@ export function ServicePricingRulesEditor({
                         <SelectContent position="popper">
                           {types.map((type) => (
                             <SelectItem key={type.id} value={type.id}>
-                              {type.label}
+                              {pricingTypeLabel((key) => t(key), type)}
                             </SelectItem>
                           ))}
                         </SelectContent>

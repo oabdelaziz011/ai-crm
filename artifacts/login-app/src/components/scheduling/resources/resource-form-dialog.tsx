@@ -30,8 +30,10 @@ import {
   type SchedulingResource,
   type SchedulingService,
 } from "@/lib/scheduling/types";
+import type { ServiceCommercialEdit } from "@/lib/scheduling/services/persist-service-commercial";
 
 const COMMON_TIMEZONES = [
+  "Africa/Cairo",
   "UTC",
   "Asia/Riyadh",
   "Asia/Dubai",
@@ -45,6 +47,7 @@ const EMPTY_SERVICES: SchedulingService[] = [];
 export type ResourceFormSubmitPayload = {
   values: ResourceFormValues;
   serviceIds: string[];
+  serviceCommercial: ServiceCommercialEdit[];
 };
 
 type Props = {
@@ -87,14 +90,17 @@ export function ResourceFormDialog({
   const mappedServices = mappedServicesData ?? EMPTY_SERVICES;
 
   const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [commercial, setCommercial] = useState<Record<string, { price: string; duration: string }>>({});
+  const [commercialError, setCommercialError] = useState<string | null>(null);
   const hydratedMappedForResourceRef = useRef<string | null>(null);
+  const hydratedCommercialRef = useRef(false);
 
   const form = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
     defaultValues: {
       name: "",
       resource_type: "employee",
-      branch_id: null,
+      branch_id: "",
       status: "active",
       timezone: defaultTimezone,
       description: "",
@@ -112,7 +118,7 @@ export function ResourceFormDialog({
     form.reset({
       name: resource?.name ?? "",
       resource_type: resource?.resource_type ?? "employee",
-      branch_id: resource?.branch_id ?? null,
+      branch_id: resource?.branch_id ?? "",
       status: resource?.status ?? "active",
       timezone: resource?.timezone ?? defaultTimezone,
       description: resource?.description ?? "",
@@ -141,7 +147,59 @@ export function ResourceFormDialog({
     [allServices, t],
   );
 
-  const handleSubmit = form.handleSubmit((values) => onSubmit({ values, serviceIds }));
+  useEffect(() => {
+    if (!open) {
+      hydratedCommercialRef.current = false;
+      return;
+    }
+    if (servicesLoading || hydratedCommercialRef.current) return;
+    hydratedCommercialRef.current = true;
+    const next: Record<string, { price: string; duration: string }> = {};
+    for (const service of allServices) {
+      const major = (service.price_cents ?? 0) / 100;
+      next[service.id] = {
+        price: Number.isInteger(major) ? String(major) : major.toFixed(2),
+        duration: String(service.duration_minutes ?? 30),
+      };
+    }
+    setCommercial(next);
+    setCommercialError(null);
+  }, [open, servicesLoading, allServices]);
+
+  const handleSubmit = form.handleSubmit((values) => {
+    const serviceCommercial: ServiceCommercialEdit[] = [];
+    for (const service of allServices) {
+      const row = commercial[service.id];
+      if (!row) continue;
+      const price = Number(row.price);
+      const durationMinutes = Number(row.duration);
+      if (
+        !Number.isFinite(price) ||
+        price <= 0 ||
+        !Number.isInteger(durationMinutes) ||
+        durationMinutes < 5 ||
+        durationMinutes > 24 * 60
+      ) {
+        setCommercialError(t("scheduling.resources.commercialInvalid"));
+        return;
+      }
+      const samePrice = Math.round(price * 100) === (service.price_cents ?? 0);
+      const sameDuration = durationMinutes === service.duration_minutes;
+      if (samePrice && sameDuration) continue;
+      serviceCommercial.push({
+        serviceId: service.id,
+        name: service.name,
+        status: service.status,
+        category: service.category ?? null,
+        description: service.description ?? null,
+        currency: service.currency ?? "EGP",
+        price,
+        durationMinutes,
+      });
+    }
+    setCommercialError(null);
+    onSubmit({ values, serviceIds, serviceCommercial });
+  });
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -207,21 +265,27 @@ export function ResourceFormDialog({
             </Label>
             <select
               id="resource-branch"
+              required
               disabled={!canEdit}
               className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm ${alignClass}`}
               style={fieldAlignStyle}
               value={form.watch("branch_id") ?? ""}
               onChange={(e) =>
-                form.setValue("branch_id", e.target.value ? e.target.value : null)
+                form.setValue("branch_id", e.target.value, { shouldValidate: true })
               }
             >
-              <option value="">{t("scheduling.resources.noBranch")}</option>
+              <option value="">{t("scheduling.validation.branchRequired")}</option>
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
                   {branch.name}
                 </option>
               ))}
             </select>
+            {form.formState.errors.branch_id && (
+              <p className={`text-xs text-destructive ${alignClass}`} style={fieldAlignStyle}>
+                {t(String(form.formState.errors.branch_id.message ?? "scheduling.validation.branchRequired"))}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -254,9 +318,12 @@ export function ResourceFormDialog({
                 style={fieldAlignStyle}
                 {...form.register("timezone")}
               >
-                {COMMON_TIMEZONES.map((tz) => (
+                {(COMMON_TIMEZONES.includes(form.watch("timezone"))
+                  ? COMMON_TIMEZONES
+                  : [form.watch("timezone"), ...COMMON_TIMEZONES].filter(Boolean)
+                ).map((tz) => (
                   <option key={tz} value={tz}>
-                    {tz}
+                    {tz === "Africa/Cairo" ? t("scheduling.resources.timezones.cairo") : tz}
                   </option>
                 ))}
               </select>
@@ -287,6 +354,61 @@ export function ResourceFormDialog({
               isLoading={servicesLoading || (isEdit && mappedLoading)}
               emptyMessage={t("scheduling.capabilities.noServicesAvailable")}
             />
+            {allServices.length > 0 && (
+              <div className="space-y-2">
+                {allServices.map((service) => {
+                  const row = commercial[service.id] ?? {
+                    price: String((service.price_cents ?? 0) / 100),
+                    duration: String(service.duration_minutes ?? 30),
+                  };
+                  return (
+                    <div key={service.id} className="grid grid-cols-[minmax(0,1fr)_5.5rem_6.5rem] gap-2 items-end">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm">{service.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{service.currency || "EGP"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">
+                          {t("scheduling.resources.fields.serviceDuration")}
+                        </Label>
+                        <Input
+                          inputMode="numeric"
+                          disabled={!canEdit || isPending}
+                          value={row.duration}
+                          onChange={(event) =>
+                            setCommercial((current) => ({
+                              ...current,
+                              [service.id]: { ...row, duration: event.target.value },
+                            }))
+                          }
+                          className="h-9 bg-background border-border/60"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">
+                          {t("scheduling.resources.fields.servicePrice")}
+                        </Label>
+                        <Input
+                          inputMode="decimal"
+                          disabled={!canEdit || isPending}
+                          value={row.price}
+                          onChange={(event) =>
+                            setCommercial((current) => ({
+                              ...current,
+                              [service.id]: { ...row, price: event.target.value },
+                            }))
+                          }
+                          className="h-9 bg-background border-border/60"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {commercialError && (
+                  <p className="text-xs text-destructive">{commercialError}</p>
+                )}
+              </div>
+            )}
             {serviceIds.length === 0 && (
               <p className="text-xs text-amber-400/90 flex items-start gap-2 leading-relaxed">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />

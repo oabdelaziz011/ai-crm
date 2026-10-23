@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CustomerTimelinePanel } from "@/lib/customer-timeline/components/customer-timeline";
 import type { OperationsBookingView } from "@/lib/scheduling/operations/types";
+import { pricingTypeLabel } from "@/lib/scheduling/pricing-type-label";
 import {
   canCancelOperationsBooking,
   canCheckInBooking,
@@ -158,7 +159,12 @@ export function OperationsBookingDrawer({
             <DetailRow label={t("scheduling.operations.drawer.phone")} value={booking.customer?.phone} />
             <DetailRow label={t("scheduling.operations.drawer.email")} value={booking.customer?.email} />
             <DetailRow label={t("scheduling.operations.drawer.service")} value={booking.service?.name} />
+            <DetailRow label={t("scheduling.operations.drawer.branch")} value={booking.branch?.name} />
             <DetailRow label={t("scheduling.operations.drawer.resource")} value={booking.resource?.name} />
+            <DetailRow
+              label={t("scheduling.operations.drawer.serviceType")}
+              value={pricingTypeLabel((key) => t(key), { code: booking.visitType, label: booking.visitType })}
+            />
             <DetailRow
               label={t("scheduling.operations.drawer.time")}
               value={`${booking.displayStart} – ${booking.displayEnd}`}
@@ -169,7 +175,7 @@ export function OperationsBookingDrawer({
             />
             <DetailRow
               label={t("scheduling.operations.drawer.price")}
-              value={formatOperationsCurrency(booking.service?.priceCents ?? 0)}
+              value={formatOperationsCurrency(booking.amountCents, booking.currency)}
             />
             <DetailRow label={t("scheduling.operations.drawer.notes")} value={booking.notes} />
             <DetailRow label={t("scheduling.operations.drawer.createdBy")} value={booking.createdBy} />

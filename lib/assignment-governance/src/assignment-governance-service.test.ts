@@ -262,6 +262,39 @@ describe("AssignmentGovernanceService — ADMIN / SUPER ADMIN", () => {
     );
   });
 
+  it("admin can take over their own conversation without a department", async () => {
+    const { store, service } = buildService();
+    store.profiles.set("admin", profile("admin", { departmentId: null }));
+    store.roleTemplates.set(`admin:${COMPANY}`, ["admin"]);
+    await service.assertCanAssignToEmployee({
+      actorUserId: "admin",
+      targetUserId: "admin",
+    });
+  });
+
+  it("manager can take over their own conversation without a department", async () => {
+    const { store, service } = buildService();
+    store.profiles.set("mgr", profile("mgr", { departmentId: null }));
+    store.roleTemplates.set(`mgr:${COMPANY}`, ["manager"]);
+    store.managedDepartments.set(`mgr:${COMPANY}`, []);
+    await service.assertCanAssignToEmployee({
+      actorUserId: "mgr",
+      targetUserId: "mgr",
+    });
+  });
+
+  it("18b. super admin can take over their own conversation without a department", async () => {
+    const { store, service } = buildService();
+    store.profiles.set(
+      "sa",
+      profile("sa", { isSuperAdmin: true, companyId: COMPANY, departmentId: null }),
+    );
+    await service.assertCanAssignToEmployee({
+      actorUserId: "sa",
+      targetUserId: "sa",
+    });
+  });
+
   it("18. super admin preserves full access for valid company targets", async () => {
     const { store, service } = buildService();
     store.profiles.set(

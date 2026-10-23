@@ -173,15 +173,21 @@ export class AssignmentGovernanceService {
     if (!target.companyId) {
       deny(ASSIGNMENT_GOVERNANCE_CODES.TARGET_NO_COMPANY, "Assignment target has no company.");
     }
-    if (!target.departmentId) {
+    // Leadership take-over is not department-scoped. Assigning someone else still needs a department.
+    const leadershipSelfAssign =
+      actorUserId === targetUserId &&
+      (scope.kind === "super_admin" || scope.kind === "admin" || scope.kind === "manager");
+    if (!target.departmentId && !leadershipSelfAssign) {
       deny(
         ASSIGNMENT_GOVERNANCE_CODES.TARGET_NO_DEPARTMENT,
         "Assignment target has no canonical department_id.",
       );
     }
 
-    const department = await this.options.port.getDepartment(target.departmentId);
-    if (!department || department.companyId !== target.companyId) {
+    const department = target.departmentId
+      ? await this.options.port.getDepartment(target.departmentId)
+      : null;
+    if (target.departmentId && (!department || department.companyId !== target.companyId)) {
       deny(
         ASSIGNMENT_GOVERNANCE_CODES.TARGET_DEPARTMENT_INVALID,
         "Assignment target department_id is invalid for the target company.",
@@ -204,7 +210,7 @@ export class AssignmentGovernanceService {
       );
     }
 
-    if (department.companyId !== actor.companyId) {
+    if (department && department.companyId !== actor.companyId) {
       deny(
         ASSIGNMENT_GOVERNANCE_CODES.TARGET_DEPARTMENT_INVALID,
         "Assignment target department belongs to a different company.",
@@ -216,6 +222,10 @@ export class AssignmentGovernanceService {
     }
 
     if (scope.kind === "manager") {
+      if (!target.departmentId) {
+        // Another employee without a department was already denied. This is self-assign.
+        return { actor, scope, target };
+      }
       if (scope.managedDepartmentIds.length === 0) {
         deny(
           ASSIGNMENT_GOVERNANCE_CODES.MANAGER_NO_MANAGED_DEPARTMENTS,

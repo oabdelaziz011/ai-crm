@@ -7,6 +7,14 @@ import {
   formatArabicTime12h,
   formatArabicWeekdayDate,
 } from "../utils/scheduling-customer-display.js";
+import { createSalesDemoSchedulingTools } from "./sales-demo-scheduling-tools.js";
+export {
+  LIST_DEMO_TYPES_TOOL_KEY,
+  SEARCH_DEMO_AVAILABILITY_TOOL_KEY,
+  FIND_NEXT_DEMO_TOOL_KEY,
+  CREATE_DEMO_BOOKING_TOOL_KEY,
+  SALES_DEMO_TOOL_KEYS,
+} from "./sales-demo-scheduling-tools.js";
 
 const ACTIVE_STATES: ConversationState[] = [
   "idle",
@@ -225,6 +233,7 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
             slotStart: { type: "string", description: "HH:mm local wall time" },
             branchId: { type: "string" },
             notes: { type: "string" },
+            visitType: { type: "string", description: "Priced visit type code such as New or Consultation" },
           },
           required: ["customerId", "serviceId", "resourceId", "date", "slotStart"],
         },
@@ -266,6 +275,7 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
         slotStart: String(input.slotStart),
         branchId: typeof input.branchId === "string" ? input.branchId : undefined,
         notes: typeof input.notes === "string" ? input.notes : undefined,
+        visitType: typeof input.visitType === "string" ? input.visitType : undefined,
         conversationId: context.conversationId,
       });
 
@@ -366,11 +376,34 @@ function isCancellableBookingStatus(status: string | undefined): boolean {
     normalized === "canceled" ||
     normalized === "completed" ||
     normalized === "checked_out" ||
+    normalized === "checked_in" ||
+    normalized === "with_nurse" ||
+    normalized === "in_progress" ||
     normalized === "no_show" ||
     normalized === "rescheduled" ||
     normalized === "expired"
   );
 }
+
+/** Customers see at most this many upcoming and this many past bookings per reply. */
+const CUSTOMER_BOOKING_LIST_LIMIT = 3;
+
+function bookingStartMs(booking: { scheduledAt?: string }): number {
+  const startMs = booking.scheduledAt ? Date.parse(booking.scheduledAt) : Number.NaN;
+  return Number.isFinite(startMs) ? startMs : Number.NaN;
+}
+
+function isUpcomingActiveBooking(booking: { scheduledAt?: string; status?: string }, nowMs: number): boolean {
+  const status = String(booking.status ?? "").trim().toLowerCase();
+  if (status && status !== "pending" && status !== "confirmed") return false;
+  return bookingStartMs(booking) > nowMs;
+}
+
+function byStartAscending(a: { scheduledAt?: string }, b: { scheduledAt?: string }): number {
+  return (bookingStartMs(a) || 0) - (bookingStartMs(b) || 0);
+}
+
+export type SearchBookingsWhen = "upcoming" | "past" | "all";
 
 export function buildSearchBookingsCustomerMessage(
   bookings: Array<{
@@ -384,6 +417,7 @@ export function buildSearchBookingsCustomerMessage(
   phone?: string,
   purpose: "list" | "cancel" = "list",
   referenceNow: Date = new Date(),
+  when: SearchBookingsWhen = "upcoming",
 ): string {
   const nowMs = referenceNow.getTime();
   const visible =
@@ -408,12 +442,7 @@ export function buildSearchBookingsCustomerMessage(
       : "مفيش حجوزات مسجّلة على الرقم ده في الفترة دي.";
   }
 
-  const lines =
-    purpose === "cancel"
-      ? [`لقيت ${visible.length} موعد ممكن إلغاؤه:`]
-      : [`لقيت ${visible.length} حجز:`];
-
-  for (const [index, booking] of visible.slice(0, 8).entries()) {
+  const bookingLine = (booking: (typeof visible)[number], number: number): string => {
     const when = booking.scheduledAt ? formatBookingWhenForCustomer(booking.scheduledAt) : null;
     const parts = [
       booking.reference ? `رقم الحجز: ${booking.reference}` : null,
@@ -422,22 +451,56 @@ export function buildSearchBookingsCustomerMessage(
       booking.employeeName ? `مع: ${booking.employeeName}` : null,
       booking.status ? `الحالة: ${bookingStatusLabelAr(String(booking.status))}` : null,
     ].filter(Boolean);
-    lines.push(`${index + 1}) ${parts.join(" | ")}`);
-  }
-  if (visible.length > 8) {
-    lines.push(`وغيرهم ${visible.length - 8} حجز.`);
+    return `${number}) ${parts.join(" | ")}`;
+  };
+
+  if (purpose === "list") {
+    const upcoming = visible.filter((booking) => isUpcomingActiveBooking(booking, nowMs)).sort(byStartAscending);
+    const past = visible
+      .filter((booking) => !upcoming.includes(booking))
+      .sort((a, b) => byStartAscending(b, a));
+    const lines: string[] = [];
+    let number = 0;
+    if (when !== "past") {
+      if (upcoming.length > 0) {
+        lines.push("حجوزاتك الجاية:");
+        for (const booking of upcoming.slice(0, CUSTOMER_BOOKING_LIST_LIMIT)) lines.push(bookingLine(booking, ++number));
+        if (upcoming.length > CUSTOMER_BOOKING_LIST_LIMIT) {
+          lines.push(`وعندك كمان ${upcoming.length - CUSTOMER_BOOKING_LIST_LIMIT} حجز جاي.`);
+        }
+      } else {
+        lines.push("مفيش عندك حجوزات جاية.");
+      }
+    }
+    if (when !== "upcoming") {
+      if (past.length > 0) {
+        lines.push("آخر حجوزاتك اللي فاتت:");
+        for (const booking of past.slice(0, CUSTOMER_BOOKING_LIST_LIMIT)) lines.push(bookingLine(booking, ++number));
+      } else {
+        lines.push("مفيش عندك حجوزات سابقة.");
+      }
+    } else if (past.length > 0) {
+      lines.push("لو عايز تشوف حجوزاتك اللي فاتت قولّي «حجوزاتي اللي فاتت».");
+    }
+    return lines.join("\n");
   }
 
-  if (purpose === "cancel") {
-    if (visible.length === 1) {
-      const only = visible[0];
-      const ref = only?.reference ? ` (${only.reference})` : "";
-      lines.push(`ده الموعد الوحيد. قولّي "ألغي" أو ابعتي رقم الحجز${ref} عشان نكمّل الإلغاء.`);
-    } else {
-      lines.push(
-        'قولّي أنهي موعد تلغي؟ ابعتي رقم القائمة (مثلاً 1 أو 2) أو رقم الحجز (مثل BK-000028). مش هألغي غير بعد ما تختاري.',
-      );
-    }
+  // Numbering must match the order search_bookings returns, so list selections resolve correctly.
+  const shown = [...visible].sort(byStartAscending).slice(0, CUSTOMER_BOOKING_LIST_LIMIT);
+  const lines = [`لقيت ${visible.length} موعد ممكن إلغاؤه:`];
+  for (const [index, booking] of shown.entries()) lines.push(bookingLine(booking, index + 1));
+  if (visible.length > shown.length) {
+    lines.push(`ومعاهم ${visible.length - shown.length} حجز تاني، ابعت رقم الحجز (BK-…) لو عايز تلغي واحد منهم.`);
+  }
+
+  if (visible.length === 1) {
+    const only = visible[0];
+    const ref = only?.reference ? ` (${only.reference})` : "";
+    lines.push(`ده الموعد الوحيد. قولّي "ألغي" أو ابعتي رقم الحجز${ref} عشان نكمّل الإلغاء.`);
+  } else {
+    lines.push(
+      'قولّي أنهي موعد تلغي؟ ابعتي رقم القائمة (مثلاً 1 أو 2) أو رقم الحجز (مثل BK-000028). مش هألغي غير بعد ما تختاري.',
+    );
   }
 
   return lines.join("\n");
@@ -457,6 +520,11 @@ export function createSearchBookingsTool(ports: SchedulingToolPorts): Tool {
             purpose: {
               type: "string",
               description: 'Use "cancel" when the customer wants to cancel an appointment; otherwise "list".',
+            },
+            when: {
+              type: "string",
+              description:
+                'Which bookings to show for "list": "upcoming" (default), "past" only when the customer explicitly asks for previous bookings, "all" only when they ask for both.',
             },
           },
         },
@@ -492,16 +560,22 @@ export function createSearchBookingsTool(ports: SchedulingToolPorts): Tool {
               if (!scheduledAt) return false;
               const startMs = Date.parse(scheduledAt);
               return Number.isFinite(startMs) && startMs > nowMs;
-            })
+            }).sort(byStartAscending)
           : bookings;
-      const customerFacingMessage = result.success
-        ? buildSearchBookingsCustomerMessage(visibleBookings, phone, purpose)
-        : result.message ?? "ما قدرناش نجيب الحجوزات دلوقتي.";
+      const whenRaw = typeof input.when === "string" ? input.when.trim().toLowerCase() : "";
+      const when: SearchBookingsWhen = whenRaw === "past" || whenRaw === "all" ? whenRaw : "upcoming";
+      const identityMismatch = Array.isArray(result.errors)
+        && result.errors.includes("IDENTITY_PHONE_MISMATCH");
+      const customerFacingMessage = identityMismatch
+        ? "الرقم اللي بعتّه مش مطابق لرقم المحادثة الموثّق. وضّح لو حابب نكمل برقم الشات ده، أو ابعت بيانات التحقق من لوحة التحكم — مش هعرض حجوزات بناءً على رقم مختلف."
+        : result.success
+          ? buildSearchBookingsCustomerMessage(visibleBookings, phone, purpose, new Date(nowMs), when)
+          : result.message ?? "ما قدرناش نجيب الحجوزات دلوقتي.";
 
       return {
         success: result.success,
-        bookings: visibleBookings,
-        total: purpose === "cancel" ? visibleBookings.length : result.total,
+        bookings: identityMismatch ? [] : visibleBookings,
+        total: identityMismatch ? 0 : purpose === "cancel" ? visibleBookings.length : result.total,
         purpose,
         message: result.message ?? null,
         errors: result.errors ?? null,
@@ -860,6 +934,7 @@ export function createSchedulingAgentTools(ports: SchedulingToolPorts): Record<s
     cancel_booking: createCancelBookingTool(ports),
     check_in: createCheckInBookingTool(ports),
     check_out: createCheckOutBookingTool(ports),
+    ...createSalesDemoSchedulingTools(ports),
   };
 }
 

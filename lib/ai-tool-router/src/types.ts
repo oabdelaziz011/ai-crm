@@ -80,6 +80,8 @@ export type RouteToolInput = {
   toolKey: string;
   input: Record<string, unknown>;
   triggeredBy?: ToolTriggerSource;
+  /** Server-owned customer texts for qualification and purchase identity. */
+  conversationTexts?: readonly string[];
 };
 
 export type ToolRouteResult = {

@@ -11,6 +11,10 @@ export type ToolExecutionContext = {
    * Never accept LLM-supplied customerId for ownership / search scoping.
    */
   trustedCustomerId?: string | null;
+  /**
+   * Customer texts loaded by the server. Never copy these from model tool arguments.
+   */
+  trustedConversationTexts?: readonly string[];
 };
 
 export interface Tool {

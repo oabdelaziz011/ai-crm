@@ -115,6 +115,7 @@ export type CreateBookingInput = {
   branchId?: string;
   notes?: string;
   conversationId?: string;
+  visitType?: string;
   source?: "crm" | "whatsapp" | "ai_assistant" | "call_center" | "public_booking" | "api";
 };
 
@@ -129,9 +130,42 @@ export type CreateBookingResult = {
   /** Optional display enrichment when the create path already resolved them. */
   customerName?: string | null;
   serviceName?: string | null;
+  resourceId?: string | null;
   errors?: string[];
   message?: string;
   customerFacingMessage?: string;
+};
+
+/** Sales demo create — resourceId optional (auto-assign). */
+export type CreateDemoBookingInput = {
+  companyId: string;
+  userId: string;
+  customerId: string;
+  serviceId: string;
+  resourceId?: string;
+  date: string;
+  slotStart: string;
+  branchId?: string;
+  notes?: string;
+  conversationId?: string;
+  clientRequestId?: string;
+  source?: "crm" | "whatsapp" | "ai_assistant" | "call_center" | "public_booking" | "api";
+};
+
+export type ListDemoTypesInput = {
+  companyId: string;
+  userId: string;
+};
+
+export type ListDemoTypesResult = {
+  success: boolean;
+  demos: Array<{
+    serviceId: string;
+    name: string;
+    durationMinutes: number;
+    description: string | null;
+  }>;
+  message?: string;
 };
 
 export type SearchBookingsInput = {
@@ -160,9 +194,12 @@ export type SearchBookingsResult = {
     /** Confirmation number when present on the booking row. */
     reference?: string;
     scheduledAt: string;
+    timezone?: string;
     status: string;
     employeeName?: string;
     serviceName?: string;
+    resourceId?: string;
+    serviceId?: string;
   }>;
   total: number;
   message?: string;
@@ -292,6 +329,9 @@ export type BookingDomainServicePort = {
     createdBy?: string | null;
     branchId?: string | null;
     referenceNow?: Date;
+    visitType?: string | null;
+    clientRequestId?: string | null;
+    expectedServiceKind?: "operational" | "sales_demo" | null;
   }): Promise<{
     booking: {
       id: string;
@@ -301,6 +341,7 @@ export type BookingDomainServicePort = {
       company_id: string;
       customer_id?: string;
       confirmation_number?: string | null;
+      resource_id?: string;
     };
   }>;
   rescheduleBooking?(input: {
@@ -396,4 +437,24 @@ export type SchedulingToolPorts = {
   cancelBooking(input: CancelBookingInput): Promise<CancelBookingResult>;
   checkInBooking(input: CheckInBookingInput): Promise<CheckInBookingResult>;
   checkOutBooking(input: CheckOutBookingInput): Promise<CheckOutBookingResult>;
+  /** Sales demo surface (optional — wired when demo tools are enabled). */
+  listDemoTypes?(input: ListDemoTypesInput): Promise<ListDemoTypesResult>;
+  searchDemoAvailability?(input: SearchAvailabilityInput): Promise<SearchAvailabilityResult>;
+  findNextDemo?(input: FindNextAvailableInput): Promise<FindNextAvailableResult>;
+  createDemoBooking?(input: CreateDemoBookingInput): Promise<CreateBookingResult>;
+  /**
+   * Existing human-handoff path. Called once after a demo booking is persisted.
+   * Failure must not create another booking.
+   */
+  handoffAfterDemoBooking?(input: {
+    companyId: string;
+    conversationId: string;
+    bookingId: string;
+    reason: string;
+  }): Promise<{
+    succeeded: boolean;
+    ownerType: string | null;
+    assigned: boolean;
+    queued: boolean;
+  }>;
 };

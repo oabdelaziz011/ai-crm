@@ -3,6 +3,12 @@ import type { LeadCommandService } from "../services/lead-command-service.js";
 import type { LeadQueryService } from "../services/lead-query-service.js";
 import type { LeadServiceContext } from "../types/lead-types.js";
 import {
+  buildCapturePhoneLookupVariants,
+  deriveCapturePhone,
+  isOpenLeadLifecycle,
+  isPlaceholderContactName,
+} from "./capture-identity.js";
+import {
   AI_AUDIT_DECISIONS,
   AI_CAPTURE_ACTIVITY_TYPES,
   UNKNOWN_CONTACT_NAME,
@@ -11,6 +17,7 @@ import {
   readAiCapture,
   toAiStatusDto,
   type AiAuditDecision,
+  type AiCaptureIdentityStatus,
   type AiCaptureMetadata,
   type ConversationMessageCaptureInput,
   type ConversationStartedCaptureInput,
@@ -76,6 +83,24 @@ async function linkLeadToConversation(
     .is("deleted_at", null);
 
   if (leadError) throw new Error(leadError.message);
+}
+
+
+async function resolveSourceIdForChannel(
+  leads: LeadSmartCaptureServices,
+  ctx: LeadServiceContext,
+  companyId: string,
+  channel: string,
+): Promise<string | null> {
+  const { sources } = await leads.queries.listSources(ctx, { companyId });
+  const key = channel.trim().toLowerCase();
+  const byChannel = sources.find(
+    (s) => s.isActive && s.channelType?.trim().toLowerCase() === key,
+  );
+  if (byChannel) return byChannel.id;
+  const bySlug = sources.find((s) => s.isActive && s.slug?.trim().toLowerCase() === key);
+  if (bySlug) return bySlug.id;
+  return null;
 }
 
 function normalizeChannelKey(channelType: string): string {
@@ -170,6 +195,63 @@ function mergeCapture(
   };
 }
 
+async function findOpenLeadIdByCustomer(
+  client: SupabaseClient,
+  companyId: string,
+  customerId: string,
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("leads")
+    .select("id, lifecycle_status, is_qualified, updated_at")
+    .eq("company_id", companyId)
+    .eq("customer_id", customerId)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(10);
+  if (error) throw new Error(error.message);
+  for (const row of data ?? []) {
+    if (isOpenLeadLifecycle(String(row.lifecycle_status ?? ""))) {
+      return String(row.id);
+    }
+  }
+  return null;
+}
+
+/** True when Postgres rejected an insert due to a unique index (incl. concurrency races). */
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const e = error as { code?: string; message?: string };
+  if (e.code === "23505") return true;
+  return /duplicate key|unique constraint|leads_one_open_per_conversation/i.test(String(e.message ?? ""));
+}
+
+async function findLeadIdByPhoneVariants(
+  client: SupabaseClient,
+  companyId: string,
+  phone: string,
+): Promise<string | null> {
+  const variants = buildCapturePhoneLookupVariants(phone);
+  for (const variant of variants) {
+    const { data } = await client
+      .from("leads")
+      .select("id, lifecycle_status")
+      .eq("company_id", companyId)
+      .eq("phone", variant)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(5);
+    // Never fall back to closed/converted leads — a new engagement gets a new lead.
+    const open = (data ?? []).find((row) => isOpenLeadLifecycle(String(row.lifecycle_status ?? "")));
+    if (open?.id) return String(open.id);
+  }
+  return null;
+}
+
+/**
+ * Resolve an existing lead for the same sales engagement.
+ * Prefer conversation binding, then open lead for trusted customer, then identity keys.
+ * Does not collapse distinct closed/converted leads into one record.
+ */
 async function findExistingLeadId(
   client: SupabaseClient,
   companyId: string,
@@ -179,16 +261,18 @@ async function findExistingLeadId(
     externalUserId?: string | null;
     phone?: string | null;
     email?: string | null;
+    customerId?: string | null;
   },
 ): Promise<string | null> {
   const channel = normalizeChannelKey(input.channelType);
   const phone = input.phone?.trim() || null;
   const email = input.email?.trim().toLowerCase() || null;
   const externalUserId = input.externalUserId?.trim() || null;
+  const customerId = input.customerId?.trim() || null;
 
   const { data: conv } = await client
     .from("conversations")
-    .select("lead_id")
+    .select("lead_id, customer_id")
     .eq("id", input.conversationId)
     .eq("company_id", companyId)
     .is("deleted_at", null)
@@ -204,17 +288,25 @@ async function findExistingLeadId(
     .maybeSingle();
   if (byConvLead?.id) return String(byConvLead.id);
 
+  const trustedCustomerId = customerId || (conv?.customer_id ? String(conv.customer_id) : null);
+  if (trustedCustomerId) {
+    const byCustomer = await findOpenLeadIdByCustomer(client, companyId, trustedCustomerId);
+    if (byCustomer) return byCustomer;
+  }
+
   const tryIdentityKey = async (key: string, value: string | null): Promise<string | null> => {
     if (!value) return null;
     const { data } = await client
       .from("leads")
-      .select("id")
+      .select("id, lifecycle_status")
       .eq("company_id", companyId)
       .is("deleted_at", null)
       .contains("metadata", { aiCapture: { identityKeys: { [key]: value } } })
-      .limit(1)
-      .maybeSingle();
-    return data?.id ? String(data.id) : null;
+      .order("updated_at", { ascending: false })
+      .limit(5);
+    // Open leads only: closed/converted leads must never be reopened via identity keys.
+    const open = (data ?? []).find((row) => isOpenLeadLifecycle(String(row.lifecycle_status ?? "")));
+    return open?.id ? String(open.id) : null;
   };
 
   if (channel === "whatsapp") {
@@ -223,30 +315,18 @@ async function findExistingLeadId(
     if (phone) {
       const byWaPhone = await tryIdentityKey("whatsapp", phone);
       if (byWaPhone) return byWaPhone;
-      const { data } = await client
-        .from("leads")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("phone", phone)
-        .is("deleted_at", null)
-        .limit(1)
-        .maybeSingle();
-      if (data?.id) return String(data.id);
+      const byPhone = await findLeadIdByPhoneVariants(client, companyId, phone);
+      if (byPhone) return byPhone;
     }
   }
 
   if (phone) {
-    const byKey = await tryIdentityKey("phone", phone);
-    if (byKey) return byKey;
-    const { data } = await client
-      .from("leads")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("phone", phone)
-      .is("deleted_at", null)
-      .limit(1)
-      .maybeSingle();
-    if (data?.id) return String(data.id);
+    for (const variant of buildCapturePhoneLookupVariants(phone)) {
+      const byKey = await tryIdentityKey("phone", variant);
+      if (byKey) return byKey;
+    }
+    const byPhone = await findLeadIdByPhoneVariants(client, companyId, phone);
+    if (byPhone) return byPhone;
   }
 
   if (email) {
@@ -254,18 +334,21 @@ async function findExistingLeadId(
     if (byKey) return byKey;
     const { data } = await client
       .from("leads")
-      .select("id")
+      .select("id, lifecycle_status")
       .eq("company_id", companyId)
       .ilike("email", email)
       .is("deleted_at", null)
-      .limit(1)
-      .maybeSingle();
-    if (data?.id) return String(data.id);
+      .order("updated_at", { ascending: false })
+      .limit(5);
+    const open = (data ?? []).find((row) => isOpenLeadLifecycle(String(row.lifecycle_status ?? "")));
+    if (open?.id) return String(open.id);
   }
 
-  if (channel === "facebook") {
+  if (channel === "facebook" || channel === "messenger") {
     const byFb = await tryIdentityKey("facebook", externalUserId);
     if (byFb) return byFb;
+    const byMessenger = await tryIdentityKey("messenger", externalUserId);
+    if (byMessenger) return byMessenger;
   }
 
   if (channel === "instagram") {
@@ -279,6 +362,74 @@ async function findExistingLeadId(
   }
 
   return null;
+}
+
+async function resolveConversationCustomerId(
+  client: SupabaseClient,
+  companyId: string,
+  conversationId: string,
+  explicitCustomerId?: string | null,
+): Promise<string | null> {
+  const explicit = explicitCustomerId?.trim();
+  if (explicit) {
+    // Tenant guard: a customer id from another company is never trusted (fall back to the conversation stamp).
+    const { data: owned } = await client
+      .from("customers")
+      .select("id")
+      .eq("id", explicit)
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (owned?.id) return explicit;
+  }
+  const { data } = await client
+    .from("conversations")
+    .select("customer_id")
+    .eq("id", conversationId)
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  return data?.customer_id ? String(data.customer_id) : null;
+}
+
+async function loadCustomerDisplayName(
+  client: SupabaseClient,
+  companyId: string,
+  customerId: string,
+  conversationId?: string | null,
+): Promise<string | null> {
+  const { data } = await client
+    .from("customers")
+    .select("name")
+    .eq("id", customerId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  const name = typeof data?.name === "string" ? data.name.trim() : "";
+  if (name && !isPlaceholderContactName(name)) return name;
+
+  // Prefer stamped trusted welcome name over channel placeholders (WhatsApp +E.164).
+  if (conversationId) {
+    const { data: conv } = await client
+      .from("conversations")
+      .select("metadata")
+      .eq("id", conversationId)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    const meta =
+      conv?.metadata && typeof conv.metadata === "object" && !Array.isArray(conv.metadata)
+        ? (conv.metadata as Record<string, unknown>)
+        : {};
+    const trusted =
+      typeof meta.trustedCustomerName === "string" ? meta.trustedCustomerName.trim() : "";
+    if (trusted && !isPlaceholderContactName(trusted)) return trusted;
+  }
+  return null;
+}
+
+function resolveIdentityStatus(customerId: string | null, matchedExistingLead: boolean): AiCaptureIdentityStatus {
+  if (customerId) return "matched_customer";
+  if (matchedExistingLead) return "matched_lead";
+  return "prospect";
 }
 
 async function writeAudit(
@@ -359,13 +510,26 @@ export function createSupabaseLeadSmartCapture(
       const channel = normalizeChannelKey(input.channelType);
       const actorUserId = await resolveActorUserId(client, companyId, input.actorUserId);
       const ctx = systemCtx(companyId, actorUserId);
+      const phone = deriveCapturePhone({
+        channelType: channel,
+        phone: input.phone,
+        externalUserId: input.externalUserId,
+      });
+      const customerId = await resolveConversationCustomerId(
+        client,
+        companyId,
+        conversationId,
+        input.customerId,
+      );
 
+      // Concurrency: re-check conversation.lead_id before create.
       const existingLeadId = await findExistingLeadId(client, companyId, {
         conversationId,
         channelType: channel,
         externalUserId: input.externalUserId,
-        phone: input.phone,
+        phone,
         email: input.email,
+        customerId,
       });
 
       if (existingLeadId) {
@@ -383,21 +547,34 @@ export function createSupabaseLeadSmartCapture(
 
         await linkLeadToConversation(client, { companyId, conversationId, leadId: existingLeadId });
 
+        const identityStatus = resolveIdentityStatus(customerId ?? lead.customerId, true);
         const prev = readAiCapture(lead.metadata) ?? emptyAiCapture();
         const next = mergeCapture(prev, {
-          identityStatus: "matched_lead",
+          identityStatus,
           appendConversationId: conversationId,
           appendIdentity: {
             channelKey: channel,
             externalUserId: input.externalUserId,
-            phone: input.phone,
+            phone,
             email: input.email,
           },
         });
 
+        const customerName =
+          customerId && isPlaceholderContactName(lead.contactName)
+            ? await loadCustomerDisplayName(client, companyId, customerId, conversationId)
+            : null;
+
         await leads.commands.updateLead(ctx, {
           companyId,
           leadId: existingLeadId,
+          ...(customerId && !lead.customerId ? { customerId } : {}),
+          ...(customerName
+            ? {
+                title: isPlaceholderContactName(lead.title) ? customerName : undefined,
+                contactName: customerName,
+              }
+            : {}),
           metadata: { ...lead.metadata, aiCapture: next },
         });
 
@@ -406,7 +583,7 @@ export function createSupabaseLeadSmartCapture(
           leadId: existingLeadId,
           activityType: AI_CAPTURE_ACTIVITY_TYPES.conversationLinked,
           summary: "Conversation linked",
-          payload: { conversationId, channel },
+          payload: { conversationId, channel, customerId: customerId ?? null },
           actorUserId,
         });
 
@@ -415,8 +592,10 @@ export function createSupabaseLeadSmartCapture(
           leadId: existingLeadId,
           conversationId,
           decision: AI_AUDIT_DECISIONS.conversationLinked,
-          reason: "Existing identity matched; conversation appended",
-          metadata: { channel },
+          reason: customerId
+            ? "Existing lead matched; linked trusted customer"
+            : "Existing identity matched; conversation appended",
+          metadata: { channel, identityStatus },
         });
 
         return toIntelligenceResult({
@@ -428,31 +607,149 @@ export function createSupabaseLeadSmartCapture(
         });
       }
 
+      // Second check: another worker may have linked the conversation while we resolved.
+      const { data: raced } = await client
+        .from("conversations")
+        .select("lead_id")
+        .eq("id", conversationId)
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (raced?.lead_id) {
+        const racedLeadId = String(raced.lead_id);
+        const { lead: racedLead } = await leads.queries.getLead(ctx, {
+          companyId,
+          leadId: racedLeadId,
+        });
+        if (racedLead) {
+          const identityStatusRaced = resolveIdentityStatus(
+            customerId ?? racedLead.customerId,
+            true,
+          );
+          const prevRaced = readAiCapture(racedLead.metadata) ?? emptyAiCapture();
+          const nextRaced = mergeCapture(prevRaced, {
+            identityStatus: identityStatusRaced,
+            appendConversationId: conversationId,
+            appendIdentity: {
+              channelKey: channel,
+              externalUserId: input.externalUserId,
+              phone,
+              email: input.email,
+            },
+          });
+          await leads.commands.updateLead(ctx, {
+            companyId,
+            leadId: racedLeadId,
+            ...(customerId && !racedLead.customerId ? { customerId } : {}),
+            metadata: { ...racedLead.metadata, aiCapture: nextRaced },
+          });
+          return toIntelligenceResult({
+            companyId,
+            leadId: racedLeadId,
+            conversationId,
+            capture: nextRaced,
+            created: false,
+          });
+        }
+      }
+
+      const identityStatus = resolveIdentityStatus(customerId, false);
+      const customerName = customerId
+        ? await loadCustomerDisplayName(client, companyId, customerId, conversationId)
+        : null;
+      const displayName = customerName ?? UNKNOWN_CONTACT_NAME;
+
       const capture = emptyAiCapture({
         conversationId,
         channelKey: channel,
         externalUserId: input.externalUserId,
-        phone: input.phone,
+        phone,
         email: input.email,
       });
+      const captureWithStatus = mergeCapture(capture, { identityStatus });
 
-      const created = await leads.commands.createLead(ctx, {
-        companyId,
-        title: UNKNOWN_CONTACT_NAME,
-        contactName: UNKNOWN_CONTACT_NAME,
-        email: input.email ?? undefined,
-        phone: input.phone ?? undefined,
-        conversationId,
-        aiSummary: "",
-        metadata: {
-          aiCapture: capture,
-          smartCapture: {
-            source: "conversation_started",
-            channel,
-            externalUserId: input.externalUserId ?? null,
+      let created: { lead: { id: string } };
+      try {
+        const sourceId = await resolveSourceIdForChannel(leads, ctx, companyId, channel);
+        created = await leads.commands.createLead(ctx, {
+          companyId,
+          title: displayName,
+          contactName: displayName,
+          email: input.email ?? undefined,
+          phone: phone ?? undefined,
+          conversationId,
+          customerId: customerId ?? undefined,
+          ...(sourceId ? { sourceId } : {}),
+          aiSummary: "",
+          metadata: {
+            aiCapture: captureWithStatus,
+            smartCapture: {
+              source: "conversation_started",
+              channel,
+              externalUserId: input.externalUserId ?? null,
+              customerId: customerId ?? null,
+            },
           },
-        },
-      });
+        });
+      } catch (error) {
+        // Concurrent ConversationStarted: partial unique index leads_one_open_per_conversation_idx.
+        if (!isUniqueViolation(error)) throw error;
+        const winnerId =
+          (await findExistingLeadId(client, companyId, {
+            conversationId,
+            channelType: channel,
+            externalUserId: input.externalUserId,
+            phone,
+            email: input.email,
+            customerId,
+          })) ??
+          (
+            await client
+              .from("conversations")
+              .select("lead_id")
+              .eq("id", conversationId)
+              .eq("company_id", companyId)
+              .is("deleted_at", null)
+              .maybeSingle()
+          ).data?.lead_id;
+        if (!winnerId) throw error;
+        const winnerLeadId = String(winnerId);
+        const { lead: winner } = await leads.queries.getLead(ctx, {
+          companyId,
+          leadId: winnerLeadId,
+        });
+        if (!winner) throw error;
+        await linkLeadToConversation(client, {
+          companyId,
+          conversationId,
+          leadId: winnerLeadId,
+        });
+        const winnerStatus = resolveIdentityStatus(customerId ?? winner.customerId, true);
+        const prevWinner = readAiCapture(winner.metadata) ?? emptyAiCapture();
+        const nextWinner = mergeCapture(prevWinner, {
+          identityStatus: winnerStatus,
+          appendConversationId: conversationId,
+          appendIdentity: {
+            channelKey: channel,
+            externalUserId: input.externalUserId,
+            phone,
+            email: input.email,
+          },
+        });
+        await leads.commands.updateLead(ctx, {
+          companyId,
+          leadId: winnerLeadId,
+          ...(customerId && !winner.customerId ? { customerId } : {}),
+          metadata: { ...winner.metadata, aiCapture: nextWinner },
+        });
+        return toIntelligenceResult({
+          companyId,
+          leadId: winnerLeadId,
+          conversationId,
+          capture: nextWinner,
+          created: false,
+        });
+      }
 
       await linkLeadToConversation(client, {
         companyId,
@@ -464,8 +761,8 @@ export function createSupabaseLeadSmartCapture(
         companyId,
         leadId: created.lead.id,
         activityType: AI_CAPTURE_ACTIVITY_TYPES.prospectCreated,
-        summary: "Prospect created",
-        payload: { conversationId, channel },
+        summary: customerId ? "Prospect created for known customer" : "Prospect created",
+        payload: { conversationId, channel, customerId: customerId ?? null },
         actorUserId,
       });
 
@@ -474,15 +771,17 @@ export function createSupabaseLeadSmartCapture(
         leadId: created.lead.id,
         conversationId,
         decision: AI_AUDIT_DECISIONS.prospectCreated,
-        reason: "No existing identity; prospect created from ConversationStarted",
-        metadata: { channel },
+        reason: customerId
+          ? "Trusted customer resolved; new open lead linked to customer"
+          : "No existing identity; prospect created from ConversationStarted",
+        metadata: { channel, identityStatus },
       });
 
       return toIntelligenceResult({
         companyId,
         leadId: created.lead.id,
         conversationId,
-        capture,
+        capture: captureWithStatus,
         created: true,
       });
     },
@@ -495,7 +794,7 @@ export function createSupabaseLeadSmartCapture(
 
       const { data: conv } = await client
         .from("conversations")
-        .select("lead_id")
+        .select("lead_id, customer_id")
         .eq("id", conversationId)
         .eq("company_id", companyId)
         .is("deleted_at", null)
@@ -515,6 +814,40 @@ export function createSupabaseLeadSmartCapture(
 
       const { lead } = await leads.queries.getLead(ctx, { companyId, leadId });
       if (!lead) return {};
+
+      // Backfill customer link after inbound CRM resolve stamps conversation.customer_id
+      // (ConversationStarted often races ahead of trusted identity binding).
+      const stampedCustomerId =
+        input.customerId?.trim() ||
+        (conv?.customer_id ? String(conv.customer_id) : null) ||
+        null;
+      if (stampedCustomerId && !lead.customerId) {
+        const customerName = isPlaceholderContactName(lead.contactName)
+          ? await loadCustomerDisplayName(client, companyId, stampedCustomerId, conversationId)
+          : null;
+        const prevCapture = readAiCapture(lead.metadata) ?? emptyAiCapture({ conversationId });
+        const nextCapture = mergeCapture(prevCapture, {
+          identityStatus: "matched_customer",
+        });
+        await leads.commands.updateLead(ctx, {
+          companyId,
+          leadId,
+          customerId: stampedCustomerId,
+          ...(customerName
+            ? {
+                title: isPlaceholderContactName(lead.title) ? customerName : undefined,
+                contactName: customerName,
+              }
+            : {}),
+          metadata: { ...lead.metadata, aiCapture: nextCapture },
+        });
+        lead.customerId = stampedCustomerId;
+        lead.metadata = { ...lead.metadata, aiCapture: nextCapture };
+        if (customerName) {
+          lead.contactName = customerName;
+          if (isPlaceholderContactName(lead.title)) lead.title = customerName;
+        }
+      }
 
       const prev = readAiCapture(lead.metadata) ?? emptyAiCapture({ conversationId });
       if (prev.contextReady || prev.state !== "prospect") {

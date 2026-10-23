@@ -19,6 +19,8 @@ import {
   LeadConflictError,
   LeadNotFoundError,
   LeadPermissionDeniedError,
+  LeadQualificationPolicyRejectedError,
+  LeadStageTransitionError,
   LeadValidationError,
 } from "../errors.js";
 import type {
@@ -28,6 +30,7 @@ import type {
   LeadEventPublisherPort,
   LeadNotificationPort,
   LeadOpportunityConversionPort,
+  LeadOpportunityStageSyncPort,
 } from "../ports/lead-platform-ports.js";
 import type { LeadRepository } from "../repositories/lead-repository-port.js";
 import type {
@@ -44,12 +47,39 @@ import {
   readOptionalString,
   readRequiredString,
 } from "../validators/lead-guards.js";
-import { assertStageTransition, selectAssignmentCandidate } from "../validators/stage-transition-validator.js";
+import { leadsShareVerifiedIdentity } from "../validators/lead-merge-identity.js";
+import {
+  assertStageTransition,
+  selectAssignmentCandidate,
+  type StageAuditSource,
+} from "../validators/stage-transition-validator.js";
+import {
+  extractSalesEvidenceFromConversation,
+  salesEvidenceAuditSnapshot,
+} from "../policies/conversation-sales-evidence.js";
 import {
   AssignmentGovernanceError,
   type AssignmentGovernancePort,
 } from "@workspace/assignment-governance";
 import type { AssignmentAuditPort, AssignmentAuditSource } from "@workspace/assignment-audit";
+import {
+  evaluateLeadQualificationPolicy,
+  type LeadQualificationEvaluation,
+  type SalesEvidence,
+} from "../policies/lead-qualification-policy.js";
+import {
+  companyLeadQualificationSettingsToPatch,
+  type CompanyLeadQualificationSettings,
+  type CompanyLeadQualificationSettingsPatch,
+  type CompanyLeadQualificationSettingsStore,
+  resolveCompanyLeadQualificationPolicyConfig,
+} from "../policies/company-lead-qualification-settings.js";
+import {
+  deriveObservationalSalesEvidence,
+  mergeSalesEvidence,
+  resolveQualificationPolicyMode,
+  type QualificationPolicyMode,
+} from "../policies/qualify-lead-policy-integration.js";
 
 export type LeadCommandServiceDeps = {
   leads: LeadRepository;
@@ -61,6 +91,74 @@ export type LeadCommandServiceDeps = {
   assignmentGovernance?: AssignmentGovernancePort | null;
   assignmentAudit?: AssignmentAuditPort | null;
   opportunityConversion?: LeadOpportunityConversionPort | null;
+  /**
+   * Optional: synchronize linked Opportunity stage after Lead Kanban / changeLeadStage.
+   * Never creates Opportunities and never triggers external sends.
+   */
+  opportunityStageSync?: LeadOpportunityStageSyncPort | null;
+  /**
+   * Accepted-quote proof for Won. Missing or false blocks every caller, including Kanban drag.
+   * There is no payment field; an accepted quote is the persisted sale record.
+   */
+  saleCompletion?: {
+    hasAcceptedQuoteForLead(input: { companyId: string; leadId: string }): Promise<boolean>;
+  } | null;
+  /**
+   * Company qualification settings (P1d). Prefer Supabase store in production;
+   * InMemory for tests. When null/omitted, motion defaults from P1a/P1b are used.
+   */
+  qualificationSettingsStore?: CompanyLeadQualificationSettingsStore | null;
+};
+
+export type QualifyLeadInput = {
+  companyId: string;
+  leadId: string;
+  score?: number;
+  stageId?: string;
+  /** Caller-supplied sales evidence. Missing keys are not treated as true. */
+  evidence?: SalesEvidence;
+  /**
+   * `enforce` — AI / automated paths.
+   * `human_override` — Kanban / CRM / Integration API.
+   * Omitted — see resolveQualificationPolicyMode (legacy compatibility).
+   */
+  qualificationPolicyMode?: QualificationPolicyMode;
+  /** Optional per-request settings patch (merged via P1b normalize). */
+  companySettingsPatch?: CompanyLeadQualificationSettingsPatch | null;
+  /** Inbound event id that produced this decision. Not message text. */
+  messageId?: string;
+  auditSource?: StageAuditSource;
+  auditReason?: string;
+};
+
+export type ConversationQualificationInput = {
+  companyId: string;
+  leadId: string;
+  messageId: string;
+  texts: readonly string[];
+};
+
+export type ConversationQualificationResult = {
+  duplicate: boolean;
+  qualificationApplied: boolean;
+  outcome: string;
+  reason: string;
+};
+
+export type QualifyLeadResult = {
+  lead: LeadRecord;
+  /** Policy evaluation or explicit skip reason for truthful callers. */
+  policy: LeadQualificationEvaluation | {
+    outcome: "qualified";
+    reason: "policy_skipped_human_override" | "policy_skipped_legacy_caller";
+    explanation: string;
+    missingRequiredEvidence: [];
+    requiresHumanReview: false;
+    salesMotion: string;
+    requiredEvidenceFields: string[];
+  };
+  /** True when this call persisted a new qualification transition. */
+  qualificationApplied: boolean;
 };
 
 export type LeadConversionMode = (typeof LEAD_CONVERSION_MODES)[number];
@@ -77,6 +175,54 @@ export type LeadConversionResult = {
   /** The lead was already converted before this request — nothing was written. */
   alreadyConverted: boolean;
 };
+
+function formatLeadPurchaseJourney(input: {
+  lead: LeadRecord;
+  stageName: ReadonlyMap<string, string>;
+  history: Array<{ fieldName: string; previousValue: string | null; newValue: string | null; createdAt: string }>;
+  activities: Array<{ summary: string; activityType: string; createdAt: string }>;
+  notes: Array<{ body: string; createdAt: string }>;
+  tags: string[];
+}): string {
+  const stageLabel = (id: string | null) => {
+    if (!id) return "—";
+    return input.stageName.get(id) ?? id;
+  };
+  const lines = [
+    "رحلة شراء المنتج",
+    `الاسم: ${input.lead.contactName || input.lead.title}`,
+    input.lead.email ? `البريد: ${input.lead.email}` : "",
+    input.lead.phone ? `الهاتف: ${input.lead.phone}` : "",
+    input.lead.companyName ? `الشركة: ${input.lead.companyName}` : "",
+    input.lead.estimatedValue != null ? `القيمة المتوقعة: ${input.lead.estimatedValue} ${input.lead.currency}` : "",
+    input.tags.length ? `الوسوم: ${input.tags.join("، ")}` : "",
+    "",
+    "المراحل",
+  ];
+  const stageMoves = input.history.filter((row) => row.fieldName === "stage_id" || row.fieldName === "lifecycle_status");
+  if (stageMoves.length === 0) {
+    lines.push(`- الحالة الحالية: ${input.lead.lifecycleStatus}`);
+  } else {
+    for (const row of stageMoves) {
+      const from = row.fieldName === "stage_id" ? stageLabel(row.previousValue) : row.previousValue ?? "—";
+      const to = row.fieldName === "stage_id" ? stageLabel(row.newValue) : row.newValue ?? "—";
+      lines.push(`- ${row.createdAt}: ${from} ← ${to}`);
+    }
+  }
+  if (input.activities.length) {
+    lines.push("", "الأنشطة");
+    for (const activity of input.activities) {
+      lines.push(`- ${activity.createdAt}: ${activity.summary || activity.activityType}`);
+    }
+  }
+  if (input.notes.length) {
+    lines.push("", "الملاحظات");
+    for (const note of input.notes) {
+      lines.push(`- ${note.createdAt}: ${note.body}`);
+    }
+  }
+  return lines.filter((line) => line !== "").join("\n");
+}
 
 function isFinalConvertedLead(lead: LeadRecord): boolean {
   return Boolean(lead.customerId) && (lead.lifecycleStatus === "converted" || lead.lifecycleStatus === "won");
@@ -116,6 +262,7 @@ export class LeadCommandService {
       stageId?: string;
       assignedUserId?: string;
       conversationId?: string;
+      customerId?: string | null;
       priority?: LeadRecord["priority"];
       estimatedValue?: number;
       expectedCloseDate?: string | null;
@@ -167,6 +314,7 @@ export class LeadCommandService {
       priority: input.priority,
       estimatedValue: input.estimatedValue ?? null,
       conversationId: input.conversationId ?? null,
+      customerId: input.customerId?.trim() || null,
       territory: input.territory ?? null,
       department: input.department ?? null,
       language: input.language ?? null,
@@ -249,6 +397,7 @@ export class LeadCommandService {
       sourceId?: string | null;
       stageId?: string;
       assignedUserId?: string | null;
+      customerId?: string | null;
       expectedCloseDate?: string | null;
       temperature?: LeadRecord["temperature"];
       notes?: string;
@@ -289,6 +438,7 @@ export class LeadCommandService {
       stageId: input.stageId,
       lifecycleStatus,
       assignedUserId: input.assignedUserId,
+      customerId: input.customerId !== undefined ? input.customerId?.trim() || null : undefined,
       expectedCloseDate: input.expectedCloseDate,
       temperature: input.temperature,
       notes: input.notes,
@@ -461,17 +611,174 @@ export class LeadCommandService {
     return this.assignLead(ctx, { ...input, method: "manual" });
   }
 
-  async qualifyLead(
+  /**
+   * Qualify from stored conversation text. Model-filled evidence is not accepted here.
+   * A repeated message id, or an already-qualified lead, does not publish another event.
+   */
+  async applyConversationQualification(
     ctx: LeadServiceContext,
-    input: { companyId: string; leadId: string; score?: number },
-  ): Promise<{ lead: LeadRecord }> {
+    input: ConversationQualificationInput,
+  ): Promise<ConversationQualificationResult> {
+    assertLeadActor(ctx);
+    assertLeadCompanyAccess(ctx, input.companyId);
+    assertLeadPermission(ctx, LEAD_PERMISSIONS.qualify);
+    const existing = await this.requireLead(input.companyId, input.leadId);
+    const priorMessageId =
+      typeof existing.metadata.salesQualificationMessageId === "string"
+        ? existing.metadata.salesQualificationMessageId
+        : "";
+    if (priorMessageId && priorMessageId === input.messageId) {
+      return {
+        duplicate: true,
+        qualificationApplied: false,
+        outcome: typeof existing.metadata.salesQualificationOutcome === "string"
+          ? existing.metadata.salesQualificationOutcome
+          : existing.isQualified
+            ? "already_qualified"
+            : "duplicate",
+        reason: "message_already_processed",
+      };
+    }
+
+    const evidence = extractSalesEvidenceFromConversation(input.texts);
+    try {
+      const result = await this.qualifyLead(ctx, {
+        companyId: input.companyId,
+        leadId: input.leadId,
+        evidence,
+        qualificationPolicyMode: "enforce",
+        messageId: input.messageId,
+        auditSource: "ai",
+        auditReason: "conversation_evidence",
+      });
+      return {
+        duplicate: result.policy.outcome === "already_qualified",
+        qualificationApplied: result.qualificationApplied,
+        outcome: result.policy.outcome,
+        reason: result.policy.reason,
+      };
+    } catch (error) {
+      if (error instanceof LeadQualificationPolicyRejectedError) {
+        return {
+          duplicate: false,
+          qualificationApplied: false,
+          outcome: error.evaluation.outcome,
+          reason: error.evaluation.reason,
+        };
+      }
+      if (error instanceof LeadStageTransitionError) {
+        return {
+          duplicate: false,
+          qualificationApplied: false,
+          outcome: "stage_transition_blocked",
+          reason: error.reason,
+        };
+      }
+      throw error;
+    }
+  }
+
+  async qualifyLead(ctx: LeadServiceContext, input: QualifyLeadInput): Promise<QualifyLeadResult> {
     const actorUserId = assertLeadActor(ctx);
     assertLeadCompanyAccess(ctx, input.companyId);
     assertLeadPermission(ctx, LEAD_PERMISSIONS.qualify);
     const existing = await this.requireLead(input.companyId, input.leadId);
 
-    const stage = await this.resolveStageByStatus(input.companyId, existing.pipelineId, "qualified");
-    assertStageTransition(existing.lifecycleStatus, "qualified");
+    const evidencePropertyProvided = Object.prototype.hasOwnProperty.call(input, "evidence");
+    const policyMode = resolveQualificationPolicyMode({
+      qualificationPolicyMode: input.qualificationPolicyMode,
+      evidencePropertyProvided,
+    });
+
+    const settingsPatch = await this.resolveSettingsPatchForQualify(input);
+    const { policyConfig, settings } = resolveCompanyLeadQualificationPolicyConfig(
+      input.companyId,
+      settingsPatch,
+    );
+
+    let policyResult: QualifyLeadResult["policy"];
+    const evidence = mergeSalesEvidence(deriveObservationalSalesEvidence(existing), input.evidence);
+
+    if (policyMode === "enforce") {
+      const evaluation = evaluateLeadQualificationPolicy({
+        lead: {
+          isQualified: existing.isQualified,
+          score: existing.score,
+          temperature: existing.temperature,
+          lifecycleStatus: existing.lifecycleStatus,
+        },
+        evidence,
+        config: policyConfig,
+      });
+      policyResult = evaluation;
+
+      if (evaluation.outcome === "already_qualified") {
+        return { lead: existing, policy: evaluation, qualificationApplied: false };
+      }
+      if (evaluation.outcome !== "qualified") {
+        throw new LeadQualificationPolicyRejectedError({
+          outcome: evaluation.outcome,
+          reason: evaluation.reason,
+          explanation: evaluation.explanation,
+          missingRequiredEvidence: [...evaluation.missingRequiredEvidence],
+          requiresHumanReview: evaluation.requiresHumanReview,
+        });
+      }
+    } else {
+      policyResult = {
+        outcome: "qualified",
+        reason:
+          input.qualificationPolicyMode === "human_override"
+            ? "policy_skipped_human_override"
+            : "policy_skipped_legacy_caller",
+        explanation:
+          "Qualification policy was not enforced for this caller. Permissions and CRM writes still apply.",
+        missingRequiredEvidence: [],
+        requiresHumanReview: false,
+        salesMotion: settings.salesMotion,
+        requiredEvidenceFields: [...settings.requiredEvidenceFields],
+      };
+      if (existing.isQualified) {
+        return {
+          lead: existing,
+          policy: {
+            outcome: "already_qualified",
+            reason: "lead_already_qualified",
+            explanation: "Lead is already marked qualified; no CRM write performed.",
+            missingRequiredEvidence: [],
+            requiresHumanReview: false,
+            salesMotion: settings.salesMotion,
+            requiredEvidenceFields: [...settings.requiredEvidenceFields],
+          },
+          qualificationApplied: false,
+        };
+      }
+    }
+
+    let stage =
+      (await this.resolveStageByStatus(input.companyId, existing.pipelineId, "qualified")) ?? null;
+    if (input.stageId) {
+      const requested = await this.deps.leads.getStage(input.companyId, input.stageId);
+      if (!requested) throw new LeadNotFoundError("Stage", input.stageId);
+      if (requested.pipelineId !== existing.pipelineId) {
+        throw new LeadValidationError("Stage does not belong to the lead pipeline.");
+      }
+      if (requested.lifecycleStatus !== "qualified") {
+        throw new LeadValidationError("stageId must reference a stage with lifecycle status qualified.");
+      }
+      stage = requested;
+    }
+    assertStageTransition(existing.lifecycleStatus, "qualified", {
+      source: input.auditSource ?? "human",
+    });
+
+    const metadata = input.messageId
+      ? {
+          ...existing.metadata,
+          salesQualificationMessageId: input.messageId,
+          salesQualificationOutcome: "qualified",
+        }
+      : undefined;
 
     const record = await this.deps.leads.updateLead({
       companyId: input.companyId,
@@ -482,12 +789,113 @@ export class LeadCommandService {
       stageId: stage?.id ?? existing.stageId,
       score: input.score ?? existing.score,
       qualifiedAt: new Date().toISOString(),
+      ...(metadata ? { metadata } : {}),
+    });
+
+    await this.recordHistory(
+      input.companyId,
+      input.leadId,
+      "lifecycle_status",
+      existing.lifecycleStatus,
+      "qualified",
+      "qualify",
+      actorUserId,
+    );
+    const opportunitySync = await this.syncOpportunityStage(
+      input.companyId,
+      input.leadId,
+      existing.lifecycleStatus,
+      "qualified",
+      actorUserId,
+    );
+    await this.recordStageAudit({
+      companyId: input.companyId,
+      leadId: input.leadId,
+      activityType: "lead_qualified",
+      summary: "Qualification applied from verified evidence",
+      actorUserId,
+      payload: {
+        previousLifecycle: existing.lifecycleStatus,
+        newLifecycle: "qualified",
+        previousStageId: existing.stageId,
+        newStageId: stage?.id ?? existing.stageId,
+        reason: input.auditReason ?? policyResult.reason,
+        source: input.auditSource ?? "human",
+        evidence: salesEvidenceAuditSnapshot(evidence),
+        opportunitySync,
+      },
     });
 
     await this.deps.events.publish(
       createLeadQualifiedEvent({ companyId: input.companyId, leadId: input.leadId, qualified: true, actorUserId }),
     );
-    return { lead: record };
+    return { lead: record, policy: policyResult, qualificationApplied: true };
+  }
+
+
+  /**
+   * Resolve settings for qualify: per-request patch (tests) wins, else store row, else null defaults.
+   * Always scopes store access to input.companyId after assertLeadCompanyAccess.
+   */
+  private async resolveSettingsPatchForQualify(
+    input: QualifyLeadInput,
+  ): Promise<CompanyLeadQualificationSettingsPatch | null> {
+    if (input.companySettingsPatch !== undefined) {
+      return input.companySettingsPatch;
+    }
+    const store = this.deps.qualificationSettingsStore;
+    if (!store) return null;
+    const stored = await store.get(input.companyId);
+    if (!stored) return null;
+    if (stored.companyId !== input.companyId.trim()) {
+      throw new LeadValidationError("Tenant isolation violation: qualification settings company mismatch.");
+    }
+    return companyLeadQualificationSettingsToPatch(stored);
+  }
+
+  /** Read resolved settings (stored override or defaults). Requires leads.view, qualify, or manage. */
+  async getLeadQualificationSettings(
+    ctx: LeadServiceContext,
+    input: { companyId: string },
+  ): Promise<{ settings: CompanyLeadQualificationSettings; warnings: string[] }> {
+    assertLeadActor(ctx);
+    assertLeadCompanyAccess(ctx, input.companyId);
+    if (
+      !ctx.isSuperAdmin &&
+      !ctx.hasPermission(LEAD_PERMISSIONS.view) &&
+      !ctx.hasPermission(LEAD_PERMISSIONS.qualify) &&
+      !ctx.hasPermission(LEAD_PERMISSIONS.manage)
+    ) {
+      throw new LeadPermissionDeniedError(LEAD_PERMISSIONS.view);
+    }
+    const store = this.deps.qualificationSettingsStore;
+    if (!store) {
+      const resolved = resolveCompanyLeadQualificationPolicyConfig(input.companyId, null);
+      return { settings: resolved.settings, warnings: resolved.warnings };
+    }
+    const resolved = await store.resolve(input.companyId);
+    return { settings: resolved.settings, warnings: resolved.warnings };
+  }
+
+  /** Persist company policy overrides. Requires leads.manage. */
+  async upsertLeadQualificationSettings(
+    ctx: LeadServiceContext,
+    input: { companyId: string; patch?: CompanyLeadQualificationSettingsPatch | null },
+  ): Promise<{ settings: CompanyLeadQualificationSettings }> {
+    const actorUserId = assertLeadActor(ctx);
+    assertLeadCompanyAccess(ctx, input.companyId);
+    assertLeadPermission(ctx, LEAD_PERMISSIONS.manage);
+    const store = this.deps.qualificationSettingsStore;
+    if (!store) {
+      throw new LeadValidationError("Lead qualification settings store is not configured.");
+    }
+    const settings = await store.upsert(input.companyId, input.patch ?? null, {
+      updatedBy: actorUserId,
+    });
+    if (settings.companyId !== input.companyId.trim()) {
+      throw new LeadValidationError("Tenant isolation violation: qualification settings company mismatch.");
+    }
+    return { settings };
   }
 
   async disqualifyLead(
@@ -750,15 +1158,32 @@ export class LeadCommandService {
     assertLeadCompanyAccess(ctx, input.companyId);
     assertLeadPermission(ctx, LEAD_PERMISSIONS.merge);
 
+    const primary = await this.requireLead(input.companyId, input.primaryLeadId);
+    const uniqueDuplicates = [...new Set(input.duplicateLeadIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueDuplicates.length === 0) {
+      throw new LeadValidationError("At least one duplicate lead id is required.");
+    }
+    for (const duplicateLeadId of uniqueDuplicates) {
+      if (duplicateLeadId === input.primaryLeadId) {
+        throw new LeadValidationError("A lead cannot be merged into itself.");
+      }
+      const duplicate = await this.requireLead(input.companyId, duplicateLeadId);
+      if (!leadsShareVerifiedIdentity(primary, duplicate)) {
+        throw new LeadValidationError(
+          "Leads can be merged only when they share a verified phone or email. Name similarity is not enough.",
+        );
+      }
+    }
+
     const record = await this.deps.leads.mergeLeads({
       companyId: input.companyId,
       primaryLeadId: input.primaryLeadId,
-      duplicateLeadIds: input.duplicateLeadIds,
+      duplicateLeadIds: uniqueDuplicates,
       updatedBy: actorUserId,
     });
 
     await this.writeAudit(input.companyId, actorUserId, "UPDATE", "lead", input.primaryLeadId, {
-      merged: input.duplicateLeadIds,
+      merged: uniqueDuplicates,
     });
     return { lead: record };
   }
@@ -866,7 +1291,16 @@ export class LeadCommandService {
 
   async changeLeadStage(
     ctx: LeadServiceContext,
-    input: { companyId: string; leadId: string; stageId: string },
+    input: {
+      companyId: string;
+      leadId: string;
+      stageId: string;
+      stageAudit?: {
+        source?: StageAuditSource;
+        reason?: string;
+        evidence?: SalesEvidence;
+      };
+    },
   ): Promise<{ lead: LeadRecord }> {
     const actorUserId = assertLeadActor(ctx);
     assertLeadCompanyAccess(ctx, input.companyId);
@@ -880,10 +1314,42 @@ export class LeadCommandService {
       throw new LeadValidationError("Stage does not belong to the lead pipeline.");
     }
 
+    if (existing.stageId === stage.id && existing.lifecycleStatus === stage.lifecycleStatus) {
+      return { lead: existing };
+    }
+
     const pipeline = await this.deps.leads.getPipeline(input.companyId, existing.pipelineId);
+    const source = input.stageAudit?.source ?? "human";
     assertStageTransition(existing.lifecycleStatus, stage.lifecycleStatus, {
       allowBackward: pipeline?.allowBackwardStageMovement ?? true,
+      source,
     });
+
+    if (stage.lifecycleStatus === "won") {
+      const accepted = this.deps.saleCompletion
+        ? await this.deps.saleCompletion.hasAcceptedQuoteForLead({
+            companyId: input.companyId,
+            leadId: existing.id,
+          })
+        : false;
+      if (!accepted) {
+        throw new LeadStageTransitionError(existing.lifecycleStatus, "won", "sale_completion_required");
+      }
+    }
+
+    // Formal qualification must go through qualifyLead (lead_qualified + qualified_at).
+    // Soft-setting isQualified from a Kanban stage move is not allowed.
+    if (stage.lifecycleStatus === "qualified" && !existing.isQualified) {
+      // Human Kanban authority — policy not enforced; still requires leads.qualify.
+      return this.qualifyLead(ctx, {
+        companyId: input.companyId,
+        leadId: input.leadId,
+        stageId: stage.id,
+        qualificationPolicyMode: "human_override",
+        auditSource: source,
+        auditReason: input.stageAudit?.reason ?? "human_stage_qualified",
+      });
+    }
 
     const record = await this.deps.leads.updateLead({
       companyId: input.companyId,
@@ -891,10 +1357,44 @@ export class LeadCommandService {
       updatedBy: actorUserId,
       stageId: stage.id,
       lifecycleStatus: stage.lifecycleStatus,
-      isQualified: stage.lifecycleStatus === "qualified" ? true : existing.isQualified,
+      // Preserve prior qualification flag; do not auto-disqualify on stage leave.
+      isQualified: existing.isQualified,
     });
 
     await this.recordHistory(input.companyId, input.leadId, "stage_id", existing.stageId, stage.id, "change_stage", actorUserId);
+    await this.recordHistory(
+      input.companyId,
+      input.leadId,
+      "lifecycle_status",
+      existing.lifecycleStatus,
+      stage.lifecycleStatus,
+      "change_stage",
+      actorUserId,
+    );
+    const opportunitySync = await this.syncOpportunityStage(
+      input.companyId,
+      input.leadId,
+      existing.lifecycleStatus,
+      stage.lifecycleStatus,
+      actorUserId,
+    );
+    await this.recordStageAudit({
+      companyId: input.companyId,
+      leadId: input.leadId,
+      activityType: "stage_changed",
+      summary: "Stage changed",
+      actorUserId,
+      payload: {
+        previousLifecycle: existing.lifecycleStatus,
+        newLifecycle: stage.lifecycleStatus,
+        previousStageId: existing.stageId,
+        newStageId: stage.id,
+        reason: input.stageAudit?.reason ?? "stage_change",
+        source,
+        evidence: salesEvidenceAuditSnapshot(input.stageAudit?.evidence ?? {}),
+        opportunitySync,
+      },
+    });
     await this.deps.events.publish(
       createLeadStageChangedEvent({
         companyId: input.companyId,
@@ -912,6 +1412,85 @@ export class LeadCommandService {
       actorUserId,
       metadata: { stageId: stage.id },
     });
+
+    // «تم التحويل» is the customer handoff. Won stays a lead until this column.
+    // The card remains on the converted stage; the customer record keeps the journey.
+    if (stage.lifecycleStatus === "converted" && !record.customerId) {
+      try {
+        const [tags, notes, history, activities, stages] = await Promise.all([
+          this.deps.leads.listTags(input.companyId, input.leadId),
+          this.deps.leads.listNotes(input.companyId, input.leadId),
+          this.deps.leads.listHistory(input.companyId, input.leadId, 100),
+          this.deps.leads.listActivities(input.companyId, input.leadId, 100),
+          this.deps.leads.listStages(input.companyId, record.pipelineId),
+        ]);
+        const stageName = new Map(stages.map((item) => [item.id, item.name]));
+        const phoneRegion =
+          typeof record.metadata.phoneRegion === "string"
+            ? record.metadata.phoneRegion
+            : typeof record.metadata.phone_country_iso === "string"
+              ? record.metadata.phone_country_iso
+              : null;
+        const preservedPayload = {
+          tags: tags.map((tag) => tag.tag),
+          notes: notes.map((note) => ({ body: note.body, createdAt: note.createdAt })),
+          sourceId: record.sourceId,
+          conversationId: record.conversationId,
+          aiSummary: record.aiSummary,
+          score: record.score,
+          metadata: record.metadata,
+          phoneRegion,
+          journey: formatLeadPurchaseJourney({
+            lead: record,
+            stageName,
+            history,
+            activities,
+            notes,
+            tags: tags.map((tag) => tag.tag),
+          }),
+        };
+        const converted = await this.deps.conversion.convertLead({
+          companyId: input.companyId,
+          leadId: input.leadId,
+          contactName: record.contactName || record.title,
+          email: record.email,
+          phone: record.phone,
+          companyName: record.companyName,
+          actorUserId,
+          preservedPayload,
+        });
+        const linked = await this.deps.leads.updateLead({
+          companyId: input.companyId,
+          leadId: input.leadId,
+          updatedBy: actorUserId,
+          customerId: converted.customerId,
+        });
+        await this.deps.leads.recordConversion({
+          companyId: input.companyId,
+          leadId: input.leadId,
+          customerId: converted.customerId,
+          opportunityId: converted.opportunityId ?? null,
+          convertedBy: actorUserId,
+          preservedPayload: { source: "kanban_converted", journey: preservedPayload.journey },
+        });
+        await this.deps.events.publish(
+          createLeadConvertedEvent({
+            companyId: input.companyId,
+            leadId: input.leadId,
+            customerId: converted.customerId,
+            opportunityId: converted.opportunityId ?? null,
+            actorUserId,
+          }),
+        );
+        record.customerId = linked.customerId;
+      } catch (error) {
+        console.warn("[lead-converted-customer]", {
+          companyId: input.companyId,
+          leadId: input.leadId,
+          err: error instanceof Error ? { message: error.message, name: error.name } : error,
+        });
+      }
+    }
 
     return { lead: record };
   }
@@ -969,8 +1548,76 @@ export class LeadCommandService {
     activityType: string,
     summary: string,
     actorUserId: string | null,
+    payload?: Record<string, unknown>,
   ): Promise<void> {
-    await this.deps.leads.appendActivity({ companyId, leadId, activityType, summary, actorUserId });
+    await this.deps.leads.appendActivity({ companyId, leadId, activityType, summary, actorUserId, payload });
+  }
+
+  private async recordStageAudit(input: {
+    companyId: string;
+    leadId: string;
+    activityType: string;
+    summary: string;
+    actorUserId: string | null;
+    payload: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      await this.recordActivity(
+        input.companyId,
+        input.leadId,
+        input.activityType,
+        input.summary,
+        input.actorUserId,
+        input.payload,
+      );
+    } catch (error) {
+      console.warn("[lead-stage-audit]", {
+        companyId: input.companyId,
+        leadId: input.leadId,
+        activityType: input.activityType,
+        err: error instanceof Error ? { message: error.message, name: error.name } : error,
+      });
+    }
+  }
+
+  /** Best-effort. A refused Opportunity move is recorded; it never rolls back the Lead. */
+  private async syncOpportunityStage(
+    companyId: string,
+    leadId: string,
+    fromLifecycleStatus: string,
+    toLifecycleStatus: string,
+    actorUserId: string | null,
+  ): Promise<{ status: string; fromStageKey?: string | null; toStageKey?: string | null } | null> {
+    if (!this.deps.opportunityStageSync) return null;
+    try {
+      const sync = await this.deps.opportunityStageSync.onLeadLifecycleChanged({
+        companyId,
+        leadId,
+        fromLifecycleStatus,
+        toLifecycleStatus,
+        actorUserId,
+      });
+      if (sync.status === "failed") {
+        console.warn("[lead-opportunity-stage-sync]", {
+          companyId,
+          leadId,
+          status: sync.status,
+          opportunityId: sync.opportunityId ?? null,
+        });
+      }
+      return {
+        status: sync.status,
+        fromStageKey: "fromStageKey" in sync ? (sync.fromStageKey as string | null | undefined) : undefined,
+        toStageKey: "toStageKey" in sync ? (sync.toStageKey as string | null | undefined) : undefined,
+      };
+    } catch (error) {
+      console.warn("[lead-opportunity-stage-sync] unexpected error", {
+        companyId,
+        leadId,
+        err: error instanceof Error ? { message: error.message, name: error.name } : error,
+      });
+      return { status: "failed" };
+    }
   }
 
   private async recordHistory(

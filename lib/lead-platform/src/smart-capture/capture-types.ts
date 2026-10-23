@@ -107,6 +107,8 @@ export type ConversationStartedCaptureInput = Readonly<{
   externalThreadId?: string | null;
   phone?: string | null;
   email?: string | null;
+  /** Trusted company-scoped CRM customer when already resolved at the edge. */
+  customerId?: string | null;
   actorUserId?: string | null;
   createdAt: string;
 }>;
@@ -118,6 +120,8 @@ export type ConversationMessageCaptureInput = Readonly<{
   channelType?: string | null;
   contentPreview?: string | null;
   messageCount?: number | null;
+  /** Trusted company-scoped CRM customer when stamped on the conversation. */
+  customerId?: string | null;
   actorUserId?: string | null;
   receivedAt: string;
 }>;

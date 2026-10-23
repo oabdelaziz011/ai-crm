@@ -151,6 +151,28 @@ function createMemoryRepo(): LeadRepository {
           probabilityPercent: 60,
           isTerminal: false,
         },
+        "stage-won": {
+          id: "stage-won",
+          companyId: "company-1",
+          pipelineId,
+          name: "Won",
+          slug: "won",
+          lifecycleStatus: "won",
+          sortOrder: 5,
+          probabilityPercent: 100,
+          isTerminal: true,
+        },
+        "stage-converted": {
+          id: "stage-converted",
+          companyId: "company-1",
+          pipelineId,
+          name: "Converted",
+          slug: "converted",
+          lifecycleStatus: "converted",
+          sortOrder: 6,
+          probabilityPercent: 100,
+          isTerminal: true,
+        },
       };
       return stages[id] ?? null;
     },
@@ -297,23 +319,152 @@ describe("LeadCommandService", () => {
     };
   }
 
-  it("moves a lead forward between stages and persists stage id", async () => {
+  it("routes Kanban move into qualified stage through authoritative qualifyLead", async () => {
+    const events: string[] = [];
     const { service, repo } = buildService();
-    await service.createLead(ctx, { companyId: "company-1", title: "Forward" });
-    const moved = await service.changeLeadStage(ctx, {
+    // Rebuild with event capture
+    const capturing = new LeadCommandService({
+      leads: repo,
+      assignees: {
+        resolveAssigneeLabel: async (id) => id,
+        loadAssigneeLabels: async (ids) => new Map(ids.map((id) => [id, id])),
+        listAssigneeCandidates: async () => [],
+      },
+      conversion: { convertLead: async () => ({ customerId: "cust-1" }) },
+      events: {
+        publish: async (event) => {
+          events.push(event.type);
+        },
+      },
+      notifications: { notify: async () => {} },
+      audit: { write: async () => {} },
+    });
+    await capturing.createLead(ctx, { companyId: "company-1", title: "Forward" });
+    const moved = await capturing.changeLeadStage(ctx, {
       companyId: "company-1",
       leadId: "lead-1",
       stageId: "stage-qualified",
     });
     assert.equal(moved.lead.stageId, "stage-qualified");
     assert.equal(moved.lead.lifecycleStatus, "qualified");
+    assert.equal(moved.lead.isQualified, true);
+    assert.ok(moved.lead.qualifiedAt);
+    assert.ok(events.includes("lead_qualified"));
+    assert.ok(!events.includes("lead_stage_changed"));
     const persisted = await repo.getLead("company-1", "lead-1");
+    assert.equal(persisted?.isQualified, true);
     assert.equal(persisted?.stageId, "stage-qualified");
+  });
+
+  it("allows ordinary non-qualification stage changes without qualify permission", async () => {
+    const { service, repo } = buildService();
+    await service.createLead(ctx, { companyId: "company-1", title: "Ordinary" });
+    const editOnly = {
+      ...ctx,
+      hasPermission: (code: string) => code === "leads.edit" || code === "leads.create" || code === "leads.view",
+    };
+    // createLead needs create — already created with full ctx
+    const moved = await service.changeLeadStage(editOnly, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-contacted",
+    });
+    assert.equal(moved.lead.stageId, "stage-contacted");
+    assert.equal(moved.lead.lifecycleStatus, "contacted");
+    assert.equal(moved.lead.isQualified, false);
+    const persisted = await repo.getLead("company-1", "lead-1");
+    assert.equal(persisted?.stageId, "stage-contacted");
+    assert.equal(persisted?.isQualified, false);
+  });
+
+  it("links a customer only after the lead reaches تم التحويل and keeps that column", async () => {
+    let conversions = 0;
+    const repo = createMemoryRepo();
+    const service = new LeadCommandService({
+      leads: repo,
+      assignees: {
+        resolveAssigneeLabel: async (id) => id,
+        loadAssigneeLabels: async (ids) => new Map(ids.map((id) => [id, id])),
+        listAssigneeCandidates: async () => [],
+      },
+      conversion: {
+        convertLead: async (input) => {
+          conversions += 1;
+          assert.match(String(input.preservedPayload.journey ?? ""), /رحلة شراء المنتج/);
+          return { customerId: "cust-converted" };
+        },
+      },
+      events: { publish: async () => {} },
+      notifications: { notify: async () => {} },
+      audit: { write: async () => {} },
+      saleCompletion: { async hasAcceptedQuoteForLead() { return true; } },
+    });
+    await service.createLead(ctx, { companyId: "company-1", title: "Buyer" });
+    const early = await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-contacted",
+    });
+    assert.equal(early.lead.customerId, null);
+    assert.equal(conversions, 0);
+    await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-proposal",
+    });
+    const won = await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-won",
+    });
+    assert.equal(won.lead.lifecycleStatus, "won");
+    assert.equal(won.lead.stageId, "stage-won");
+    assert.equal(won.lead.customerId, null);
+    assert.equal(conversions, 0);
+    const converted = await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-converted",
+    });
+    assert.equal(converted.lead.lifecycleStatus, "converted");
+    assert.equal(converted.lead.stageId, "stage-converted");
+    assert.equal(converted.lead.customerId, "cust-converted");
+    assert.equal(conversions, 1);
+    const persisted = await repo.getLead("company-1", "lead-1");
+    assert.equal(persisted?.lifecycleStatus, "converted");
+    assert.equal(persisted?.customerId, "cust-converted");
+    await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-converted",
+    });
+    assert.equal(conversions, 1);
+  });
+
+  it("rejects qualified-stage Kanban move without leads.qualify (no soft qualification)", async () => {
+    const { service } = buildService();
+    await service.createLead(ctx, { companyId: "company-1", title: "NoQualify" });
+    await assert.rejects(
+      () =>
+        service.changeLeadStage(
+          {
+            ...ctx,
+            hasPermission: (code: string) => code === "leads.edit",
+          },
+          { companyId: "company-1", leadId: "lead-1", stageId: "stage-qualified" },
+        ),
+      /leads\.qualify/,
+    );
   });
 
   it("allows backward stage movement when pipeline allows it", async () => {
     const { service, repo } = buildService();
     await service.createLead(ctx, { companyId: "company-1", title: "Backward" });
+    await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-contacted",
+    });
     await service.changeLeadStage(ctx, {
       companyId: "company-1",
       leadId: "lead-1",
@@ -330,6 +481,21 @@ describe("LeadCommandService", () => {
     assert.equal(persisted?.stageId, "stage-contacted");
   });
 
+  it("does not clear isQualified when leaving a qualified stage", async () => {
+    const { service, repo } = buildService();
+    await service.createLead(ctx, { companyId: "company-1", title: "KeepFlag" });
+    await service.qualifyLead(ctx, { companyId: "company-1", leadId: "lead-1" });
+    const back = await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-contacted",
+    });
+    assert.equal(back.lead.lifecycleStatus, "contacted");
+    assert.equal(back.lead.isQualified, true);
+    const persisted = await repo.getLead("company-1", "lead-1");
+    assert.equal(persisted?.isQualified, true);
+  });
+
   it("rejects stage movement without leads.edit permission", async () => {
     const { service } = buildService();
     await service.createLead(ctx, { companyId: "company-1", title: "Denied" });
@@ -337,7 +503,7 @@ describe("LeadCommandService", () => {
       () =>
         service.changeLeadStage(
           { ...ctx, hasPermission: () => false },
-          { companyId: "company-1", leadId: "lead-1", stageId: "stage-qualified" },
+          { companyId: "company-1", leadId: "lead-1", stageId: "stage-contacted" },
         ),
       /permission|Permission|denied|Forbidden/i,
     );

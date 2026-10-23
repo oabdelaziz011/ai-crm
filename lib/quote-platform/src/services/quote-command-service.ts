@@ -206,6 +206,39 @@ export class QuoteCommandService {
     const familyId = crypto.randomUUID();
     const validityDays = template?.validityDays ?? DEFAULT_QUOTE_VALIDITY_DAYS;
 
+    const oppLines = await this.deps.quotes.listOpportunityLines(input.companyId, opportunity.id);
+    // Unpriced interest placeholders are not quote lines. A later catalog add supplies
+    // the real price and its own currency. Do not relabel that price as the opportunity currency.
+    const pricedOppLines = oppLines.filter(
+      (oppLine) => Number.isFinite(oppLine.unitPrice) && oppLine.unitPrice > 0 && oppLine.productId?.trim(),
+    );
+    const catalogProducts = await Promise.all(
+      pricedOppLines.map((oppLine) =>
+        this.deps.quotes.getCatalogProduct(input.companyId, oppLine.productId),
+      ),
+    );
+    const preparedLines = pricedOppLines.map((oppLine, index) => {
+      const product = catalogProducts[index];
+      if (!product || !product.isActive) {
+        throw new QuoteValidationError(
+          "Opportunity line product is missing from the catalog. A zero-priced placeholder was not created.",
+        );
+      }
+      const currency = oppLine.currency?.trim() || product.currency?.trim();
+      if (!currency) {
+        throw new QuoteValidationError(
+          "Opportunity line has a price but no currency. It was not copied onto the quote.",
+        );
+      }
+      const amounts = computeQuoteLineAmounts({
+        quantity: oppLine.quantity,
+        unitPrice: oppLine.unitPrice,
+        discountPercent: oppLine.discountPercent,
+        taxPercent: oppLine.taxPercent,
+      });
+      return { oppLine, product, currency, amounts };
+    });
+
     const quote = await this.deps.quotes.createQuote({
       companyId: input.companyId,
       quoteFamilyId: familyId,
@@ -228,42 +261,27 @@ export class QuoteCommandService {
       metadata: { createdFrom: "opportunity" },
     });
 
-    const oppLines = await this.deps.quotes.listOpportunityLines(input.companyId, opportunity.id);
-    const catalogProducts = await Promise.all(
-      oppLines.map((oppLine) =>
-        this.deps.quotes.getCatalogProduct(input.companyId, oppLine.productId),
-      ),
-    );
-    const lines: QuoteLineItemRecord[] = await Promise.all(
-      oppLines.map(async (oppLine, index) => {
-        const amounts = computeQuoteLineAmounts({
-          quantity: oppLine.quantity,
-          unitPrice: oppLine.unitPrice,
-          discountPercent: oppLine.discountPercent,
-          taxPercent: oppLine.taxPercent,
-        });
-        const product = catalogProducts[index];
-        return this.deps.quotes.upsertLine({
-          companyId: input.companyId,
-          quoteId: quote.id,
-          lineKind: product ? mapProductTypeToLineKind(product.productType) : "product",
-          productId: oppLine.productId,
-          productNameSnapshot: oppLine.productNameSnapshot,
-          skuSnapshot: oppLine.skuSnapshot,
-          quantity: oppLine.quantity,
-          unitPrice: oppLine.unitPrice,
-          discountPercent: oppLine.discountPercent,
-          discountAmount: amounts.discountAmount,
-          taxPercent: oppLine.taxPercent,
-          currency: opportunity.currency,
-          subtotal: amounts.subtotal,
-          taxAmount: amounts.taxAmount,
-          total: amounts.total,
-          sortOrder: index,
-          actorUserId: actor,
-        });
-      }),
-    );
+    for (const [index, prepared] of preparedLines.entries()) {
+      await this.deps.quotes.upsertLine({
+        companyId: input.companyId,
+        quoteId: quote.id,
+        lineKind: mapProductTypeToLineKind(prepared.product.productType),
+        productId: prepared.product.id,
+        productNameSnapshot: prepared.product.name || prepared.oppLine.productNameSnapshot,
+        skuSnapshot: prepared.oppLine.skuSnapshot?.trim() || prepared.product.sku || "",
+        quantity: prepared.oppLine.quantity,
+        unitPrice: prepared.oppLine.unitPrice,
+        discountPercent: prepared.oppLine.discountPercent,
+        discountAmount: prepared.amounts.discountAmount,
+        taxPercent: prepared.oppLine.taxPercent,
+        currency: prepared.currency,
+        subtotal: prepared.amounts.subtotal,
+        taxAmount: prepared.amounts.taxAmount,
+        total: prepared.amounts.total,
+        sortOrder: index,
+        actorUserId: actor,
+      });
+    }
 
     const withTotals = await refreshTotals(this.deps.quotes, input.companyId, quote.id, actor);
     await this.deps.quotes.setOpportunityCurrentQuote({
@@ -549,6 +567,12 @@ export class QuoteCommandService {
       market: quote.market,
     });
 
+    if (!Number.isFinite(priced.unitPrice) || priced.unitPrice <= 0 || !priced.currency?.trim()) {
+      throw new QuoteValidationError(
+        "Catalog pricing is unavailable for this product. A zero-priced line was not added.",
+      );
+    }
+
     const quantity = input.quantity ?? 1;
     const discountPercent = input.discountPercent ?? 0;
     const taxPercent = input.taxPercent ?? 0;
@@ -560,6 +584,13 @@ export class QuoteCommandService {
     });
 
     const existingLines = await this.deps.quotes.listLines(input.companyId, quote.id);
+    const sameProduct = existingLines.find((line) => line.productId === product.id);
+    if (sameProduct && sameProduct.unitPrice > 0) {
+      return { line: sameProduct, quote };
+    }
+    if (sameProduct && sameProduct.unitPrice <= 0) {
+      await this.deps.quotes.removeLine(input.companyId, sameProduct.id, actor);
+    }
     const line = await this.deps.quotes.upsertLine({
       companyId: input.companyId,
       quoteId: quote.id,

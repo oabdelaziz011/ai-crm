@@ -168,7 +168,7 @@ const noopEvents = {
 };
 
 describe("QuoteCommandService.createFromOpportunity", () => {
-  it("uses opportunity currency for quote header and line items", async () => {
+  it("keeps the opportunity currency on the quote header and the line currency on a priced line", async () => {
     const quotes = createRepository();
     const service = new QuoteCommandService({
       quotes,
@@ -181,8 +181,113 @@ describe("QuoteCommandService.createFromOpportunity", () => {
     });
 
     assert.equal(result.quote.currency, "EGP");
-    assert.equal(result.lines[0]?.currency, "EGP");
+    assert.equal(result.lines.length, 1);
+    assert.equal(result.lines[0]?.currency, "USD");
+    assert.equal(result.lines[0]?.unitPrice, 100);
+    assert.equal(result.lines[0]?.skuSnapshot, "W-1");
     assert.equal(quotes.getCreatedQuote()?.currency, "EGP");
+  });
+
+  it("does not copy an unpriced interest placeholder onto the quote", async () => {
+    const quotes = createRepository({
+      listOpportunityLines: async () => [
+        {
+          productId: "prod-1",
+          productNameSnapshot: "Sprint Verify Widget",
+          skuSnapshot: "",
+          quantity: 1,
+          unitPrice: 0,
+          discountPercent: 0,
+          taxPercent: 0,
+          currency: "USD",
+        },
+        {
+          productId: "prod-1",
+          productNameSnapshot: "Sprint Verify Widget",
+          skuSnapshot: "",
+          quantity: 1,
+          unitPrice: 1500,
+          discountPercent: 0,
+          taxPercent: 0,
+          currency: "USD",
+        },
+      ],
+    });
+    const service = new QuoteCommandService({ quotes, events: noopEvents });
+    const result = await service.createFromOpportunity(ctx, {
+      companyId: "company-1",
+      opportunityId: "opp-1",
+    });
+
+    assert.equal(result.lines.length, 1);
+    assert.equal(result.lines[0]?.unitPrice, 1500);
+    assert.equal(result.lines[0]?.currency, "USD");
+    assert.equal(result.lines[0]?.skuSnapshot, "W-1");
+    assert.equal(result.lines.some((line) => line.unitPrice <= 0), false);
+  });
+
+  it("refuses a priced opportunity line whose product is not in the catalog", async () => {
+    const quotes = createRepository({
+      getCatalogProduct: async () => null,
+    });
+    const service = new QuoteCommandService({ quotes, events: noopEvents });
+    await assert.rejects(
+      () =>
+        service.createFromOpportunity(ctx, {
+          companyId: "company-1",
+          opportunityId: "opp-1",
+        }),
+      /zero-priced placeholder was not created/,
+    );
+    assert.equal(quotes.getCreatedLines().length, 0);
+    assert.equal(quotes.getCreatedQuote(), null);
+  });
+
+  it("does not add a second catalog line or a zero price", async () => {
+    const quotes = createRepository();
+    const service = new QuoteCommandService({ quotes, events: noopEvents });
+    await service.createFromOpportunity(ctx, {
+      companyId: "company-1",
+      opportunityId: "opp-1",
+    });
+    const added = await service.addCatalogProduct(ctx, {
+      companyId: "company-1",
+      quoteId: "quote-1",
+      productId: "prod-1",
+    });
+    assert.equal(quotes.getCreatedLines().length, 1);
+    assert.equal(added.line.id, quotes.getCreatedLines()[0]?.id);
+    assert.equal(added.line.currency, "USD");
+    assert.equal(added.line.unitPrice, 100);
+
+    const zeroQuotes = createRepository({
+      listOpportunityLines: async () => [],
+      getCatalogProduct: async () => ({
+        id: "prod-1",
+        productType: "product",
+        name: "Widget",
+        sku: "W-1",
+        basePrice: 0,
+        currency: "USD",
+        subscriptionPrice: null,
+        isActive: true,
+      }),
+    });
+    const zeroService = new QuoteCommandService({ quotes: zeroQuotes, events: noopEvents });
+    await zeroService.createFromOpportunity(ctx, {
+      companyId: "company-1",
+      opportunityId: "opp-1",
+    });
+    await assert.rejects(
+      () =>
+        zeroService.addCatalogProduct(ctx, {
+          companyId: "company-1",
+          quoteId: "quote-1",
+          productId: "prod-1",
+        }),
+      /zero-priced line was not added/,
+    );
+    assert.equal(zeroQuotes.getCreatedLines().length, 0);
   });
 
   it("sets validUntil to 14 days from creation by default", async () => {

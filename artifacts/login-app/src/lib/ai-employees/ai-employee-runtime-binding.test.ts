@@ -105,6 +105,105 @@ function buildPreview(employeeStatus: "published" | "draft" = "published") {
   });
 }
 
+describe("buildAgentRuntimeConfiguration ticketing tools", () => {
+  it("keeps create_ticket in allowedToolKeys when assigned even if DB tool catalog omits it", () => {
+    const preview = buildAgentRuntimeConfiguration({
+      employee: {
+        id: "agent-ticket-1",
+        name: "ticket-agent",
+        displayName: "Ticket Agent",
+        status: "published",
+        provider: "openai",
+        model: "gpt-4.1",
+        temperature: 0.7,
+        maxTokens: 4096,
+        systemPrompt: "You handle complaints.",
+        systemPromptSummary: "You handle complaints.",
+        welcomeMessage: "",
+        knowledgeSourceIds: ["kb-1"],
+        allowedToolKeys: ["knowledge_lookup", "create_ticket", "search_ticket"],
+        promptVersionLabel: "v1",
+        runtimeConfiguration: DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION,
+      },
+      tenantRuntime: {
+        providerConnectionId: "provider-conn-1",
+        providerConnectionName: "OpenAI Default",
+        providerRegistryKey: "openai",
+        knowledgeRetrieval: {
+          embeddingConnectionId: "embed-1",
+          vectorStoreConnectionId: "vector-1",
+          collectionId: "collection-1",
+          collectionName: "Default",
+        },
+        missing: [],
+      },
+      knowledgeSources: [
+        {
+          id: "kb-1",
+          name: "Support KB",
+          sourceType: "document",
+          documentCount: 3,
+        },
+      ],
+      // Simulate stale/missing tool_definitions rows — create_ticket absent from DB catalog.
+      toolCatalog: [
+        {
+          key: "knowledge_lookup",
+          displayName: "Knowledge Lookup",
+          category: "knowledge",
+          classification: "read",
+          requiredPermissions: [],
+          riskLevel: "low",
+        },
+      ],
+      availableModels: ["gpt-4.1"],
+    });
+
+    assert.ok(preview.channelRuntime);
+    assert.ok(preview.channelRuntime.pageContext.allowedToolKeys.includes("create_ticket"));
+    assert.ok(preview.channelRuntime.pageContext.allowedToolKeys.includes("search_ticket"));
+    assert.ok(preview.channelRuntime.pageContext.allowedToolKeys.includes("knowledge_lookup"));
+  });
+
+  it("still drops tools listed in disabledToolKeys", () => {
+    const preview = buildAgentRuntimeConfiguration({
+      employee: {
+        id: "agent-ticket-2",
+        name: "ticket-agent",
+        displayName: "Ticket Agent",
+        status: "published",
+        provider: "openai",
+        model: "gpt-4.1",
+        temperature: 0.7,
+        maxTokens: 4096,
+        systemPrompt: "You handle complaints.",
+        systemPromptSummary: "You handle complaints.",
+        welcomeMessage: "",
+        knowledgeSourceIds: [],
+        allowedToolKeys: ["create_ticket"],
+        promptVersionLabel: "v1",
+        runtimeConfiguration: {
+          ...DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION,
+          disabledToolKeys: ["create_ticket"],
+        },
+      },
+      tenantRuntime: {
+        providerConnectionId: "provider-conn-1",
+        providerConnectionName: "OpenAI Default",
+        providerRegistryKey: "openai",
+        knowledgeRetrieval: null,
+        missing: [],
+      },
+      knowledgeSources: [],
+      toolCatalog: [],
+      availableModels: ["gpt-4.1"],
+    });
+
+    assert.ok(preview.channelRuntime);
+    assert.equal(preview.channelRuntime.pageContext.allowedToolKeys.includes("create_ticket"), false);
+  });
+});
+
 describe("evaluateEmployeeChannelRuntimeBinding", () => {
   it("returns channelRuntime for published ready employees", () => {
     const employee = sampleEmployee();

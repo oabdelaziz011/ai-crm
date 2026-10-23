@@ -73,6 +73,7 @@ function mapRuntimeConfiguration(value: unknown): AiEmployeeRuntimeConfiguration
       typeof stored.transferableFlowId === "string" && stored.transferableFlowId.trim()
         ? stored.transferableFlowId.trim()
         : null,
+    showProductPrices: stored.showProductPrices === true,
     runtimeFlags,
     retrievalPolicy,
   };

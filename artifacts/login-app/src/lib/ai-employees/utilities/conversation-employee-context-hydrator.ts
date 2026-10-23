@@ -35,6 +35,7 @@ function registerHydratedExecutionContext(
   registerConversationToolScope(conversationId, {
     allowedToolKeys: executionContext.allowedToolKeys,
     employeeId: executionContext.aiEmployeeId,
+    showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
   });
 }
 

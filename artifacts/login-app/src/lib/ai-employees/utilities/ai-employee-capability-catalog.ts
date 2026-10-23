@@ -19,7 +19,8 @@ export type AiEmployeeCapabilityFeatureCode =
   | "leads"
   | "finance"
   | "omnichannel"
-  | "workflow_automation";
+  | "workflow_automation"
+  | "opportunities";
 
 /**
  * Canonical feature → tool keys.
@@ -46,6 +47,10 @@ export const FEATURE_TOOL_KEYS: Readonly<Record<AiEmployeeCapabilityFeatureCode,
     "check_in",
     "check_out",
     "booking_search",
+    "list_demo_types",
+    "search_demo_availability",
+    "find_next_demo",
+    "create_demo_booking",
   ],
   ticketing: [...TICKET_TOOL_KEYS],
   ai_ticketing: [...TICKET_TOOL_KEYS],
@@ -53,6 +58,14 @@ export const FEATURE_TOOL_KEYS: Readonly<Record<AiEmployeeCapabilityFeatureCode,
   finance: ["invoice_search"],
   omnichannel: ["escalate_to_human", "queue_handoff", "return_to_ai"],
   workflow_automation: ["transfer_to_workflow"],
+  // Product catalog + draft quotes are commercially gated by the opportunities feature (route registry + migration 299).
+  opportunities: [
+    "search_products",
+    "get_product_details",
+    "create_draft_quote",
+    "request_send_quote",
+    "get_quote_delivery_status",
+  ],
 };
 
 /** Reserved for tools that remain stubbed on webhook. Phase 5H: check_in/check_out are real. */
@@ -69,7 +82,8 @@ export type AiEmployeeCapabilityGroupId =
   | "finance"
   | "knowledge"
   | "handoff"
-  | "automation";
+  | "automation"
+  | "products";
 
 const TOOL_CAPABILITY_GROUP: Readonly<Record<string, AiEmployeeCapabilityGroupId>> = {
   search_customer: "customers",
@@ -88,6 +102,10 @@ const TOOL_CAPABILITY_GROUP: Readonly<Record<string, AiEmployeeCapabilityGroupId
   check_in: "bookings",
   check_out: "bookings",
   booking_search: "bookings",
+  list_demo_types: "sales",
+  search_demo_availability: "sales",
+  find_next_demo: "sales",
+  create_demo_booking: "sales",
   create_ticket: "tickets",
   update_ticket: "tickets",
   close_ticket: "tickets",
@@ -111,6 +129,11 @@ const TOOL_CAPABILITY_GROUP: Readonly<Record<string, AiEmployeeCapabilityGroupId
   queue_handoff: "handoff",
   return_to_ai: "handoff",
   transfer_to_workflow: "automation",
+  search_products: "products",
+  get_product_details: "products",
+  create_draft_quote: "sales",
+  request_send_quote: "sales",
+  get_quote_delivery_status: "sales",
 };
 
 export const CAPABILITY_GROUP_ORDER: readonly AiEmployeeCapabilityGroupId[] = [
@@ -118,13 +141,14 @@ export const CAPABILITY_GROUP_ORDER: readonly AiEmployeeCapabilityGroupId[] = [
   "bookings",
   "tickets",
   "sales",
+  "products",
   "finance",
   "knowledge",
   "handoff",
   "automation",
 ];
 
-const INBOUND_CHANNEL_TAG_RE = /^channel:(whatsapp|messenger|instagram)$/i;
+const INBOUND_CHANNEL_TAG_RE = /^channel:(whatsapp|messenger|instagram|web_chat|email)$/i;
 
 export function isWebhookFacingEmployee(tags: readonly string[]): boolean {
   return tags.some((tag) => INBOUND_CHANNEL_TAG_RE.test(tag.trim()));
@@ -178,7 +202,17 @@ export function isToolMappedInCapabilityCatalog(toolKey: string): boolean {
 /** Soft template defaults (not a permission boundary). Intersect with available tools before apply. */
 export const PROMPT_TEMPLATE_DEFAULT_TOOL_KEYS: Readonly<Record<string, readonly string[]>> = {
   support: ["search_customer", "search_ticket", "create_ticket", "knowledge_search", "add_ticket_comment"],
-  sales: ["search_customer", "create_lead", "search_lead", "qualify_lead", "suggest_next_action"],
+  sales: [
+    "search_customer",
+    "create_lead",
+    "search_lead",
+    "qualify_lead",
+    "suggest_next_action",
+    "list_demo_types",
+    "search_demo_availability",
+    "find_next_demo",
+    "create_demo_booking",
+  ],
   receptionist: ["search_customer", "search_availability", "create_booking", "create_customer"],
   operations: ["search_customer", "search_availability", "create_booking", "search_ticket", "knowledge_search"],
 };
@@ -223,6 +257,7 @@ export function resolveEntitledToolKeys(enabledFeatureCodes: Iterable<string>): 
   if (featureIsEnabled(enabled, "finance")) addAll(FEATURE_TOOL_KEYS.finance);
   if (featureIsEnabled(enabled, "omnichannel")) addAll(FEATURE_TOOL_KEYS.omnichannel);
   if (featureIsEnabled(enabled, "workflow_automation")) addAll(FEATURE_TOOL_KEYS.workflow_automation);
+  if (featureIsEnabled(enabled, "opportunities")) addAll(FEATURE_TOOL_KEYS.opportunities);
   if (featureIsEnabled(enabled, "ai_employee")) addAll(FEATURE_TOOL_KEYS.ai_employee);
 
   if (featureIsEnabled(enabled, "ticketing") && featureIsEnabled(enabled, "ai_ticketing")) {
@@ -264,13 +299,15 @@ export function resolveAvailableEmployeeTools(
   );
 
   const result: AvailableEmployeeTool[] = [];
+  const seenKeys = new Set<string>();
   for (const tool of input.catalogTools) {
     const key = tool.key.trim();
-    if (!key) continue;
+    if (!key || seenKeys.has(key)) continue;
     if (!entitled.has(key)) continue;
     if (surfaceBlocked.has(key)) continue;
     const capabilityGroup = resolveCapabilityGroup(key);
     if (!capabilityGroup) continue;
+    seenKeys.add(key);
     result.push({
       key,
       displayName: tool.displayName,
@@ -301,6 +338,24 @@ export function groupAvailableToolsByCapability(
     group,
     tools: map.get(group)!,
   }));
+}
+
+const LEGACY_KNOWLEDGE_TOOL_KEYS = new Set(["knowledge_lookup", "faq"]);
+
+/**
+ * Mock knowledge tools do not read company sources. Fold them into knowledge_search,
+ * which retrieves the linked knowledge base (including FAQ sources).
+ */
+export function upgradeLegacyKnowledgeToolKeys(keys: readonly string[]): string[] {
+  const next: string[] = [];
+  const seen = new Set<string>();
+  for (const key of keys) {
+    const mapped = LEGACY_KNOWLEDGE_TOOL_KEYS.has(key) ? "knowledge_search" : key;
+    if (seen.has(mapped)) continue;
+    seen.add(mapped);
+    next.push(mapped);
+  }
+  return next;
 }
 
 export function splitAssignedToolKeys(

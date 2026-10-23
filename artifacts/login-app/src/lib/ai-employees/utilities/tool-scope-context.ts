@@ -1,6 +1,8 @@
 export type EmployeeToolScope = {
   readonly allowedToolKeys: readonly string[];
   readonly employeeId: string;
+  /** Owner setting copied from the employee runtime. Absent means prices stay hidden. */
+  readonly showProductPrices?: boolean;
 };
 
 const activeToolScopeStack: EmployeeToolScope[] = [];
@@ -52,4 +54,10 @@ export function resolveActiveToolScope(conversationId?: string | null): Employee
   if (activeScope) return activeScope;
   if (conversationId) return readConversationToolScope(conversationId);
   return null;
+}
+
+export function readEmployeeShowProductPrices(execution: {
+  readonly employeeRuntime?: { readonly pageContext?: { readonly showProductPrices?: unknown } };
+} | null | undefined): boolean {
+  return execution?.employeeRuntime?.pageContext?.showProductPrices === true;
 }

@@ -36,4 +36,17 @@ describe("ticket-tool-scope", () => {
     assert.match(hint!, /NEVER tell the customer the ticket subject/);
     assert.match(hint!, /assign_ticket/);
   });
+
+  it("buildTicketToolPromptHint documents add-comment and change-status when enabled", () => {
+    const hint = buildTicketToolPromptHint([
+      "search_ticket",
+      "add_ticket_comment",
+      "change_ticket_status",
+      "change_ticket_priority",
+    ]);
+    assert.match(hint!, /add_ticket_comment/);
+    assert.match(hint!, /change_ticket_status/);
+    assert.match(hint!, /never search_bookings/);
+    assert.doesNotMatch(hint!, /create_ticket only/);
+  });
 });

@@ -171,6 +171,7 @@ export async function prepareEmployeeChatRuntime(
   registerConversationToolScope(input.conversationId, {
     allowedToolKeys: executionContext.allowedToolKeys,
     employeeId: executionContext.aiEmployeeId,
+    showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
   });
   storeConversationExecutionContext(input.conversationId, executionContext);
   storeEmployeeConversationBinding(input.companyId, input.conversationId, executionContext.aiEmployeeId);

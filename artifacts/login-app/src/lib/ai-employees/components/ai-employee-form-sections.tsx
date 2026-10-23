@@ -22,7 +22,8 @@ import { useAiProviderConnectionsAdmin } from "@/hooks/use-ai-provider-connectio
 import { useActiveAutomationFlows } from "@/hooks/channels/use-channel-workflow-binding";
 import type { AiEmployeeRuntimeConfiguration } from "@/lib/ai-employees/adapters";
 import { ChannelRoutingTagsField } from "@/lib/ai-employees/components/channel-routing-tags-field";
-import { useAiSkillOptions } from "@/lib/ai-employees/hooks/use-ai-employee-skills";
+import { SystemPromptEditor } from "@/lib/ai-employees/components/system-prompt-editor";
+import { useAiSkillOptions, useCreateAiSkill } from "@/lib/ai-employees/hooks/use-ai-employee-skills";
 import type { AiEmployeeFormValues, AiSkillRecord } from "@/lib/ai-employees/types";
 import type { KnowledgeSourceOption, ToolDefinitionOption } from "@/lib/ai-employees/types";
 import {
@@ -292,6 +293,7 @@ export function AiEmployeeFormSections({
           <p className="text-xs text-muted-foreground">{t("aiEmployees.form.avatarUrlHint")}</p>
         </Field>
         <div className="md:col-span-2 xl:col-span-3">
+          <p className="mb-2 text-sm text-muted-foreground">{t("aiEmployees.form.descriptionHint")}</p>
           <Field label={t("aiEmployees.form.description")} htmlFor="description">
             <Textarea
               id="description"
@@ -320,7 +322,6 @@ export function AiEmployeeFormSections({
   if (step === "channels") {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t("aiEmployees.wizard.stepHints.channels")}</p>
         <ChannelRoutingTagsField
           tags={values.tags}
           onChange={(nextTags) => onChange({ tags: nextTags })}
@@ -592,12 +593,11 @@ export function AiEmployeeFormSections({
         </div>
 
         <Field label={t("aiEmployees.form.systemPrompt")} htmlFor="systemPrompt">
-          <Textarea
+          <SystemPromptEditor
             id="systemPrompt"
             value={values.systemPrompt}
-            onChange={(event) => onChange({ systemPrompt: event.target.value })}
-            className="min-h-56 rounded-xl text-sm"
             placeholder={t("aiEmployees.form.systemPromptPlaceholder")}
+            onChange={(systemPrompt) => onChange({ systemPrompt })}
           />
           <p className="text-xs text-muted-foreground">
             {t("aiEmployees.form.promptTemplates.editHint")}
@@ -753,6 +753,29 @@ export function AiEmployeeFormSections({
               {formatCapabilityGroupLabel(t, group.group)}
             </p>
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {group.group === "products" ? (
+                <label className="flex items-start gap-3 rounded-xl border border-border/60 px-3 py-2 md:col-span-2 xl:col-span-3">
+                  <Checkbox
+                    checked={runtime.showProductPrices === true}
+                    onCheckedChange={(next) =>
+                      onChange({
+                        runtimeConfiguration: {
+                          ...runtime,
+                          showProductPrices: next === true,
+                        },
+                      })
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">
+                      {t("aiEmployees.form.showProductPrices")}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {t("aiEmployees.form.showProductPricesHint")}
+                    </span>
+                  </span>
+                </label>
+              ) : null}
               {group.tools.map((tool) => {
                 const checked =
                   values.allowedToolKeys.includes(tool.key) && !pausedToolKeys.has(tool.key);
@@ -815,6 +838,7 @@ export function AiEmployeeFormSections({
         ) : null}
 
         <SkillsPickerSection
+          companyId={companyId}
           skills={skillsQuery.data ?? []}
           isLoading={skillsQuery.isLoading}
           selectedIds={values.allowedSkillIds ?? []}
@@ -1089,12 +1113,14 @@ function RuntimeLimitsFields({
 }
 
 function SkillsPickerSection({
+  companyId,
   skills,
   isLoading,
   selectedIds,
   editable,
   onChange,
 }: {
+  companyId: string | null;
   skills: AiSkillRecord[];
   isLoading: boolean;
   selectedIds: string[];
@@ -1102,8 +1128,29 @@ function SkillsPickerSection({
   onChange: (ids: string[]) => void;
 }) {
   const { t } = useTranslation("common");
+  const createSkill = useCreateAiSkill(companyId);
+  const [skillName, setSkillName] = useState("");
+  const [skillDescription, setSkillDescription] = useState("");
+  const [skillError, setSkillError] = useState<string | null>(null);
   const knownIds = new Set(skills.map((skill) => skill.id));
   const missingSelected = selectedIds.filter((id) => !knownIds.has(id));
+
+  const addSkill = async () => {
+    const displayName = skillName.trim();
+    if (!displayName || createSkill.isPending) return;
+    setSkillError(null);
+    try {
+      const created = await createSkill.mutateAsync({
+        displayName,
+        description: skillDescription.trim(),
+      });
+      onChange([...new Set([...selectedIds, created.id])]);
+      setSkillName("");
+      setSkillDescription("");
+    } catch {
+      setSkillError(t("aiEmployees.form.skills.addError"));
+    }
+  };
 
   return (
     <div className="space-y-3 border-t border-border/50 pt-5">
@@ -1126,13 +1173,45 @@ function SkillsPickerSection({
         <p className="text-xs text-muted-foreground">{t("aiEmployees.form.skills.readOnly")}</p>
       ) : null}
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t("aiEmployees.form.skills.loading")}</p>
-      ) : skills.length === 0 ? (
+      {!isLoading && skills.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">
           {t("aiEmployees.form.skills.empty")}
         </p>
-      ) : (
+      ) : null}
+
+      {editable ? (
+        <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <Input
+            value={skillName}
+            onChange={(event) => setSkillName(event.target.value)}
+            placeholder={t("aiEmployees.form.skills.addPlaceholder")}
+            className="rounded-xl"
+            aria-label={t("aiEmployees.form.skills.addPlaceholder")}
+          />
+          <Input
+            value={skillDescription}
+            onChange={(event) => setSkillDescription(event.target.value)}
+            placeholder={t("aiEmployees.form.skills.addDescriptionPlaceholder")}
+            className="rounded-xl"
+            aria-label={t("aiEmployees.form.skills.addDescriptionPlaceholder")}
+          />
+          <Button
+            type="button"
+            className="rounded-xl"
+            disabled={!skillName.trim() || createSkill.isPending}
+            onClick={() => void addSkill()}
+          >
+            {createSkill.isPending
+              ? t("aiEmployees.form.skills.adding")
+              : t("aiEmployees.form.skills.addAction")}
+          </Button>
+        </div>
+      ) : null}
+      {skillError ? <p className="text-xs text-destructive">{skillError}</p> : null}
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">{t("aiEmployees.form.skills.loading")}</p>
+      ) : skills.length === 0 ? null : (
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {skills.map((skill) => {
             const checked = selectedIds.includes(skill.id);

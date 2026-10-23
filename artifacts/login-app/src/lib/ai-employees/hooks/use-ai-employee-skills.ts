@@ -66,6 +66,42 @@ export function useAssignAiEmployeeSkills(companyId: string | null, agentId: str
   });
 }
 
+export function useCreateAiSkill(companyId: string | null) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: { displayName: string; description: string }) => {
+      if (!companyId) throw new Error("Missing company");
+      const displayName = input.displayName.trim();
+      const description = input.description.trim();
+      const key = `skill-${crypto.randomUUID().slice(0, 8)}`;
+      return services.skills.create(
+        companyId,
+        {
+          key,
+          name: key,
+          displayName,
+          description,
+          category: "general",
+          tags: [],
+          toolKeys: [],
+          requiredPermissions: [],
+          requiredKnowledgeIds: [],
+          runtimeRecommendations: {},
+          documentation: { overview: description },
+        },
+        user?.id ?? null,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...aiEmployeeSkillsKey(companyId, null), "options"],
+      });
+    },
+  });
+}
+
 /** Company skills that can be assigned from the create / edit wizard (archived skills excluded). */
 export function useAiSkillOptions(companyId: string | null) {
   return useQuery({

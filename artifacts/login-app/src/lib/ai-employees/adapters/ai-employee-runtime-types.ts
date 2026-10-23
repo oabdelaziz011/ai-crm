@@ -25,6 +25,8 @@ export type AiEmployeeRuntimeConfigurationStored = {
   disabledToolKeys: string[];
   /** Phase 1: single automation flow the employee may transfer WhatsApp threads into. */
   transferableFlowId: string | null;
+  /** Owner setting: when false, product tools must not return a price to the model. */
+  showProductPrices: boolean;
   runtimeFlags: AiEmployeeRuntimeFlags;
   retrievalPolicy: AiEmployeeRetrievalPolicy;
 };
@@ -37,6 +39,7 @@ export type AiEmployeeRuntimeConfiguration = {
   sessionTimeoutMinutes: number;
   disabledToolKeys: string[];
   transferableFlowId: string | null;
+  showProductPrices: boolean;
   runtimeFlags: AiEmployeeRuntimeFlags;
   retrievalPolicy: AiEmployeeRetrievalPolicy;
 };
@@ -161,6 +164,8 @@ export type AgentRuntimeChannelBinding = {
     systemPrompt: string;
     welcomeMessage?: string;
     transferableFlowId?: string | null;
+    /** Copied from runtime configuration. Absent or false hides catalog prices. */
+    showProductPrices?: boolean;
   };
 };
 
@@ -226,6 +231,7 @@ export const DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION: AiEmployeeRuntimeConfigu
   sessionTimeoutMinutes: 1440,
   disabledToolKeys: [],
   transferableFlowId: null,
+  showProductPrices: false,
   runtimeFlags: {
     streaming: true,
     memoryMode: "session",

@@ -9,6 +9,7 @@ import {
   evaluateCommercialToolAccess,
   type AiEmployeeCommercialEntitlementPort,
 } from "./ai-employee-commercial-runtime-gate.js";
+import { applyProductPriceVisibility } from "@workspace/ai-tool-router";
 import {
   evaluateToolScope,
   stampToolScopeDecision,
@@ -91,7 +92,7 @@ export async function applyToolScopeBeforeRoute(
 
   // Non-AI-Employee surface: assignment scope inactive → do not apply commercial AI gate.
   if (evaluation.decision === "pass-through") {
-    return route.route(ctx, input);
+    return applyEmployeeProductPricePolicy(scope, input.toolKey, await route.route(ctx, input));
   }
 
   // AI Employee surface: commercial entitlement ∩ assignment ∩ trusted tenant context.
@@ -138,5 +139,23 @@ export async function applyToolScopeBeforeRoute(
     };
   }
 
-  return route.route(ctx, input);
+  return applyEmployeeProductPricePolicy(scope, input.toolKey, await route.route(ctx, input));
+}
+
+const PRODUCT_LOOKUP_TOOL_KEYS = new Set(["search_products", "get_product_details"]);
+
+function applyEmployeeProductPricePolicy(
+  scope: ReturnType<typeof resolveActiveToolScope>,
+  toolKey: string,
+  result: RuntimeToolRouteResult,
+): RuntimeToolRouteResult {
+  if (!PRODUCT_LOOKUP_TOOL_KEYS.has(toolKey)) return result;
+  if (!result.output || typeof result.output !== "object") return result;
+  return {
+    ...result,
+    output: applyProductPriceVisibility(
+      result.output,
+      scope?.showProductPrices === true,
+    ),
+  };
 }

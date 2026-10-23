@@ -166,6 +166,7 @@ export function useAgentRuntimeServices() {
                 {
                   allowedToolKeys: executionContext.allowedToolKeys,
                   employeeId: executionContext.aiEmployeeId,
+                  showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
                 },
                 executeChannelRuntime,
               )

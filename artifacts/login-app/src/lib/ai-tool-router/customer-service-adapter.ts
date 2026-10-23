@@ -2,6 +2,7 @@ import type { ToolCustomerServicePort } from "@workspace/ai-tool-router";
 import { createLoginAppApplicationPorts } from "@/lib/application-layer/create-login-app-application-ports";
 import { supabase } from "@/lib/supabase";
 import { pickCanonicalCustomerIdFromPhoneMatches } from "./customer-phone-collapse";
+import { ensurePurchaseLeadForConversation } from "./ensure-purchase-lead";
 
 async function bookingCountsForCustomers(
   companyId: string,
@@ -209,6 +210,22 @@ export function createToolCustomerServicePort(
         .update({ customer_id: customerId })
         .eq("id", conversationId)
         .is("customer_id", null);
+    },
+
+    async ensurePurchaseLead(input) {
+      if (!input.conversationId.trim() || !input.customerId.trim() || !input.userId.trim()) return null;
+      return ensurePurchaseLeadForConversation(supabase, {
+        companyId: companyId() ?? input.companyId,
+        userId: input.userId,
+        isSuperAdmin,
+        hasPermission,
+        conversationId: input.conversationId,
+        customerId: input.customerId,
+        name: input.name,
+        phone: input.phone,
+        email: input.email,
+        texts: input.texts,
+      });
     },
 
     async getConversationChannelType(input) {

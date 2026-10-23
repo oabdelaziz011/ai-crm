@@ -1,3 +1,4 @@
+import { TOOL_REGISTRY } from "@workspace/ai-tool-router";
 import type { AgentRuntimeConfiguration, AiEmployeeRuntimeAdapterInput } from "./ai-employee-runtime-types";
 import {
   collectRuntimeMissing,
@@ -42,9 +43,17 @@ export function buildAgentRuntimeConfiguration(
   const disabledKeys = employee.runtimeConfiguration.disabledToolKeys;
   const transferableFlowId = employee.runtimeConfiguration.transferableFlowId ?? null;
   let enabledKeys = allowedKeys.filter((key) => !disabledKeys.includes(key));
-  // Drop catalog-missing tools so runtime scope stays valid without failing the whole employee.
+  // Keep assigned keys that exist in the platform TOOL_REGISTRY even when the local
+  // tool_definitions catalog row is missing/disabled. Commercial entitlement still
+  // gates execution at route time; this only prevents silent drop from allowedToolKeys.
   const knownToolKeySet = new Set(toolCatalog.map((tool) => tool.key));
-  enabledKeys = enabledKeys.filter((key) => knownToolKeySet.has(key) || key === "transfer_to_workflow");
+  const platformRegistryKeySet = new Set(TOOL_REGISTRY.map((tool) => tool.key));
+  enabledKeys = enabledKeys.filter(
+    (key) =>
+      knownToolKeySet.has(key) ||
+      platformRegistryKeySet.has(key) ||
+      key === "transfer_to_workflow",
+  );
   if (transferableFlowId && !enabledKeys.includes("transfer_to_workflow")) {
     enabledKeys = [...enabledKeys, "transfer_to_workflow"];
   }
@@ -69,8 +78,9 @@ export function buildAgentRuntimeConfiguration(
         "- create_customer creates a new CRM profile when the phone is new, or returns the existing CRM profile when the phone already exists (existing CRM name is preserved).",
         "- After you have a real customer UUID from create_customer (preferred) or a matching search_customer hit, call create_booking immediately so the appointment is saved to the company calendar.",
         "- Never invent customerId values such as 1, customer-id, the customer name, or a phone number. Only use a UUID from trustedCustomerId / conversation.customer_id, or returned by search_customer / create_customer. An LLM-invented customerId must never override trusted identity.",
-        "- When the customer asks to see bookings/appointments or sends a mobile number to look up bookings: call search_bookings with phone set to that mobile (purpose=list, NOT cancel). Reply using customerFacingMessage. Never stay silent.",
-        "- CANCEL FLOW: when the customer wants to cancel (الغاء/ألغي/cancel): ask for the customer mobile if missing, then call search_bookings with purpose=\"cancel\". Show the list and ASK which appointment. Do NOT call cancel_booking until they pick a list number or BK- reference. Never cancel all bookings.",
+        "- When the customer asks to see their bookings/appointments and this conversation already has trustedCustomerId: call search_bookings without inventing another phone (purpose=list). Reply using customerFacingMessage. Never stay silent.",
+        "- If the customer supplies a phone number that differs from the verified conversation identity, call search_bookings with that phone so the server can reject IDENTITY_PHONE_MISMATCH. Do NOT list bookings for either identity and do NOT guess — ask for clarification using customerFacingMessage.",
+        "- CANCEL FLOW: when the customer wants to cancel (الغاء/ألغي/cancel) and trustedCustomerId is present: call search_bookings with purpose=\"cancel\" (no conflicting phone). If they send a different phone, follow the mismatch rule above. Show the list and ASK which appointment. Do NOT call cancel_booking until they pick a list number or BK- reference. Never cancel all bookings.",
         "- After they pick a BK- reference or list number, call cancel_booking for that booking only. Reply with the cancel confirmation. Do not restart a new booking intake and do not re-send the full list.",
         "- CHECK-IN / CHECK-OUT: when the customer asks to check in/out (تسجيل حضور/انصراف) with a BK- reference (and phone if needed), call check_in or check_out directly with bookingReference + phone. Do not list bookings or invent status changes.",
         "- Prefer booking_search only when the conversation already has a trusted customer and the user wants a CRM-style booking history without providing a phone.",
@@ -166,6 +176,7 @@ export function buildAgentRuntimeConfiguration(
             systemPrompt: channelSystemPrompt,
             welcomeMessage: resolvedWelcomeMessage,
             transferableFlowId,
+            showProductPrices: employee.runtimeConfiguration.showProductPrices === true,
             ...(ticketToolPromptHint ? { ticketToolPromptHint } : {}),
           },
         }

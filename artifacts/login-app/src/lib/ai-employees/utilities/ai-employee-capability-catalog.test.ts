@@ -12,6 +12,7 @@ import {
   selectAllAvailableToolKeys,
   splitAssignedToolKeys,
   toggleAvailableToolKey,
+  upgradeLegacyKnowledgeToolKeys,
 } from "./ai-employee-capability-catalog.js";
 
 const catalog = [
@@ -25,6 +26,10 @@ const catalog = [
   { key: "cancel_booking", displayName: "Cancel Booking", category: "scheduling" },
   { key: "check_in", displayName: "Check In", category: "scheduling" },
   { key: "check_out", displayName: "Check Out", category: "scheduling" },
+  { key: "list_demo_types", displayName: "List Demo Types", category: "scheduling" },
+  { key: "search_demo_availability", displayName: "Search Demo Availability", category: "scheduling" },
+  { key: "find_next_demo", displayName: "Find Next Demo", category: "scheduling" },
+  { key: "create_demo_booking", displayName: "Create Demo Booking", category: "scheduling" },
   { key: "create_ticket", displayName: "Create Ticket", category: "support" },
   { key: "search_ticket", displayName: "Search Tickets", category: "support" },
   { key: "create_lead", displayName: "Create Lead", category: "sales" },
@@ -199,7 +204,10 @@ describe("ai-employee-capability-catalog", () => {
     const groups = groupAvailableToolsByCapability(tools);
     assert.ok(groups.some((group) => group.group === "customers"));
     assert.ok(groups.some((group) => group.group === "bookings"));
-    assert.equal(groups.some((group) => group.group === "sales"), false);
+    // Demo tools are entitled via bookings but grouped under sales in the wizard.
+    assert.ok(groups.some((group) => group.group === "sales"));
+    const salesKeys = groups.find((group) => group.group === "sales")?.tools.map((t) => t.key) ?? [];
+    assert.ok(salesKeys.includes("create_demo_booking"));
   });
 
   it("Phase 2 reverse map: create_booking requires ai_employee + bookings", () => {
@@ -219,5 +227,12 @@ describe("ai-employee-capability-catalog", () => {
 
   it("Phase 2 reverse map: unmapped tool returns null", () => {
     assert.equal(resolveRequiredFeatureCodesForTool("knowledge_lookup"), null);
+  });
+
+  it("legacy knowledge tools fold into knowledge_search", () => {
+    assert.deepEqual(
+      upgradeLegacyKnowledgeToolKeys(["faq", "search_customer", "knowledge_lookup", "knowledge_search"]),
+      ["knowledge_search", "search_customer"],
+    );
   });
 });

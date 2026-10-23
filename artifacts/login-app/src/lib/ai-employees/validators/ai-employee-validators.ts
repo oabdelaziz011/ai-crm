@@ -3,6 +3,7 @@ import {
   DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION,
   type AiEmployeeRuntimeConfiguration,
 } from "@/lib/ai-employees/adapters";
+import { upgradeLegacyKnowledgeToolKeys } from "@/lib/ai-employees/utilities/ai-employee-capability-catalog";
 import { normalizeAiEmployeeWelcomeMessageForStorage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import {
   summarizeKnowledge,
@@ -59,6 +60,7 @@ export function resolveFormRuntimeConfiguration(
     sessionTimeoutMinutes: readLimit(source.sessionTimeoutMinutes, defaults.sessionTimeoutMinutes, 1),
     disabledToolKeys: [...new Set(source.disabledToolKeys ?? defaults.disabledToolKeys)],
     transferableFlowId: source.transferableFlowId?.trim() || null,
+    showProductPrices: source.showProductPrices === true,
     runtimeFlags: { ...defaults.runtimeFlags, ...(source.runtimeFlags ?? {}) },
     retrievalPolicy: { ...defaults.retrievalPolicy, ...(source.retrievalPolicy ?? {}) },
   };
@@ -71,6 +73,7 @@ export function formValuesToInsert(
   actorId?: string | null,
 ): AiEmployeeInsert {
   const name = resolveAiEmployeeInternalName(values.name, values.displayName);
+  const allowedToolKeys = upgradeLegacyKnowledgeToolKeys(values.allowedToolKeys);
   return {
     company_id: companyId,
     name,
@@ -90,8 +93,8 @@ export function formValuesToInsert(
     welcome_message: normalizeAiEmployeeWelcomeMessageForStorage(values.welcomeMessage),
     knowledge_source_ids: values.knowledgeSourceIds,
     knowledge_summary: summarizeKnowledge(knowledgeNames),
-    allowed_tool_keys: values.allowedToolKeys,
-    tool_summary: summarizeTools(values.allowedToolKeys),
+    allowed_tool_keys: allowedToolKeys,
+    tool_summary: summarizeTools(allowedToolKeys),
     allowed_skill_ids: values.allowedSkillIds ?? [],
     skills_summary: "",
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
@@ -111,6 +114,7 @@ export function formValuesToUpdate(
   actorId?: string | null,
 ): AiEmployeeUpdate {
   const name = resolveAiEmployeeInternalName(values.name, values.displayName);
+  const allowedToolKeys = upgradeLegacyKnowledgeToolKeys(values.allowedToolKeys);
   const base: AiEmployeeUpdate = {
     name,
     display_name: values.displayName.trim(),
@@ -127,8 +131,8 @@ export function formValuesToUpdate(
     welcome_message: normalizeAiEmployeeWelcomeMessageForStorage(values.welcomeMessage),
     knowledge_source_ids: values.knowledgeSourceIds,
     knowledge_summary: summarizeKnowledge(knowledgeNames),
-    allowed_tool_keys: values.allowedToolKeys,
-    tool_summary: summarizeTools(values.allowedToolKeys),
+    allowed_tool_keys: allowedToolKeys,
+    tool_summary: summarizeTools(allowedToolKeys),
     allowed_skill_ids: values.allowedSkillIds ?? [],
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
     updated_by: actorId ?? null,
@@ -193,7 +197,7 @@ export function recordToFormValues(record: {
     systemPrompt: record.systemPrompt,
     welcomeMessage: record.welcomeMessage,
     knowledgeSourceIds: record.knowledgeSourceIds,
-    allowedToolKeys: record.allowedToolKeys,
+    allowedToolKeys: upgradeLegacyKnowledgeToolKeys(record.allowedToolKeys),
     allowedSkillIds: record.allowedSkillIds,
     tags: record.tags,
   };

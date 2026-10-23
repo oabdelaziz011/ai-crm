@@ -29,6 +29,7 @@ export {
   useAiEmployeeSkills,
   useAiEmployeeSkillsMarketplace,
   useAiSkillOptions,
+  useCreateAiSkill,
   useAssignAiEmployeeSkills,
   useAssignSkillsToAiEmployee,
   useTestAiSkill,

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { MessageCircle, MessagesSquare, Instagram, Radio, Ticket } from "lucide-react";
+import { MessageCircle, MessagesSquare, Instagram, Radio, Ticket, Globe2, Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ const PRESET_CHANNELS = [
   { key: "whatsapp", tag: "channel:whatsapp", icon: MessageCircle },
   { key: "messenger", tag: "channel:messenger", icon: MessagesSquare },
   { key: "instagram", tag: "channel:instagram", icon: Instagram },
+  { key: "web_chat", tag: "channel:web_chat", icon: Globe2 },
+  { key: "email", tag: "channel:email", icon: Mail },
 ] as const;
 
 const OMNICHANNEL_TAG = "capability:omnichannel";
@@ -38,7 +40,14 @@ export function ChannelRoutingTagsField({ tags, onChange }: ChannelRoutingTagsFi
     () =>
       companyChannels.filter((channel) => {
         const key = channel.communication_channel?.key;
-        return key === "whatsapp" || key === "messenger" || key === "instagram";
+        return (
+          (key === "whatsapp" ||
+            key === "messenger" ||
+            key === "instagram" ||
+            key === "web_chat" ||
+            key === "email") &&
+          channel.is_enabled
+        );
       }),
     [companyChannels],
   );
@@ -116,6 +125,9 @@ export function ChannelRoutingTagsField({ tags, onChange }: ChannelRoutingTagsFi
           <p className="text-xs font-medium text-muted-foreground">
             {t("aiEmployees.form.channelRouting.companyChannels")}
           </p>
+          <p className="text-[11px] text-muted-foreground">
+            {t("aiEmployees.form.channelRouting.companyChannelsHint")}
+          </p>
           <div className="flex flex-wrap gap-2">
             {messagingChannels.map((channel) => {
               const tag = `channel:${channel.id}`;
@@ -132,9 +144,10 @@ export function ChannelRoutingTagsField({ tags, onChange }: ChannelRoutingTagsFi
                       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                       : "border-border/70 bg-background text-muted-foreground hover:border-emerald-500/30",
                   )}
+                  data-testid={`ai-employee-channel-${channelKey}`}
                 >
                   <span className="font-medium">{channel.display_name}</span>
-                  <span className="text-[10px] opacity-70">
+                  <span className="rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-80">
                     {t(`aiEmployees.form.channelRouting.channels.${channelKey}`, {
                       defaultValue: channelKey,
                     })}

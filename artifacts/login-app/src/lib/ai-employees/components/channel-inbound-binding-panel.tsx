@@ -64,7 +64,12 @@ export function ChannelInboundBindingPanel({
       companyChannels.filter((channel) => {
         const key = channel.communication_channel?.key;
         return (
-          (key === "whatsapp" || key === "messenger" || key === "instagram") && channel.is_enabled
+          (key === "whatsapp" ||
+            key === "messenger" ||
+            key === "instagram" ||
+            key === "web_chat" ||
+            key === "email") &&
+          channel.is_enabled
         );
       }),
     [companyChannels],

@@ -18,6 +18,7 @@ import {
 import type { RuntimeGatewayPort, RuntimePromptPort, RuntimeToolPort, PlatformRuntimeConfigPort } from "../ports/runtime-ports.js";
 import type { RuntimeKnowledgePort } from "../ports/knowledge-port.js";
 import { mapKnowledgeQueryResult } from "../ports/knowledge-port.js";
+import { hasVerifiedBusinessOutcome, summarizeSalesToolOutcome } from "./sales-tool-outcome.js";
 import type {
   AIExecutionMetricsRepository,
   AIExecutionRepository,
@@ -43,6 +44,14 @@ import { normalizeConversationResponse } from "../utils/normalize-conversation-r
 import { logOpenAIRequest } from "../utils/log-openai-request.js";
 import { createAIRuntimeLogEvent, logAIRuntimeEvent } from "../utils/ai-runtime-logger.js";
 import { logWhatsApp } from "../debug/whatsapp-ai-pipeline-log.js";
+import { collectProductReplyImagesForTurn } from "@workspace/ai-tool-router";
+
+function lastUserMessageText(messages: ReadonlyArray<{ role?: string; content?: unknown }>): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "user") return String(messages[index]?.content ?? "");
+  }
+  return "";
+}
 
 export class EnterpriseAIRuntimeService {
   private readonly contextBuilder: ContextBuilder;
@@ -346,6 +355,7 @@ export class EnterpriseAIRuntimeService {
 
     const gatewayStarted = Date.now();
     let responseText = "";
+    let replyImages: EnterpriseRuntimeExecuteResult["replyImages"] = [];
     let gatewayLatencyMs = 0;
     let tokenUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
     let estimatedCostUsd: number | null = null;
@@ -389,6 +399,11 @@ export class EnterpriseAIRuntimeService {
       )
         ? (input.promptContext.priorSchedulingToolExecutions as ToolCallLoopResult["toolExecutions"])
         : [];
+      const pageContext = input.promptContext?.pageContext;
+      const deferDeterministicSales =
+        !!pageContext &&
+        typeof pageContext === "object" &&
+        (pageContext as Record<string, unknown>).deferDeterministicSales === true;
       const loopResult = await this.toolLoop.runWithOptionalStreaming({
         ctx,
         conversationId: input.conversationId!,
@@ -397,10 +412,22 @@ export class EnterpriseAIRuntimeService {
         allowedToolKeys: this.deps.tools!.allowedToolKeys(),
         trustedCustomerId: trustedCustomerId || null,
         priorSchedulingToolExecutions,
+        deferDeterministicSales,
         onStreamChunk: input.stream ? input.onStreamChunk : undefined,
       });
       gatewayLatencyMs = Date.now() - gatewayStarted;
       responseText = loopResult.response.text;
+      if (!responseText.trim()) {
+        const summary = summarizeSalesToolOutcome(loopResult.toolExecutions);
+        if (summary && (deferDeterministicSales || hasVerifiedBusinessOutcome(loopResult.toolExecutions))) {
+          responseText = summary;
+          if (hasVerifiedBusinessOutcome(loopResult.toolExecutions)) finishReason = "fallback";
+        }
+      }
+      replyImages = collectProductReplyImagesForTurn(
+        lastUserMessageText(gatewayBaseRequest.messages),
+        loopResult.toolExecutions,
+      );
       finishReason = loopResult.response.finishReason;
       tokenUsage = {
         prompt_tokens: loopResult.response.usage.inputTokens,
@@ -441,7 +468,8 @@ export class EnterpriseAIRuntimeService {
       estimatedCostUsd = gatewayResponse.estimatedCostUsd ?? null;
     }
 
-    if (!responseText.trim()) {
+    const providerFallback = finishReason === "fallback";
+    if (!responseText.trim() && !providerFallback) {
       throw new ProviderUnavailableError(providerKey);
     }
 
@@ -460,6 +488,7 @@ export class EnterpriseAIRuntimeService {
       }),
     );
 
+    const fallbackText = responseText;
     const normalizedResponseText = normalizeConversationResponse(
       responseText,
       builtPrompt.outputContract ?? { format: responseFormat },
@@ -468,7 +497,8 @@ export class EnterpriseAIRuntimeService {
     responseText = normalizedResponseText;
 
     if (!responseText.trim()) {
-      throw new ProviderUnavailableError(providerKey);
+      if (providerFallback && fallbackText.trim()) responseText = fallbackText;
+      else throw new ProviderUnavailableError(providerKey);
     }
 
     await this.deps.registries.hooks.emit("afterGateway", { input });
@@ -486,11 +516,15 @@ export class EnterpriseAIRuntimeService {
       createdBy: ctx.userId,
     });
     await this.deps.executionRepository.markRunning(execution.id);
+    const executionStatus = providerFallback ? "fallback" : "succeeded";
     await this.deps.executionRepository.complete({
       executionId: execution.id,
-      status: "succeeded",
+      status: executionStatus,
       finishReason,
-      rawResponse: { text: responseText },
+      rawResponse: {
+        text: responseText,
+        ...(providerFallback ? { deliveryOutcome: "provider_fallback" } : {}),
+      },
       normalizedResponse: { content: responseText, format: responseFormat },
       tokenUsage,
       retryCount: 0,
@@ -505,7 +539,7 @@ export class EnterpriseAIRuntimeService {
       executionId: execution.id,
       providerKey,
       model,
-      status: "succeeded",
+      status: executionStatus,
       latencyMs,
       tokenUsage,
       retryCount: 0,
@@ -532,7 +566,7 @@ export class EnterpriseAIRuntimeService {
       latencyMs,
       tokenUsage,
       estimatedCostUsd,
-      status: "succeeded",
+      status: executionStatus,
     });
 
     this.deps.observability.record({
@@ -577,7 +611,7 @@ export class EnterpriseAIRuntimeService {
       templateKey: builtPrompt.templateKey,
       providerKey,
       model,
-      status: "succeeded",
+      status: executionStatus,
       latencyMs,
       contextSizeBytes: contextBuilt.sizeBytes,
       promptSizeBytes: builtPrompt.finalPrompt.length,
@@ -585,6 +619,8 @@ export class EnterpriseAIRuntimeService {
       tokenUsage,
       estimatedCostUsd,
       responseText,
+      ...(providerFallback ? { deliveryOutcome: "provider_fallback" as const } : {}),
+      replyImages,
       cacheHit: false,
       trimmedMessageCount: window.trimmedCount,
     };

@@ -163,7 +163,10 @@ export type LeadSummary = Pick<
   | "lastActivityAt"
   | "createdAt"
   | "updatedAt"
->;
+> & {
+  /** Channel key from Smart Capture metadata when sourceId was never set. */
+  captureChannel?: string | null;
+};
 
 export type LeadPipelineRecord = {
   id: string;
@@ -288,6 +291,21 @@ export type PipelineMetricsSnapshot = {
   }>;
 };
 
+function readCaptureChannelFromMetadata(metadata: Record<string, unknown> | null | undefined): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const smart = metadata.smartCapture;
+  if (smart && typeof smart === "object" && !Array.isArray(smart)) {
+    const channel = (smart as { channel?: unknown }).channel;
+    if (typeof channel === "string" && channel.trim()) return channel.trim().toLowerCase();
+  }
+  const ai = metadata.aiCapture;
+  if (ai && typeof ai === "object" && !Array.isArray(ai)) {
+    const channelKey = (ai as { channelKey?: unknown }).channelKey;
+    if (typeof channelKey === "string" && channelKey.trim()) return channelKey.trim().toLowerCase();
+  }
+  return null;
+}
+
 export function toLeadSummary(record: LeadRecord): LeadSummary {
   return {
     id: record.id,
@@ -314,5 +332,6 @@ export function toLeadSummary(record: LeadRecord): LeadSummary {
     lastActivityAt: record.lastActivityAt,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
+    captureChannel: readCaptureChannelFromMetadata(record.metadata),
   };
 }

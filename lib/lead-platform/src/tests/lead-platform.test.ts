@@ -17,16 +17,34 @@ describe("stage transition validator", () => {
     assert.throws(() => assertStageTransition("new", "won"), LeadStageTransitionError);
   });
 
-  it("allows backward transitions when allowBackward is true", () => {
+  it("allows only a one-step reverse when allowBackward is true", () => {
     assert.doesNotThrow(() =>
       assertStageTransition("proposal_sent", "contacted", { allowBackward: true }),
     );
-    assert.doesNotThrow(() =>
-      assertStageTransition("proposal_sent", "new", { allowBackward: true }),
+    assert.throws(
+      () => assertStageTransition("proposal_sent", "new", { allowBackward: true }),
+      LeadStageTransitionError,
     );
-    assert.doesNotThrow(() =>
-      assertStageTransition("proposal_sent", "qualified", { allowBackward: true }),
+    assert.throws(
+      () => assertStageTransition("proposal_sent", "qualified", { allowBackward: true }),
+      LeadStageTransitionError,
     );
+    assert.throws(
+      () => assertStageTransition("new", "won", { allowBackward: true }),
+      LeadStageTransitionError,
+    );
+  });
+
+  it("rejects AI and system entry to won even on a forward edge", () => {
+    assert.throws(
+      () => assertStageTransition("proposal_sent", "won", { source: "ai" }),
+      (error: unknown) => error instanceof LeadStageTransitionError && error.reason === "won_lost_requires_human",
+    );
+    assert.throws(
+      () => assertStageTransition("negotiation", "won", { source: "system" }),
+      LeadStageTransitionError,
+    );
+    assert.doesNotThrow(() => assertStageTransition("proposal_sent", "won", { source: "human" }));
   });
 });
 

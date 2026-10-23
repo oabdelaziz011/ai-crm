@@ -3,7 +3,8 @@ import { lazy } from "react";
 
 export const OPPORTUNITIES_BASE_NESTED_PATH = "/opportunities";
 
-export type OpportunitiesRouteId = "pipeline" | "table" | "timeline";
+/** Single module surface — table view only. */
+export type OpportunitiesRouteId = "table";
 
 export type OpportunitiesRouteDefinition = {
   id: OpportunitiesRouteId;
@@ -23,16 +24,11 @@ const lazyNamed = <T extends ComponentType>(
     })),
   );
 
+/**
+ * Opportunities module navigation: exactly one tab ("Opportunities" / "فرص").
+ * Legacy /pipeline and /timeline paths redirect to this route in the layout.
+ */
 export const OPPORTUNITIES_ROUTE_REGISTRY: readonly OpportunitiesRouteDefinition[] = [
-  {
-    id: "pipeline",
-    nestedPath: "/pipeline",
-    titleKey: "opportunities.nav.pipeline",
-    Page: lazyNamed(
-      () => import("@/pages/dashboard/opportunities/opportunities-pipeline-page"),
-      "OpportunitiesPipelinePage",
-    ),
-  },
   {
     id: "table",
     nestedPath: "/table",
@@ -42,18 +38,12 @@ export const OPPORTUNITIES_ROUTE_REGISTRY: readonly OpportunitiesRouteDefinition
       "OpportunitiesTablePage",
     ),
   },
-  {
-    id: "timeline",
-    nestedPath: "/timeline",
-    titleKey: "opportunities.nav.timeline",
-    Page: lazyNamed(
-      () => import("@/pages/dashboard/opportunities/opportunities-timeline-page"),
-      "OpportunitiesTimelinePage",
-    ),
-  },
 ];
 
-export const OPPORTUNITIES_DEFAULT_NESTED_PATH = "/pipeline";
+/** Legacy nested paths that must not reintroduce extra tabs. */
+export const OPPORTUNITIES_LEGACY_REDIRECT_PATHS = ["/pipeline", "/timeline"] as const;
+
+export const OPPORTUNITIES_DEFAULT_NESTED_PATH = "/table";
 
 export function opportunitiesNavItems() {
   return OPPORTUNITIES_ROUTE_REGISTRY;

@@ -15,6 +15,10 @@ function lazyNamed<T extends Record<string, ComponentType>>(
 
 export const PUBLIC_BOOKING_ROUTES: PortalRouteDefinition[] = [
   {
+    path: "/site/:slug",
+    Page: lazyNamed(() => import("@/pages/portal/public-company-website-page"), "PublicCompanyWebsitePage"),
+  },
+  {
     path: "/book/:slug",
     Page: lazyNamed(() => import("@/pages/portal/public-booking-landing-page"), "PublicBookingLandingPage"),
   },

@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   MessageSquare,
   MessageSquareText,
+  Handshake,
   Briefcase,
   Target,
   Settings,
@@ -24,9 +25,11 @@ import {
   Activity,
   Gauge,
   GitBranch,
+  Globe,
   Plug,
   Store,
   Package,
+  Presentation,
   UserCog,
   Users,
   Ticket,
@@ -48,16 +51,19 @@ export type DashboardSectionId =
   | "ai-usage"
   | "ai-analytics"
   | "company"
+  | "website"
   | "customers"
   | "tickets"
   | "bookings"
   | "calendar"
   | "scheduling"
+  | "product-demos"
   | "universal-operations"
   | "leads"
   | "opportunities"
   | "products"
   | "quotes"
+  | "quotes-send-requests"
   | "communication"
   | "campaigns"
   | "email"
@@ -89,7 +95,8 @@ export type DashboardSectionId =
 export type DashboardSidebarGroupId =
   | "user-management"
   | "ai-platform"
-  | "company-hub";
+  | "company-hub"
+  | "sales";
 
 export type DashboardRouteDefinition = {
   id: DashboardSectionId;
@@ -130,7 +137,7 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
     id: "company-hub",
     titleKey: "navigation.companyHub",
     icon: Building2,
-    childIds: ["company", "organization"],
+    childIds: ["company", "website", "organization"],
   },
   {
     id: "ai-platform",
@@ -158,6 +165,20 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
     icon: UserCog,
     childIds: ["users", "roles"],
   },
+  {
+    id: "sales",
+    titleKey: "navigation.sales",
+    icon: Handshake,
+    childIds: [
+      "leads",
+      "campaigns",
+      "opportunities",
+      "products",
+      "product-demos",
+      "quotes",
+      "quotes-send-requests",
+    ],
+  },
 ] as const;
 
 const lazyPage = (loader: () => Promise<{ default: ComponentType }>) => lazy(loader);
@@ -184,6 +205,19 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/company/company-workspace-page"),
       "CompanyWorkspacePage",
+    ),
+  },
+  {
+    id: "website",
+    path: "/dashboard/website",
+    nestedPath: "/website",
+    titleKey: "navigation.website",
+    icon: Globe,
+    permission: "web_presence.view",
+    sidebarGroup: "company-hub",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/website/website-studio-page"),
+      "WebsiteStudioPage",
     ),
   },
   {
@@ -329,6 +363,15 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     Page: lazyNamed(() => import("@/pages/dashboard/scheduling/scheduling-page"), "SchedulingPage"),
   },
   {
+    id: "product-demos",
+    path: "/dashboard/product-demos",
+    nestedPath: "/product-demos",
+    titleKey: "navigation.productDemos",
+    icon: Presentation,
+    permission: "product_demos.view",
+    Page: lazyNamed(() => import("@/pages/dashboard/product-demos-page"), "ProductDemosPage"),
+  },
+  {
     id: "universal-operations",
     path: "/dashboard/operations",
     nestedPath: "/operations",
@@ -380,6 +423,19 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     permission: "quotes.view",
     commercialFeatureCode: "opportunities",
     Page: lazyNamed(() => import("@/pages/dashboard/quotes-page"), "QuotesPage"),
+  },
+  {
+    id: "quotes-send-requests",
+    path: "/dashboard/quotes/send-requests",
+    nestedPath: "/quotes/send-requests",
+    titleKey: "navigation.quoteSendRequests",
+    icon: FileText,
+    permission: "quotes.send",
+    commercialFeatureCode: "opportunities",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/quotes-send-requests-page"),
+      "QuotesSendRequestsPage",
+    ),
   },
   {
     id: "invoices",
@@ -658,11 +714,7 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "customers" },
   { type: "route", id: "tickets" },
   { type: "route", id: "universal-operations" },
-  { type: "route", id: "leads" },
-  { type: "route", id: "campaigns" },
-  { type: "route", id: "opportunities" },
-  { type: "route", id: "products" },
-  { type: "route", id: "quotes" },
+  { type: "group", id: "sales" },
   { type: "route", id: "invoices" },
   { type: "route", id: "executive" },
   { type: "route", id: "integrations" },

@@ -18,6 +18,7 @@ export type SettingsRouteId =
   | "calendar"
   | "scheduling"
   | "ticket-sla"
+  | "sales-follow-up"
   | "platform-ai";
 
 export type SettingsRouteDefinition = {
@@ -185,6 +186,17 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/ticket-sla-settings-page"),
       "SettingsTicketSlaPage",
+    ),
+  },
+  {
+    id: "sales-follow-up",
+    nestedPath: "/sales/follow-up",
+    titleKey: "dashboard.settings.nav.salesFollowUp",
+    permission: "settings.edit",
+    commercialFeatureCode: "leads",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/sales-follow-up-settings-page"),
+      "SettingsSalesFollowUpPage",
     ),
   },
   {

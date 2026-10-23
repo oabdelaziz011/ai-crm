@@ -250,6 +250,8 @@ export type ConversationStartedPayload = {
   externalThreadId?: string | null;
   phone?: string | null;
   email?: string | null;
+  /** Optional trusted CRM customer already resolved for this company. */
+  customerId?: string | null;
   actorUserId?: string | null;
   createdAt: string;
 };
@@ -262,6 +264,8 @@ export type ConversationMessageReceivedPayload = {
   channelType?: string | null;
   contentPreview?: string | null;
   messageCount?: number | null;
+  /** Optional trusted CRM customer stamped on the conversation. */
+  customerId?: string | null;
   actorUserId?: string | null;
   receivedAt: string;
 };

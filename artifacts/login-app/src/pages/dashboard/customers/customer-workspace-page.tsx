@@ -28,6 +28,8 @@ import { useCustomers } from "@/hooks/use-customers";
 
 import { useBookings } from "@/hooks/use-bookings";
 
+import { useRecordOneDayNoShows } from "@/lib/scheduling/operations/hooks/use-one-day-no-show";
+
 import { useInvoices } from "@/hooks/use-invoices";
 
 import { useCustomerProfileQuickActions } from "@/hooks/use-customer-profile-quick-actions";
@@ -316,10 +318,12 @@ export function CustomerWorkspacePage({
   const { data: customers = [] } = useCustomers();
 
   const bookingsQuery = useBookings({
-
     enabled: needsBookingData && !workspaceAccess.isLoading,
-
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
+
+  useRecordOneDayNoShows(companyId, needsBookingData && !workspaceAccess.isLoading);
 
   const invoicesQuery = useInvoices(CRM_LIST_MAX_ROWS, {
 

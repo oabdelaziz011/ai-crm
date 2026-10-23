@@ -508,9 +508,11 @@ export function AgentCreateWizardPage() {
           >
             {t(`aiEmployees.wizard.steps.${step}`)}
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t(`aiEmployees.wizard.stepHints.${step}`)}
-          </p>
+          {step !== "channels" ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t(`aiEmployees.wizard.stepHints.${step}`)}
+            </p>
+          ) : null}
         </div>
 
         <AiEmployeeFormSections

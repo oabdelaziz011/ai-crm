@@ -247,7 +247,9 @@ export function AgentEditPage() {
         <h2 ref={stepHeadingRef} className="text-lg font-semibold scroll-mt-4">
           {t(`aiEmployees.wizard.steps.${step}`)}
         </h2>
-        <p className="text-sm text-muted-foreground">{t(`aiEmployees.wizard.stepHints.${step}`)}</p>
+        {step !== "channels" ? (
+          <p className="text-sm text-muted-foreground">{t(`aiEmployees.wizard.stepHints.${step}`)}</p>
+        ) : null}
         <AiEmployeeFormSections
           step={step}
           values={values}

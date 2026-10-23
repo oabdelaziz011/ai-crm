@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildWelcomeDeliveredMetadataPatch,
+  greetingFollowUpReply,
   isGreetingOnlyInboundText,
   readWelcomeDeliveredAt,
   shouldAttemptWhatsAppDeterministicWelcome,
@@ -48,6 +49,9 @@ describe("whatsapp deterministic welcome helpers", () => {
 
   it("detects greeting-only inbound text covered by deterministic welcome", () => {
     assert.equal(isGreetingOnlyInboundText("مساء الخير"), true);
+    assert.equal(isGreetingOnlyInboundText("مساء الفل"), true);
+    assert.match(greetingFollowUpReply("مساء الفل"), /مساء الفل/);
+    assert.equal(isGreetingOnlyInboundText("صباح النور"), true);
     assert.equal(isGreetingOnlyInboundText("صباح الخير"), true);
     assert.equal(isGreetingOnlyInboundText("السلام عليكم"), true);
     assert.equal(isGreetingOnlyInboundText("hello"), true);

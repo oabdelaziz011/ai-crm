@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { confirmOutgoingDeliveryWithRetry } from "../services/confirm-outgoing-delivery.js";
+import {
+  confirmOutgoingDeliveryWithRetry,
+  retryUnconfirmedOutgoingConfirmation,
+} from "../services/confirm-outgoing-delivery.js";
 
 describe("confirmOutgoingDeliveryWithRetry", () => {
   it("succeeds on first attempt", async () => {
@@ -48,5 +51,77 @@ describe("confirmOutgoingDeliveryWithRetry", () => {
       assert.match(String((result.error as Error).message), /rpc down/);
     }
     assert.equal(calls, 2);
+  });
+});
+
+describe("retryUnconfirmedOutgoingConfirmation", () => {
+  it("confirms a sent delivery still in preparing without a provider send", async () => {
+    const confirms: Array<{ messageId: string; status: string; externalMessageId?: string | null }> = [];
+    let sendCalls = 0;
+
+    const result = await retryUnconfirmedOutgoingConfirmation(
+      async (input) => {
+        confirms.push(input);
+      },
+      {
+        messageId: "msg-out-1",
+        deliveryStatus: "sent",
+        externalMessageId: "wamid.out-1",
+        outboundPhase: "preparing",
+      },
+      { delayMs: 1 },
+    );
+
+    assert.equal(result.ok, true);
+    if (result.ok && result.attempted) assert.equal(result.attempts, 1);
+    assert.equal(confirms.length, 1);
+    assert.equal(confirms[0]?.messageId, "msg-out-1");
+    assert.equal(confirms[0]?.status, "sent");
+    assert.equal(confirms[0]?.externalMessageId, "wamid.out-1");
+    assert.equal(sendCalls, 0);
+  });
+
+  it("keeps the row unconfirmed when confirm keeps failing and does not send", async () => {
+    let confirmCalls = 0;
+    let sendCalls = 0;
+    let phase = "dispatching";
+    const result = await retryUnconfirmedOutgoingConfirmation(
+      async () => {
+        confirmCalls += 1;
+        throw new Error("confirm rpc unavailable");
+      },
+      {
+        messageId: "msg-out-1",
+        deliveryStatus: "delivered",
+        externalMessageId: "wamid.out-1",
+        outboundPhase: phase,
+      },
+      { maxAttempts: 2, delayMs: 1 },
+    );
+
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.attempts, 2);
+    assert.equal(confirmCalls, 2);
+    assert.equal(phase, "dispatching");
+    assert.equal(sendCalls, 0);
+  });
+
+  it("does not confirm again once the phase is no longer preparing or dispatching", async () => {
+    let confirmCalls = 0;
+    const result = await retryUnconfirmedOutgoingConfirmation(
+      async () => {
+        confirmCalls += 1;
+      },
+      {
+        messageId: "msg-out-1",
+        deliveryStatus: "sent",
+        externalMessageId: "wamid.out-1",
+        outboundPhase: "sent",
+      },
+      { delayMs: 1 },
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.attempted, false);
+    assert.equal(confirmCalls, 0);
   });
 });

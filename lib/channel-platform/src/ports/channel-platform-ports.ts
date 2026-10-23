@@ -122,6 +122,12 @@ export type ChannelConversationPort = {
     externalMessageId?: string | null;
   }): Promise<ConversationMessageSummary>;
 
+  /** Outgoing row already stored for this turn, keyed by external message id. */
+  findMessageByExternalId?(input: {
+    conversationId: string;
+    externalMessageId: string;
+  }): Promise<ConversationMessageSummary | null>;
+
   /**
    * After provider send succeeds for a pre-persisted outgoing row, confirm
    * delivery fields (status / external id / outboundPhase). Optional so test
@@ -143,6 +149,12 @@ export type ChannelConversationPort = {
   /** True when the conversation already has at least one persisted outgoing message. */
   hasOutgoingMessages?(conversationId: string): Promise<boolean>;
 
+  /** Customer messages persisted after the given incoming message, oldest first. */
+  listIncomingMessagesAfter?(input: {
+    conversationId: string;
+    messageId: string;
+  }): Promise<Array<{ id: string; content: string }>>;
+
   /** Phase 2 — read trusted CRM link (null-safe). */
   getConversationCustomerId?(conversationId: string): Promise<string | null>;
 
@@ -155,6 +167,22 @@ export type ChannelConversationPort = {
     customerId: string;
     companyId: string;
   }): Promise<void>;
+
+  /**
+   * Publish ConversationStarted only after identity resolution when create was deferred.
+   * Idempotent: no-op when deferConversationStarted is not set / already flushed.
+   */
+  flushDeferredConversationStarted?(input: {
+    companyId: string;
+    conversationId: string;
+    channelType: string;
+    customerId?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    externalUserId?: string | null;
+    externalThreadId?: string | null;
+    actorUserId?: string | null;
+  }): Promise<{ published: boolean }>;
 };
 
 /**

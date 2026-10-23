@@ -5,6 +5,9 @@
 export function isBookingTransferIntent(text: string | null | undefined): boolean {
   const value = typeof text === "string" ? text.trim() : "";
   if (!value) return false;
+  const asksPrice = /(?:سعر|اسعار|أسعار|تسعير|بكام|بكم|تكلف|ثمن|\bprices?\b|\bcost\b|how much)/i.test(value);
+  const asksBooking = /(?:حجز|احجز|موعد|مواعيد|appointment|book(?:ing)?|schedule)/i.test(value);
+  if (asksPrice && !asksBooking) return false;
   return /حجز|احجز|موعد|مواعيد|عياد|دكتور|طبيب|أسنان|اسنان|appointment|book(ing)?|schedule|doctor|clinic/i.test(
     value,
   );

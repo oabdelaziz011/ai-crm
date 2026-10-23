@@ -14,7 +14,7 @@ import { DeliveryTrackingEngine } from "../engines/delivery-tracking-engine.js";
 import { OutboundMessagePipeline } from "../pipelines/outbound-message-pipeline.js";
 import { createChannelAdapterRegistry } from "../adapters/channel-adapter-registry.js";
 import { createStubWebChatAdapter } from "../adapters/stub-web-chat-adapter.js";
-import { CompanyChannelNotFoundError, DeliveryFailedError } from "../errors.js";
+import { CompanyChannelNotFoundError, DeliveryFailedError, ProviderAcceptanceUnconfirmedError } from "../errors.js";
 import type { WhatsAppMessagesCommercialPort } from "../ports/whatsapp-messages-commercial-port.js";
 import type {
   ChannelDeliveryEventRepository,
@@ -345,24 +345,27 @@ describe("OutboundMessagePipeline WhatsApp commercial enforcement", () => {
     assert.equal(usage.recordCalls, 0);
   });
 
-  it("5. missing externalMessageId → zero usage events", async () => {
+  it("5. missing externalMessageId stays unconfirmed and records zero usage", async () => {
     const usage = { recordCalls: 0, recorded: [] as boolean[] };
     const { pipeline, whatsAppAdapter } = buildPipelineHarness({
       commercial: commercial(true, usage),
       whatsAppMode: "missing_id",
     });
-    const response = await pipeline.process(createContext(), {
-      companyId: "company-1",
-      companyChannelId: "company-channel-wa",
-      channelKey: "whatsapp",
-      conversationId: "conv-wa-1",
-      channelSessionId: "session-wa-1",
-      externalThreadId: "15551234567",
-      text: "No id",
-    });
+    await assert.rejects(
+      () =>
+        pipeline.process(createContext(), {
+          companyId: "company-1",
+          companyChannelId: "company-channel-wa",
+          channelKey: "whatsapp",
+          conversationId: "conv-wa-1",
+          channelSessionId: "session-wa-1",
+          externalThreadId: "15551234567",
+          text: "No id",
+        }),
+      (error: unknown) => error instanceof ProviderAcceptanceUnconfirmedError,
+    );
     assert.equal(whatsAppAdapter.sendCalls, 1);
     assert.equal(usage.recordCalls, 0);
-    assert.equal(response.externalMessageId, undefined);
   });
 
   it("6. usage recording failure does not trigger a second Meta send", async () => {

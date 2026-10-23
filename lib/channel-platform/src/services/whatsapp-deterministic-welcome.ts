@@ -30,10 +30,18 @@ export function shouldAttemptWhatsAppDeterministicWelcome(input: {
  * Pure greetings that are fully covered by the configured deterministic welcome.
  * After welcome is delivered on this turn, skip a second AI greeting reply.
  */
+/** Later pure greetings still get a reply. They do not open a booking. */
+export function greetingFollowUpReply(text: string): string {
+  const trimmed = text.trim();
+  if (/مساء/u.test(trimmed)) return "مساء الفل، أهلاً بيك. تحب أساعدك في إيه؟";
+  if (/صباح/u.test(trimmed)) return "صباح النور، أهلاً بيك. تحب أساعدك في إيه؟";
+  return "أهلاً بيك. تحب أساعدك في إيه؟";
+}
+
 export function isGreetingOnlyInboundText(text: string | null | undefined): boolean {
   const trimmed = typeof text === "string" ? text.trim() : "";
   if (!trimmed || trimmed.length > 48) return false;
-  return /^(?:مساء\s*الخير|صباح\s*الخير|السلام\s*عليكم(?:\s*ورحمة\s*الله(?:\s*وبركاته)?)?|سلام|أهلاً?(?:\s*بك)?|اهلا(?:\s*بيك)?|مرحبا(?:ً)?|هاي|hello|hi|hey)[!!.؟?\s]*$/iu.test(
+  return /^(?:(?:مساء|صباح)\s*(?:الخير|النور|الفل|الورد)|السلام\s*عليكم(?:\s*ورحمة\s*الله(?:\s*وبركاته)?)?|سلام|أهلاً?(?:\s*بك)?|اهلا(?:\s*بيك)?|مرحبا(?:ً)?|هاي|hello|hi|hey)[!!.؟?\s]*$/iu.test(
     trimmed,
   );
 }

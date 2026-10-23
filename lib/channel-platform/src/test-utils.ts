@@ -15,6 +15,7 @@ import type {
   ChannelRegistryPort,
   ChannelRuntimePort,
 } from "./ports/channel-platform-ports.js";
+import { createMemoryWhatsAppConversationTurnLock, type WhatsAppConversationTurnLock } from "./services/whatsapp-conversation-turn-lock.js";
 import { ChannelRouter } from "./router/channel-router.js";
 import { ChannelWorkflowResolver } from "./services/channel-workflow-resolver.js";
 import type {
@@ -70,6 +71,8 @@ export function createTestEnvironment(options?: {
   companyChannel?: Partial<ResolvedCompanyChannel>;
   runtimeResponse?: string;
   runtimeError?: Error;
+  /** Awaited inside runtime.execute, so tests can hold a turn open. */
+  runtimeHold?: (input: { messageText: string }) => Promise<void>;
   automationResponse?: string;
   automationPort?: ChannelAutomationPort;
   adapters?: ChannelAdapterPort[];
@@ -88,6 +91,11 @@ export function createTestEnvironment(options?: {
     enabled?: boolean;
     executable?: boolean;
   };
+  sharedTurnLock?: WhatsAppConversationTurnLock;
+  /** When set, the first conversation uses this id so a Postgres lease can key a real uuid. */
+  conversationId?: string;
+  /** Test hook: provider already returned, then persisting the sent delivery throws. */
+  failSentDeliveryUpdate?: boolean;
 }) {
   const companyChannel: ResolvedCompanyChannel = {
     id: "company-channel-1",
@@ -264,6 +272,9 @@ export function createTestEnvironment(options?: {
       return record;
     },
     updateEvent: async (input: UpdateDeliveryEventInput) => {
+      if (options?.failSentDeliveryUpdate && input.deliveryStatus === "sent") {
+        throw new Error("crash_before_sent_delivery_save");
+      }
       const record = deliveryEvents.find((event) => event.id === input.deliveryEventId)!;
       Object.assign(record, {
         delivery_status: input.deliveryStatus,
@@ -314,7 +325,10 @@ export function createTestEnvironment(options?: {
     resolveCompanyAssistantId: async () => "assistant-company-default",
     createConversation: async (input) => {
       const record = {
-        id: `conv-${conversations.length + 1}`,
+        id:
+          conversations.length === 0 && options?.conversationId
+            ? options.conversationId
+            : `conv-${conversations.length + 1}`,
         companyChannelId: input.companyChannelId,
       };
       conversations.push(record);
@@ -395,6 +409,14 @@ export function createTestEnvironment(options?: {
       conversationMetadataById.get(conversationId) ?? null,
     hasOutgoingMessages: async (conversationId) =>
       outgoingMessages.some((message) => message.conversationId === conversationId),
+    listIncomingMessagesAfter: async (input) => {
+      const index = incomingMessages.findIndex((message) => message.id === input.messageId);
+      if (index < 0) return [];
+      return incomingMessages
+        .slice(index + 1)
+        .filter((message) => message.conversationId === input.conversationId)
+        .map((message) => ({ id: message.id, content: message.content }));
+    },
     updateConversationMetadata: async (input) => {
       conversationMetadataById.set(input.conversationId, { ...input.metadata });
     },
@@ -409,6 +431,7 @@ export function createTestEnvironment(options?: {
   const runtimePort: ChannelRuntimePort = {
     execute: async (input): Promise<RuntimeExecutionSummary> => {
       runtimeCalls += 1;
+      await options?.runtimeHold?.({ messageText: input.messageText });
       if (options?.runtimeError) {
         throw options.runtimeError;
       }
@@ -532,6 +555,8 @@ export function createTestEnvironment(options?: {
     undefined,
     options?.emailRoutingClassifier,
     options?.emailRoutingEngine,
+    undefined,
+    options?.sharedTurnLock ?? createMemoryWhatsAppConversationTurnLock(),
   );
 
   const router = new ChannelRouter(

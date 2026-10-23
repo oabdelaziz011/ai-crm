@@ -96,4 +96,6 @@ export type RuntimeExecutionSummary = {
   correlationId: string;
   /** Server-persisted outgoing conversation_messages.id (for outboundMessageId linking). */
   outgoingMessageId?: string | null;
+  /** Public https photos for one product, sent after the text reply. */
+  replyImages?: ReadonlyArray<{ url: string; caption: string }>;
 };

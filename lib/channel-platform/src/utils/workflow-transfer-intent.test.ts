@@ -7,6 +7,9 @@ describe("isBookingTransferIntent", () => {
     assert.equal(isBookingTransferIntent("عايز أحجز موعد"), true);
     assert.equal(isBookingTransferIntent("مواعيد الدكاترة"), true);
     assert.equal(isBookingTransferIntent("ازيك"), false);
+    assert.equal(isBookingTransferIntent("ايه الاسعار"), false);
+    assert.equal(isBookingTransferIntent("اسعار العيادات"), false);
+    assert.equal(isBookingTransferIntent("عايز احجز واعرف السعر"), true);
   });
 
   it("detects English booking requests", () => {

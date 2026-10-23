@@ -7,7 +7,9 @@ import {
   CompanyChannelNotFoundError,
   DeliveryFailedError,
   PermissionDeniedError,
+  ProviderAcceptanceUnconfirmedError,
   ValidationError,
+  isConfirmedProviderRejection,
 } from "../errors.js";
 import type { ServiceContext } from "../types.js";
 import { DeliveryTrackingEngine } from "../engines/delivery-tracking-engine.js";
@@ -137,6 +139,9 @@ export class OutboundMessagePipeline {
       },
     });
 
+    let providerAttempted = false;
+    let acceptedExternalId: string | null = null;
+    let sentPersisted = false;
     try {
       await assertOutboundChannelCommercialAccess(this.ports.channelCommercialEntitlement, {
         companyId: request.companyId,
@@ -199,17 +204,25 @@ export class OutboundMessagePipeline {
         line: 95,
         requestPayload: { channelKey: request.channelKey, externalThreadId: request.externalThreadId },
       });
-      const sendResult = await adapter.sendOutbound({ companyChannel }, formatted);
-      traceOutboundValidationPass("WhatsAppCloudAdapter.sendOutbound", {
-        externalMessageId: sendResult.externalMessageId ?? null,
-      });
-      const updated = await waPerfMeasure("Database writes: mark delivery sent", () =>
-        this.deliveryEngine.markSent(
-          delivery.id,
-          sendResult.externalMessageId,
-          sendResult.providerResponse,
-        ),
-      );
+      try {
+        providerAttempted = true;
+        const sendResult = await adapter.sendOutbound({ companyChannel }, formatted);
+        traceOutboundValidationPass("WhatsAppCloudAdapter.sendOutbound", {
+          externalMessageId: sendResult.externalMessageId ?? null,
+        });
+        const returnedId = sendResult.externalMessageId?.trim() ?? "";
+        if (!returnedId) {
+          throw new ProviderAcceptanceUnconfirmedError("provider returned no message id");
+        }
+        acceptedExternalId = returnedId;
+        const updated = await waPerfMeasure("Database writes: mark delivery sent", () =>
+          this.deliveryEngine.markSent(
+            delivery.id,
+            returnedId,
+            sendResult.providerResponse,
+          ),
+        );
+        sentPersisted = true;
 
       // Observability only: count outbound + correlate later delivery/read status.
       waTraceIncrementOutbound(1);
@@ -310,13 +323,40 @@ export class OutboundMessagePipeline {
         conversationConfirmStatus,
       });
 
-      return {
-        deliveryEventId: updated.id,
-        deliveryStatus: updated.delivery_status,
-        externalMessageId: updated.external_message_id ?? undefined,
-        conversationConfirmStatus,
-      };
+        return {
+          deliveryEventId: updated.id,
+          deliveryStatus: updated.delivery_status,
+          externalMessageId: updated.external_message_id ?? undefined,
+          conversationConfirmStatus,
+        };
+      } catch (error) {
+        waTraceNoteError(
+          error instanceof Error ? error.message : "Outbound delivery failed",
+        );
+        if (error instanceof ProviderAcceptanceUnconfirmedError) throw error;
+        if (acceptedExternalId && !sentPersisted) {
+          await this.deliveryEngine
+            .recordAcceptedPending(delivery.id, acceptedExternalId)
+            .catch(() => undefined);
+          throw new ProviderAcceptanceUnconfirmedError(
+            error instanceof Error ? error.message : "provider accepted but local delivery update failed",
+          );
+        }
+        if (acceptedExternalId) {
+          throw new ProviderAcceptanceUnconfirmedError(
+            error instanceof Error ? error.message : "provider accepted but local delivery update failed",
+          );
+        }
+        if (!isConfirmedProviderRejection(error)) {
+          throw new ProviderAcceptanceUnconfirmedError(
+            error instanceof Error ? error.message : "provider acceptance unknown",
+          );
+        }
+        throw error;
+      }
     } catch (error) {
+      if (error instanceof ProviderAcceptanceUnconfirmedError) throw error;
+      if (providerAttempted && !isConfirmedProviderRejection(error)) throw error;
       waTraceNoteError(
         error instanceof Error ? error.message : "Outbound delivery failed",
       );

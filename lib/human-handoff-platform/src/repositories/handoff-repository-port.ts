@@ -72,6 +72,12 @@ export interface HandoffRepository {
     expiresAt?: string | null;
   }): Promise<HandoffRequestRecord>;
 
+  claimPendingRequest?(input: {
+    companyId: string;
+    requestId: string;
+    acceptedByUserId: string;
+  }): Promise<HandoffRequestRecord | null>;
+
   updateRequestStatus(input: {
     companyId: string;
     requestId: string;
@@ -116,6 +122,8 @@ export interface HandoffRepository {
   }): Promise<AgentPresenceRecord>;
 
   getPresence(companyId: string, userId: string): Promise<AgentPresenceRecord | null>;
+  getProfileDepartmentId?(companyId: string, userId: string): Promise<string | null>;
+  getProfileRoleTier?(companyId: string, userId: string): Promise<"staff" | "manager" | "admin" | null>;
   listPresence(companyId: string, states?: PresenceState[]): Promise<AgentPresenceRecord[]>;
   expireStalePresence(companyId: string, cutoffIso: string): Promise<number>;
 

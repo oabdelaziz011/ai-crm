@@ -26,6 +26,7 @@ import type {
 } from "../ports/handoff-platform-ports.js";
 import type { HandoffRepository } from "../repositories/handoff-repository-port.js";
 import { applyPriorityBoost, resolveEscalationRule } from "./escalation-engine.js";
+import { isAgentEffectivelyAvailableForAssignment } from "./presence-engine.js";
 import {
   countEffectivelyAvailableAgents,
   estimateWaitTimeSeconds,
@@ -106,9 +107,7 @@ export class HandoffCommandService {
       trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner; request: HandoffRequestRecord | null }> {
-    const trustedAi =
-      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
-    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
+    const actorUserId = input.trustedSystemExecution ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.transfer);
 
@@ -296,7 +295,14 @@ export class HandoffCommandService {
 
   async returnConversationToAi(
     ctx: HandoffServiceContext,
-    input: { companyId: string; conversationId: string; reason?: string },
+    input: {
+      companyId: string;
+      conversationId: string;
+      reason?: string;
+      /** Selected AI employee. Human department governance does not apply. */
+      aiEmployeeId?: string | null;
+      aiEmployeeLabel?: string | null;
+    },
   ): Promise<{ ownership: ConversationOwner }> {
     const actorUserId = assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
@@ -304,16 +310,19 @@ export class HandoffCommandService {
 
     const conversation = await this.requireConversation(input.companyId, input.conversationId);
     const current = await this.ensureOwnership(input.companyId, input.conversationId, conversation);
-    const aiAssistantId = conversation.aiAssistantId;
+    const selectedAiEmployeeId = readOptionalString(input.aiEmployeeId);
+    const aiAssistantId = conversation.aiAssistantId ?? selectedAiEmployeeId ?? null;
     if (!aiAssistantId) throw new HandoffValidationError("Conversation has no AI assistant to return to.");
+    const ownerId = selectedAiEmployeeId ?? aiAssistantId;
+    const ownerLabel = readOptionalString(input.aiEmployeeLabel) ?? "AI Employee";
 
     const ownership = await this.transitionOwnership({
       companyId: input.companyId,
       conversationId: input.conversationId,
       previous: current,
       ownerType: "ai_employee",
-      ownerId: aiAssistantId,
-      ownerLabel: "AI Employee",
+      ownerId,
+      ownerLabel,
       assignedUserId: null,
       lifecycleState: "AI_HANDLING",
       action: "return_conversation_to_ai",
@@ -336,6 +345,8 @@ export class HandoffCommandService {
         current.assignedUserId,
       );
     }
+
+    await this.cancelPendingWait(input.companyId, input.conversationId);
 
     await this.deps.events.publish(
       createConversationReturnedToAiEvent({
@@ -363,9 +374,7 @@ export class HandoffCommandService {
       trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner }> {
-    const trustedAi =
-      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
-    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
+    const actorUserId = input.trustedSystemExecution ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.assign);
 
@@ -434,9 +443,7 @@ export class HandoffCommandService {
       trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner; request: HandoffRequestRecord; queuePosition: QueuePosition }> {
-    const trustedAi =
-      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
-    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
+    const actorUserId = input.trustedSystemExecution ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.queue);
 
@@ -635,9 +642,7 @@ export class HandoffCommandService {
       trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner; request: HandoffRequestRecord }> {
-    const trustedAi =
-      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
-    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
+    const actorUserId = input.trustedSystemExecution ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.escalate);
 
@@ -738,6 +743,9 @@ export class HandoffCommandService {
       conversationId: string;
       triggerCode?: EscalationTrigger;
       queueId?: string;
+      assigneeUserId?: string;
+      departmentId?: string | null;
+      fallbackPolicy?: "leadership" | "department_then_leadership";
       reason?: string;
       requestedByAiAssistantId?: string;
       trustedSystemExecution?: boolean;
@@ -757,7 +765,8 @@ export class HandoffCommandService {
     const conversation = await this.requireConversation(input.companyId, input.conversationId);
     const current = await this.ensureOwnership(input.companyId, input.conversationId, conversation);
 
-    if (this.isAlreadyHandedOff(current)) {
+    const waitingUnassigned = this.isWaitingUnassigned(current);
+    if (this.isAlreadyHandedOff(current) && !waitingUnassigned) {
       return {
         ownership: toConversationOwner(current),
         assigned: current.ownerType === "human_agent",
@@ -771,6 +780,28 @@ export class HandoffCommandService {
 
     const triggerCode = input.triggerCode ?? "customer_requested";
     const reason = readOptionalString(input.reason) ?? "Customer requested human support";
+    const explicitAssignee = readOptionalString(input.assigneeUserId);
+    if (explicitAssignee) {
+      const assigned = await this.assignConversation(ctx, {
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+        assigneeUserId: explicitAssignee,
+        reason,
+        requestedByAiAssistantId: input.requestedByAiAssistantId,
+        skipAssignmentGovernance: true,
+        trustedSystemExecution: true,
+      });
+      if (waitingUnassigned) {
+        await this.closePendingRequest(input.companyId, input.conversationId, explicitAssignee);
+      }
+      return {
+        ownership: assigned.ownership,
+        assigned: true,
+        queued: false,
+        assigneeUserId: explicitAssignee,
+        request: null,
+      };
+    }
     const targetQueueId = await this.resolveCustomerHandoffQueue(
       input.companyId,
       input.queueId,
@@ -778,6 +809,39 @@ export class HandoffCommandService {
     );
 
     if (!targetQueueId) {
+      if (!input.departmentId && !input.fallbackPolicy) {
+        const onlineAssignee = await this.pickFreshOnlineAgent(input.companyId);
+        if (onlineAssignee) {
+          const assigned = await this.assignConversation(ctx, {
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            assigneeUserId: onlineAssignee,
+            reason,
+            requestedByAiAssistantId: input.requestedByAiAssistantId,
+            skipAssignmentGovernance: true,
+            trustedSystemExecution: true,
+          });
+          if (waitingUnassigned) {
+            await this.closePendingRequest(input.companyId, input.conversationId, onlineAssignee);
+          }
+          return {
+            ownership: assigned.ownership,
+            assigned: true,
+            queued: false,
+            assigneeUserId: onlineAssignee,
+            request: null,
+          };
+        }
+      }
+      if (waitingUnassigned) {
+        return {
+          ownership: toConversationOwner(current),
+          assigned: false,
+          queued: true,
+          idempotent: true,
+          request: null,
+        };
+      }
       const escalated = await this.escalateConversation(ctx, {
         companyId: input.companyId,
         conversationId: input.conversationId,
@@ -786,10 +850,16 @@ export class HandoffCommandService {
         requestedByAiAssistantId: input.requestedByAiAssistantId,
         trustedSystemExecution: input.trustedSystemExecution,
       });
+      await this.rememberWaitingDepartment(
+        input.companyId,
+        input.conversationId,
+        input.departmentId ?? null,
+        input.fallbackPolicy ?? null,
+      );
       return {
         ownership: escalated.ownership,
         assigned: false,
-        queued: false,
+        queued: true,
         request: escalated.request,
       };
     }
@@ -800,7 +870,11 @@ export class HandoffCommandService {
     const members = await this.deps.handoff.listQueueMembers(input.companyId, targetQueueId);
     const presence = await this.deps.handoff.listPresence(input.companyId, ["online"]);
     const presenceByUserId = new Map(presence.map((row) => [row.userId, row]));
-    const agent = selectQueueAgent({ queue, members, presenceByUserId });
+    const agent = selectQueueAgent({
+      queue: { ...queue, routingStrategy: "least_busy" },
+      members,
+      presenceByUserId,
+    });
 
     if (agent) {
       const assigned = await this.assignConversation(ctx, {
@@ -813,6 +887,9 @@ export class HandoffCommandService {
         trustedSystemExecution: true,
       });
       await this.deps.handoff.incrementMemberAssignment(targetQueueId, agent.userId);
+      if (waitingUnassigned) {
+        await this.closePendingRequest(input.companyId, input.conversationId, agent.userId);
+      }
       return {
         ownership: assigned.ownership,
         assigned: true,
@@ -823,6 +900,16 @@ export class HandoffCommandService {
       };
     }
 
+    if (waitingUnassigned) {
+      return {
+        ownership: toConversationOwner(current),
+        assigned: false,
+        queued: true,
+        queueId: targetQueueId,
+        idempotent: true,
+        request: null,
+      };
+    }
     const escalated = await this.escalateConversation(ctx, {
       companyId: input.companyId,
       conversationId: input.conversationId,
@@ -832,6 +919,12 @@ export class HandoffCommandService {
       requestedByAiAssistantId: input.requestedByAiAssistantId,
       trustedSystemExecution: input.trustedSystemExecution ?? true,
     });
+    await this.rememberWaitingDepartment(
+      input.companyId,
+      input.conversationId,
+      input.departmentId ?? queue.departmentId,
+      input.fallbackPolicy ?? null,
+    );
 
     return {
       ownership: escalated.ownership,
@@ -862,6 +955,10 @@ export class HandoffCommandService {
       lastHeartbeatAt: new Date().toISOString(),
     });
 
+    if (input.state === "online") {
+      await this.claimOldestWaitingConversation(ctx, input.companyId, actorUserId);
+    }
+
     return { presence };
   }
 
@@ -889,6 +986,10 @@ export class HandoffCommandService {
       viewingConversationId,
       lastHeartbeatAt: new Date().toISOString(),
     });
+
+    if (state === "online") {
+      await this.claimOldestWaitingConversation(ctx, input.companyId, actorUserId);
+    }
 
     return { presence };
   }
@@ -1175,11 +1276,168 @@ export class HandoffCommandService {
     };
   }
 
+  /** Drop a saved wait so an online heartbeat cannot claim a chat that was returned to AI. */
+  private async cancelPendingWait(companyId: string, conversationId: string): Promise<void> {
+    const pending = await this.deps.handoff.getPendingRequest(companyId, conversationId);
+    if (!pending || pending.status !== "pending") return;
+    await this.deps.handoff.updateRequestStatus({
+      companyId,
+      requestId: pending.id,
+      status: "cancelled",
+    });
+  }
+
+  private async closePendingRequest(companyId: string, conversationId: string, userId: string): Promise<void> {
+    const pending = await this.deps.handoff.listPendingRequests({ companyId, limit: 25 });
+    const match = pending.find((request) => request.conversationId === conversationId);
+    if (!match) return;
+    if (this.deps.handoff.claimPendingRequest) {
+      await this.deps.handoff.claimPendingRequest({
+        companyId,
+        requestId: match.id,
+        acceptedByUserId: userId,
+      });
+      return;
+    }
+    await this.deps.handoff.updateRequestStatus({
+      companyId,
+      requestId: match.id,
+      status: "accepted",
+      acceptedByUserId: userId,
+    });
+  }
+
+  /** Saved escalation with nobody assigned yet. A later online agent can still take it. */
+  private isWaitingUnassigned(ownership: OwnershipRecord): boolean {
+    if (ownership.assignedUserId) return false;
+    if (ownership.ownerType === "human_agent" || ownership.ownerType === "queue") return false;
+    if (ownership.isPaused) return false;
+    return isBlockingLifecycleState(ownership.lifecycleState);
+  }
+
   private isAlreadyHandedOff(ownership: OwnershipRecord): boolean {
     if (ownership.isPaused) return true;
     if (ownership.ownerType === "human_agent" || ownership.ownerType === "queue") return true;
     if (ownership.assignedUserId) return true;
     return isBlockingLifecycleState(ownership.lifecycleState);
+  }
+
+  private async rememberWaitingDepartment(
+    companyId: string,
+    conversationId: string,
+    departmentId: string | null,
+    waitingAudience: "leadership" | "department_then_leadership" | null = null,
+  ): Promise<void> {
+    const ownership = await this.deps.handoff.getOwnership(companyId, conversationId);
+    if (!ownership) return;
+    await this.deps.handoff.upsertOwnership({
+      companyId,
+      conversationId,
+      ownerType: ownership.ownerType,
+      ownerId: ownership.ownerId,
+      ownerLabel: ownership.ownerLabel,
+      queueId: ownership.queueId,
+      lifecycleState: ownership.lifecycleState,
+      assignedUserId: ownership.assignedUserId,
+      aiAssistantId: ownership.aiAssistantId,
+      isPaused: ownership.isPaused,
+      pausedAt: ownership.pausedAt,
+      pausedReason: ownership.pausedReason,
+      metadata: {
+        ...ownership.metadata,
+        waitingDepartmentId: departmentId,
+        ...(waitingAudience ? { waitingAudience } : {}),
+      },
+    });
+  }
+
+  /** First fresh online human in the waiting department takes the oldest unassigned chat. */
+  private async claimOldestWaitingConversation(
+    ctx: HandoffServiceContext,
+    companyId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      const claimCtx: HandoffServiceContext = {
+        ...ctx,
+        hasPermission: (code) => ctx.hasPermission(code) || code === HANDOFF_PERMISSIONS.assign,
+      };
+      const agentDepartment = this.deps.handoff.getProfileDepartmentId
+        ? await this.deps.handoff.getProfileDepartmentId(companyId, userId)
+        : null;
+      const pending = await this.deps.handoff.listPendingRequests({ companyId, limit: 25 });
+      for (const request of pending) {
+        const ownership = await this.deps.handoff.getOwnership(companyId, request.conversationId);
+        if (!ownership || ownership.assignedUserId || ownership.ownerType === "human_agent") continue;
+        const waitingDepartment =
+          typeof ownership.metadata.waitingDepartmentId === "string"
+            ? ownership.metadata.waitingDepartmentId
+            : null;
+        const waitingAudience =
+          ownership.metadata.waitingAudience === "leadership" ||
+          ownership.metadata.waitingAudience === "department_then_leadership"
+            ? ownership.metadata.waitingAudience
+            : null;
+        const roleTier = this.deps.handoff.getProfileRoleTier
+          ? await this.deps.handoff.getProfileRoleTier(companyId, userId)
+          : null;
+        const leadership = roleTier === "manager" || roleTier === "admin";
+        if (waitingAudience === "leadership") {
+          if (!leadership) continue;
+        } else if (waitingDepartment && waitingDepartment !== agentDepartment) {
+          if (!(waitingAudience === "department_then_leadership" && leadership)) continue;
+        }
+        if (this.deps.handoff.claimPendingRequest) {
+          const claimed = await this.deps.handoff.claimPendingRequest({
+            companyId,
+            requestId: request.id,
+            acceptedByUserId: userId,
+          });
+          if (!claimed) continue;
+        }
+        await this.assignConversation(claimCtx, {
+          companyId,
+          conversationId: request.conversationId,
+          assigneeUserId: userId,
+          reason: "First online agent in the requested department",
+          skipAssignmentGovernance: true,
+          trustedSystemExecution: true,
+        });
+        if (!this.deps.handoff.claimPendingRequest) {
+          await this.deps.handoff.updateRequestStatus({
+            companyId,
+            requestId: request.id,
+            status: "accepted",
+            acceptedByUserId: userId,
+          });
+        }
+        return;
+      }
+    } catch (error) {
+      console.error("[human-handoff] waiting conversation claim failed", {
+        companyId,
+        userId,
+        error,
+      });
+    }
+  }
+
+  /**
+   * No support queue yet: assign a fresh online agent who is not already inside another
+   * conversation. The most recent heartbeat wins so the open desk gets the chat.
+   */
+  private async pickFreshOnlineAgent(companyId: string): Promise<string | null> {
+    const presence = await this.deps.handoff.listPresence(companyId, ["online"]);
+    const available = presence.filter((row) => isAgentEffectivelyAvailableForAssignment(row));
+    const idle = available.filter((row) => !row.viewingConversationId);
+    const pool = idle.length > 0 ? idle : available;
+    pool.sort((left, right) => {
+      const leftTs = left.lastHeartbeatAt ? Date.parse(left.lastHeartbeatAt) : 0;
+      const rightTs = right.lastHeartbeatAt ? Date.parse(right.lastHeartbeatAt) : 0;
+      if (leftTs !== rightTs) return rightTs - leftTs;
+      return left.userId.localeCompare(right.userId);
+    });
+    return pool[0]?.userId ?? null;
   }
 
   private async resolveCustomerHandoffQueue(

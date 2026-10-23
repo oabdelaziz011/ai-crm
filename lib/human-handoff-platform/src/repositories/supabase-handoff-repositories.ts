@@ -229,6 +229,23 @@ export function createSupabaseHandoffRepository(client: SupabaseClient): Handoff
       return mapRequest(data);
     },
 
+    async claimPendingRequest(input) {
+      const { data, error } = await client
+        .from("handoff_requests")
+        .update({
+          status: "accepted",
+          accepted_by_user_id: input.acceptedByUserId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("company_id", input.companyId)
+        .eq("id", input.requestId)
+        .eq("status", "pending")
+        .select("*");
+      if (error) throw new Error(error.message);
+      const row = Array.isArray(data) ? data[0] : data;
+      return row ? mapRequest(row) : null;
+    },
+
     async updateRequestStatus(input) {
       const patch: Record<string, unknown> = {
         status: input.status,
@@ -454,6 +471,45 @@ export function createSupabaseHandoffRepository(client: SupabaseClient): Handoff
         .maybeSingle();
       if (error) throw new Error(error.message);
       return data ? mapPresence(data) : null;
+    },
+
+    async getProfileDepartmentId(companyId, userId) {
+      const { data, error } = await client
+        .from("profiles")
+        .select("department_id")
+        .eq("company_id", companyId)
+        .eq("id", userId)
+        .maybeSingle();
+      if (error || !data?.department_id) return null;
+      return String(data.department_id);
+    },
+
+    async getProfileRoleTier(companyId, userId) {
+      const { data: memberships, error } = await client
+        .from("user_roles")
+        .select("role_id")
+        .eq("user_id", userId);
+      if (error || !memberships?.length) return "staff";
+      const roleIds = memberships.map((row) => String(row.role_id)).filter(Boolean);
+      if (!roleIds.length) return "staff";
+      const { data: roles, error: rolesError } = await client
+        .from("roles")
+        .select("name,template_key,company_id")
+        .in("id", roleIds)
+        .eq("company_id", companyId);
+      if (rolesError || !roles?.length) return "staff";
+      const tiers = roles.map((role) => {
+        const template = String(role.template_key ?? "").trim().toLowerCase();
+        const name = String(role.name ?? "").trim().toLowerCase();
+        if (template === "manager" || name === "manager" || /مدير/.test(name)) return "manager" as const;
+        if (template === "admin" || template === "super_admin" || /super\s*admin|admin|ادمن|أدمن|سوبر/.test(name)) {
+          return "admin" as const;
+        }
+        return "staff" as const;
+      });
+      if (tiers.includes("manager")) return "manager";
+      if (tiers.includes("admin")) return "admin";
+      return "staff";
     },
 
     async listPresence(companyId, states) {

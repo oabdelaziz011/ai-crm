@@ -488,4 +488,170 @@ describe("requestCustomerHandoff", () => {
     assert.equal(result.idempotent, true);
     assert.equal(result.ownership.assignedUserId, "agent-busy");
   });
+
+  it("assigns a fresh online agent when the company has no support queue", async () => {
+    let assignedUserId: string | null = null;
+    const service = new HandoffCommandService({
+      handoff: createRepo({
+        listQueues: async () => [],
+        listEscalationRules: async () => [],
+      }),
+      conversations: {
+        ...conversations,
+        assignConversation: async (input) => {
+          assignedUserId = input.assignedUserId;
+        },
+      },
+      notifications: notifications.port,
+      ...noop,
+    });
+
+    const result = await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-no-queue",
+      triggerCode: "customer_requested",
+      reason: "Customer asked for customer service",
+      trustedSystemExecution: true,
+    });
+
+    assert.equal(result.assigned, true);
+    assert.equal(result.queued, false);
+    assert.equal(assignedUserId, result.assigneeUserId);
+    assert.ok(result.assigneeUserId === "agent-busy" || result.assigneeUserId === "agent-free");
+    assert.equal(result.ownership.ownerType, "human_agent");
+  });
+
+  it("assigns the requested online agent directly", async () => {
+    let assignedUserId: string | null = null;
+    const service = new HandoffCommandService({
+      handoff: createRepo({
+        listQueues: async () => [],
+        listEscalationRules: async () => [],
+      }),
+      conversations: {
+        ...conversations,
+        assignConversation: async (input) => {
+          assignedUserId = input.assignedUserId;
+        },
+      },
+      notifications: notifications.port,
+      ...noop,
+    });
+
+    const result = await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-direct",
+      assigneeUserId: "agent-free",
+      reason: "Customer asked for customer service",
+      trustedSystemExecution: true,
+    });
+
+    assert.equal(result.assigned, true);
+    assert.equal(result.assigneeUserId, "agent-free");
+    assert.equal(assignedUserId, "agent-free");
+  });
+
+  it("holds the chat until the first online agent in that department arrives", async () => {
+    let assignedUserId: string | null = null;
+    const repo = createRepo({
+      listQueues: async () => [],
+      listEscalationRules: async () => [],
+      listPresence: async () => [],
+      getProfileDepartmentId: async () => "dept-support",
+      listPendingRequests: async () => [
+        {
+          id: "req-wait",
+          conversationId: "conv-wait",
+        } as never,
+      ],
+    });
+    const service = new HandoffCommandService({
+      handoff: repo,
+      conversations: {
+        ...conversations,
+        assignConversation: async (input) => {
+          assignedUserId = input.assignedUserId;
+        },
+      },
+      notifications: notifications.port,
+      ...noop,
+    });
+
+    const waiting = await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-wait",
+      departmentId: "dept-support",
+      reason: "Customer asked for support",
+      trustedSystemExecution: true,
+    });
+    assert.equal(waiting.assigned, false);
+    assert.equal(waiting.queued, true);
+    const held = await repo.getOwnership("company-1", "conv-wait");
+    assert.equal(held?.metadata.waitingDepartmentId, "dept-support");
+
+    await service.updatePresence(
+      { ...ctx, userId: "agent-support" },
+      { companyId: "company-1", state: "online" },
+    );
+    assert.equal(assignedUserId, "agent-support");
+  });
+
+  it("does not create a second wait request when the customer follows up", async () => {
+    let created = 0;
+    const repo = createRepo({
+      listQueues: async () => [],
+      listEscalationRules: async () => [],
+      listPresence: async () => [],
+      createRequest: async (input) => {
+        created += 1;
+        return {
+          id: `req-${created}`,
+          companyId: input.companyId,
+          conversationId: input.conversationId,
+          requestType: input.requestType,
+          status: "pending" as const,
+          fromOwnerType: input.fromOwnerType,
+          fromOwnerId: input.fromOwnerId,
+          toOwnerType: input.toOwnerType,
+          toOwnerId: input.toOwnerId,
+          toQueueId: input.toQueueId ?? null,
+          reason: input.reason,
+          escalationReasonCode: input.escalationReasonCode ?? null,
+          priority: input.priority ?? "normal",
+          contextSnapshotId: input.contextSnapshotId ?? null,
+          requestedByUserId: input.requestedByUserId ?? null,
+          requestedByAiAssistantId: input.requestedByAiAssistantId ?? null,
+          acceptedByUserId: null,
+          rejectedByUserId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          expiresAt: input.expiresAt ?? null,
+        };
+      },
+    });
+    const service = new HandoffCommandService({
+      handoff: repo,
+      conversations,
+      notifications: notifications.port,
+      ...noop,
+    });
+    await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-follow",
+      fallbackPolicy: "leadership",
+      reason: "عايز اكلم خدمه العملاء",
+      trustedSystemExecution: true,
+    });
+    const second = await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-follow",
+      fallbackPolicy: "leadership",
+      assigneeUserId: "agent-free",
+      reason: "فين التحويل",
+      trustedSystemExecution: true,
+    });
+    assert.equal(created, 1);
+    assert.equal(second.assigned, true);
+    assert.equal(second.assigneeUserId, "agent-free");
+  });
 });

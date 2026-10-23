@@ -252,6 +252,66 @@ describe("HandoffCommandService integration", () => {
     assert.equal(released, true);
   });
 
+  it("assigns a selected AI employee without human department governance", async () => {
+    let assigned = false;
+    let cancelled = false;
+    const repo = createMemoryRepo();
+    const service = new HandoffCommandService({
+      handoff: {
+        ...repo,
+        getPendingRequest: async () => ({
+          id: "req-wait",
+          companyId: "company-1",
+          conversationId: "conv-1",
+          requestType: "escalation",
+          status: "pending",
+          fromOwnerType: "ai_employee",
+          fromOwnerId: "ai-1",
+          toOwnerType: null,
+          toOwnerId: null,
+          toQueueId: null,
+          reason: "wait",
+          escalationReasonCode: null,
+          priority: "normal",
+          contextSnapshotId: null,
+          requestedByUserId: null,
+          requestedByAiAssistantId: null,
+          acceptedByUserId: null,
+          rejectedByUserId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          expiresAt: null,
+        }),
+        updateRequestStatus: async (input) => {
+          cancelled = input.status === "cancelled";
+          return repo.updateRequestStatus(input);
+        },
+      },
+      conversations: {
+        ...conversations,
+        assignConversation: async () => {
+          assigned = true;
+        },
+      },
+      ...noop,
+    });
+
+    const result = await service.returnConversationToAi(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-1",
+      aiEmployeeId: "ai-employee-1",
+      aiEmployeeLabel: "AI Flow",
+    });
+
+    assert.equal(result.ownership.ownerType, "ai_employee");
+    assert.equal(result.ownership.ownerId, "ai-employee-1");
+    assert.equal(result.ownership.ownerLabel, "AI Flow");
+    assert.equal(result.ownership.assignedUserId, null);
+    assert.equal(result.ownership.aiAssistantId, "ai-1");
+    assert.equal(assigned, false);
+    assert.equal(cancelled, true);
+  });
+
   it("close still marks human-owned conversation CLOSED without returning to AI", async () => {
     const repo = createMemoryRepo();
     await repo.upsertOwnership({

@@ -55,7 +55,7 @@ describe("evaluateInboundAiGate", () => {
     assert.equal(decision.source, "conversation_assignee");
   });
 
-  it("blocks on ownership ESCALATED even when conversation.state is still waiting_user", () => {
+  it("allows a controlled follow-up while an unassigned escalation is still waiting", () => {
     const decision = evaluateInboundAiGate({
       ownership: {
         ownerType: "ai_employee",
@@ -65,9 +65,22 @@ describe("evaluateInboundAiGate", () => {
       },
       conversation: { assignedUserId: null, state: "waiting_user" },
     });
-    assert.equal(decision.allowAutomatedReply, false);
-    assert.equal(decision.reason, "lifecycle_ESCALATED");
+    assert.equal(decision.allowAutomatedReply, true);
+    assert.equal(decision.reason, "waiting_unassigned_follow_up");
     assert.equal(decision.source, "handoff_ownership");
+  });
+
+  it("blocks once the escalated conversation is assigned to a human", () => {
+    const decision = evaluateInboundAiGate({
+      ownership: {
+        ownerType: "human_agent",
+        isPaused: false,
+        lifecycleState: "ESCALATED",
+        assignedUserId: "agent-1",
+      },
+    });
+    assert.equal(decision.allowAutomatedReply, false);
+    assert.equal(decision.reason, "owner_human_agent");
   });
 
   it("blocks on transferred_to_human conversation state fallback", () => {

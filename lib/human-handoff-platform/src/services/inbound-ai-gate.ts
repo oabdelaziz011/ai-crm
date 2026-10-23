@@ -72,6 +72,15 @@ export function evaluateInboundAiGate(input: {
 
     const lifecycle = ownership.lifecycleState ? String(ownership.lifecycleState) : null;
     if (lifecycle && BLOCKING_LIFECYCLE_STATES.has(lifecycle)) {
+      // Unassigned escalation still needs one controlled follow-up. The tool loop
+      // answers from the saved wait state and does not start a booking.
+      if (lifecycle === "ESCALATED" && ownership.ownerType === "ai_employee" && !ownership.assignedUserId) {
+        return {
+          allowAutomatedReply: true,
+          reason: "waiting_unassigned_follow_up",
+          source: "handoff_ownership",
+        };
+      }
       return {
         allowAutomatedReply: false,
         reason: `lifecycle_${lifecycle}`,

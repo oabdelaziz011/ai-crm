@@ -355,7 +355,7 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
     assert.equal(env.incomingMessages[0]?.content, "مساء الخير");
   });
 
-  it("greeting-only after welcome already delivered skips AI and persists inbound", async () => {
+  it("greeting-only after welcome already delivered gets a short reply and no second welcome", async () => {
     const adapter = new StubWhatsAppAdapter();
     const env = whatsAppChannelEnv({
       adapter,
@@ -375,6 +375,7 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
     });
 
     assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا").length, 1);
+    assert.equal(adapter.sentTexts.filter((text) => text.includes("صباح النور")).length, 1);
     assert.equal(env.runtimeCalls, 0);
     assert.ok(second.incomingMessageId);
     assert.equal(env.incomingMessages.length, 2);
@@ -494,6 +495,29 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
     assert.equal(env.outgoingMessages.filter((message) => message.content === "مرحبًا").length, 1);
     assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا").length, 1);
     assert.equal(env.runtimeCalls, 2);
+  });
+
+  it("AI runtime soft-fail marks inbound processed and sends fallback without claiming sales actions", async () => {
+    const adapter = new StubWhatsAppAdapter();
+    const env = whatsAppChannelEnv({
+      adapter,
+      employeeRuntime: createWhatsAppEmployeeRuntime({ storedWelcome: "مرحبًا" }),
+      runtimeError: new Error("Unexpected runtime boom — not a provider regex match"),
+    });
+
+    const response = await routeWhatsApp(env, {
+      externalThreadId: "wa-soft-fail-1",
+      idempotencyKey: "wamid.soft-fail-1",
+      text: "عايز أتأهل وأحجز ديمو",
+    });
+
+    assert.match(String(response.responseContent ?? ""), /نعتذر/);
+    assert.equal(env.inboundEvents[0]?.processing_status, "processed");
+    assert.ok(adapter.sentTexts.some((text) => /نعتذر/.test(text)));
+    assert.equal(
+      adapter.sentTexts.some((text) => /مؤهل|تم الحجز|تم إرسال العرض/i.test(text)),
+      false,
+    );
   });
 
   it("does not send deterministic welcome for web_chat", async () => {

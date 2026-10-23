@@ -114,6 +114,8 @@ export class ChannelSessionEngine {
       metadata: {
         externalThreadId: input.externalThreadId,
         senderExternalId: input.senderExternalId ?? null,
+        // Defer ConversationStarted until trusted CRM identity is stamped (inbound pipeline).
+        deferConversationStarted: true,
         ...(input.employeeConversationMetadata ?? {}),
         ...(input.metadata ?? {}),
       },

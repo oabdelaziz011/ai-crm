@@ -1,4 +1,5 @@
 import { randomUUID } from "@workspace/platform-crypto";
+import { openWhatsAppSharedTurnLock, type WhatsAppConversationTurnLock } from "../services/whatsapp-conversation-turn-lock.js";
 import type { ChannelAdapterRegistryPort } from "../ports/channel-adapter-port.js";
 import type { ChannelDispatcherPort, ChannelPlatformPorts } from "../ports/channel-platform-ports.js";
 import type {
@@ -38,6 +39,10 @@ import {
 } from "../adapters/whatsapp/whatsapp-direct-outbound-bypass.js";
 import { logWhatsApp, logWhatsAppError } from "../debug/whatsapp-ai-pipeline-log.js";
 import {
+  companyBrandingObjectPath,
+  toWhatsAppFetchableProductImageUrl,
+} from "../services/whatsapp-product-image-url.js";
+import {
   waPerfMarkInboundExecution,
   waPerfMeasure,
   waPerfNoteSkipped,
@@ -50,7 +55,6 @@ import {
   waTraceBindWorkflow,
   waTraceNoteError,
 } from "../debug/whatsapp-conversation-trace-bridge.js";
-import { isBookingTransferIntent } from "../utils/workflow-transfer-intent.js";
 import {
   buildEngagementMetadataPatch,
   DEFAULT_AI_EMPLOYEE_SESSION_TIMEOUT_MINUTES,
@@ -61,6 +65,7 @@ import {
   type AiEmployeeEngagementState,
 } from "../services/ai-employee-engagement-session.js";
 import {
+  greetingFollowUpReply,
   isGreetingOnlyInboundText,
   shouldAttemptWhatsAppDeterministicWelcome,
 } from "../services/whatsapp-deterministic-welcome.js";
@@ -89,6 +94,8 @@ import {
 } from "../services/inbound-email-attachment-store.js";
 
 const IN_FLIGHT_INBOUND_TTL_MS = 2 * 60 * 1000;
+/** Meta retries a failed webhook for hours. Re-running AI that late sends a reply the customer did not just send. */
+const STALE_FAILED_INBOUND_MS = 15 * 60 * 1000;
 
 function readActiveWorkflowTransfer(
   metadata: Record<string, unknown> | null | undefined,
@@ -120,12 +127,16 @@ function buildClearedWorkflowTransfer(
 
 const TERMINAL_WORKFLOW_LIFECYCLES = new Set(["completed", "failed", "cancelled"]);
 
-function readTransferableFlowId(
-  metadata: Record<string, unknown> | null | undefined,
-): string | null {
-  if (!metadata) return null;
-  const value = metadata.transferableFlowId;
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+function knownCustomerPhoneVariables(
+  channelKey: string,
+  senderExternalId: string | null | undefined,
+  customerId: string | null | undefined,
+): Record<string, string | boolean> {
+  if (!customerId || (channelKey !== "whatsapp" && channelKey !== "sms")) return {};
+  const phone = typeof senderExternalId === "string" ? senderExternalId.trim() : "";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) return {};
+  return { customer_phone: phone, __knownCustomerPhone: true };
 }
 
 function isFreshInboundTimestamp(value: string | null | undefined): boolean {
@@ -135,7 +146,35 @@ function isFreshInboundTimestamp(value: string | null | undefined): boolean {
   return Date.now() - parsed < IN_FLIGHT_INBOUND_TTL_MS;
 }
 
-function shouldSkipDuplicateInbound(duplicate: {
+function isStaleFailedInbound(receivedAt: string | null | undefined): boolean {
+  if (!receivedAt) return false;
+  const parsed = Date.parse(receivedAt);
+  if (Number.isNaN(parsed)) return false;
+  return Date.now() - parsed >= STALE_FAILED_INBOUND_MS;
+}
+
+/** Same key the runtime uses when it stores the assistant reply for this inbound event. */
+export function assistantReplyExternalId(inboundEventId: string): string {
+  return `assistant-reply:${inboundEventId.trim()}`;
+}
+
+/**
+ * A failed Website Chat turn with no stored assistant reply can be replayed
+ * when the same idempotency key is presented. The assistant reply is claimed
+ * with external id assistant-reply:{inboundEventId}.
+ * WhatsApp stays terminal once a runtime execution id exists: Meta redelivery
+ * must not run the pipeline again, because a second run can send a second
+ * customer-visible reply. A missing WhatsApp reply is not repaired here.
+ */
+export function shouldRepairMissingWebChatReply(input: {
+  channelKey: string;
+  processingStatus: string;
+  assistantReplyStored: boolean;
+}): boolean {
+  return input.channelKey === "web_chat" && input.processingStatus === "failed" && !input.assistantReplyStored;
+}
+
+export function shouldSkipDuplicateInbound(duplicate: {
   processing_status: string;
   runtime_execution_id?: string | null;
   updated_at?: string | null;
@@ -143,6 +182,9 @@ function shouldSkipDuplicateInbound(duplicate: {
 }): boolean {
   if (duplicate.processing_status === "processed") return true;
   if (duplicate.processing_status === "failed" && duplicate.runtime_execution_id) return true;
+  if (duplicate.processing_status === "failed" && isStaleFailedInbound(duplicate.received_at)) {
+    return true;
+  }
   if (
     (duplicate.processing_status === "processing" || duplicate.processing_status === "received") &&
     isFreshInboundTimestamp(duplicate.updated_at ?? duplicate.received_at)
@@ -150,6 +192,120 @@ function shouldSkipDuplicateInbound(duplicate: {
     return true;
   }
   return false;
+}
+
+/** A later customer message owns the next reply. A bare greeting does not. */
+async function customerSentNewerMessage(
+  conversation: ChannelPlatformPorts["conversation"],
+  conversationId: string,
+  incomingMessageId: string | undefined,
+): Promise<boolean> {
+  if (!incomingMessageId || !conversation.listIncomingMessagesAfter) return false;
+  const newer = await conversation.listIncomingMessagesAfter({
+    conversationId,
+    messageId: incomingMessageId,
+  });
+  return newer.some((message) => !isGreetingOnlyInboundText(message.content));
+}
+
+type ConversationTurnLeaseState = {
+  owner: string;
+  expiresAt: number;
+  renewTimer?: ReturnType<typeof setInterval>;
+};
+
+const conversationTurns = new Map<string, ConversationTurnLeaseState>();
+export const CONVERSATION_TURN_MAX_WAIT_MS = 120_000;
+let conversationTurnMaxWaitMs = CONVERSATION_TURN_MAX_WAIT_MS;
+let conversationTurnWaitExceededCount = 0;
+
+export type ConversationTurnLease = {
+  release: () => void | Promise<void>;
+  stillOwns: () => boolean;
+  confirmOwns?: () => Promise<boolean>;
+};
+
+/** Test-only lease budget. A live owner renews it, so expiry alone does not overlap a send. */
+export function setConversationTurnMaxWaitMsForTests(ms: number): void {
+  conversationTurnMaxWaitMs = ms;
+}
+
+export function readConversationTurnWaitExceededCount(): number {
+  return conversationTurnWaitExceededCount;
+}
+
+export function resetConversationTurnWaitExceededForTests(): void {
+  conversationTurnWaitExceededCount = 0;
+}
+
+/** Simulates a dead owner: renewal stops and the lease can be taken. The old release becomes a no-op. */
+export function abandonConversationTurnForTests(conversationId: string): void {
+  const lease = conversationTurns.get(conversationId);
+  if (!lease) return;
+  if (lease.renewTimer) clearInterval(lease.renewTimer);
+  lease.renewTimer = undefined;
+  lease.expiresAt = 0;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
+}
+
+/**
+ * One WhatsApp turn per conversation inside this process, including the send.
+ * The owner renews the lease while it is alive. A waiter that outlives the budget
+ * does not start in parallel with a live owner. After the owner stops renewing,
+ * the lease can be taken. Release deletes the lease only when the caller still owns it.
+ * This map is not shared across processes. Different conversation ids do not share a lease.
+ */
+export async function waitForConversationTurn(conversationId: string): Promise<ConversationTurnLease> {
+  const owner = randomUUID();
+  const ttl = conversationTurnMaxWaitMs;
+  const waitStarted = Date.now();
+  let countedExceeded = false;
+
+  for (;;) {
+    const now = Date.now();
+    const current = conversationTurns.get(conversationId);
+    const ownerStillRenewing = Boolean(current?.renewTimer);
+    if (!current || (current.expiresAt <= now && !ownerStillRenewing)) {
+      conversationTurns.set(conversationId, { owner, expiresAt: now + ttl });
+      break;
+    }
+    if (!countedExceeded && now - waitStarted >= ttl) {
+      countedExceeded = true;
+      conversationTurnWaitExceededCount += 1;
+    }
+    await delay(Math.min(10, Math.max(1, current.expiresAt - now)));
+  }
+
+  const renewEvery = Math.max(5, Math.floor(ttl / 3));
+  const renewTimer = setInterval(() => {
+    const lease = conversationTurns.get(conversationId);
+    if (!lease || lease.owner !== owner) return;
+    lease.expiresAt = Date.now() + ttl;
+  }, renewEvery);
+  renewTimer.unref?.();
+  const acquired = conversationTurns.get(conversationId);
+  if (acquired?.owner === owner) acquired.renewTimer = renewTimer;
+
+  const stillOwns = () => {
+    const lease = conversationTurns.get(conversationId);
+    if (!lease || lease.owner !== owner) return false;
+    // A late renew callback must not look like a lost turn while this owner is still alive.
+    return lease.expiresAt > Date.now() || Boolean(lease.renewTimer);
+  };
+  return {
+    stillOwns,
+    release: () => {
+      clearInterval(renewTimer);
+      const lease = conversationTurns.get(conversationId);
+      if (lease?.owner === owner) conversationTurns.delete(conversationId);
+    },
+  };
 }
 
 /** Runtime already ran for this inbound event — do not execute AI/outbound again on stale retries. */
@@ -203,6 +359,7 @@ export class InboundMessagePipeline {
     private readonly emailRoutingClassifier?: EmailRoutingClassifierPort,
     private readonly emailRoutingEngine?: EmailRoutingEnginePort,
     private readonly campaignDeliveryReconciler?: CampaignDeliveryReconcilePort,
+    private readonly sharedTurnLock?: WhatsAppConversationTurnLock,
   ) {}
 
   async process(ctx: ServiceContext, request: InboundRouteRequestDto): Promise<InboundRouteResponseDto> {
@@ -234,14 +391,58 @@ export class InboundMessagePipeline {
     // Meta often retries while the first attempt is still running. Re-running the
     // pipeline produces duplicate WhatsApp replies for the same customer message.
     if (duplicate && shouldSkipDuplicateInbound(duplicate)) {
-      return {
-        inboundEventId: duplicate.id,
-        conversationId: duplicate.conversation_id ?? request.conversationId ?? "",
-        channelSessionId: duplicate.channel_session_id ?? "",
-        incomingMessageId: duplicate.incoming_message_id ?? "",
-        runtimeExecutionId: duplicate.runtime_execution_id ?? undefined,
-        duplicate: true,
-      };
+      let repairMissingReply = false;
+      if (
+        request.channelKey === "web_chat" &&
+        duplicate.processing_status === "failed" &&
+        duplicate.conversation_id &&
+        this.ports.conversation.findMessageByExternalId
+      ) {
+        const existingReply = await this.ports.conversation.findMessageByExternalId({
+          conversationId: duplicate.conversation_id,
+          externalMessageId: assistantReplyExternalId(duplicate.id),
+        });
+        if (existingReply?.content?.trim()) {
+          return {
+            inboundEventId: duplicate.id,
+            conversationId: duplicate.conversation_id,
+            channelSessionId: duplicate.channel_session_id ?? "",
+            incomingMessageId: duplicate.incoming_message_id ?? "",
+            runtimeExecutionId: duplicate.runtime_execution_id ?? undefined,
+            responseContent: existingReply.content,
+            duplicate: true,
+          };
+        }
+        repairMissingReply = shouldRepairMissingWebChatReply({
+          channelKey: request.channelKey,
+          processingStatus: duplicate.processing_status,
+          assistantReplyStored: false,
+        });
+      }
+      if (!repairMissingReply) {
+        if (
+          duplicate.processing_status === "failed" &&
+          !duplicate.runtime_execution_id &&
+          isStaleFailedInbound(duplicate.received_at)
+        ) {
+          await this.inboundRepository.updateEvent({
+            inboundEventId: duplicate.id,
+            processingStatus: "processed",
+            errorMessage: duplicate.error_message
+              ? `${duplicate.error_message} | stale_retry_skipped`
+              : "stale_retry_skipped",
+            processedAt: new Date().toISOString(),
+          });
+        }
+        return {
+          inboundEventId: duplicate.id,
+          conversationId: duplicate.conversation_id ?? request.conversationId ?? "",
+          channelSessionId: duplicate.channel_session_id ?? "",
+          incomingMessageId: duplicate.incoming_message_id ?? "",
+          runtimeExecutionId: duplicate.runtime_execution_id ?? undefined,
+          duplicate: true,
+        };
+      }
     }
 
     // Meta can deliver the same list/button tap twice with different wamids.
@@ -347,6 +548,8 @@ export class InboundMessagePipeline {
     );
 
     const pipelineStartedAt = Date.now();
+    let conversationTurnLease: ConversationTurnLease | undefined;
+    let releaseConversationTurn: (() => void | Promise<void>) | undefined;
     try {
       let normalized = adapter.normalizeInbound({ companyChannel }, request.payload);
 
@@ -555,47 +758,33 @@ export class InboundMessagePipeline {
       const bindingWorkflow =
         workflowResolution.status === "resolved" ? workflowResolution.workflow : null;
 
-      // Sticky AI→workflow handoff must not restart a finished flow. If nothing is waiting,
-      // clear the sticky flag and fall back to the AI employee.
-      if (
-        stickyTransfer &&
-        !bindingWorkflow &&
-        this.ports.automation?.hasWaitingRun &&
-        stickyConversationId
-      ) {
-        const canResumeSticky = await this.ports.automation.hasWaitingRun({
-          companyId: request.companyId,
-          flowId: stickyTransfer.flowId,
-          channelKey: request.channelKey,
-          externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
-        });
-        if (!canResumeSticky) {
-          if (
-            this.ports.conversation.updateConversationMetadata &&
-            this.ports.conversation.getConversationMetadata
-          ) {
-            const currentMeta =
-              (await this.ports.conversation.getConversationMetadata(stickyConversationId)) ??
-              stickyMetadata ??
-              {};
-            stickyMetadata = {
-              ...currentMeta,
-              inboundWorkflowTransfer: buildClearedWorkflowTransfer(
-                currentMeta.inboundWorkflowTransfer,
-                "stale_sticky_no_waiting_run",
-              ),
-            };
-            await this.ports.conversation.updateConversationMetadata({
-              conversationId: stickyConversationId,
-              metadata: stickyMetadata,
-            });
-          }
-          request.trace?.step("webhook.sticky_workflow_cleared", {
-            flowId: stickyTransfer.flowId,
-            reason: "stale_sticky_no_waiting_run",
+      // Employee mode: channel workflow is off, so an older handoff must not keep answering.
+      if (stickyTransfer && !bindingWorkflow && stickyConversationId) {
+        if (
+          this.ports.conversation.updateConversationMetadata &&
+          this.ports.conversation.getConversationMetadata
+        ) {
+          const currentMeta =
+            (await this.ports.conversation.getConversationMetadata(stickyConversationId)) ??
+            stickyMetadata ??
+            {};
+          stickyMetadata = {
+            ...currentMeta,
+            inboundWorkflowTransfer: buildClearedWorkflowTransfer(
+              currentMeta.inboundWorkflowTransfer,
+              "employee_mode",
+            ),
+          };
+          await this.ports.conversation.updateConversationMetadata({
+            conversationId: stickyConversationId,
+            metadata: stickyMetadata,
           });
-          stickyTransfer = null;
         }
+        request.trace?.step("webhook.sticky_workflow_cleared", {
+          flowId: stickyTransfer.flowId,
+          reason: "employee_mode",
+        });
+        stickyTransfer = null;
       }
 
       let aiEmployeeId = request.aiEmployeeId;
@@ -676,36 +865,9 @@ export class InboundMessagePipeline {
         }
       }
 
-      const intentTransferFlowId =
-        !bindingWorkflow &&
-        !stickyTransfer &&
-        !disabledBoundFlowId &&
-        this.ports.automation &&
-        isBookingTransferIntent(inboundText)
-          ? readTransferableFlowId(employeeConversationMetadata) ??
-            readTransferableFlowId(stickyMetadata)
-          : null;
-
-      if (intentTransferFlowId) {
-        transferSource = "ai_employee_intent";
-      } else if (
-        !bindingWorkflow &&
-        !stickyTransfer &&
-        isBookingTransferIntent(inboundText) &&
-        request.channelKey === "whatsapp"
-      ) {
-        logWhatsApp("Booking intent without transferable flow", {
-          companyId: request.companyId,
-          companyChannelId: request.companyChannelId,
-          aiEmployeeId: aiEmployeeId ?? null,
-          phoneNumber: normalized.senderExternalId,
-          note: "configure_transferableFlowId_on_employee_channels_tab",
-        });
-        request.trace?.step("webhook.booking_intent_no_transfer_flow", {
-          aiEmployeeId: aiEmployeeId ?? null,
-          hasEmployeeMetadata: Boolean(employeeConversationMetadata),
-        });
-      }
+      // Who answers is the channel switch only: workflow binding on, or the AI employee.
+      // A booking phrase must not start the workflow while the channel is in employee mode.
+      const intentTransferFlowId = null;
 
       const resolvedWorkflow =
         bindingWorkflow ??
@@ -971,6 +1133,43 @@ export class InboundMessagePipeline {
         });
       }
 
+      // Phase 2 — bind trusted CRM identity before AI and before reaction short-circuit
+      // so deferred ConversationStarted still flushes when the first inbound is a reaction.
+      const trustedChannelIdentity = await this.resolveAndBindTrustedChannelCustomer({
+        companyId: request.companyId,
+        channelKey: request.channelKey,
+        conversationId: session.conversation_id,
+        senderExternalId: normalized.senderExternalId,
+        senderDisplayName: readInboundSenderDisplayName(normalized.metadata),
+        trace: request.trace,
+      });
+
+      if (this.ports.conversation.flushDeferredConversationStarted) {
+        try {
+          const flushed = await this.ports.conversation.flushDeferredConversationStarted({
+            companyId: request.companyId,
+            conversationId: session.conversation_id,
+            channelType: request.channelKey,
+            customerId: trustedChannelIdentity.customerId,
+            phone:
+              request.channelKey === "whatsapp" || request.channelKey === "sms"
+                ? normalized.senderExternalId
+                : null,
+            email: request.channelKey === "email" ? normalized.senderExternalId : null,
+            externalUserId: normalized.senderExternalId,
+            externalThreadId: session.external_thread_id ?? null,
+            actorUserId: ctx.userId ?? null,
+          });
+          request.trace?.step("webhook.conversation_started_flushed", {
+            conversationId: session.conversation_id,
+            published: flushed.published,
+            customerId: trustedChannelIdentity.customerId,
+          });
+        } catch (error) {
+          console.error("[ConversationStarted] deferred flush failed", error);
+        }
+      }
+
       // WhatsApp reactions attach to an existing message — never create a fake transcript row.
       if (isWhatsAppReactionInbound(normalized.metadata)) {
         const targetExternalMessageId =
@@ -1024,17 +1223,6 @@ export class InboundMessagePipeline {
           emailRoutingTicket,
         };
       }
-
-      // Phase 2 — bind trusted CRM identity from inbound channel sender before AI prepare/execute.
-      // Auto-creates customer when unknown (WhatsApp / Email / SMS) via identity port.
-      const trustedChannelIdentity = await this.resolveAndBindTrustedChannelCustomer({
-        companyId: request.companyId,
-        channelKey: request.channelKey,
-        conversationId: session.conversation_id,
-        senderExternalId: normalized.senderExternalId,
-        senderDisplayName: readInboundSenderDisplayName(normalized.metadata),
-        trace: request.trace,
-      });
 
       if (
         (emailRoutingClassification || emailRoutingDecision) &&
@@ -1452,6 +1640,11 @@ export class InboundMessagePipeline {
               companyChannelId: request.companyChannelId,
               conversationId: session.conversation_id,
               channelSessionId: session.id,
+              ...knownCustomerPhoneVariables(
+                request.channelKey,
+                normalized.senderExternalId,
+                trustedChannelIdentity.customerId,
+              ),
             },
             metadata: {
               inboundEventId: inboundEvent.id,
@@ -1747,6 +1940,7 @@ export class InboundMessagePipeline {
           }
 
           if (skipAiAfterDeterministicWelcome) {
+            let greetingReply: string | null = null;
             if (!incomingMessageId) {
               // Greeting-only / post-welcome skip never reaches runtime persistence — persist here
               // so the customer's first inbound appears in Web Chat.
@@ -1781,6 +1975,33 @@ export class InboundMessagePipeline {
               }
             }
 
+            if (
+              !greetingReply &&
+              !deterministicWelcomeText &&
+              !inboundMessageWasReused &&
+              isGreetingOnlyInboundText(inboundText)
+            ) {
+              greetingReply = greetingFollowUpReply(inboundText);
+              try {
+                await this.dispatcher.dispatch(ctx, {
+                  companyId: request.companyId,
+                  companyChannelId: request.companyChannelId,
+                  channelKey: request.channelKey,
+                  conversationId: session.conversation_id,
+                  channelSessionId: session.id,
+                  externalThreadId: normalized.externalThreadId,
+                  text: greetingReply,
+                  metadata: { greetingFollowUp: true, aiEmployeeId },
+                  persistConversationMessage: true,
+                });
+              } catch (error) {
+                logWhatsAppError("Greeting follow-up dispatch failed", error, {
+                  companyId: request.companyId,
+                  conversationId: session.conversation_id,
+                });
+              }
+            }
+
             await this.inboundRepository.updateEvent({
               inboundEventId: inboundEvent.id,
               processingStatus: "processed",
@@ -1803,7 +2024,7 @@ export class InboundMessagePipeline {
               conversationId: session.conversation_id,
               channelSessionId: session.id,
               incomingMessageId: incomingMessageId ?? "",
-              responseContent: deterministicWelcomeText ?? undefined,
+              responseContent: deterministicWelcomeText ?? greetingReply ?? undefined,
             };
           }
 
@@ -1890,6 +2111,12 @@ export class InboundMessagePipeline {
         }
 
         const resolvedRuntimeConfig = runtimeConfig;
+        if (incomingMessageId) {
+          resolvedRuntimeConfig.pageContext = {
+            ...(resolvedRuntimeConfig.pageContext ?? {}),
+            anchorIncomingMessageId: incomingMessageId,
+          };
+        }
 
         request.trace?.step("webhook.ai_runtime_started", {
           conversationId: session.conversation_id,
@@ -1902,6 +2129,69 @@ export class InboundMessagePipeline {
           request.channelKey === "email" && emailSubject
             ? `Subject: ${emailSubject}\n\n${inboundText}`
             : inboundText;
+
+        if (request.channelKey === "whatsapp") {
+          const memoryLease = await waitForConversationTurn(session.conversation_id);
+          releaseConversationTurn = () => memoryLease.release();
+          if (!this.sharedTurnLock) {
+            conversationTurnLease = {
+              release: () => memoryLease.release(),
+              stillOwns: () => false,
+              confirmOwns: async () => false,
+            };
+          } else {
+            const shared = await openWhatsAppSharedTurnLock(
+              this.sharedTurnLock,
+              session.conversation_id,
+              CONVERSATION_TURN_MAX_WAIT_MS,
+            );
+            conversationTurnLease = {
+              release: () => {
+                void shared.release();
+                memoryLease.release();
+              },
+              stillOwns: () => memoryLease.stillOwns() && shared.stillOwns(),
+              confirmOwns: async () => (await shared.confirmOwns()) && memoryLease.stillOwns(),
+            };
+            releaseConversationTurn = async () => {
+              await shared.release();
+              memoryLease.release();
+            };
+          }
+          // The newer message's turn answers this one too; a bare greeting gets no AI turn of its own.
+          if (
+            await customerSentNewerMessage(
+              this.ports.conversation,
+              session.conversation_id,
+              incomingMessageId,
+            )
+          ) {
+            await this.inboundRepository.updateEvent({
+              inboundEventId: inboundEvent.id,
+              processingStatus: "processed",
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId,
+              processedAt: new Date().toISOString(),
+            });
+            request.trace?.step("webhook.ai_reply_superseded", {
+              conversationId: session.conversation_id,
+              incomingMessageId,
+            });
+            logWhatsApp("AI reply folded into the customer's newer message", {
+              companyId: request.companyId,
+              conversationId: session.conversation_id,
+              incomingMessageId,
+            });
+            return {
+              inboundEventId: inboundEvent.id,
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId: incomingMessageId ?? "",
+              responseContent: undefined,
+            };
+          }
+        }
 
         waPerfMarkInboundExecution("ai_runtime");
         const runtimeResult = await waPerfMeasure("OpenAI request", () =>
@@ -1943,6 +2233,11 @@ export class InboundMessagePipeline {
           processedAt: new Date().toISOString(),
         });
 
+        // Folding into a newer message happens only before generation.
+        // A reply that already finished is dispatched while this turn still
+        // holds the conversation lock, so the newer turn cannot send first.
+        // The newer runtime is not treated as a substitute for this reply.
+
         let outboundError: string | undefined;
         try {
           const outboundMetadata =
@@ -1958,6 +2253,13 @@ export class InboundMessagePipeline {
                   threadRootMessageId: normalized.externalThreadId,
                 }
               : {};
+
+          if (request.channelKey === "whatsapp" && conversationTurnLease) {
+            const owns = conversationTurnLease.confirmOwns
+              ? await conversationTurnLease.confirmOwns()
+              : conversationTurnLease.stillOwns();
+            if (!owns) throw new Error("conversation_turn_lease_lost");
+          }
 
           if (request.channelKey === "whatsapp") {
             logWhatsApp("Sending reply", {
@@ -1991,6 +2293,19 @@ export class InboundMessagePipeline {
           });
 
           outboundDeliveryId = outbound.deliveryEventId;
+
+          if (request.channelKey === "whatsapp") {
+            await sendWhatsAppProductPhotos(this.dispatcher, ctx, {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              channelKey: request.channelKey,
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              externalThreadId: normalized.externalThreadId,
+              runtimeExecutionId,
+              images: runtimeResult.replyImages,
+            });
+          }
 
           if (
             request.channelKey === "email" &&
@@ -2057,38 +2372,139 @@ export class InboundMessagePipeline {
           emailRoutingTicket,
         };
         } catch (error) {
-          if (request.channelKey !== "email") {
+          const message = error instanceof Error ? error.message : "ai_employee_failed";
+          if (
+            request.channelKey === "whatsapp" &&
+            (message === "conversation_turn_lock_unavailable" || message === "conversation_turn_lease_lost")
+          ) {
             throw error;
           }
+          const isProviderFailure =
+            (error instanceof Error &&
+              (/AIProvider|AI_PROVIDER|token_invalidated|chat completion failed|HTTP 401|HTTP 429/i.test(
+                `${error.name} ${error.message}`,
+              ))) ||
+            /AI_PROVIDER|token_invalidated|chat completion failed/i.test(message);
+
           // Soft-fail Email AI Employee: keep inbound processed, no outbound claim.
-          const message = error instanceof Error ? error.message : "ai_employee_email_failed";
-          request.trace?.step("webhook.ai_employee_email_skipped", {
-            inboundEventId: inboundEvent.id,
-            reason: "execution_failed",
-            error: message.slice(0, 160),
-          });
-          await this.inboundRepository.updateEvent({
-            inboundEventId: inboundEvent.id,
-            processingStatus: "processed",
-            conversationId: session.conversation_id,
-            channelSessionId: session.id,
-            incomingMessageId,
-            runtimeExecutionId,
-            processedAt: new Date().toISOString(),
-          });
-          return {
-            inboundEventId: inboundEvent.id,
-            conversationId: session.conversation_id,
-            channelSessionId: session.id,
-            incomingMessageId: incomingMessageId ?? "",
-            runtimeExecutionId,
-            outboundDeliveryId,
-            outboundError: message,
-            responseContent,
-            emailRoutingClassification,
-            emailRoutingDecision,
-            emailRoutingTicket,
-          };
+          if (request.channelKey === "email") {
+            request.trace?.step("webhook.ai_employee_email_skipped", {
+              inboundEventId: inboundEvent.id,
+              reason: "execution_failed",
+              error: message.slice(0, 160),
+            });
+            await this.inboundRepository.updateEvent({
+              inboundEventId: inboundEvent.id,
+              processingStatus: "processed",
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId,
+              runtimeExecutionId,
+              processedAt: new Date().toISOString(),
+            });
+            return {
+              inboundEventId: inboundEvent.id,
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId: incomingMessageId ?? "",
+              runtimeExecutionId,
+              outboundDeliveryId,
+              outboundError: message,
+              responseContent,
+              emailRoutingClassification,
+              emailRoutingDecision,
+              emailRoutingTicket,
+            };
+          }
+
+          // WhatsApp: never 500 Meta on AI runtime failures (causes endless retries).
+          // Soft-fail for any AI employee/runtime error (not only narrow provider regex matches).
+          // Send one short fallback. Mark processed only when that send succeeds.
+          // A failed fallback stays failed and is not retried into another send on webhook redelivery.
+          // Does not claim qualification, booking, quote, or delivery succeeded.
+          if (request.channelKey === "whatsapp") {
+            const fallbackText =
+              "نعتذر، الرد الآلي متوقف مؤقتاً بسبب مشكلة في مزود الذكاء الاصطناعي. جرّب تاني بعد شوية أو كلم خدمة العملاء.";
+            const softFailReason = isProviderFailure ? "ai_provider_failure" : "ai_runtime_failure";
+            request.trace?.step("webhook.ai_runtime_soft_failed", {
+              inboundEventId: inboundEvent.id,
+              reason: softFailReason,
+              error: message.slice(0, 160),
+            });
+            logWhatsAppError("WhatsApp AI runtime soft-failed; sending fallback reply", error, {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              phoneNumber: normalized.senderExternalId,
+              aiEmployeeId: aiEmployeeId ?? null,
+            });
+
+            let fallbackOutboundId: string | undefined;
+            let fallbackOutboundError: string | undefined;
+            try {
+              if (conversationTurnLease) {
+                const owns = conversationTurnLease.confirmOwns
+                  ? await conversationTurnLease.confirmOwns()
+                  : conversationTurnLease.stillOwns();
+                if (!owns) throw new Error("conversation_turn_lease_lost");
+              }
+              const outbound = await this.dispatcher.dispatch(ctx, {
+                companyId: request.companyId,
+                companyChannelId: request.companyChannelId,
+                channelKey: request.channelKey,
+                conversationId: session.conversation_id,
+                channelSessionId: session.id,
+                externalThreadId: normalized.externalThreadId,
+                text: fallbackText,
+                metadata: {
+                  correlationId: inboundEvent.id,
+                  softFailReason,
+                },
+                persistConversationMessage: true,
+              });
+              fallbackOutboundId = outbound.deliveryEventId;
+            } catch (dispatchError) {
+              fallbackOutboundError =
+                dispatchError instanceof Error ? dispatchError.message : "fallback_outbound_failed";
+              logWhatsAppError("WhatsApp fallback reply send failed", dispatchError, {
+                companyId: request.companyId,
+                companyChannelId: request.companyChannelId,
+                conversationId: session.conversation_id,
+                inboundEventId: inboundEvent.id,
+              });
+            }
+
+            const fallbackDelivered = !fallbackOutboundError && Boolean(fallbackOutboundId);
+            // Non-empty runtime id makes shouldSkipDuplicateInbound treat a failed
+            // fallback as terminal so a Meta redelivery cannot send another reply.
+            const fallbackTerminalRuntimeId =
+              runtimeExecutionId ?? `whatsapp-fallback-undelivered:${inboundEvent.id}`;
+            await this.inboundRepository.updateEvent({
+              inboundEventId: inboundEvent.id,
+              processingStatus: fallbackDelivered ? "processed" : "failed",
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId,
+              runtimeExecutionId: fallbackDelivered ? runtimeExecutionId : fallbackTerminalRuntimeId,
+              errorMessage: fallbackDelivered ? null : fallbackOutboundError,
+              processedAt: new Date().toISOString(),
+            });
+            return {
+              inboundEventId: inboundEvent.id,
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId: incomingMessageId ?? "",
+              runtimeExecutionId: fallbackDelivered ? runtimeExecutionId : fallbackTerminalRuntimeId,
+              outboundDeliveryId: fallbackOutboundId ?? outboundDeliveryId,
+              outboundError: fallbackOutboundError,
+              responseContent: fallbackDelivered ? fallbackText : undefined,
+              emailRoutingClassification,
+              emailRoutingDecision,
+              emailRoutingTicket,
+            };
+          }
+
+          throw error
         }
       }
 
@@ -2148,6 +2564,8 @@ export class InboundMessagePipeline {
         processedAt: new Date().toISOString(),
       });
       throw error;
+    } finally {
+      await releaseConversationTurn?.();
     }
   }
 
@@ -2589,5 +3007,95 @@ export class InboundMessagePipeline {
       throw new ValidationError("Company channel must be enabled.");
     }
     return companyChannel;
+  }
+}
+
+function imageMime(url: string): string {
+  const path = url.split("?")[0]?.toLowerCase() ?? "";
+  if (path.endsWith(".png")) return "image/png";
+  if (path.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
+}
+
+/** One WhatsApp image message per photo. Text reply is already sent; a photo failure does not retract it. */
+async function sendWhatsAppProductPhotos(
+  dispatcher: ChannelDispatcherPort,
+  ctx: ServiceContext,
+  input: {
+    companyId: string;
+    companyChannelId: string;
+    channelKey: string;
+    conversationId: string;
+    channelSessionId: string;
+    externalThreadId: string;
+    runtimeExecutionId: string | undefined;
+    images: ReadonlyArray<{ url: string; caption: string }> | undefined;
+  },
+): Promise<void> {
+  const photos = (input.images ?? [])
+    .map((image) => {
+      const trimmed = image.url.trim();
+      // Prefer local branding URLs: the WhatsApp adapter uploads bytes to Meta (tunnel https is optional).
+      if (companyBrandingObjectPath(trimmed)) return { url: trimmed, caption: image.caption };
+      const url = toWhatsAppFetchableProductImageUrl(trimmed);
+      return url ? { url, caption: image.caption } : null;
+    })
+    .filter((image): image is { url: string; caption: string } => Boolean(image))
+    .slice(0, 5);
+
+  if (photos.length === 0) {
+    if ((input.images?.length ?? 0) > 0) {
+      logWhatsApp("Product photos skipped (no Meta-fetchable https urls)", {
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+        runtimeExecutionId: input.runtimeExecutionId ?? null,
+        storedCount: input.images?.length ?? 0,
+        sample: input.images?.[0]?.url?.slice(0, 120) ?? null,
+      });
+    }
+    return;
+  }
+
+  logWhatsApp("Sending product photos", {
+    companyId: input.companyId,
+    conversationId: input.conversationId,
+    runtimeExecutionId: input.runtimeExecutionId ?? null,
+    count: photos.length,
+  });
+
+  for (const [index, image] of photos.entries()) {
+    try {
+      await dispatcher.dispatch(ctx, {
+        companyId: input.companyId,
+        companyChannelId: input.companyChannelId,
+        channelKey: input.channelKey,
+        conversationId: input.conversationId,
+        channelSessionId: input.channelSessionId,
+        externalThreadId: input.externalThreadId,
+        text: index === 0 ? image.caption : "",
+        attachments: [
+          {
+            attachmentId: randomUUID(),
+            type: "image",
+            url: image.url,
+            mimeType: imageMime(image.url),
+          },
+        ],
+        metadata: {
+          runtimeExecutionId: input.runtimeExecutionId,
+          productPhoto: true,
+          photoIndex: index,
+        },
+        persistConversationMessage: false,
+      });
+    } catch (error) {
+      logWhatsAppError("WhatsApp product photo failed", error, {
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+        runtimeExecutionId: input.runtimeExecutionId ?? null,
+        photoIndex: index,
+      });
+      break;
+    }
   }
 }

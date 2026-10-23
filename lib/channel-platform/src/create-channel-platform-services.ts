@@ -17,6 +17,7 @@ import type { ChannelWorkflowResolver } from "./services/channel-workflow-resolv
 import { NoopChannelTelemetryPort, type ChannelTelemetryPort } from "./ports/telemetry-port.js";
 import type { EmailRoutingClassifierPort, EmailRoutingEnginePort } from "./ports/email-routing-classifier-port.js";
 import type { CampaignDeliveryReconcilePort } from "./ports/campaign-delivery-reconcile-port.js";
+import { createSupabaseWhatsAppConversationTurnLock } from "./services/whatsapp-conversation-turn-lock.js";
 import { ChannelRouter } from "./router/channel-router.js";
 import {
   createSupabaseChannelDeliveryEventRepository,
@@ -149,6 +150,7 @@ export function createChannelPlatformServices(
     options.emailRoutingClassifier,
     options.emailRoutingEngine,
     options.campaignDeliveryReconciler,
+    createSupabaseWhatsAppConversationTurnLock(client),
   );
 
   const router = new ChannelRouter(

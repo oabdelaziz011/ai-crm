@@ -27,6 +27,8 @@ import {
   recordWhatsAppOutboundAuthFailure,
   recordWhatsAppOutboundSendSuccess,
 } from "./whatsapp-credential-lifecycle.js";
+import { companyBrandingObjectPath } from "../../services/whatsapp-product-image-url.js";
+import type { WhatsAppChannelConfiguration } from "./whatsapp-config.js";
 
 export type WhatsAppCloudAdapterOptions = {
   fetchFn?: typeof fetch;
@@ -347,26 +349,28 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
       });
     }
 
+    const outboundPayload = await this.resolveLocalMediaLinks(runtimeConfig, payload);
+
     console.log("[WHATSAPP] Sending reply", {
       companyId: ctx.companyChannel.companyId,
       companyChannelId: ctx.companyChannel.id,
-      phoneNumber: payload.to,
+      phoneNumber: outboundPayload.to,
       phoneNumberId: runtimeConfig.phoneNumberId,
       inboundChannelPhoneNumberId: channelPhoneNumberId,
-      messageType: payload.type,
+      messageType: outboundPayload.type,
     });
     console.log("[WHATSAPP_OUTBOUND_TRACE] calling Meta sendMessage", {
       companyId: ctx.companyChannel.companyId,
       companyChannelId: ctx.companyChannel.id,
       path: `/${runtimePhoneNumberId}/messages`,
       phoneNumberId: runtimePhoneNumberId,
-      recipient: payload.to,
-      messageType: payload.type,
+      recipient: outboundPayload.to,
+      messageType: outboundPayload.type,
     });
 
     let response;
     try {
-      response = await this.apiClient.sendMessage(runtimeConfig, payload, {
+      response = await this.apiClient.sendMessage(runtimeConfig, outboundPayload, {
         accessTokenSource: "company_whatsapp_settings",
         companyId: ctx.companyChannel.companyId,
         companyChannelId: ctx.companyChannel.id,
@@ -473,6 +477,52 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
         },
       ]),
     };
+  }
+
+  /**
+   * Local company-branding URLs cannot be fetched by Meta. Upload bytes and switch to media id.
+   */
+  private async resolveLocalMediaLinks(
+    config: WhatsAppChannelConfiguration,
+    payload: WhatsAppSendMessagePayload,
+  ): Promise<WhatsAppSendMessagePayload> {
+    const mediaType =
+      payload.type === "image" || payload.type === "video" || payload.type === "audio" || payload.type === "document"
+        ? payload.type
+        : null;
+    if (!mediaType) return payload;
+
+    const media = payload[mediaType] as
+      | { link?: string; id?: string; caption?: string; filename?: string }
+      | undefined;
+    if (!media || media.id || typeof media.link !== "string") return payload;
+    if (!companyBrandingObjectPath(media.link)) return payload;
+
+    const response = await fetch(media.link, { method: "GET", redirect: "follow" });
+    if (!response.ok) {
+      throw new ValidationError(`Failed to load local product image for WhatsApp (${response.status}).`);
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength === 0 || bytes.byteLength > 8 * 1024 * 1024) {
+      throw new ValidationError("Local product image is empty or too large for WhatsApp.");
+    }
+    const mimeType =
+      response.headers.get("content-type")?.split(";")[0]?.trim() ||
+      (mediaType === "image" ? "image/jpeg" : "application/octet-stream");
+    const filename =
+      media.filename?.trim() ||
+      media.link.split("/").pop()?.split("?")[0] ||
+      `product.${mimeType.includes("png") ? "png" : "jpg"}`;
+    const mediaId = await this.apiClient.uploadMedia(config, { bytes, mimeType, filename });
+
+    return {
+      ...payload,
+      [mediaType]: {
+        id: mediaId,
+        ...(media.caption ? { caption: media.caption } : {}),
+        ...(media.filename ? { filename: media.filename } : {}),
+      },
+    } as WhatsAppSendMessagePayload;
   }
 
   private formatMediaPayload(

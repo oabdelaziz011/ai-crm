@@ -72,3 +72,7 @@ export function whatsAppGraphBaseUrl(apiVersion: string): string {
 export function whatsAppMessagesUrl(config: WhatsAppChannelConfiguration): string {
   return `${whatsAppGraphBaseUrl(config.apiVersion ?? "v21.0")}/${config.phoneNumberId}/messages`;
 }
+
+export function whatsAppMediaUploadUrl(config: WhatsAppChannelConfiguration): string {
+  return `${whatsAppGraphBaseUrl(config.apiVersion ?? "v21.0")}/${config.phoneNumberId}/media`;
+}

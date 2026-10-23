@@ -54,3 +54,19 @@ export class DeliveryFailedError extends ChannelPlatformError {
     this.name = "DeliveryFailedError";
   }
 }
+
+/**
+ * The provider was contacted and acceptance was not disproven, or it returned
+ * an id and the local sent-update failed. Callers must not send again.
+ */
+export class ProviderAcceptanceUnconfirmedError extends ChannelPlatformError {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProviderAcceptanceUnconfirmedError";
+  }
+}
+
+/** Meta answered with an error code and no message id. That is a rejection, not a timeout. */
+export function isConfirmedProviderRejection(error: unknown): boolean {
+  return error instanceof ValidationError && typeof error.metaErrorCode === "number";
+}

@@ -10,7 +10,7 @@ import type {
   WhatsAppWebhookPayload,
 } from "./whatsapp-types.js";
 import type { WhatsAppChannelConfiguration } from "./whatsapp-config.js";
-import { whatsAppMessagesUrl } from "./whatsapp-config.js";
+import { whatsAppMediaUploadUrl, whatsAppMessagesUrl } from "./whatsapp-config.js";
 import { ValidationError } from "../../errors.js";
 import {
   traceOutboundValidationEnter,
@@ -249,6 +249,34 @@ export class WhatsAppApiClient {
       throw new ValidationError(meta.error?.message ?? "Failed to resolve WhatsApp media URL.");
     }
     return meta.url;
+  }
+
+  /**
+   * Upload media bytes to Meta so outbound image messages can use `id` instead of a public `link`.
+   * Required for local catalog photos (localhost storage is not fetchable by Meta).
+   */
+  async uploadMedia(
+    config: WhatsAppChannelConfiguration,
+    input: { bytes: Uint8Array; mimeType: string; filename: string },
+  ): Promise<string> {
+    const endpoint = whatsAppMediaUploadUrl(config);
+    const mimeType = input.mimeType.trim() || "image/jpeg";
+    const filename = input.filename.trim() || "product.jpg";
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", mimeType);
+    form.append("file", new Blob([input.bytes], { type: mimeType }), filename);
+
+    const response = await this.fetchFn(endpoint, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+      body: form,
+    });
+    const body = (await response.json()) as { id?: string; error?: { message?: string } };
+    if (!response.ok || typeof body.id !== "string" || !body.id.trim()) {
+      throw new ValidationError(body.error?.message ?? "Failed to upload WhatsApp media.");
+    }
+    return body.id.trim();
   }
 }
 

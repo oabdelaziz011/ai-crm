@@ -6,6 +6,7 @@ import type { ServiceContext } from "../types.js";
 import { DeliveryTrackingEngine } from "../engines/delivery-tracking-engine.js";
 import {
   confirmOutgoingDeliveryWithRetry,
+  retryUnconfirmedOutgoingConfirmation,
   type ConfirmOutgoingDeliveryFn,
 } from "../services/confirm-outgoing-delivery.js";
 
@@ -83,6 +84,77 @@ export class DeliveryStatusPipeline {
       deliveryEventId: updated.id,
       deliveryStatus: updated.delivery_status,
       conversationConfirmStatus,
+    };
+  }
+
+  /**
+   * Confirm-only repair for a delivery the provider already accepted while the
+   * conversation row is still preparing or dispatching. Never sends.
+   */
+  async reconcileUnconfirmedOutgoing(
+    ctx: ServiceContext,
+    request: {
+      companyId: string;
+      companyChannelId: string;
+      externalMessageId: string;
+      outboundPhase?: string | null;
+    },
+  ): Promise<DeliveryStatusProcessResponse> {
+    this.assertPermission(ctx, request.companyId);
+
+    const delivery = await this.deliveryRepository.findByExternalMessageId(
+      request.companyChannelId,
+      request.externalMessageId,
+    );
+    if (!delivery) {
+      return { updated: false, reason: "delivery_not_found", conversationConfirmStatus: "skipped" };
+    }
+
+    const outboundMessageId = delivery.outbound_message_id?.trim();
+    if (!outboundMessageId || !this.confirmOutgoingDelivery) {
+      return {
+        updated: false,
+        deliveryEventId: delivery.id,
+        deliveryStatus: delivery.delivery_status,
+        reason: "confirmation_unavailable",
+        conversationConfirmStatus: "skipped",
+      };
+    }
+
+    const confirmResult = await retryUnconfirmedOutgoingConfirmation(this.confirmOutgoingDelivery, {
+      messageId: outboundMessageId,
+      deliveryStatus: delivery.delivery_status,
+      externalMessageId: delivery.external_message_id ?? request.externalMessageId,
+      outboundPhase: request.outboundPhase,
+    }, {
+      onAttemptError: (error, attempt) => {
+        console.error("[OUTBOUND_CONFIRM] unconfirmed repair attempt failed", {
+          attempt,
+          outboundMessageId,
+          deliveryEventId: delivery.id,
+          deliveryStatus: delivery.delivery_status,
+          outboundPhase: request.outboundPhase ?? null,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    });
+
+    if (!confirmResult.attempted) {
+      return {
+        updated: false,
+        deliveryEventId: delivery.id,
+        deliveryStatus: delivery.delivery_status,
+        reason: confirmResult.reason,
+        conversationConfirmStatus: "skipped",
+      };
+    }
+
+    return {
+      updated: confirmResult.ok,
+      deliveryEventId: delivery.id,
+      deliveryStatus: delivery.delivery_status,
+      conversationConfirmStatus: confirmResult.ok ? "confirmed" : "failed",
+      reason: confirmResult.ok ? undefined : "confirmation_failed",
     };
   }
 

@@ -327,4 +327,28 @@ describe("InboundMessagePipeline inbound idempotency", () => {
     assert.equal(env.incomingMessages.length, 1);
     assert.equal(env.automationCalls, 1);
   });
+
+  it("does not resend when WhatsApp retries a failed inbound hours later", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+    const request = buildWorkflowRequest(env);
+
+    await env.router.routeInbound(ctx, request);
+    const failedEvent = env.inboundEvents[0]!;
+    failedEvent.processing_status = "failed";
+    failedEvent.error_message = "Provider openai is unavailable.";
+    failedEvent.runtime_execution_id = null;
+    failedEvent.received_at = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+    failedEvent.updated_at = failedEvent.received_at;
+
+    const retry = await env.router.routeInbound(ctx, request);
+    assert.equal(retry.duplicate, true);
+    assert.equal(env.automationCalls, 1);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.inboundEvents[0]?.processing_status, "processed");
+    assert.match(env.inboundEvents[0]?.error_message ?? "", /stale_retry_skipped/);
+  });
 });

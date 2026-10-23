@@ -67,6 +67,21 @@ export class DeliveryTrackingEngine {
     });
   }
 
+  /** Keep the provider id without claiming the delivery row was saved as sent. */
+  async recordAcceptedPending(
+    deliveryEventId: string,
+    externalMessageId: string,
+    providerResponse?: Record<string, unknown>,
+  ): Promise<ChannelDeliveryEventRecord> {
+    return this.update({
+      deliveryEventId,
+      deliveryStatus: "pending",
+      externalMessageId,
+      providerResponse,
+      errorMessage: "provider_accepted_local_confirm_pending",
+    });
+  }
+
   async applyStatusUpdate(update: DeliveryStatusUpdateDto): Promise<ChannelDeliveryEventRecord> {
     const existing = await this.deliveryRepository.findById(update.deliveryEventId);
     if (!existing) {

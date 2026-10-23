@@ -3,13 +3,191 @@
     "name": "ValueOR",
     "dashboard": "لوحة التحكم"
   },
+  "productDemos": {
+    "subtitle": "إدارة عروض المنتجات، أيام العمل، المواعيد، والحجوزات.",
+    "permissionDenied": "ليست لديك صلاحية عرض جدولة العروض.",
+    "manageDenied": "العرض فقط. إدارة العروض والأيام تحتاج صلاحية إدارة جدولة العروض.",
+    "bookDenied": "العرض فقط. تأكيد الحجز أو إلغاؤه يحتاج صلاحية حجز العروض.",
+    "retry": "إعادة المحاولة",
+    "requestFailed": "تعذر تنفيذ الطلب",
+    "forbidden": "ليست لديك صلاحية تنفيذ هذا الإجراء.",
+    "presenterRequired": "عيّن مقدم العرض أولًا، ثم حدّد أيام العمل.",
+    "presenterNotAssigned": "مقدم العرض غير مُعيَّن على هذا العرض.",
+    "presenterNotInCompany": "مقدم العرض لازم يكون مستخدمًا في نفس الشركة.",
+    "timezones": {
+      "Africa/Cairo": "القاهرة",
+      "Asia/Riyadh": "الرياض",
+      "Asia/Dubai": "دبي",
+      "Asia/Kuwait": "الكويت",
+      "Asia/Qatar": "الدوحة",
+      "Asia/Bahrain": "المنامة",
+      "Asia/Amman": "عمّان",
+      "Asia/Beirut": "بيروت",
+      "Africa/Casablanca": "الدار البيضاء",
+      "Africa/Tunis": "تونس",
+      "Europe/Istanbul": "إسطنبول",
+      "Europe/London": "لندن",
+      "UTC": "توقيت عالمي"
+    },
+    "invalidWindow": "وقت النهاية لازم يكون بعد وقت البداية.",
+    "noOfferings": "لا توجد عروض بعد.",
+    "untitled": "بدون عنوان",
+    "noSlots": "لا توجد مواعيد لهذا العرض.",
+    "noBookings": "لا توجد حجوزات.",
+    "noProducts": "لا توجد منتجات نشطة.",
+    "noUsers": "لا يوجد مستخدمون لاختيارهم كمقدم عرض.",
+    "noPublishedSlots": "لا توجد مواعيد منشورة لهذا المنتج. انشر مواعيد من تبويب الجدولة أولًا.",
+    "selectOfferingHint": "اختر عرضًا من الجدول لإدارة أيام العمل والمواعيد.",
+    "workDay": "يوم عمل",
+    "offDay": "إجازة",
+    "weekHint": "الأخضر يوم عمل. الرمادي إجازة. لن يُنشأ موعد في أيام الإجازة.",
+    "assignedPresenters": "مقدمو العرض",
+    "noPresentersYet": "لم يُعيَّن مقدم عرض بعد. زر التعيين لا يحفظ يوم عمل قبل ذلك.",
+    "needPresenter": "اختر مقدم العرض واضغط تعيين قبل حفظ يوم العمل.",
+    "needIdentity": "اختار عميل محتمل أو عميل من القائمة قبل تأكيد الحجز.",
+    "createdCount": "تم إنشاء {{count}} موعد ونشر {{published}}.",
+    "status": {
+      "draft": "مسودة",
+      "published": "منشور",
+      "archived": "مؤرشف",
+      "blocked": "محظور",
+      "booked": "محجوز",
+      "cancelled": "ملغى",
+      "pending": "قيد الانتظار",
+      "confirmed": "مؤكد",
+      "completed": "مكتمل",
+      "no_show": "لم يحضر"
+    },
+    "weekdays": {
+      "0": "الأحد",
+      "1": "الاثنين",
+      "2": "الثلاثاء",
+      "3": "الأربعاء",
+      "4": "الخميس",
+      "5": "الجمعة",
+      "6": "السبت"
+    },
+    "scheduling": {
+      "createTitle": "إنشاء عرض",
+      "product": "المنتج",
+      "selectProduct": "اختر منتجًا…",
+      "titleOptional": "العنوان (اختياري)",
+      "titlePlaceholder": "عرض المنتج",
+      "duration": "المدة (بالدقائق)",
+      "timezone": "المنطقة الزمنية",
+      "create": "إنشاء العرض",
+      "created": "تم إنشاء العرض",
+      "offerings": "العروض",
+      "columns": {
+        "title": "العنوان",
+        "product": "المنتج",
+        "duration": "المدة",
+        "status": "الحالة",
+        "actions": "إجراءات",
+        "start": "البداية",
+        "presenter": "مقدم العرض",
+        "capacity": "السعة"
+      },
+      "durationValue": "{{count}} د",
+      "publish": "نشر",
+      "unpublish": "إلغاء النشر",
+      "published": "تم النشر",
+      "drafted": "أُعيد إلى مسودة",
+      "manage": "إدارة",
+      "view": "عرض",
+      "availabilityTitle": "مقدم العرض وأيام العمل",
+      "presenter": "مقدم العرض",
+      "selectUser": "اختر مستخدمًا…",
+      "assign": "تعيين مقدم العرض",
+      "assigned": "تم تعيين مقدم العرض",
+      "start": "من",
+      "end": "إلى",
+      "markWork": "يوم عمل",
+      "markOff": "إجازة",
+      "saveHours": "حفظ الساعات",
+      "savedWork": "تم حفظ يوم العمل",
+      "savedOff": "تم حفظ الإجازة",
+      "daysAhead": "الأيام القادمة",
+      "publishDates": "أيام نشر المواعيد",
+      "calendarHelp": "اضغط على اليوم في التقويم. اليوم الأخضر هو يوم هيتنشر فيه مواعيد العرض. اليوم الرمادي إجازة ومش هيتنشر فيه مواعيد.",
+      "noneSelected": "لسه ما اخترتش أيام. اضغط على أيام العمل في التقويم تحت.",
+      "selectedSummary": "هيتنشر مواعيد في {{count}} يوم",
+      "slotWindow": "من {{start}} إلى {{end}}، مدة كل موعد {{minutes}} دقيقة",
+      "prevMonth": "الشهر السابق",
+      "nextMonth": "الشهر التالي",
+      "dateOff": "اليوم ده إجازة. علّمه يوم عمل في الأسبوع الأول قبل ما تختاره.",
+      "publishSelected": "نشر مواعيد الأيام المحددة",
+      "generate": "إنشاء المواعيد ونشرها",
+      "generated": "تم إنشاء المواعيد",
+      "generateNeedsWorkDay": "حدّد يوم عمل واحدًا على الأقل قبل إنشاء المواعيد.",
+      "pageOf": "صفحة {{page}} من {{pages}}",
+      "filterDay": "اليوم",
+      "allDays": "كل الأيام",
+      "filterStatus": "الحالة",
+      "dayHeading": "مواعيد {{date}}",
+      "daySlotCount": "{{count}} موعد، كلهم ظاهرين في الصفحة دي",
+      "slotsPageHint": "كل صفحة تعرض مواعيد يوم واحد كاملة. اليوم مش بيتقسم على أكتر من صفحة.",
+      "noSlotsFiltered": "لا توجد مواعيد في اليوم أو الحالة دي.",
+      "dayPage": "يوم {{page}} من {{pages}}",
+      "slots": "المواعيد",
+      "block": "حظر",
+      "slotPublished": "تم نشر الموعد",
+      "slotUnpublished": "أُلغي نشر الموعد",
+      "slotBlocked": "تم حظر الموعد"
+    },
+    "bookings": {
+      "bookTitle": "حجز عرض",
+      "product": "المنتج",
+      "selectProduct": "اختر منتجًا…",
+      "slot": "موعد منشور",
+      "loadingSlots": "جارٍ التحميل…",
+      "selectSlot": "اختر موعدًا…",
+      "remaining": "{{count}} متبقٍ",
+      "slotDay": "يوم الموعد",
+      "selectSlotDay": "اختار اليوم…",
+      "slotDayHint": "اختار اليوم الأول، وبعدين اختار الساعة من مواعيد اليوم ده.",
+      "whoTitle": "مين هيحضر العرض؟",
+      "whoHelp": "اختار الشخص بالاسم من القائمة. مش مطلوب تكتب رقم أو معرّف.",
+      "partyLead": "عميل محتمل",
+      "partyCustomer": "عميل",
+      "selectLead": "اختار العميل المحتمل…",
+      "selectCustomer": "اختار العميل…",
+      "searchParty": "ابحث بالاسم أو الموبايل",
+      "noLeads": "لا يوجد عملاء محتملون.",
+      "noCustomers": "لا يوجد عملاء.",
+      "notes": "ملاحظات",
+      "confirm": "تأكيد الحجز",
+      "confirmed": "تم تأكيد الحجز",
+      "failed": "تعذر الحجز",
+      "status": "الحالة",
+      "all": "الكل",
+      "search": "بحث",
+      "searchPlaceholder": "عميل محتمل / عميل / ملاحظات",
+      "refresh": "تحديث",
+      "columns": {
+        "product": "المنتج",
+        "party": "العميل / العميل المحتمل",
+        "presenter": "مقدم العرض",
+        "time": "الوقت",
+        "status": "الحالة",
+        "actions": "إجراءات"
+      },
+      "customer": "عميل {{id}}",
+      "lead": "عميل محتمل {{id}}",
+      "cancel": "إلغاء",
+      "cancelled": "تم إلغاء الحجز",
+      "cancelFailed": "تعذر الإلغاء",
+      "noAction": "لا يوجد إجراء"
+    }
+  },
   "pagination": {
     "previous": "السابق",
     "next": "التالي",
     "pageInfo": "صفحة {{page}} من {{totalPages}}",
     "navLabel": "التنقل بين الصفحات",
     "previousAria": "الانتقال إلى الصفحة السابقة",
-    "nextAria": "الانتقال إلى الصفحة التالية"
+    "nextAria": "الانتقال إلى الصفحة التالية",
+    "range": "{{start}}–{{end}} من {{total}}"
   },
   "appShell": {
     "sidebar": {
@@ -64,12 +242,17 @@
     "bookings": "الحجوزات",
     "calendar": "التقويم",
     "scheduling": "الجدولة",
+    "productDemos": "عروض المنتجات",
+    "productDemoScheduling": "جدولة العروض",
+    "productDemoBookings": "حجوزات العروض",
     "appointments": "المواعيد",
     "universalOperations": "عمليات التشغيل",
     "leads": "العملاء المحتملون",
+    "sales": "المبيعات",
     "opportunities": "الفرص",
     "products": "المنتجات",
     "quotes": "عروض الأسعار",
+    "quoteSendRequests": "موافقات إرسال العروض",
     "communication": "قائمة الإرسال",
     "campaigns": "الحملات",
     "invoices": "الفواتير والفاتورة المالية",
@@ -111,7 +294,8 @@
     "automation": "سير العمل",
     "company": "الشركة",
     "companyHub": "الشركة",
-    "companyWorkspace": "مساحة العمل"
+    "companyWorkspace": "مساحة العمل",
+    "website": "الموقع"
   },
   "demo": {
     "scenarios": {
@@ -956,6 +1140,7 @@
     "dashboard": "لوحة التحكم",
     "notFound": "الصفحة غير موجودة",
     "accessDenied": "تم رفض الوصول",
+    "website": "الموقع",
     "booking": "حجز موعد",
     "bookingFlow": "الحجز",
     "portal": "بوابة العميل",
@@ -965,6 +1150,454 @@
     "privacyPolicy": "سياسة خصوصية ValueOR",
     "dataDeletion": "حذف البيانات",
     "terms": "شروط الخدمة"
+  },
+  "websiteBuilder": {
+    "title": "الموقع",
+    "subtitle": "موقع واحد لهذه الشركة. الحجز والتواصل والشات يكتبون في نفس مساحة العمل.",
+    "noCompany": "اختر شركة لتعديل موقعها.",
+    "loadFailed": "تعذر تحميل الموقع.",
+    "featureOff": "خطة هذه الشركة لا تشمل الموقع بعد. النشر يبقى متوقفاً حتى تفعيل Web Presence.",
+    "slug": "اسم الشركة في الرابط",
+    "useCompanyName": "اسم الشركة",
+    "reservedHost": "العنوان المحجوز: {{host}}. يعمل مع الاستضافة لاحقاً. المعاينة تتم من التطبيق حتى ذلك الحين.",
+    "openSite": "فتح الموقع المنشور",
+    "previewAfterPublish": "الصفحة العامة تفتح بعد النشر.",
+    "headline": "العنوان",
+    "description": "نبذة",
+    "sections": "الأقسام",
+    "section": {
+      "about": "عن الشركة",
+      "gallery": "معرض الصور",
+      "services": "الخدمات",
+      "hours": "ساعات العمل",
+      "location": "الموقع",
+      "contact": "تواصل",
+      "booking": "الحجز",
+      "video": "فيديو",
+      "features": "مميزات الشركة",
+      "testimonials": "آراء العملاء",
+      "products": "المنتجات",
+      "chat": "شات الموقع"
+    },
+    "chatTitle": "شات الموقع",
+    "chatHelp": "رسائل الموقع تظهر في القنوات المجمّعة باسم Live Chat. طلب التحدث مع شخص يبقى على نفس المحادثة.",
+    "greeting": "الترحيب",
+    "aiToggle": "موظف الذكاء يرد أولاً",
+    "employee": "موظف ذكاء منشور",
+    "employeePlaceholder": "اختر موظفاً",
+    "saveDraft": "حفظ مسودة",
+    "publish": "نشر",
+    "update": "تحديث الموقع",
+    "unpublish": "إيقاف النشر",
+    "published": "تم نشر الموقع.",
+    "saved": "تم حفظ المسودة.",
+    "saveFailed": "لم يتم حفظ الموقع.",
+    "blockers": {
+      "slug_invalid": "استخدم اسم شركة قصيراً بحروف إنجليزية، مثل valueor.",
+      "slug_taken": "اسم الشركة ده مستخدم في موقع شركة تانية.",
+      "origin_invalid": "انشر الشات من localhost. عنوان الشبكة المحلي لا يُقبل كأصل للشات.",
+      "page_feature_off": "فعّل ميزة الموقع لهذه الشركة قبل النشر.",
+      "chat_feature_off": "فعّل ميزة شات الموقع قبل نشر الشات.",
+      "ai_employee_required": "اختر موظف ذكاء منشوراً، أو أوقف الرد الآلي.",
+      "workflow_required": "اختر مسار عمل قبل نشر شات يرد عليه مسار العمل."
+    },
+    "builder": {
+      "statusDraft": "مسودة",
+      "statusPublished": "منشور",
+      "preview": "معاينة",
+      "copyUrl": "نسخ",
+      "primaryCta": "الزر الأساسي",
+      "secondaryCta": "الزر الثاني",
+      "aboutHeading": "عنوان من نحن",
+      "bullets": "نقاط، كل نقطة في سطر",
+      "featureTitle": "الميزة",
+      "featureText": "التفصيل",
+      "personName": "الاسم",
+      "quote": "الرأي",
+      "contactHeading": "عنوان التواصل",
+      "bookingHeading": "عنوان الحجز",
+      "bookingCta": "زر الحجز",
+      "colorsTitle": "الألوان والهوية",
+      "colorsHelp": "اللون الفارغ يبقي هوية الشركة.",
+      "logo": "الشعار",
+      "logoMissing": "لا يوجد شعار في هوية الشركة بعد.",
+      "logoFromBrand": "الشعار يأتي من هوية الشركة.",
+      "heroImage": "صورة الواجهة",
+      "aboutImage": "صورة من نحن",
+      "heroImageChoose": "اختيار صورة",
+      "buttonStyle": "شكل الزر",
+      "buttonSolid": "مصمت",
+      "buttonSoft": "هادئ",
+      "radius": "استدارة الزوايا",
+      "radiusMd": "صغيرة",
+      "radiusLg": "متوسطة",
+      "radiusFull": "كاملة",
+      "viewport": {
+        "desktop": "سطح المكتب",
+        "tablet": "جهاز لوحي",
+        "mobile": "هاتف"
+      },
+      "emptyFeatures": "أضف ميزة حتى يظهر هذا القسم في الموقع المنشور.",
+      "emptyTestimonials": "أضف رأياً حتى يظهر هذا القسم في الموقع المنشور.",
+      "summary": {
+        "services": "{{count}} خدمات على الموقع",
+        "gallery": "{{count}} صور",
+        "features": "{{count}} مميزات",
+        "testimonials": "{{count}} آراء",
+        "configured": "مكتمل",
+        "missing": "غير مكتمل",
+        "booking": "مرتبط بصفحة الحجز",
+        "on": "مفعّل",
+        "off": "متوقف",
+        "brand": "هوية الشركة",
+        "header": "{{count}} أزرار في الهيدر"
+      },
+      "color": {
+        "primary": "الأساسي",
+        "secondary": "الثانوي",
+        "background": "الخلفية",
+        "text": "النص",
+        "heading": "العناوين"
+      },
+      "template": {
+        "clinical": "عيادة",
+        "editorial": "تحريري",
+        "midnight": "ليلي",
+        "atelier": "أتيليه"
+      },
+      "templateHint": {
+        "clinical": "هيدر مقسوم، لون هادئ، كروت خدمات.",
+        "editorial": "هيدر في المنتصف وخط تحريري على خلفية دافئة.",
+        "midnight": "صفحة داكنة وهيدر عائم.",
+        "atelier": "عناوين كبيرة على خلفية كريمي هادئة."
+      },
+      "headerStyle": "شكل الهيدر",
+      "headerStyleValue": {
+        "classic": "كلاسيك",
+        "center": "شعار في المنتصف",
+        "modern": "حديث",
+        "minimal": "بسيط",
+        "split": "مقسوم",
+        "transparent": "شفاف",
+        "overlay": "فوق الصورة",
+        "pill": "شريط عائم"
+      },
+      "titleScale": "حجم العنوان",
+      "bodyScale": "حجم الكلام",
+      "scale": {
+        "sm": "صغير",
+        "md": "متوسط",
+        "lg": "كبير",
+        "xl": "كبير جداً"
+      },
+      "dragSection": "اسحب لإعادة الترتيب",
+      "visual": {
+        "blocks": "العناصر",
+        "addSection": "أضف قسماً",
+        "hide": "إخفاء",
+        "show": "إظهار",
+        "shown": "ظاهر",
+        "hidden": "مخفي",
+        "inspector": "الخصائص",
+        "templates": "القوالب",
+        "headerTitle": "الهيدر",
+        "heroTitle": "المقدمة",
+        "headerNav": "روابط الهيدر",
+        "showBooking": "زر الحجز في الهيدر",
+        "addPiece": "إضافة",
+        "removePiece": "مسح",
+        "imagePlace": "مكان الصورة",
+        "place": {
+          "left": "يسار",
+          "center": "وسط",
+          "right": "يمين"
+        },
+        "selected": "المحدد",
+        "undo": "تراجع",
+        "redo": "إعادة",
+        "unsupported": "هذا العنصر غير مخزّن في الموقع بعد.",
+        "align": "المحاذاة",
+        "emphasis": "تمييز النص",
+        "iconShape": "شكل الأيقونة",
+        "iconFill": "تعبئة الأيقونة",
+        "round": "دائري",
+        "square": "مربع",
+        "filled": "ممتلئ",
+        "outline": "مفرغ",
+        "fixed": "ثابت",
+        "fixedImage": "صورة المقدمة ثابتة في عمودها",
+        "fixedStrip": "شريط المميزات ثابت تحت المقدمة",
+        "fixedHours": "الساعات من الفرع ولا تُسحب",
+        "fixedLocation": "العنوان من الفرع ولا يُسحب",
+        "fixedForm": "حقول النموذج ثابتة",
+        "slot": {
+          "title": "نقل العنوان",
+          "text": "نقل الوصف",
+          "buttons": "نقل الأزرار"
+        },
+        "block": {
+          "hero-title": "عنوان",
+          "hero-text": "نص",
+          "hero-image": "صورة",
+          "gallery": "معرض صور",
+          "services": "خدمات",
+          "features": "مميزات",
+          "testimonials": "آراء العملاء",
+          "hours": "ساعات العمل",
+          "location": "الموقع",
+          "contact": "نموذج تواصل",
+          "booking": "زر حجز",
+          "social": "أيقونات تواصل",
+          "chat": "شات الموقع",
+          "faq": "أسئلة شائعة",
+          "video": "فيديو",
+          "products": "منتجات",
+          "divider": "فاصل"
+        }
+      },
+      "channel": {
+        "facebook": "فيسبوك",
+        "instagram": "إنستجرام",
+        "whatsapp": "واتساب",
+        "phone": "هاتف",
+        "email": "بريد",
+        "telegram": "تيليجرام",
+        "tiktok": "تيك توك",
+        "x": "إكس",
+        "youtube": "يوتيوب",
+        "snapchat": "سناب شات",
+        "linkedin": "لينكدإن"
+      },
+      "channelHint": {
+        "facebook": "https://facebook.com/...",
+        "instagram": "https://instagram.com/...",
+        "whatsapp": "+20 100 123 4567",
+        "phone": "+20 100 123 4567",
+        "email": "hello@clinic.com",
+        "telegram": "clinicname",
+        "tiktok": "https://tiktok.com/@...",
+        "x": "https://x.com/...",
+        "youtube": "https://youtube.com/@...",
+        "snapchat": "https://snapchat.com/add/...",
+        "linkedin": "https://linkedin.com/company/..."
+      },
+      "cta": {
+        "booking": "الحجز",
+        "services": "الخدمات",
+        "contact": "التواصل",
+        "about": "من نحن",
+        "gallery": "المعرض",
+        "none": "بدون إجراء"
+      },
+      "localPath": "يفتح على {{path}} إلى أن تعمل الاستضافة.",
+      "readOnly": "يمكنك مشاهدة الموقع. الحفظ يحتاج صلاحية الإدارة.",
+      "loading": "جارٍ تحميل الموقع…",
+      "homeTitle": "الصفحة الرئيسية",
+      "homeHelp": "العنوان الذي سيستخدمه الزوار، والسطر الأول في الصفحة.",
+      "sectionsTitle": "أقسام الصفحة",
+      "sectionsHelp": "فعّل القسم ثم افتحه لترى مصدر المحتوى.",
+      "hidden": "مخفي",
+      "sectionOff": "مخفي عن الموقع حتى تفعّله.",
+      "sectionBody": {
+        "about": "هذا النص هو قسم عن الشركة في الموقع.",
+        "gallery": "هذه الصور تتحرك في الصفحة حتى يرى الزائر الشركة. اختر إن كانت تتجه يساراً أو يميناً.",
+        "services": "تُقرأ الخدمات من كتالوج الشركة، ولا تُعدَّل من هنا.",
+        "hours": "تُقرأ الساعات من ملف الشركة.",
+        "location": "يُقرأ العنوان من ملف الشركة.",
+        "contact": "النموذج ينشئ عميلاً محتملاً. لا يبدأ محادثة.",
+        "booking": "الحجز يفتح نافذة المواعيد المتاحة داخل الصفحة."
+      },
+      "emptyAbout": "أضف نبذة قصيرة حتى لا يبقى قسم عن الشركة فارغاً.",
+      "galleryDirection": "اتجاه الحركة",
+      "galleryLeft": "تتحرك يساراً",
+      "galleryRight": "تتحرك يميناً",
+      "galleryAdd": "إضافة صور",
+      "galleryEmpty": "أضف صوراً وستتحرك في الصفحة المنشورة.",
+      "galleryCaption": "تعليق {{index}}",
+      "galleryRemove": "حذف الصورة",
+      "galleryPrev": "الصورة السابقة",
+      "galleryNext": "الصورة التالية",
+      "galleryLimit": "الحد ثماني صور",
+      "galleryType": "استخدم صورة JPEG أو PNG أو WebP.",
+      "galleryUploadFailed": "لم تُضف الصورة.",
+      "emptyServices": "لا توجد خدمات نشطة في الكتالوج بعد.",
+      "emptyHours": "لم تُضبط ساعات العمل في ملف الشركة.",
+      "emptyVideo": "ارفع فيديو من لوحة القسم ليظهر هنا.",
+      "frame": {
+        "layout": "شكل القسم",
+        "uploadVideo": "رفع فيديو",
+        "uploading": "جارٍ الرفع",
+        "removeVideo": "إزالة الفيديو",
+        "caption": "وصف الفيديو",
+        "controls": "أزرار التشغيل",
+        "play": "تشغيل",
+        "pause": "إيقاف",
+        "autoplay": "تشغيل تلقائي",
+        "loop": "تكرار",
+        "muted": "بدون صوت",
+        "uploadFailed": "تعذر رفع الفيديو"
+      },
+      "frameValue": {
+        "classic": "كلاسيك",
+        "image-left": "صورة يسار",
+        "image-right": "صورة يمين",
+        "full": "عرض كامل",
+        "split": "مقسوم",
+        "overlay": "فوق الصورة",
+        "centered": "في المنتصف",
+        "two": "عمودان",
+        "three": "3 أعمدة",
+        "four": "4 أعمدة",
+        "cards": "بطاقات",
+        "minimal": "مختصر",
+        "images": "بطاقات بصور",
+        "grid": "شبكة",
+        "carousel": "عرض متحرك",
+        "masonry": "متداخل",
+        "reel": "شريط أفقي",
+        "featured": "صورة مميزة",
+        "image-text": "صورة ثم نص",
+        "text-image": "نص ثم صورة",
+        "columns": "عمودان",
+        "details": "نموذج وتفاصيل",
+        "map": "نموذج وخريطة",
+        "cta": "زر",
+        "inline": "داخل القسم",
+        "compact": "مضغوط",
+        "rating": "تقييم في المنتصف",
+        "list": "قائمة",
+        "pills": "شرائح",
+        "shelf": "رف",
+        "catalog": "كتالوج",
+        "spotlight": "واجهة",
+        "tiles": "بلاطات"
+      },
+      "emptyLocation": "لم يُضبط عنوان في ملف الشركة.",
+      "emptyProducts": "أضف المنتجات من كتالوج المنتجات لتظهر هنا.",
+      "productCatalog": "الاسم والسعر من كتالوج المنتجات. اترك الصورة فارغة لعرض صور المنتج، أو ارفع صورة هنا لتستبدلها في الموقع.",
+      "productDescription": "وصف المنتج",
+      "productDescriptionPlaceholder": "وصف يظهر في الموقع فقط",
+      "showPrice": "عرض السعر",
+      "productImage": "صورة الموقع",
+      "productImageUsingCatalog": "الموقع يعرض صور هذا المنتج من الكتالوج.",
+      "productImageUsingOverride": "الموقع يعرض هذه الصورة بدل صور الكتالوج. احذفها للرجوع لصور المنتج.",
+      "placeSource": "ما يظهر في الموقع",
+      "placeSourceValue": {
+        "branch": "عنوان السيستم",
+        "custom": "لوكيشن أدخله"
+      },
+      "placeCustom": "العنوان أو اسم المكان",
+      "placeHint": "الضغط على العنوان يفتح الخريطة بشعار الموقع.",
+      "addPlace": "إضافة موقع",
+      "removePlace": "حذف",
+      "backToEditor": "رجوع للمحرر",
+      "serviceCount": "ستظهر {{count}} خدمات على الموقع.",
+      "chatCardHelp": "الزوار يفتحون الشات من الموقع. الرسائل تصل إلى القنوات المجمّعة باسم Live Chat.",
+      "chatPreviewNote": "معاينة فقط. الزوار يتحدثون من الموقع المنشور.",
+      "chatOffPreview": "فعّل شات الموقع لإظهار زر المحادثة.",
+      "noEmployees": "لا يوجد موظف ذكاء اصطناعي منشور وجاهز للرد.",
+      "serviceImage": "صورة الخدمة",
+      "openHours": "ضبط الساعات في الشركة",
+      "openLocation": "ضبط العنوان في الشركة",
+      "headerTitle": "الهيدر",
+      "headerLabel": "زر",
+      "headerDetail": "النص الذي يظهر في النافذة",
+      "headerPopupHint": "عند التمرير أو الضغط تظهر النافذة بالنص، بدون فتح صفحة جديدة.",
+      "headerAdd": "إضافة زر في الهيدر",
+      "socialTitle": "روابط التواصل",
+      "socialPlaceLabel": "مكان الظهور",
+      "socialPlace": {
+        "header": "الهيدر",
+        "hero": "تحت المقدمة",
+        "services": "عند الخدمات",
+        "hours": "عند الساعات",
+        "contact": "التواصل",
+        "footer": "أسفل الصفحة",
+        "floating": "عائم على الصفحة"
+      },
+      "chatAnchor": "حركة الشات",
+      "chatAnchorValue": {
+        "fixed": "ثابت في مكانه",
+        "flow": "يتحرك مع الصفحة"
+      },
+      "chatSide": "جانب الشات",
+      "chatSideValue": {
+        "end": "يسار",
+        "start": "يمين"
+      },
+      "responder": "من يرد على الزائر؟",
+      "responderAi": "موظف ذكاء اصطناعي",
+      "responderWorkflow": "مسار العمل",
+      "workflowPlaceholder": "اختر مسار العمل",
+      "noWorkflows": "لا يوجد مسار عمل نشط بعد.",
+      "addressMissing": "أضف عنوان الموقع لعرض رابط الصفحة.",
+      "days": {
+        "sunday": "الأحد",
+        "monday": "الاثنين",
+        "tuesday": "الثلاثاء",
+        "wednesday": "الأربعاء",
+        "thursday": "الخميس",
+        "friday": "الجمعة",
+        "saturday": "السبت"
+      }
+    },
+    "visitor": {
+      "notFound": "هذا الموقع غير منشور.",
+      "noServices": "تظهر الخدمات هنا عندما تنشرها الشركة.",
+      "book": "احجز موعداً",
+      "bookingDate": "التاريخ",
+      "slot": "الموعد المتاح",
+      "chooseSlot": "اختر الوقت",
+      "day": "اليوم",
+      "chooseDay": "اختر اليوم",
+      "time": "الوقت",
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "nameParts": "أدخل الاسم الأول واسم العائلة.",
+      "provider": "مقدم الخدمة",
+      "resource": "المورد",
+      "chooseResource": "اختر المورد",
+      "loadingResources": "جاري تحميل الموارد…",
+      "noResources": "لا يوجد مورد معيّن لهذه الخدمة.",
+      "branch": "الفرع",
+      "chooseBranch": "اختر الفرع",
+      "noBranchServices": "مفيش خدمات مربوطة بالموارد في الفرع ده.",
+      "chooseVisitType": "اختر نوع الزيارة",
+      "loadingVisitTypes": "جاري تحميل أنواع الزيارة…",
+      "gender": "النوع",
+      "visitType": "نوع الزيارة",
+      "genderValue": {
+        "male": "ذكر",
+        "female": "أنثى"
+      },
+      "visitValue": {
+        "first": "كشف أول مرة",
+        "consult": "استشارة"
+      },
+      "noSlots": "لا توجد مواعيد خلال الأسبوعين القادمين.",
+      "confirmBooking": "تأكيد الحجز",
+      "bookingConfirmed": "تم تسجيل الموعد في تقويم الشركة.",
+      "bookingFailed": "لم يُحفظ الموعد.",
+      "bookingType": "اختر نوع الحجز",
+      "pickBookingType": "اختر الخدمة أولاً، ثم يظهر اليوم والوقت المتاحان.",
+      "name": "الاسم",
+      "email": "البريد",
+      "phone": "الهاتف",
+      "invalidPhone": "أدخل رقم موبايل صالحًا مع الدولة.",
+      "message": "الرسالة",
+      "sendContact": "إرسال",
+      "contactSent": "شكراً. وصلت رسالتك إلى الفريق.",
+      "chatTitle": "المحادثة",
+      "assistant": "يمكن للمساعد الرد أولاً.",
+      "close": "إغلاق المحادثة",
+      "send": "إرسال",
+      "askPerson": "التحدث مع شخص",
+      "askPersonMessage": "أود التحدث مع أحد الموظفين.",
+      "chatUnavailable": "الدردشة غير متاحة حالياً.",
+      "unavailable": "هذا غير متاح حالياً.",
+      "invalid": "تحقق من الاسم ووسيلة التواصل والرسالة.",
+      "rate_limited": "طلبات كثيرة. انتظر ثم حاول مرة أخرى."
+    }
   },
   "pages": {
     "accessDenied": {
@@ -1117,6 +1750,14 @@
       "resourceRequired": "المورد مطلوب",
       "selectService": "اختر خدمة",
       "selectResource": "اختر موردًا",
+      "serviceType": "نوع الخدمة *",
+      "serviceTypeRequired": "نوع الخدمة مطلوب",
+      "phoneRequired": "رقم الموبايل مطلوب",
+      "matchedCustomer": "الحجز هيتسجل على نفس العميل: {{name}}",
+      "selectServiceType": "اختر نوع الخدمة",
+      "loadingServiceTypes": "جاري تحميل أنواع الخدمة…",
+      "serviceTypeEmpty": "الخدمة دي لسه ملهاش قاعدة تسعير. الحجز هيستخدم سعر الخدمة الافتراضي.",
+      "minutesShort": "د",
       "date": "التاريخ *",
       "dateTime": "التاريخ والوقت *",
       "dateRequired": "التاريخ مطلوب",
@@ -1534,7 +2175,8 @@
       "title": "ملف العميل",
       "subtitle": "مركز موحد لملف العميل",
       "sections": {
-        "contactDetails": "بيانات الاتصال"
+        "contactDetails": "بيانات الاتصال",
+        "lastBooking": "آخر حجز"
       },
       "tabs": {
         "overview": "نظرة عامة",
@@ -1580,6 +2222,14 @@
         "bookings": "الحجوزات",
         "invoices": "الفواتير",
         "lastInteraction": "آخر تفاعل"
+      },
+      "lastBooking": {
+        "empty": "لا يوجد حجز على هذا البروفايل بعد.",
+        "branch": "الفرع",
+        "service": "الخدمة",
+        "resource": "المورد",
+        "date": "تاريخ آخر حجز",
+        "serviceType": "نوع الخدمة"
       },
       "placeholders": {
         "bookings": "ستظهر حجوزات العميل هنا في إصدار لاحق.",
@@ -1652,8 +2302,8 @@
           },
           "details": {
             "patientCheckedIn": "تم تسجيل حضور المريض.",
-            "patientSentToNurse": "تم تحويل المريض للممرضة.",
-            "patientSentToDoctor": "تم تحويل المريض للطبيب.",
+            "patientSentToNurse": "تم بدء تقديم الخدمة للعميل.",
+            "patientSentToDoctor": "تم تحويل العميل إلى مقدم الخدمة.",
             "visitCompleted": "اكتملت الزيارة.",
             "operationArchived": "تم أرشفة العملية.",
             "triageCompleted": "اكتمل الفرز."
@@ -1805,7 +2455,7 @@
       },
       "bookingStatus": {
         "checkedIn": "تم الحضور",
-        "withNurse": "مع الممرضة",
+        "withNurse": "قيد التنفيذ",
         "inProgress": "قيد التنفيذ",
         "completed": "مكتمل",
         "noShow": "لم يحضر",
@@ -2025,6 +2675,11 @@
       "bookings": {
         "emptyTitle": "لا توجد حجوزات",
         "emptyDescription": "جدول أول موعد لهذا العميل.",
+        "emptyDemosTitle": "لا توجد عروض منتجات بعد",
+        "emptyDemosDescription": "حجوزات عروض المنتجات لهذا العميل ستظهر هنا.",
+        "filterAll": "الكل",
+        "filterOperational": "عيادات / خدمات",
+        "filterDemos": "عروض المنتجات",
         "current": "اليوم",
         "upcoming": "القادمة",
         "past": "السابقة",
@@ -2038,8 +2693,19 @@
         "period": "الفترة",
         "colReference": "رقم المرجع",
         "colService": "الخدمة",
+        "colServiceType": "نوع الخدمة",
+        "colBranch": "الفرع",
+        "colChannel": "القناة",
         "colWhen": "الموعد",
-        "colStatus": "الحالة"
+        "colStatus": "الحالة",
+        "channels": {
+          "public_booking": "الموقع",
+          "crm": "عمليات التشغيل",
+          "whatsapp": "واتساب",
+          "ai_assistant": "المساعد",
+          "call_center": "مركز الاتصال",
+          "api": "API"
+        }
       },
       "invoices": {
         "emptyTitle": "لا توجد فواتير",
@@ -2257,9 +2923,38 @@
     },
     "channels": {
       "title": "إدارة القنوات",
-      "subtitle": "ربط قنوات الشركة عبر منصة القنوات المؤسسية",
+      "subtitle": "اربط واتساب وماسنجر وإنستجرام وويب شات. كل قناة تعرض نوعها وتوكناتها وحالة التشغيل بوضوح.",
       "addChannel": "إضافة قناة",
       "empty": "لا توجد قنوات مهيأة بعد. أضف أول قناة لبدء استقبال الرسائل.",
+      "platformLine": "{{type}} · {{provider}}",
+      "onePurposeHint": "هذه القناة مخصّصة لـ {{type}} فقط — مش مخلوطة مع منصات تانية.",
+      "deleteChannel": "حذف القناة",
+      "workingStatus": {
+        "working": "شغّالة",
+        "notReady": "مفعّلة — لم تتصل بعد",
+        "liveCredentials": "بيانات الاعتماد شغّالة"
+      },
+      "identity": {
+        "sectionTitle": "التوكنات والمعرّفات",
+        "phoneNumberId": "معرّف رقم الهاتف",
+        "pageId": "معرّف الصفحة",
+        "fromEmail": "البريد المرسل",
+        "verifyToken": "رمز التحقق من Webhook",
+        "webhookUrl": "رابط Webhook",
+        "externalAccountId": "معرّف القناة",
+        "copy": "نسخ",
+        "copied": "تم نسخ {{label}}",
+        "copyFailed": "تعذر النسخ",
+        "missing": "لا يوجد توكن أو معرّف محفوظ على هذه القناة بعد. افتح إعدادات المنصة واحفظ البيانات.",
+        "none": "لا توجد توكنات إضافية على هذه القناة."
+      },
+      "duplicates": {
+        "banner": "يوجد {{count}} قناة مكررة لنفس رقم واتساب / الصفحة / البريد. اترك واحدة واحذف الباقي.",
+        "removeAll": "احذف المكرر الآن",
+        "removedTitle": "تم حذف القنوات المكررة",
+        "removedHint": "اتمسحت {{count}} قناة مكررة. القناة الشغّالة فضلت.",
+        "removeError": "تعذر حذف القناة المكررة"
+      },
       "featureNotEntitled": "نوع القناة هذا غير مشمول في خطتك. تواصل مع المسؤول لتفعيله.",
       "featureNotEntitledBadge": "غير مشمول",
       "default": "افتراضي",
@@ -2287,14 +2982,24 @@
       "apiVersion": "إصدار API",
       "inboundRouting": {
         "pageHint": "لكل قناة رسائل اختر من يرد على العملاء: سير عمل أتمتة أو موظف ذكاء اصطناعي. مسار واحد فقط يشتغل في نفس الوقت.",
+        "notApplicable": "توجيه الرد (ذكاء / أتمتة) يخص قنوات الرسائل. {{type}} له إعداداته الخاصة.",
         "label": "من يرد؟",
         "loading": "جاري تحميل مسار الرد…",
         "modeWorkflow": "سير عمل الأتمتة",
         "modeAi": "موظف الذكاء الاصطناعي",
+        "connectedWorkflow": "متصلة بسير العمل: {{name}}",
+        "connectedEmployee": "متصلة بموظف الذكاء الاصطناعي: {{name}}",
+        "badgeWorkflow": "سير العمل: {{name}}",
+        "badgeEmployee": "الذكاء: {{name}}",
+        "badgeAiUnlinked": "ذكاء — مفيش موظف مربوط",
         "workflowHint": "السير العمل النشط: {{name}}. الرسائل الواردة تتجاوز موظف الذكاء بينما هذا مفعّل.",
-        "aiHint": "سير العمل متوقف. موظف ذكاء منشور بوسم واتساب سيرد على الرسائل الواردة.",
+        "aiHint": "سير العمل متوقف. اربط موظف ذكاء منشور بهذه القناة عشان يرد على الرسائل الواردة.",
+        "aiHintNamed": "موظف الذكاء الاصطناعي «{{name}}» بيرد على رسائل هذه القناة.",
         "aiHintWithAssignedFlow": "سير العمل «{{name}}» مربوط لكنه متوقف. فعّله عشان الرد يرجع للأتمتة تاني.",
+        "noEmployeeLinked": "مفيش موظف ذكاء منشور مربوط بهذه القناة لسه.",
         "unnamedWorkflow": "سير العمل المحدد",
+        "useEmployee": "موظف الذكاء الاصطناعي",
+        "useWorkflow": "سير العمل",
         "disableWorkflow": "تعطيل سير العمل",
         "enableWorkflow": "تفعيل سير العمل",
         "assignWorkflow": "ربط سير عمل",
@@ -2715,7 +3420,86 @@
         "calendar": "التقويم",
         "scheduling": "الجدولة",
         "ticketSla": "SLA التذاكر",
+        "salesFollowUp": "متابعة المبيعات",
         "platformAi": "الذكاء الاصطناعي للمنصة"
+      },
+      "salesFollowUp": {
+        "title": "أتمتة متابعة المبيعات",
+        "subtitle": "اضبط رسائل المتابعة المتأخرة للعملاء المحتملين المؤهلين. تبقى متوقفة حتى تفعّلها.",
+        "defaultOffHint": "الشركات الحالية متوقفة افتراضيًا. وضع المسودة يجهّز رسالة للموافقة، والإرسال التلقائي يحدث فقط بعد نجاح كل فحوصات الأهلية.",
+        "enabled": "تفعيل أتمتة متابعة المبيعات",
+        "enabledHelp": "عند الإيقاف لا يُرسل أي شيء ولا يُسجَّل كإرسال ناجح.",
+        "approvalMode": "وضع الموافقة على الرسالة",
+        "approvalDraft": "مسودة للموافقة",
+        "approvalAutomatic": "إرسال تلقائي",
+        "approvalDraftHelp": "المحاولات المؤهلة تصبح مسودات، ويحتاج الموظف للموافقة قبل أي رسالة للعميل.",
+        "approvalAutomaticHelp": "المحاولات المؤهلة قد تستخدم مسار الإرسال الحالي للقناة بعد إعادة فحص الأهلية.",
+        "channels": "القنوات المسموحة",
+        "channel": {
+          "whatsapp": "واتساب",
+          "web_chat": "دردشة الويب",
+          "email": "البريد",
+          "instagram": "إنستغرام",
+          "facebook": "فيسبوك / ماسنجر",
+          "sms": "رسائل SMS"
+        },
+        "firstDelayMinutes": "الدقائق قبل أول متابعة",
+        "maxAttempts": "أقصى عدد محاولات",
+        "maxAttemptsHelp": "الحد الأقصى لمتابعات هذا العميل (يشمل الأولى): {{count}}. كل خطوة = متابعة واحدة.",
+        "timezone": "المنطقة الزمنية للشركة",
+        "timezoneOptional": "اختياري — الافتراضي UTC",
+        "timezoneHelp": "اختياري. اختر منطقة IANA من القائمة (مثل Africa/Cairo). لو سُبتها فارغة يُستخدم UTC لأوقات العمل. لا تعتمد على توقيت الخادم كتوقيت الشركة.",
+        "companyDailyLimit": "حد الإرسال اليومي للشركة",
+        "channelsHelp": "لازم تختار قناة واحدة على الأقل (مثلاً واتساب) قبل تفعيل الأتمتة. اختَر فقط القنوات المتصلة والمؤهلة للإرسال لهذه الشركة.",
+        "channelsRequired": "علّم على قناة واحدة على الأقل من قائمة القنوات المسموحة (مثل واتساب)، وبعدين اضغط حفظ.",
+        "channelsRequiredTitle": "اختر قناة أولاً",
+        "scheduleStepsRequired": "أضف خطوة متابعة مفعّلة واحدة على الأقل قبل تفعيل الأتمتة.",
+        "scheduleTitle": "جدول المتابعات",
+        "scheduleHelp": "كل خطوة تُنفَّذ بعد المدة المحددة من حدث الأهلية (مثل تأهيل العميل). المدد مطلقة من ذلك الحدث وليست مضافة فوق الإرسال السابق.",
+        "anchorHelp": "تبدأ الأهلية عند تأهيل Lead مرتبط بمحادثة. رد العميل أو التحويل أو إلغاء الاشتراك أو إغلاق الطلب يمكن أن يلغي الخطوات المتبقية.",
+        "addStep": "إضافة خطوة",
+        "removeStep": "حذف الخطوة",
+        "resetSchedule": "إعادة تعيين إلى 24س / 3أيام / 7أيام",
+        "stepLabel": "المتابعة {{n}}",
+        "stepAmount": "المدة",
+        "stepUnit": "الوحدة",
+        "stepEnabled": "مفعّلة",
+        "unitMinutes": "دقائق",
+        "unitHours": "ساعات",
+        "unitDays": "أيام",
+        "businessHoursStart": "بداية ساعات المتابعة",
+        "businessHoursEnd": "نهاية ساعات المتابعة",
+        "businessDays": "أيام العمل",
+        "businessHoursHelp": "المتابعات المستحقة خارج هذه النافذة تُؤجَّل إلى أول موعد صالح.",
+        "weekday": {
+          "0": "أحد",
+          "1": "إثنين",
+          "2": "ثلاثاء",
+          "3": "أربعاء",
+          "4": "خميس",
+          "5": "جمعة",
+          "6": "سبت"
+        },
+        "workerRunning": "العامل الخلفي: يعمل ({{send}}).",
+        "workerStopped": "العامل الخلفي: غير شغّال على عملية الـ API هذه. تفعيل المفتاح وحده لا يشغّل العامل.",
+        "workerSendOn": "الإرسال عبر المزوّد مسموح",
+        "workerSendOff": "الإرسال عبر المزوّد محظور — وضع محلي آمن",
+        "stopConditions": "شروط الإيقاف",
+        "stopOnCustomerReply": "إيقاف عند رد العميل",
+        "stopOnConversion": "إيقاف عند تحويل العميل المحتمل",
+        "stopOnPurchase": "إيقاف بعد الشراء",
+        "stopOnOptOut": "إيقاف بعد إلغاء الاشتراك",
+        "stopOnClosedRequest": "إيقاف عند إغلاق الطلب",
+        "stopOnReassignment": "إيقاف عند إعادة التعيين",
+        "save": "حفظ إعدادات المتابعة",
+        "saved": "تم حفظ إعدادات متابعة المبيعات",
+        "saveFailed": "تعذر حفظ إعدادات متابعة المبيعات",
+        "readOnly": "تحتاج صلاحية settings.edit أو leads.manage لتعديل هذه الإعدادات.",
+        "openDraftsQueue": "فتح صندوق مسودات المتابعة",
+        "openDraftsQueueHelp": "راجع وعدّل ووافق أو ارفض مسودات الذكاء الاصطناعي من العملاء المحتملون ← مسودات المتابعة.",
+        "unconfiguredTitle": "متابعة المبيعات غير مُعدّة بعد",
+        "unconfiguredBody": "لم تُحفظ أي إعدادات متابعة لهذه الشركة، لذلك المتابعة متوقفة. لا يتم تفعيل شيء تلقائيًا. راجع الخيارات أدناه ثم فعّل خيار التفعيل واحفظ.",
+        "disabledNotice": "المتابعة محفوظة كمعطّلة. لن تُجدول أي متابعات حتى تفعّلها وتحفظ."
       },
       "tickets": {
         "sla": {
@@ -4391,7 +5175,7 @@
         },
         "createBooking": {
           "service": "الخدمة",
-          "doctor": "الطبيب",
+          "doctor": "مقدم الخدمة",
           "location": "الموقع",
           "appointmentDate": "تاريخ الموعد",
           "appointmentTime": "وقت الموعد",
@@ -5140,7 +5924,7 @@
       },
       "createBooking": {
         "service": "الخدمة",
-        "doctor": "الطبيب",
+        "doctor": "مقدم الخدمة",
         "location": "الموقع",
         "appointmentDate": "تاريخ الموعد",
         "appointmentTime": "وقت الموعد",
@@ -5839,6 +6623,7 @@
       "avatarUrlPlaceholder": "https://…/photo.png",
       "avatarUrlHint": "رابط اختياري لصورة تظهر بجانب الموظف في القائمة والملف. اتركه فارغًا لاستخدام الأحرف الأولى.",
       "description": "الوصف",
+      "descriptionHint": "ملاحظة داخلية للفريق. لما تحفظها بتتخزن وتظهر في ملف الموظف وفي البحث. مش بتغيّر ردود العملاء؛ اللي بيوجّه الشغل هو تبويب التعليمات، خانة توجيه النظام.",
       "welcomeMessage": "رسالة الترحيب",
       "welcomeMessagePlaceholder": "أهلاً وسهلاً بك 👋\nأنا المساعد الذكي، كيف يمكنني مساعدتك اليوم؟",
       "welcomeMessageHint": "الرسالة التي يرسلها الموظف الذكي عند بدء العميل للمحادثة لأول مرة.",
@@ -5888,6 +6673,8 @@
       },
       "knowledgeHint": "اختياري: عيّن مصادر معرفة الشركة التي يمكن البحث فيها عند الرد.",
       "toolsHint": "اختَر إجراءات النظام اللي يقدر الموظف يستدعيها. تظهر فقط القدرات ضمن باقة الشركة. موظفو القنوات يخفون الإجراءات غير الجاهزة على واتساب/الويب هوك بعد.",
+      "showProductPrices": "إظهار أسعار المنتجات",
+      "showProductPricesHint": "عند الإيقاف، نتائج البحث عن المنتجات لا تتضمن السعر، والموظف لا يذكر سعرًا ولا يصف المنتج بأنه مجاني.",
       "provider": "المزود",
       "knowledge": "المعرفة",
       "tools": "الأدوات",
@@ -5916,21 +6703,25 @@
         "knowledge": "المعرفة",
         "communication": "التواصل",
         "automation": "الأتمتة",
-        "handoff": "التحويل للبشري"
+        "handoff": "التحويل للبشري",
+        "products": "المنتجات"
       },
       "channelRouting": {
         "title": "توجيه القنوات",
-        "hint": "اختر قنوات الرسائل التي يرد عليها هذا الموظف تلقائيًا. انشر من دورة الحياة عندما يكون جاهزًا.",
+        "hint": "اربط الموظف بأي قناة أنشأتها (واتساب / ماسنجر / إنستجرام / ويب شات). التحكم في الرد بأتمتة أو ذكاء اصطناعي يتم من صفحة القنوات.",
         "omnichannel": "كل قنوات الرسائل",
         "tickets": "معالجة تذاكر الدعم",
-        "companyChannels": "اتصالات قنوات الشركة",
-        "noCompanyChannels": "لا توجد قنوات واتساب / ماسنجر / إنستجرام بعد. اضبطها من القنوات.",
+        "companyChannels": "قنواتك المنشأة",
+        "companyChannelsHint": "اختَر القناة بالاسم. التسمية توضح هل هي واتساب أو ماسنجر أو إنستجرام أو ويب شات.",
+        "noCompanyChannels": "لا توجد قنوات واتساب / ماسنجر / إنستجرام / ويب شات مفعّلة بعد. أنشئها من صفحة القنوات أولًا.",
         "noneSelected": "لم يُحدد أي قناة",
         "publishHint": "بعد إنشاء الملف، افتح دورة الحياة واضغط نشر حتى تستطيع الرسائل الواردة استخدام هذا الموظف.",
         "channels": {
           "whatsapp": "واتساب",
           "messenger": "ماسنجر",
           "instagram": "إنستجرام",
+          "web_chat": "ويب شات",
+          "email": "البريد الإلكتروني",
           "channel": "قناة"
         }
       },
@@ -5950,9 +6741,14 @@
       },
       "skills": {
         "title": "المهارات",
-        "hint": "المهارة تجمع تعليمات وأدوات ومعرفة لمهمة محددة. اختياري.",
+        "hint": "المهارة حزمة اختيارية لمهمة واحدة: اسم، وصف، والأدوات اللي فوق. الأدوات المحددة هي اللي الموظف يستخدمها في الرد.",
         "loading": "جارٍ تحميل المهارات…",
-        "empty": "لا توجد مهارات في الشركة بعد. يمكنك المتابعة بدونها.",
+        "empty": "مفيش مهارات في الشركة لحد دلوقتي. اكتب اسم المهارة تحت واضغط إضافة، وبعدين علّم عليها واحفظ.",
+        "addPlaceholder": "اسم المهارة، مثل: الرد من المعرفة",
+        "addDescriptionPlaceholder": "وصف قصير لما تعمله المهارة",
+        "addAction": "إضافة المهارة",
+        "adding": "جارٍ الإضافة…",
+        "addError": "تعذر إضافة المهارة. تأكد أن لديك صلاحية تعديل المهارات.",
         "readOnly": "يمكنك عرض المهارات المعيّنة لكن ليست لديك صلاحية تغييرها.",
         "unavailableKept": "{{count}} مهارة معيّنة لم تعد ظاهرة في القائمة وستبقى معيّنة حتى تغيّرها."
       },
@@ -6594,7 +7390,7 @@
       "capabilities": "القدرات ووسوم التوجيه",
       "transferableFlow": {
         "title": "مسار التحويل من الموظف",
-        "hint": "اختَر مسار أتمتة واحد. الموظف يرد أولًا، ولما العميل يطلب حجز/موعد يتحوّل على المسار تلقائيًا. خلّي سير العمل على القناة مقفول.",
+        "hint": "من يرد على واتساب يتحدد من صفحة القنوات: زر موظف الذكاء الاصطناعي أو زر سير العمل. واحد بس يشتغل.",
         "placeholder": "اختَر مسارًا…",
         "none": "بدون تحويل لمسار",
         "save": "حفظ مسار التحويل",
@@ -6698,7 +7494,9 @@
         "search_lead": "بحث العملاء المحتملين",
         "merge_lead": "دمج عملاء محتملين",
         "score_lead": "تقييم عميل محتمل",
-        "suggest_next_action": "اقتراح الخطوة التالية"
+        "suggest_next_action": "اقتراح الخطوة التالية",
+        "search_products": "بحث المنتجات",
+        "get_product_details": "تفاصيل المنتج"
       },
       "descriptions": {
         "search_customer": "البحث عن العملاء بالاسم أو الهاتف أو البريد.",
@@ -6739,7 +7537,9 @@
         "escalate_to_human": "تصعيد المحادثة لموظف بشري.",
         "queue_handoff": "وضع المحادثة في طابور التحويل.",
         "return_to_ai": "إعادة الملكية للموظف الذكي.",
-        "transfer_to_workflow": "تحويل المحادثة لمسار أتمتة."
+        "transfer_to_workflow": "تحويل المحادثة لمسار أتمتة.",
+        "search_products": "البحث في المنتجات النشطة بالاسم أو SKU أو الماركة أو الوصف أو الوسوم أو الفئة (نص فقط).",
+        "get_product_details": "عرض تفاصيل حتى 3 منتجات نشطة للإجابة أو المقارنة (نص فقط)."
       }
     },
     "workspace": {
@@ -7016,7 +7816,19 @@
       "overdue": "تقرير المتأخرات",
       "due": "تقرير المستحقات",
       "debtors": "العملاء المدينون",
-      "average": "متوسط الفاتورة"
+      "average": "متوسط الفاتورة",
+      "period": "الفترة",
+      "today": "اليوم",
+      "week": "الأسبوع",
+      "month": "الشهر",
+      "custom": "فترة مخصصة",
+      "from": "من",
+      "to": "إلى",
+      "total": "الإجمالي",
+      "paid": "المدفوع",
+      "remaining": "المتبقي",
+      "invoiceCount": "عدد الفواتير",
+      "bookingCount": "عدد الحجوزات"
     },
     "payAmount": "المبلغ",
     "payMethod": "طريقة الدفع",
@@ -7047,7 +7859,7 @@
     "financialTitle": "مؤشرات مالية",
     "revenue": "الإيرادات",
     "refundRate": "معدل الاسترداد",
-    "perDoctor": "إيراد / طبيب",
+    "perDoctor": "إيراد / مقدم خدمة",
     "perBranch": "إيراد / فرع",
     "taxSummary": "الضرائب المحصلة",
     "collections": "التحصيلات",
@@ -7065,7 +7877,7 @@
     "noAlerts": "لا توجد تنبيهات نشطة.",
     "dismiss": "تجاهل",
     "branchTitle": "ذكاء الفروع",
-    "doctorTitle": "ذكاء الأطباء",
+    "doctorTitle": "ذكاء مقدمي الخدمة",
     "forecastTitle": "التوقعات",
     "revenueForecast7d": "توقع الإيرادات 7 أيام",
     "bookingsForecast7d": "توقع الحجوزات 7 أيام",
@@ -7686,7 +8498,9 @@
       "routeMissingSession": "لا توجد جلسة قناة نشطة مرتبطة بهذه المحادثة.",
       "routeMissingThread": "مسار الإرسال الخارجي مفقود لهذه المحادثة.",
       "routeMissingChannel": "اتصال القناة غير مُعد.",
-      "dispatchFailed": "تعذّر تسليم الرسالة إلى قناة العميل."
+      "dispatchFailed": "تعذّر تسليم الرسالة إلى قناة العميل.",
+      "noteSaveFailed": "تعذّر حفظ الملاحظة الداخلية.",
+      "serverUnreachable": "تعذّر الاتصال بالخادم، حاول الإرسال مرة أخرى."
     },
     "experience": {
       "justNow": "الآن",
@@ -8469,12 +9283,12 @@
     "myPortal": "بوابتي",
     "workingHours": "ساعات العمل",
     "services": "الخدمات",
-    "doctors": "الأطباء",
+    "doctors": "مقدمو الخدمة",
     "contactForPrice": "تواصل للاستفسار عن السعر",
     "step": "الخطوة",
     "steps": {
       "service": "اختر الخدمة",
-      "doctor": "اختر الطبيب",
+      "doctor": "اختر مقدم الخدمة",
       "date": "اختر التاريخ",
       "time": "اختر الوقت",
       "customer": "معلوماتك",
@@ -8719,7 +9533,7 @@
         "pending": "قيد الانتظار",
         "confirmed": "محجوز",
         "checked_in": "حضور مسجّل",
-        "with_nurse": "مع التمريض",
+        "with_nurse": "قيد التنفيذ",
         "in_progress": "قيد الجلسة",
         "completed": "مكتمل",
         "archived": "مؤرشف",
@@ -8749,7 +9563,9 @@
         "phone": "الهاتف",
         "email": "البريد",
         "service": "الخدمة",
+        "branch": "الفرع",
         "resource": "المورد",
+        "serviceType": "نوع الخدمة",
         "time": "الوقت",
         "duration": "المدة",
         "price": "السعر",
@@ -8769,7 +9585,7 @@
         "confirm": "تأكيد الإلغاء",
         "reasons": {
           "customer_request": "طلب العميل",
-          "doctor_unavailable": "الطبيب غير متاح",
+          "doctor_unavailable": "مقدم الخدمة غير متاح",
           "clinic_closed": "العيادة مغلقة",
           "no_show": "لم يحضر",
           "other": "أخرى"
@@ -8819,7 +9635,7 @@
         "hourlyDistribution": "التوزيع بالساعة"
       },
       "conflicts": {
-        "doctor": "تعارض جدول الطبيب/المورد",
+        "doctor": "تعارض في جدول مقدم الخدمة/المورد",
         "room": "تعارض جدول الغرفة",
         "equipment": "تعارض جدول المعدات",
         "service": "تعارض جدولة الخدمة",
@@ -8862,6 +9678,7 @@
     "validation": {
       "generic": "يرجى مراجعة النموذج والمحاولة مرة أخرى.",
       "resourceNameRequired": "اسم المورد مطلوب.",
+      "branchRequired": "اختر الفرع.",
       "timezoneRequired": "المنطقة الزمنية مطلوبة.",
       "invalidTimezone": "اختر منطقة زمنية صالحة للعمل.",
       "invalidSlotInterval": "يجب أن تكون فترة الفتحات بين 5 و 480 دقيقة.",
@@ -8887,6 +9704,10 @@
       "createTitle": "مورد جديد",
       "editTitle": "تعديل المورد",
       "noBranch": "بدون فرع (على مستوى الشركة)",
+      "timezones": {
+        "cairo": "القاهرة"
+      },
+      "commercialInvalid": "أدخل سعراً أكبر من صفر ومدة بالدقائق لكل خدمة.",
       "created": "تم إنشاء المورد.",
       "updated": "تم تحديث المورد.",
       "deleted": "تم إزالة المورد.",
@@ -8898,12 +9719,16 @@
         "branch": "الفرع",
         "status": "الحالة",
         "timezone": "المنطقة الزمنية",
+        "serviceDuration": "المدة (دقائق)",
+        "servicePrice": "السعر",
         "description": "الوصف"
       },
       "types": {
         "doctor": "طبيب",
         "employee": "موظف",
         "therapist": "معالج",
+        "instructor": "أستاذ",
+        "engineer": "مهندس",
         "room": "غرفة",
         "chair": "كرسي",
         "equipment": "معدات",
@@ -8953,7 +9778,13 @@
         "duration": "المدة (دقائق)",
         "price": "السعر",
         "currency": "العملة",
-        "status": "الحالة"
+        "status": "الحالة",
+        "serviceKind": "نوع الخدمة",
+        "serviceKindHint": "عروض المنتجات تستخدم أدوات ذكاء اصطناعي منفصلة ولا تظهر كمواعيد عيادات."
+      },
+      "kinds": {
+        "operational": "تشغيلي",
+        "sales_demo": "عرض منتج"
       },
       "pricing": {
         "title": "قواعد التسعير",
@@ -11227,7 +12058,7 @@
       "pending": "قيد الانتظار",
       "confirmed": "مؤكد",
       "checked_in": "حضور مسجّل",
-      "with_nurse": "مع التمريض",
+      "with_nurse": "قيد التنفيذ",
       "in_progress": "قيد الجلسة",
       "completed": "مكتمل",
       "archived": "مؤرشف",
@@ -11422,7 +12253,7 @@
     "knowledge": {
       "enable": "تفعيل معرفة الذكاء الاصطناعي",
       "enableDesc": "السماح للمساعد باستخدام معرفة الشركة في الإصدارات المستقبلية.",
-      "futureNote": "سيتضمن هذا القسم لاحقاً الأسئلة الشائعة والخدمات والأسعار والأطباء ومعلومات العيادة."
+      "futureNote": "سيتضمن هذا القسم لاحقاً الأسئلة الشائعة والخدمات والأسعار وفريق العمل ومعلومات المنشأة."
     },
     "integrations": {
       "comingSoon": "قريباً",
@@ -11816,7 +12647,8 @@
       "completed": "مكتملة",
       "archived": "ملغاة",
       "cancelled": "ملغاة",
-      "no_show": "ملغاة",
+      "no_show": "لم يحضر",
+      "rescheduled": "أعيدت جدولته",
       "confirmed": "مجدول",
       "pending": "في الانتظار"
     },
@@ -11856,6 +12688,36 @@
         "wallet": "محفظة",
         "other": "أخرى"
       }
+    },
+    "receipt": {
+      "title": "إيصال تحصيل",
+      "number": "رقم الإيصال",
+      "invoice": "الفاتورة",
+      "issuedAt": "تاريخ الإيصال",
+      "booking": "رقم الحجز",
+      "customer": "العميل",
+      "phone": "الهاتف",
+      "service": "الخدمة",
+      "visitType": "نوع الزيارة",
+      "provider": "مقدم الخدمة",
+      "appointment": "الموعد",
+      "branch": "الفرع",
+      "description": "البيان",
+      "amount": "المبلغ",
+      "discount": "الخصم",
+      "tax": "الضريبة",
+      "total": "الإجمالي",
+      "paid": "المحصّل",
+      "balance": "المتبقي",
+      "payments": "حركات التحصيل",
+      "method": "طريقة الدفع",
+      "thanks": "شكراً لثقتكم",
+      "paidFull": "مدفوع بالكامل",
+      "paidPartial": "مدفوع جزئياً",
+      "subtitle": "تم استلام المبلغ بنجاح مقابل الخدمة المقدمة",
+      "paymentDetails": "تفاصيل الدفع",
+      "taxId": "الرقم الضريبي",
+      "emptyPayments": "لا توجد حركة تحصيل مسجّلة على هذا الحجز."
     },
     "currency": {
       "SAR": "ر.س",
@@ -11948,7 +12810,7 @@
       "actions": {
         "checkIn": "تسجيل حضور",
         "start": "بدء",
-        "complete": "إكمال",
+        "complete": "تم الانتهاء",
         "cancel": "إلغاء",
         "collectPayment": "تحصيل الدفع",
         "customer360": "ملف العميل 360",
@@ -11977,6 +12839,14 @@
       "selectAll": "تحديد كل الصفوف",
       "rowCount": "{{count}} صف",
       "selectedCount": "{{count}} محدد",
+      "pagination": {
+        "summary": "{{from}}–{{to}} من {{total}} حجز",
+        "pageInfo": "صفحة {{page}} من {{totalPages}}",
+        "previous": "السابق",
+        "next": "التالي",
+        "pageSize": "{{count}} / صفحة",
+        "pageSizeLabel": "عدد الحجوزات في الصفحة"
+      },
       "rowActions": "إجراءات الصف",
       "openWorkspace": "فتح مساحة العمل",
       "density": "كثافة الصفوف",
@@ -11994,12 +12864,12 @@
         "custom": "تاريخ مخصص"
       },
       "filters": {
-        "doctor": "الطبيب",
-        "service": "الخدمة",
+        "doctor": "المورد",
+        "service": "نوع الخدمة",
         "status": "الحالة",
         "branch": "الفرع",
-        "allDoctors": "كل الأطباء",
-        "allServices": "كل الخدمات",
+        "allDoctors": "كل الموارد",
+        "allServices": "كل أنواع الخدمة",
         "allStatuses": "كل الحالات",
         "allBranches": "كل الفروع"
       },
@@ -12012,16 +12882,20 @@
         "visitType": "نوع الزيارة",
         "phone": "رقم الجوال",
         "service": "الخدمة",
-        "assignee": "الطبيب",
-        "doctor": "الطبيب",
+        "assignee": "المسؤول",
+        "doctor": "مقدم الخدمة",
         "status": "الحالة",
         "paymentStatus": "حالة الدفع",
         "waiting": "مدة الانتظار",
         "waitingTime": "مدة الانتظار",
+        "peopleAhead": "أمامه في الدور",
         "duration": "المدة",
         "amount": "المبلغ",
         "branch": "الفرع",
         "actions": "الإجراءات"
+      },
+      "peopleAhead": {
+        "next": "دوره الآن"
       },
       "tooltips": {
         "search": "البحث في العمليات",
@@ -12037,7 +12911,7 @@
     },
     "terminologyByTemplate": {
       "clinic": {
-        "customer": "المريض"
+        "customer": "العميل"
       },
       "training_center": {
         "customer": "الطالب"
@@ -12076,14 +12950,14 @@
       },
       "workflow": {
         "waiting": "في الانتظار",
-        "checkedIn": "تم الاستقبال",
-        "withNurse": "مع الممرض",
-        "withDoctor": "مع الطبيب",
-        "completed": "مكتملة",
+        "checkedIn": "تم تسجيل الحضور",
+        "withNurse": "قيد التنفيذ",
+        "withDoctor": "قيد التنفيذ",
+        "completed": "تم الانتهاء",
         "archived": "مؤرشفة",
         "planning": "التخطيط",
         "assigned": "مُعيَّن",
-        "inProgress": "مع الطبيب"
+        "inProgress": "قيد التنفيذ"
       },
       "widgets": {
         "operationSummary": "ملخص العملية",
@@ -12133,7 +13007,7 @@
     },
     "workflows": {
       "clinic": {
-        "label": "رحلة مريض العيادة"
+        "label": "رحلة العملية"
       },
       "construction": {
         "label": "دورة عمل البناء (مثال)"
@@ -12166,10 +13040,10 @@
         "openCustomer360": "فتح ملف العميل 360",
         "viewCustomer": "عرض العميل",
         "checkIn": "تسجيل الحضور",
-        "sendToNurse": "إرسال إلى الممرض",
+        "sendToNurse": "بدء الخدمة",
         "completeTriage": "إكمال الفرز",
-        "sendToDoctor": "إرسال إلى الطبيب",
-        "completeVisit": "إكمال الزيارة",
+        "sendToDoctor": "تحويل إلى مقدم الخدمة",
+        "completeVisit": "تم الانتهاء",
         "archive": "أرشفة",
         "markNoShow": "لم يحضر",
         "cancelAppointment": "إلغاء",
@@ -12196,13 +13070,13 @@
         "cancel": "إلغاء",
         "checkInTitle": "تسجيل حضور هذه العملية؟",
         "checkInDescription": "سيتم تعليم العميل كحاضر.",
-        "sendToNurseTitle": "إرسال المريض إلى الممرضة؟",
-        "sendToNurseDescription": "ستتغير الحالة إلى مع الممرضة.",
+        "sendToNurseTitle": "بدء تقديم الخدمة للعميل؟",
+        "sendToNurseDescription": "ستتغير الحالة إلى قيد التنفيذ.",
         "completeTriageTitle": "إكمال الفرز؟",
         "completeTriageDescription": "سيتم تسجيل إكمال الفرز في الخط الزمني.",
-        "sendToDoctorTitle": "إرسال المريض إلى الطبيب؟",
-        "sendToDoctorDescription": "ستتغير الحالة إلى مع الطبيب.",
-        "completeTitle": "إكمال هذه الزيارة؟",
+        "sendToDoctorTitle": "تحويل العميل إلى مقدم الخدمة؟",
+        "sendToDoctorDescription": "ستتغير الحالة إلى قيد التنفيذ.",
+        "completeTitle": "تأكيد الانتهاء من هذه العملية؟",
         "completeDescription": "سيتم تعليم العملية كمكتملة.",
         "archiveTitle": "أرشفة هذه العملية؟",
         "archiveDescription": "ستنقل الزيارة المكتملة إلى المؤرشف.",
@@ -12591,8 +13465,8 @@
     "roles": {
       "receptionist": "موظف استقبال",
       "cashier": "أمين صندوق",
-      "nurse": "ممرض/ة",
-      "doctor": "طبيب",
+      "nurse": "مساعد مقدم الخدمة",
+      "doctor": "مقدم الخدمة",
       "manager": "مدير"
     },
     "header": {
@@ -12758,7 +13632,7 @@
     "journey.appointment": "موعد",
     "journey.deposit": "عربون مدفوع",
     "journey.waiting": "في الانتظار",
-    "journey.doctor": "طبيب",
+    "journey.doctor": "مقدم الخدمة",
     "journey.completed": "مكتمل",
     "journey.website": "موقع إلكتروني",
     "journey.candidate": "مرشح",
@@ -12773,8 +13647,8 @@
     "workflow.waiting": "انتظار",
     "workflow.confirmed": "مؤكد",
     "workflow.checkedIn": "تم تسجيل الحضور",
-    "workflow.withNurse": "مع الممرض/ة",
-    "workflow.doctor": "طبيب",
+    "workflow.withNurse": "قيد التنفيذ",
+    "workflow.doctor": "مقدم الخدمة",
     "workflow.cashier": "أمين صندوق",
     "workflow.completed": "مكتمل",
     "workflow.archived": "مؤرشف",
@@ -12799,7 +13673,7 @@
       "booked": "محجوز",
       "confirmed": "مؤكد",
       "checked_in": "تم تسجيل الحضور",
-      "doctor": "الطبيب",
+      "doctor": "مقدم الخدمة",
       "cashier": "الصندوق",
       "completed": "مكتمل"
     },
@@ -12839,7 +13713,7 @@
       "rec_upgrade": "عميل VIP — باقة الخدمة المميزة لها معدل قبول مرتفع.",
       "rec_reassign": "وقت الانتظار يتجاوز الهدف — مورد بديل متاح.",
       "rec_whatsapp": "يفضل العميل واتساب — آخر التفاعلات كانت عبر الرسائل.",
-      "rec_task": "نتائج المختبر معلقة — أنشئ مهمة متابعة لفريق التمريض.",
+      "rec_task": "نتائج المختبر معلقة — أنشئ مهمة متابعة للفريق المختص.",
       "rec_escalate": "تم رصد مخاطر انقطاع مرتفعة من أنماط التفاعل."
     }
   },
@@ -13019,7 +13893,7 @@
         "taskCompleted": {
           "title": "اكتملت المهمة",
           "description": "تم رفع نتائج المختبر لسارة حسن",
-          "actor": "الممرضة · هana"
+          "actor": "فريق الخدمة · هناء"
         },
         "aiSummary": {
           "title": "تم إنشاء ملخص ذكاء",
@@ -13148,7 +14022,8 @@
       "kanban": "كانبان",
       "pipeline": "خط الأنابيب",
       "timeline": "الخط الزمني",
-      "dashboard": "لوحة التحكم"
+      "dashboard": "لوحة التحكم",
+      "followUpDrafts": "مسودات المتابعة"
     },
     "workspace": {
       "title": "العملاء المحتملون",
@@ -13247,7 +14122,9 @@
       "count": "{{shown}} / {{total}} عميل محتمل",
       "openOwnerWorkspace": "فتح Employee360 لـ {{name}}",
       "openCompany360": "فتح Company360 لـ {{name}}",
-      "assignOwnerHint": "اختر مسؤولاً لـ {{name}}.",
+      "ownerUnknownLabel": "مسؤول غير معروف",
+      "unknownSource": "مصدر غير معروف",
+      "assignOwnerHint": "التعيين لمستخدم (موظف)، وليس لقسم. القسم يظهر بجانب الاسم للتوضيح فقط. اختر مسؤولاً لـ {{name}}.",
       "createActivityHint": "سجّل ملاحظة نشاط لـ {{name}}.",
       "activityCreated": "تم حفظ النشاط",
       "deleteConfirmTitle": "حذف هذا العميل المحتمل؟",
@@ -13265,7 +14142,9 @@
         "archiveFailed": "تعذّرت أرشفة العميل المحتمل",
         "deleteFailed": "تعذّر حذف العميل المحتمل",
         "actionUnsupported": "هذا الإجراء غير متاح",
-        "whatsappPlatformFailed": "تم فتح واتساب الخارجي — مركز المحادثات غير متاح"
+        "whatsappPlatformFailed": "تم فتح واتساب الخارجي — مركز المحادثات غير متاح",
+        "completeDemoFailed": "تعذر إكمال التجربة",
+        "demoCompletedStageMissing": "مرحلة الفرصة غير مهيأة لهذا المسار"
       },
       "rowActions": {
         "menuAriaLabel": "إجراءات العميل المحتمل",
@@ -13274,6 +14153,8 @@
         "edit": "تعديل",
         "createActivity": "إنشاء نشاط",
         "createOpportunity": "إنشاء فرصة",
+        "createQuote": "إنشاء عرض سعر",
+        "quoteNeedsOpportunity": "انقل العميل لعمود فرصة في الكانبان الأول، وبعدين اعمل عرض السعر.",
         "call": "اتصال",
         "whatsapp": "واتساب",
         "email": "بريد",
@@ -13291,7 +14172,9 @@
           "assignment": "التعيين",
           "conversion": "التحويل",
           "dangerous": "إجراءات خطرة"
-        }
+        },
+        "completeDemo": "إكمال التجربة",
+        "demoCompleted": "تم تأكيد اكتمال التجربة"
       }
     },
     "columns": {
@@ -13326,6 +14209,7 @@
       "contacted": "تم التواصل",
       "qualified": "مؤهل",
       "demo_scheduled": "عرض توضيحي",
+      "demo_completed": "فرصة",
       "proposal_sent": "تم إرسال عرض السعر",
       "proposal": "تم إرسال عرض السعر",
       "negotiation": "تفاوض",
@@ -13532,6 +14416,7 @@
       "contacted": "تم التواصل",
       "qualified": "مؤهل",
       "demo_scheduled": "عرض توضيحي",
+      "demo_completed": "فرصة",
       "proposal": "تم إرسال عرض السعر",
       "proposal_sent": "تم إرسال عرض السعر",
       "negotiation": "تفاوض",
@@ -13541,6 +14426,57 @@
       "lost": "مفقود",
       "archived": "مؤرشف",
       "nurturing": "قيد الرعاية"
+    },
+    "followUpDrafts": {
+      "title": "مسودات متابعة المبيعات",
+      "subtitle": "راجع رسائل المتابعة التي أنشأها الذكاء الاصطناعي قبل وصولها للعميل. الموافقة ترسل عبر مسار القناة الحالي.",
+      "refresh": "تحديث",
+      "empty": "لا توجد عناصر متابعة في هذا العرض.",
+      "states": {
+        "unconfigured": {
+          "title": "متابعة المبيعات غير مُعدّة بعد",
+          "body": "لم تُحفظ أي إعدادات متابعة لهذه الشركة، لذلك لا تُنشأ مسودات. يجب على المسؤول تفعيل المتابعة وحفظها أولًا."
+        },
+        "disabled": {
+          "title": "متابعة المبيعات معطّلة",
+          "body": "المتابعة متوقفة، لذلك لا تُنشأ مسودات جديدة. المسودات الموجودة، إن وُجدت، تبقى ظاهرة هنا."
+        },
+        "openSettings": "فتح الإعدادات ← المبيعات ← المتابعة"
+      },
+      "loadError": "تعذر تحميل مسودات المتابعة",
+      "noPermission": "لا يمكنك عرض مسودات المتابعة",
+      "noPermissionBody": "اطلب من المسؤول صلاحية leads.view.",
+      "message": "الرسالة المقترحة",
+      "scheduledFor": "مجدولة لـ",
+      "reason": "سبب الجدولة",
+      "productInterest": "اهتمام بالمنتج: {{name}}",
+      "attempt": "المحاولة {{n}}",
+      "openLead": "فتح العميل المحتمل",
+      "save": "حفظ التعديلات",
+      "saved": "تم تحديث المسودة",
+      "saveFailed": "تعذر حفظ المسودة",
+      "approveSend": "موافقة وإرسال",
+      "approved": "تمت الموافقة وإرسال المتابعة",
+      "approveFailed": "تعذر الموافقة على المتابعة",
+      "reject": "رفض",
+      "rejected": "تم رفض المسودة",
+      "rejectFailed": "تعذر رفض المسودة",
+      "reschedule": "إعادة الجدولة",
+      "rescheduled": "أُعيدت جدولة المسودة",
+      "rescheduleFailed": "تعذر إعادة الجدولة",
+      "filters": {
+        "pending_review": "بانتظار المراجعة",
+        "sent": "مُرسلة",
+        "failed": "فشلت",
+        "cancelled": "ملغاة",
+        "all": "الكل"
+      },
+      "status": {
+        "pending_review": "بانتظار المراجعة",
+        "sent": "مُرسلة",
+        "failed": "فشلت",
+        "cancelled": "ملغاة"
+      }
     }
   },
   "leads360": {
@@ -13811,7 +14747,7 @@
       "lead": "العميل المحتمل",
       "owner": "المالك",
       "name": "اسم الفرصة",
-      "stage": "المرحلة",
+      "stage": "الحالة",
       "pipeline": "خط الأنابيب",
       "amount": "الإيراد المتوقع",
       "currency": "العملة",
@@ -13908,7 +14844,7 @@
     "subtitle": "إدارة الصفقات من التأهيل حتى الإغلاق — المنتجات وعروض الأسعار داخل كل فرصة.",
     "nav": {
       "pipeline": "خط الأنابيب",
-      "table": "جدول",
+      "table": "فرص",
       "timeline": "الجدول الزمني"
     },
     "permissionDenied": "لا يمكنك عرض الفرص",
@@ -14096,6 +15032,66 @@
       "won": "فوز",
       "lost": "خسارة",
       "unknown": "مرحلة"
+    },
+    "table": {
+      "permissionTitle": "ليست لديك صلاحية عرض الفرص",
+      "permissionBody": "اطلب من المسؤول صلاحية opportunities.view.",
+      "errorTitle": "تعذّر تحميل الفرص",
+      "errorBody": "حاول مرة أخرى بعد لحظات.",
+      "emptyTitle": "لا توجد فرص بعد",
+      "emptyBody": "الفرصة تظهر هنا بعد نقل العميل المحتمل لعمود فرصة في كانبان العملاء المحتملين.",
+      "searchPlaceholder": "ابحث في الفرصة أو العميل أو جهة الاتصال…",
+      "stageChanged": "تم تحديث المرحلة",
+      "filters": {
+        "search": "بحث",
+        "stage": "الحالة",
+        "owner": "المالك",
+        "outcome": "النتيجة",
+        "allStages": "كل الحالات",
+        "allOwners": "كل الملاك",
+        "allOutcomes": "الكل",
+        "outcomeOpen": "مفتوحة",
+        "outcomeWon": "فوز",
+        "outcomeLost": "خسارة"
+      },
+      "columns": {
+        "opportunity": "الفرصة / العميل",
+        "product": "المنتج / الخدمة",
+        "stage": "الحالة",
+        "expectedRevenue": "الإيراد المتوقع",
+        "probability": "الاحتمالية",
+        "owner": "المالك",
+        "updatedAt": "آخر تحديث",
+        "actions": "الإجراءات"
+      },
+      "fallbacks": {
+        "noCustomer": "لا يوجد عميل مرتبط",
+        "noProduct": "لا يوجد منتج مرتبط"
+      },
+      "rowActions": {
+        "menu": "إجراءات الصف",
+        "open": "فتح Opportunity360",
+        "openNamed": "فتح {{name}}",
+        "changeStage": "تغيير المرحلة",
+        "archive": "أرشفة"
+      },
+      "lostDialog": {
+        "title": "تحديد الفرصة كخسارة",
+        "description": "أدخل سببًا قبل تحديد «{{name}}» كخسارة.",
+        "reasonLabel": "سبب الخسارة",
+        "reasonPlaceholder": "مثال: خفض الميزانية، اختيار منافس…",
+        "confirm": "تأكيد الخسارة"
+      },
+      "errors": {
+        "stageChangeFailed": "تعذّر تغيير المرحلة",
+        "lostReasonRequired": "سبب الخسارة مطلوب"
+      },
+      "pagination": {
+        "empty": "لا نتائج",
+        "range": "{{from}}–{{to}} من {{total}}",
+        "previous": "السابق",
+        "next": "التالي"
+      }
     }
   },
   "tickets": {
@@ -14392,7 +15388,7 @@
   "products": {
     "subtitle": "كتالوج قابل لإعادة الاستخدام للمنتجات والخدمات للفرص وعروض الأسعار.",
     "create": "منتج جديد",
-    "createHint": "سجّل ما سيبيعه فريق المبيعات وسعره — التفاصيل الإضافية تُكمَل لاحقًا من Product 360.",
+    "createHint": "سجّل ما سيبيعه فريق المبيعات وسعره — التفاصيل الإضافية تُكمَل لاحقًا من صفحة المنتج.",
     "addCategory": "إضافة فئة",
     "categoryHint": "الفئات تسهّل تصفح الكتالوج عند ربط المنتجات بعروض الأسعار.",
     "createAction": "إنشاء",
@@ -14405,11 +15401,48 @@
     "emptyBody": "أضف المنتجات مرة واحدة، ثم اربطها بالفرص وعروض الأسعار.",
     "loading": "جارٍ تحميل الكتالوج…",
     "searchPlaceholder": "ابحث في المنتجات…",
+    "view": {
+      "list": "قائمة",
+      "grid": "مربعات"
+    },
+    "images": {
+      "title": "الصور",
+      "hint": "حتى خمس صور. تظهر في عرض المربعات وتُرسل على واتساب عندما يسأل أحد المساعد عن هذا المنتج وحده.",
+      "add": "إضافة صورة",
+      "remove": "حذف الصورة",
+      "type": "استخدم صورة JPEG أو PNG أو WebP.",
+      "uploading": "جارٍ الرفع…",
+      "saved": "تم حفظ الصور",
+      "saveFailed": "تعذّر حفظ الصور"
+    },
     "integrationHint": "المنتجات تغذي بنود الفرصة ومنشئ عرض السعر.",
     "openOpportunities": "فتح الفرص",
     "sections": {
       "identity": "هوية المنتج",
-      "commercial": "الشروط التجارية"
+      "commercial": "الشروط التجارية",
+      "billing": "الفوترة والاشتراك",
+      "inventory": "الوحدة والمخزون"
+    },
+    "toggle": {
+      "label": "فعّال",
+      "hint": "المنتجات غير الفعّالة تبقى في الكتالوج لكنها لا تظهر لمساعد الذكاء الاصطناعي ولا على الموقع العام.",
+      "on": "تم التفعيل",
+      "off": "تم إلغاء التفعيل",
+      "failed": "تعذّر تحديث حالة المنتج"
+    },
+    "billing": {
+      "mode": "نموذج التسعير",
+      "oneTime": "دفعة واحدة",
+      "recurring": "اشتراك",
+      "interval": "دورة الفوترة",
+      "subscriptionPrice": "سعر الاشتراك",
+      "hint": "للخدمات المباعة شهرياً (أو سنوياً)، حدّد سعر الاشتراك. عند سؤال العميل عن السعر يظهر هذا المبلغ مع دورة الفوترة.",
+      "intervals": {
+        "month": "شهري",
+        "year": "سنوي",
+        "quarter": "ربع سنوي"
+      },
+      "pricePer": "{{price}} / {{interval}}"
     },
     "actions": {
       "generateSku": "توليد رمز"
@@ -14430,10 +15463,17 @@
       "category": "الفئة",
       "basePrice": "سعر البيع",
       "currency": "العملة",
+      "priceTaxMode": "معاملة الضريبة",
+      "taxPercent": "نسبة الضريبة",
       "description": "وصف مختصر",
       "brand": "العلامة",
+      "aliases": "أسماء بديلة / مرادفات البحث",
       "cost": "التكلفة (اختياري)",
-      "categoryName": "اسم الفئة"
+      "categoryName": "اسم الفئة",
+      "unit": "الوحدة",
+      "trackInventory": "تتبع المخزون",
+      "stockQuantity": "الكمية المتوفرة",
+      "tags": "الوسوم"
     },
     "placeholders": {
       "name": "مثال: باقة استشارة عيادة",
@@ -14441,11 +15481,48 @@
       "category": "بدون فئة",
       "description": "ماذا يحصل عليه العميل — يظهر لفريق المبيعات في العرض",
       "brand": "علامة أو خط منتج (اختياري)",
+      "aliases": "سطر لكل مرادف، مثل:\nالسيستم المحاسبي\nAccounting Suite\nBuchhaltung Pro",
       "cost": "التكلفة الداخلية",
       "categoryName": "مثال: خدمات"
     },
+    "descriptionEditor": {
+      "bold": "عريض (واتساب *نص*)",
+      "italic": "مائل (واتساب _نص_)",
+      "hint": "اضغط Enter لسطر جديد على واتساب. استخدم عريض/مائل — واتساب يعرضهم للعميل. ألوان النص غير مدعومة من واتساب (قيود ميتا)."
+    },
     "hints": {
-      "cost": "لحساب هامش الربح التقريبي. اتركه فارغًا إن لم يكن معروفًا."
+      "cost": "لحساب هامش الربح التقريبي. اتركه فارغًا إن لم يكن معروفًا.",
+      "aliases": "تُملأ تلقائيًا من الاسم والوصف قبل الحفظ. يمكنك مراجعتها أو تعديلها. الكلمات العامة وحدها مثل «سيستم» مرفوضة.",
+      "inventory": "فعّل التتبع إذا كان المنتج يُباع من مخزون معدود.",
+      "priceTaxMode": "حدّد هل سعر البيع الذي أدخلته يشمل الضريبة أم لا.",
+      "priceTaxModeUnspecified": "يؤثر فقط على وصف الذكاء الاصطناعي للمنتج: لن يذكر الضريبة للعملاء. لا يغيّر المحاسبة ولا حساب السعر.",
+      "taxPercent": "أدخل النسبة فيُحسب الصافي والإجمالي تلقائياً."
+    },
+    "aliasGeneration": {
+      "pending": "جارٍ توليد مرادفات البحث…",
+      "completed": "مرادفات البحث جاهزة.",
+      "failed": "تعذّر توليد المرادفات مؤقتًا. تم الإبقاء على المرادفات الحالية.",
+      "afterSave": "بعد حفظ المنتج تُولَّد مرادفات البحث تلقائيًا وتظهر في صفحة المنتج.",
+      "previewHint": "أدخل الاسم والوصف — تُملأ مرادفات البحث هنا تلقائيًا قبل الحفظ.",
+      "retry": "إعادة توليد المرادفات",
+      "generate": "توليد مرادفات البحث",
+      "retrying": "جارٍ إعادة التوليد…",
+      "retryStarted": "بدأ توليد مرادفات البحث.",
+      "retryFailed": "تعذّر بدء التوليد."
+    },
+    "tax": {
+      "inclusive": "السعر شامل الضريبة",
+      "exclusive": "السعر غير شامل الضريبة",
+      "unspecified": "عدم ذكر الضريبة",
+      "internalBreakdown": "الحساب الداخلي",
+      "net": "صافي السعر",
+      "amount": "مبلغ الضريبة",
+      "customerTotal": "السعر الكلي للعميل",
+      "customerHint": "العميل في الشات وعلى الموقع يرى السعر الكلي فقط. تفاصيل الضريبة تظهر إذا سأل هل السعر شامل الضريبة."
+    },
+    "inventory": {
+      "tracked": "نعم — تتبع الكمية",
+      "notTracked": "لا — بدون مخزون"
     },
     "status": {
       "active": "نشط",
@@ -14456,11 +15533,132 @@
       "service": "خدمة",
       "subscription": "اشتراك",
       "bundle": "حزمة",
-      "addon": "إضافة"
+      "addon": "إضافة",
+      "realEstate": "عقار"
     },
     "filter": {
       "allTypes": "كل الأنواع",
       "allStatus": "كل الحالات"
+    },
+    "workspace": {
+      "close": "إغلاق",
+      "sku": "رمز المنتج",
+      "margin": "هامش الربح",
+      "tax": "الضريبة",
+      "retry": "إعادة المحاولة",
+      "loadError": "تعذّر تحميل المنتج",
+      "loadErrorBody": "تحقق من الاتصال ثم أعد المحاولة.",
+      "noDescription": "لا يوجد وصف بعد.",
+      "sections": {
+        "identity": "بيانات المنتج",
+        "pricing": "التسعير",
+        "inventory": "المخزون"
+      },
+      "edit": "تعديل البيانات",
+      "save": "حفظ",
+      "saved": "تم حفظ بيانات المنتج",
+      "saveFailed": "تعذّر حفظ بيانات المنتج",
+      "delete": "حذف",
+      "deleteTitle": "حذف المنتج",
+      "deleteBody": "سيتم حذف \"{{name}}\" من الكتالوج ولن يظهر في البحث أو واتساب. لا يمكن التراجع عن هذا من هذه الشاشة.",
+      "deleted": "تم حذف المنتج",
+      "deleteFailed": "تعذّر حذف المنتج",
+      "tabs": {
+        "overview": "نظرة عامة",
+        "pricing": "التسعير",
+        "availability": "التوافر",
+        "documents": "المستندات",
+        "ai": "الرؤى",
+        "audit": "التدقيق"
+      },
+      "fields": {
+        "type": "النوع",
+        "category": "الفئة",
+        "status": "الحالة",
+        "brand": "العلامة",
+        "unit": "الوحدة",
+        "cost": "التكلفة",
+        "inventory": "المخزون",
+        "price": "سعر البيع",
+        "customerPrice": "السعر الكلي للعميل",
+        "taxMode": "معاملة الضريبة",
+        "taxPercent": "نسبة الضريبة",
+        "netPrice": "صافي السعر"
+      },
+      "units": {
+        "each": "وحدة",
+        "piece": "قطعة",
+        "box": "صندوق",
+        "pack": "عبوة",
+        "kg": "كجم",
+        "g": "جرام",
+        "liter": "لتر",
+        "meter": "متر",
+        "sqm": "متر مربع",
+        "hour": "ساعة",
+        "day": "يوم"
+      },
+      "taxClasses": {
+        "standard": "قياسية"
+      },
+      "inventoryTracked": "{{count}} {{unit}}",
+      "inventoryNotTracked": "غير متتبَّع",
+      "events": {
+        "product_created": "تم إنشاء المنتج",
+        "product_updated": "تم تحديث المنتج",
+        "price_changed": "تغيّر السعر",
+        "category_changed": "تغيّرت الفئة",
+        "product_archived": "تم أرشفة المنتج",
+        "regional_price_changed": "تغيّر السعر الإقليمي",
+        "bundle_updated": "تم تحديث الحزمة"
+      },
+      "pricing": {
+        "global": "سعر القائمة",
+        "subscription": "الاشتراك · {{price}} / {{interval}}",
+        "intervals": {
+          "month": "شهر",
+          "year": "سنة",
+          "quarter": "ربع سنة"
+        },
+        "regional": "أسعار المناطق",
+        "regionFallback": "منطقة",
+        "emptyRegional": "لا توجد أسعار إقليمية بعد.",
+        "country": "الدولة",
+        "countryPlaceholder": "SA",
+        "localPrice": "السعر المحلي",
+        "addRegional": "إضافة سعر إقليمي"
+      },
+      "availability": {
+        "title": "التوافر",
+        "body": "توافر المنتج حسب الدولة والسوق يتبع أسعار المناطق المسجّلة لهذا المنتج."
+      },
+      "documents": {
+        "emptyTitle": "لا توجد مستندات بعد",
+        "emptyBody": "ستظهر صور المنتج ومستنداته هنا."
+      },
+      "history": {
+        "emptyTitle": "لا يوجد سجل بعد",
+        "emptyBody": "تظهر هنا تغييرات السعر والفئة."
+      },
+      "ai": {
+        "marketsTitle": "أكثر الأسواق مبيعًا",
+        "marketsBody": "تظهر هذه الرؤية عندما يتوفر سجل مبيعات.",
+        "winRateTitle": "معدل الفوز المعتاد",
+        "winRateBody": "تحتاج هذه الرؤية إلى فرص مغلقة بالفوز.",
+        "bundlesTitle": "حزم مقترحة",
+        "bundlesBody": "تظهر اقتراحات الحزم هنا عند توفر صفقات كافية."
+      },
+      "audit": {
+        "empty": "لا توجد قيود تدقيق.",
+        "emptyTitle": "لا توجد أحداث تدقيق بعد",
+        "emptyBody": "تظهر هنا إجراءات المستخدمين على هذا المنتج.",
+        "unknownActor": "مستخدم غير معروف",
+        "columns": {
+          "actor": "المستخدم",
+          "action": "الإجراء",
+          "timestamp": "الوقت"
+        }
+      }
     }
   },
   "quotes": {
@@ -14490,6 +15688,39 @@
         "no_whatsapp_conversation": "لم يراسلك العميل على واتساب بعد.",
         "whatsapp_window_closed": "آخر رسالة من العميل على واتساب أقدم من 24 ساعة.",
         "unknown": "غير متاح."
+      }
+    },
+    "sendRequests": {
+      "title": "موافقات إرسال العروض",
+      "subtitle": "طلبات إرسال من الذكاء الاصطناعي بانتظار موافقة بشرية بصلاحية quotes.send. الموافقة تستخدم خدمة الإرسال الحالية فقط.",
+      "empty": "لا توجد طلبات إرسال معلّقة لهذه الشركة.",
+      "refresh": "تحديث",
+      "backToQuotes": "العودة لعروض الأسعار",
+      "preview": "معاينة العرض",
+      "previewTitle": "معاينة عرض السعر",
+      "approveSend": "موافقة وإرسال",
+      "reject": "رفض",
+      "cancel": "إلغاء",
+      "company": "الشركة",
+      "total": "الإجمالي",
+      "requestedAt": "وقت الطلب",
+      "quoteStatus": "حالة العرض",
+      "notSentHint": "لم يُرسل للعميل بعد",
+      "confirmApproveTitle": "إرسال عرض السعر؟",
+      "confirmApproveBody": "الموافقة على إرسال {{quote}} عبر {{channel}}. يستخدم مسار الإرسال الحالي وقد يرسل رسالة للعميل محليًا فقط عند السماح بالإرسال الخارجي.",
+      "confirmRejectTitle": "رفض طلب الإرسال؟",
+      "confirmRejectBody": "رفض طلب الإرسال للذكاء الاصطناعي لـ {{quote}}. لن تُرسل أي رسالة.",
+      "rejectSuccess": "تم رفض طلب الإرسال",
+      "rejectFailed": "تعذّر رفض طلب الإرسال",
+      "approveNotSent": "اكتملت الموافقة لكن التسليم لم يُؤكَّد كمُرسل.",
+      "loadFailed": "تعذّر تحميل طلبات الإرسال",
+      "loadFailedBody": "تحقق من الاتصال ثم أعد المحاولة.",
+      "permissionDenied": "لا يمكنك الموافقة على إرسال العروض",
+      "permissionDeniedBody": "اطلب من المسؤول صلاحية quotes.send.",
+      "status": {
+        "pending_human_approval": "بانتظار الموافقة",
+        "sent": "مُرسل",
+        "failed": "فشل الإرسال"
       }
     },
     "subtitle": "عروض أسعار تجارية مرتبطة بالفرص وكتالوج المنتجات.",

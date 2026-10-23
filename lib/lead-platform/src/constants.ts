@@ -23,6 +23,7 @@ export const LEAD_LIFECYCLE_STATUSES = [
   "qualified",
   "contacted",
   "demo_scheduled",
+  "demo_completed",
   "proposal_sent",
   "negotiation",
   "won",
@@ -86,7 +87,10 @@ export const DEFAULT_STAGE_TRANSITIONS: Record<string, string[]> = {
   new: ["qualified", "contacted", "lost", "archived"],
   qualified: ["contacted", "demo_scheduled", "lost", "archived"],
   contacted: ["demo_scheduled", "proposal_sent", "lost", "archived"],
-  demo_scheduled: ["proposal_sent", "negotiation", "lost", "archived"],
+  // Demo booked; cancel → contacted. Completion is human-only → demo_completed (not proposal_sent).
+  demo_scheduled: ["contacted", "demo_completed", "lost", "archived"],
+  // Demo confirmed by authorized human; proposal_sent only after a real quote/proposal send.
+  demo_completed: ["proposal_sent", "negotiation", "lost", "archived"],
   proposal_sent: ["negotiation", "won", "lost", "archived"],
   negotiation: ["won", "lost", "archived"],
   won: ["converted", "archived"],

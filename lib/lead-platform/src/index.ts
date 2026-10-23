@@ -31,6 +31,9 @@ import {
   createNoopLeadNotificationPort,
 } from "./ports/noop-ports.js";
 import { createSupabaseLeadRepository } from "./repositories/supabase-lead-repositories.js";
+import { createSupabaseLeadSaleCompletion } from "./repositories/supabase-sale-completion.js";
+import { createSupabaseCompanyLeadQualificationSettingsStore } from "./repositories/supabase-lead-qualification-settings-store.js";
+import type { CompanyLeadQualificationSettingsStore } from "./policies/company-lead-qualification-settings.js";
 import { LeadCommandService } from "./services/lead-command-service.js";
 import { LeadQueryService } from "./services/lead-query-service.js";
 
@@ -48,11 +51,20 @@ export type CreateLeadPlatformServicesOptions = {
   audit?: LeadAuditPort;
   /** Enables "Convert → Customer + Opportunity"; omitted = customer-only conversion. */
   opportunityConversion?: LeadOpportunityConversionPort | null;
+  /** Optional Lead → Opportunity stage synchronization after changeLeadStage. */
+  opportunityStageSync?: import("./ports/lead-platform-ports.js").LeadOpportunityStageSyncPort | null;
   cache?: LeadQueryCachePort;
   /** When false, skip Assignment Governance (tests only). Default: enabled. */
   assignmentGovernance?: boolean | null;
   /** When false, skip assignment audit (tests only). Default: enabled. */
   assignmentAudit?: boolean | AssignmentAuditPort | null;
+  /**
+   * Company qualification settings store (P1d).
+   * - omit / undefined → Supabase-backed store (lead_qualification_settings)
+   * - null → disabled (pure P1b defaults at qualify time)
+   * - InMemory / custom → tests or alternate wiring
+   */
+  qualificationSettingsStore?: CompanyLeadQualificationSettingsStore | null;
 };
 
 export function createLeadPlatformServices(
@@ -88,6 +100,11 @@ export function createLeadPlatformServices(
               }),
             );
 
+  const qualificationSettingsStore =
+    options.qualificationSettingsStore !== undefined
+      ? options.qualificationSettingsStore
+      : createSupabaseCompanyLeadQualificationSettingsStore(client);
+
   const commands = new LeadCommandService({
     leads,
     assignees,
@@ -98,6 +115,9 @@ export function createLeadPlatformServices(
     assignmentGovernance,
     assignmentAudit,
     opportunityConversion: options.opportunityConversion ?? null,
+    opportunityStageSync: options.opportunityStageSync ?? null,
+    qualificationSettingsStore,
+    saleCompletion: createSupabaseLeadSaleCompletion(client),
   });
   const queries = new LeadQueryService({ leads, cache });
   const reads = createLeadReadPort(queries);
@@ -107,6 +127,32 @@ export function createLeadPlatformServices(
 
 export * from "./constants.js";
 export * from "./errors.js";
+export * from "./validators/lead-merge-identity.js";
+export {
+  assertStageTransition,
+  isStageTransitionAllowed,
+  selectAssignmentCandidate,
+  stageTransitionBlockReason,
+  type StageAuditSource,
+  type StageTransitionOptions,
+} from "./validators/stage-transition-validator.js";
+export {
+  extractSalesEvidenceFromConversation,
+  salesEvidenceAuditSnapshot,
+} from "./policies/conversation-sales-evidence.js";
+export {
+  conversationIsPublicWebWidget,
+  PUBLIC_WEB_WIDGET_PROVIDER,
+  qualifyOpenLeadFromCustomerTurn,
+  shouldApplyAutomaticSalesQualification,
+} from "./policies/automatic-sales-qualification.js";
+export { createSupabaseLeadSaleCompletion } from "./repositories/supabase-sale-completion.js";
+export { preserveTrustedConversationCustomer } from "./services/preserve-conversation-customer.js";
+export {
+  assertLeadActor,
+  assertLeadCompanyAccess,
+  assertLeadPermission,
+} from "./validators/lead-guards.js";
 export * from "./types/index.js";
 export * from "./events/index.js";
 export * from "./ports/index.js";
@@ -118,8 +164,11 @@ export {
   LeadCommandService,
   type LeadConversionMode,
   type LeadConversionResult,
+  type QualifyLeadInput,
+  type QualifyLeadResult,
 } from "./services/lead-command-service.js";
 export { LeadQueryService } from "./services/lead-query-service.js";
+export * from "./policies/qualify-lead-policy-integration.js";
 export {
   createNoopLeadAssigneeResolverPort,
   createNoopLeadAuditPort,
@@ -129,9 +178,17 @@ export {
   createSupabaseLeadAuditPort,
 } from "./ports/noop-ports.js";
 export * from "./smart-capture/capture-types.js";
+export * from "./smart-capture/capture-identity.js";
 export {
   createSupabaseLeadSmartCapture,
   type LeadSmartCapture,
   type LeadSmartCaptureServices,
 } from "./smart-capture/supabase-smart-capture.js";
 export * from "./intelligence/index.js";
+export * from "./policies/lead-qualification-policy.js";
+export * from "./policies/company-lead-qualification-settings.js";
+export {
+  createSupabaseCompanyLeadQualificationSettingsStore,
+  mapLeadQualificationSettingsRow,
+  leadQualificationSettingsToRow,
+} from "./repositories/supabase-lead-qualification-settings-store.js";

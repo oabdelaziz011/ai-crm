@@ -136,6 +136,27 @@ describe("Phase 2.1 — public Web Chat in the Omnichannel inbox", () => {
     assert.ok(ids.includes("web-public"));
   });
 
+  it("2b. a human-assigned internal handoff stays hidden; a public handoff stays visible", () => {
+    const internalAssigned = row({
+      ...internalAiChat,
+      id: "web-internal-assigned",
+      state: "transferred_to_human",
+      assigned_user_id: "user-1",
+    });
+    const publicAssigned = row({
+      ...publicChat,
+      id: "web-public-assigned",
+      state: "transferred_to_human",
+      assigned_user_id: "user-1",
+    });
+    for (const who of [WEB_CHAT_AGENT, access([], { isSuperAdmin: true })]) {
+      const ids = inbox([internalAssigned, publicAssigned, internalAiChat], who).map((item) => item.id);
+      assert.equal(ids.includes("web-internal-assigned"), false);
+      assert.equal(ids.includes("web-internal"), false);
+      assert.equal(ids.includes("web-public-assigned"), true);
+    }
+  });
+
   it("2. internal AI chat (and a spoofed provider) never appears, even with Web Chat access", () => {
     for (const who of [WEB_CHAT_AGENT, access([], { isSuperAdmin: true })]) {
       const ids = inbox(ALL_ROWS, who).map((item) => item.id);

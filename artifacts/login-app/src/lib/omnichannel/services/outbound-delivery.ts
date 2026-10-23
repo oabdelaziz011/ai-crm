@@ -106,6 +106,26 @@ export function buildOutboundSendError(issue: OutboundRouteIssue): OutboundSendE
   };
 }
 
+const SEND_ERROR_LABEL_KEYS: Partial<Record<OutboundSendError["code"], string>> = {
+  dispatch_failed: "omnichannel.delivery.dispatchFailed",
+  send_failed: "omnichannel.delivery.noteSaveFailed",
+};
+
+const NETWORK_ERROR_RE = /failed to fetch|networkerror|load failed|network request failed/i;
+
+export function describeOutboundSendError(
+  error: OutboundSendError,
+  t: (key: string) => string,
+): string {
+  const labelKey = SEND_ERROR_LABEL_KEYS[error.code];
+  const message = labelKey ? t(labelKey) : error.message;
+  if (!error.detail) return message;
+  const detail = NETWORK_ERROR_RE.test(error.detail)
+    ? t("omnichannel.delivery.serverUnreachable")
+    : error.detail;
+  return `${message} ${detail}`;
+}
+
 export function channelSettingsHref(companyChannelId: string | null | undefined): string {
   if (companyChannelId) return `/dashboard/channels?channelId=${encodeURIComponent(companyChannelId)}`;
   return "/dashboard/channels";

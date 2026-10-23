@@ -99,19 +99,20 @@ export function isToolbarActionVisible(input: {
     case "internal_note":
       return allowed(actionId, canPerform) && !terminal;
     case "resolve":
-      return allowed(actionId, canPerform) && !terminal;
+      return allowed(actionId, canPerform) && !terminal && !aiOwned;
     case "reopen":
       return allowed(actionId, canPerform) && terminal;
     case "close":
-      return allowed(actionId, canPerform) && !terminal;
+      return allowed(actionId, canPerform) && !terminal && !aiOwned;
     case "open_ai":
-      return aiOwned && !terminal;
+      // Agents need the AI assistant while they own the conversation (take-over / assign).
+      return !terminal;
     case "assign":
     case "transfer":
     case "open_assignment":
       return allowed(actionId === "assign" ? "assign" : actionId === "transfer" ? "transfer" : "assign", canPerform) && !terminal;
     case "escalate":
-      return allowed(actionId, canPerform) && !terminal;
+      return allowed(actionId, canPerform) && !terminal && !aiOwned;
     case "return_escalation":
     case "cancel_escalation":
       return allowed(actionId, canPerform) && (escalated || lifecycleState === "ESCALATED");

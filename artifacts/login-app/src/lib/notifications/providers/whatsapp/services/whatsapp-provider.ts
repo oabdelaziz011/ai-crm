@@ -6,6 +6,8 @@ import { validateRecipientPhone } from "@/lib/notifications/providers/whatsapp/s
 import { resolveRecipientPhone } from "@/lib/notifications/providers/whatsapp/services/whatsapp-recipient-resolver";
 import { resolveWhatsAppOutboundPhone } from "@/lib/notifications/providers/whatsapp/services/whatsapp-outbound-phone";
 import { WhatsAppRetryPolicy } from "@/lib/notifications/providers/whatsapp/services/whatsapp-retry-policy";
+import { WhatsAppProviderRejectedError } from "@/lib/notifications/providers/whatsapp/adapter/meta-whatsapp-transport";
+import { decideWhatsAppQueueFailure } from "@/lib/notifications/providers/whatsapp/services/whatsapp-send-outcome";
 import { WhatsAppSettingsRepository } from "@/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository";
 import type {
   CompanyWhatsAppSettings,
@@ -191,6 +193,8 @@ export class WhatsAppProvider {
     const attempts = item.retryCount + 1;
 
     await this.queueConsumer.markProcessing(item.companyId, item.id);
+    let providerAttempted = false;
+    let acceptedMessageId: string | null = null;
 
     try {
       this.assertCredentialsSendable(settings);
@@ -214,31 +218,10 @@ export class WhatsAppProvider {
           commercialError instanceof Error
             ? commercialError.message
             : "WhatsApp commercial access unavailable.";
-        await this.queueConsumer.markFailed(
-          item.companyId,
-          item.id,
-          denialMessage,
-          settings.maxRetryCount,
-          undefined,
-        );
-        const denied: WhatsAppDeliveryResult = {
-          queueId: item.id,
-          notificationId: item.notificationId,
-          companyId: item.companyId,
-          provider: WHATSAPP_PROVIDER,
-          status: "failed",
-          durationMs: Date.now() - started,
-          attempts,
-          lastError: denialMessage,
-          recipientPhone: recipient.phone,
-          messageId: null,
-          templateKey: rendered.templateKey,
-          timestamp: new Date().toISOString(),
-        };
-        await this.deliveryLogRepository.append(denied);
-        return denied;
+        throw new Error(denialMessage);
       }
 
+      providerAttempted = true;
       const sendResult = await this.transport.send(
         {
           to: recipient.phone,
@@ -255,6 +238,7 @@ export class WhatsAppProvider {
       if (!messageId) {
         throw new Error("WhatsApp API did not return an outbound message id.");
       }
+      acceptedMessageId = messageId;
 
       await this.queueConsumer.markCompleted(item.companyId, item.id);
 
@@ -293,16 +277,60 @@ export class WhatsAppProvider {
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const decision = retryPolicy.evaluate(item.retryCount);
-      const rescheduleAt = decision.shouldRetry
-        ? new Date(Date.now() + decision.delayMs).toISOString()
+      const decision = decideWhatsAppQueueFailure({
+        providerAttempted,
+        acceptedMessageId,
+        confirmedRejection: error instanceof WhatsAppProviderRejectedError,
+      });
+      if (decision.action === "complete_without_resend") {
+        await this.queueConsumer.markCompleted(item.companyId, item.id).catch(() => undefined);
+        const result: WhatsAppDeliveryResult = {
+          queueId: item.id,
+          notificationId: item.notificationId,
+          companyId: item.companyId,
+          provider: WHATSAPP_PROVIDER,
+          status: "completed",
+          durationMs: Date.now() - started,
+          attempts,
+          lastError: message,
+          recipientPhone: null,
+          messageId: decision.messageId,
+          templateKey: null,
+          timestamp: new Date().toISOString(),
+        };
+        await this.deliveryLogRepository.append(result).catch(() => undefined);
+        return result;
+      }
+      if (decision.action === "hold_without_resend") {
+        await this.queueConsumer.noteAmbiguousHold(item.companyId, item.id, message);
+        const held: WhatsAppDeliveryResult = {
+          queueId: item.id,
+          notificationId: item.notificationId,
+          companyId: item.companyId,
+          provider: WHATSAPP_PROVIDER,
+          status: "failed",
+          durationMs: Date.now() - started,
+          attempts,
+          lastError: message,
+          recipientPhone: null,
+          messageId: null,
+          templateKey: null,
+          timestamp: new Date().toISOString(),
+        };
+        await this.deliveryLogRepository.append(held).catch(() => undefined);
+        return held;
+      }
+
+      const retry = retryPolicy.evaluate(item.retryCount);
+      const rescheduleAt = retry.shouldRetry
+        ? new Date(Date.now() + retry.delayMs).toISOString()
         : undefined;
 
       await this.queueConsumer.markFailed(
         item.companyId,
         item.id,
         message,
-        decision.nextAttempt,
+        retry.nextAttempt,
         rescheduleAt,
       );
 

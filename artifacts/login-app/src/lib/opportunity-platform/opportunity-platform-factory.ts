@@ -7,9 +7,25 @@ import {
 } from "@workspace/opportunity-platform";
 import { createModulePublisher } from "@workspace/platform-events";
 import { getLoginAppPlatformEventBus } from "@/lib/application-layer/platform-event-bus-factory.js";
+import { cancelSalesFollowUpsAfterOpportunityLifecycle } from "./opportunity-follow-up-cancel.js";
 
-export function createOpportunityEventBridge(): OpportunityEventPublisherPort {
+export {
+  cancelSalesFollowUpsAfterOpportunityLifecycle,
+  opportunityFollowUpCancelReason,
+} from "./opportunity-follow-up-cancel.js";
+
+export function createOpportunityEventBridge(
+  client?: SupabaseClient,
+  options?: { onFollowUpCancelError?: (error: unknown) => void },
+): OpportunityEventPublisherPort {
   const bus = () => createModulePublisher(getLoginAppPlatformEventBus(), "opportunities");
+
+  const cancelFollowUps = (lifecycle: "won" | "lost", input: { companyId: string; opportunityId: string }) =>
+    cancelSalesFollowUpsAfterOpportunityLifecycle(
+      client,
+      { ...input, lifecycle },
+      { onError: options?.onFollowUpCancelError },
+    );
 
   return {
     async publishCreated(input) {
@@ -103,6 +119,10 @@ export function createOpportunityEventBridge(): OpportunityEventPublisherPort {
           entityId: input.opportunityId,
         },
       );
+      void cancelFollowUps("won", {
+        companyId: input.companyId,
+        opportunityId: input.opportunityId,
+      });
     },
     async publishLost(input) {
       await bus().publish(
@@ -122,6 +142,10 @@ export function createOpportunityEventBridge(): OpportunityEventPublisherPort {
           entityId: input.opportunityId,
         },
       );
+      void cancelFollowUps("lost", {
+        companyId: input.companyId,
+        opportunityId: input.opportunityId,
+      });
     },
   };
 }
@@ -130,7 +154,7 @@ export function createLoginAppOpportunityPlatformServices(
   client: SupabaseClient,
 ): OpportunityPlatformServices {
   return createOpportunityPlatformServices(client, {
-    events: createOpportunityEventBridge(),
+    events: createOpportunityEventBridge(client),
   });
 }
 
@@ -142,4 +166,4 @@ export function createLoginAppOpportunityPlatformServicesSilent(
   });
 }
 
-export { mapOpportunityRecordToReadModel } from "./map-opportunity-record.js";
+export { loadLeadLifecycleById, mapOpportunityRecordToReadModel } from "./map-opportunity-record.js";

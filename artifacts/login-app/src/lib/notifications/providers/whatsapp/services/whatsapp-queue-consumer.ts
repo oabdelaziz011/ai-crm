@@ -43,7 +43,7 @@ export class WhatsAppQueueConsumer {
       .select("*")
       .eq("company_id", companyId)
       .eq("channel", "whatsapp")
-      .in("status", ["pending", "failed"])
+      .eq("status", "pending")
       .lte("scheduled_at", new Date().toISOString())
       .order("scheduled_at", { ascending: true })
       .limit(limit);
@@ -61,6 +61,11 @@ export class WhatsAppQueueConsumer {
       processedAt: new Date().toISOString(),
       lastError: null,
     });
+  }
+
+  /** Leave the row processing so a later queue pass cannot send it again. */
+  async noteAmbiguousHold(companyId: string, queueId: string, errorMessage: string): Promise<void> {
+    await this.updateStatus(companyId, queueId, "processing", { lastError: errorMessage });
   }
 
   async markFailed(

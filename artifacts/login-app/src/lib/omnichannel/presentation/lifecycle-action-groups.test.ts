@@ -14,17 +14,21 @@ describe("LifecycleActionGroups (presentation)", () => {
       canPerform: allowAll,
     });
     assert.ok(groups.primary.includes("take_over"));
-    assert.ok(groups.primary.includes("assign") || groups.primary.includes("escalate"));
+    assert.ok(groups.primary.includes("assign"));
+    assert.equal(groups.primary.includes("escalate"), false);
+    assert.equal(groups.primary.includes("resolve"), false);
+    assert.equal(groups.primary.includes("close"), false);
+    assert.equal(groups.primary.includes("return_to_ai"), false);
   });
 
-  it("hides the AI generator once a human owns the conversation", () => {
+  it("keeps the AI generator available after a human owns the conversation", () => {
     const assigned = resolveLifecycleActionGroups({
       lifecycleState: "ASSIGNED",
       escalated: false,
       isClosed: false,
       canPerform: allowAll,
     });
-    assert.equal(assigned.primary.includes("open_ai"), false);
+    assert.equal(assigned.primary.includes("open_ai"), true);
     assert.ok(assigned.primary.includes("reply"));
     assert.ok(assigned.primary.includes("transfer") || assigned.primary.includes("assign"));
     assert.ok(assigned.primary.includes("return_to_ai"));
@@ -58,7 +62,7 @@ describe("LifecycleActionGroups (presentation)", () => {
     });
     assert.ok(groups.primary.includes("return_to_ai"));
     assert.equal(groups.primary.includes("reopen"), false);
-    assert.equal(groups.primary.includes("open_ai"), false);
+    assert.equal(groups.primary.includes("open_ai"), true);
   });
 
   it("shows assigned toolbar actions after a claimed conversation is reopened", () => {
@@ -82,6 +86,7 @@ describe("LifecycleActionGroups (presentation)", () => {
       isClosed: false,
       canPerform: denyAll,
     });
-    assert.equal(groups.primary.length, 0);
+    // open_ai is presentation-only (no lifecycle permission) and stays available for agents.
+    assert.deepEqual(groups.primary, ["open_ai"]);
   });
 });

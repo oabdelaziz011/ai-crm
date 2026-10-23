@@ -8,6 +8,7 @@ import type { OpportunityServiceContext } from "@workspace/opportunity-platform"
 import type { LoginAppPortContext } from "../application-layer/adapters/customer-read-port-adapter.js";
 import {
   createLoginAppOpportunityPlatformServices,
+  loadLeadLifecycleById,
   mapOpportunityRecordToReadModel,
 } from "./opportunity-platform-factory.js";
 
@@ -43,8 +44,15 @@ export function createLoginAppOpportunityReadPort(
         companyId: tenantId,
         ...filter,
       });
+      const leadLifecycleById = await loadLeadLifecycleById(
+        client,
+        tenantId,
+        result.items.map((row) => row.leadId),
+      );
       const items = await Promise.all(
-        result.items.map((row) => mapOpportunityRecordToReadModel(client, tenantId, row)),
+        result.items.map((row) =>
+          mapOpportunityRecordToReadModel(client, tenantId, row, leadLifecycleById),
+        ),
       );
       return { items: Object.freeze(items), total: result.total };
     },
@@ -86,10 +94,17 @@ export function createLoginAppOpportunityReadPort(
         tenantId,
         pipelineId,
       );
+      const leadLifecycleById = await loadLeadLifecycleById(
+        client,
+        tenantId,
+        board.stages.flatMap((stage) => stage.opportunities.map((row) => row.leadId)),
+      );
       const stages = await Promise.all(
         board.stages.map(async (stage) => {
           const opportunities = await Promise.all(
-            stage.opportunities.map((o) => mapOpportunityRecordToReadModel(client, tenantId, o)),
+            stage.opportunities.map((o) =>
+              mapOpportunityRecordToReadModel(client, tenantId, o, leadLifecycleById),
+            ),
           );
           return Object.freeze({
             id: stage.id,
@@ -167,6 +182,7 @@ export function createLoginAppOpportunityWritePort(
         language: input.language,
         leadId: input.leadId,
         customerId: input.customerId,
+        primaryProductId: input.primaryProductId,
         probabilityPercent: input.probabilityPercent,
         probabilitySource: input.probabilitySource,
         probabilityReason: input.probabilityReason,
@@ -191,6 +207,7 @@ export function createLoginAppOpportunityWritePort(
         stageId: input.stageId,
         pipelineId: input.pipelineId,
         forceCreate: input.forceCreate,
+        primaryProductId: input.primaryProductId,
         probabilityPercent: input.probabilityPercent,
         probabilitySource: input.probabilitySource,
         probabilityReason: input.probabilityReason,
@@ -215,12 +232,13 @@ export function createLoginAppOpportunityWritePort(
       });
       return map(tenantId, opportunity);
     },
-    async changeStage(tenantId, opportunityId, stageId) {
+    async changeStage(tenantId, opportunityId, stageId, _actorUserId, options) {
       assertTenant(tenantId);
       const { opportunity } = await platform.commands.changeStage(buildContext(ctx, tenantId), {
         companyId: tenantId,
         opportunityId,
         stageId,
+        lostReason: options?.lostReason,
       });
       return map(tenantId, opportunity);
     },

@@ -99,7 +99,11 @@ export async function dispatchOmnichannelOutboundViaApi(
           messageId: payload.outboundMessageId ?? null,
           extra: { httpStatus: response.status },
         });
-        throw new Error(body.message ?? body.error ?? `Omnichannel outbound dispatch failed (${response.status})`);
+        const dispatchError = new Error(body.message ?? body.error ?? `Omnichannel outbound dispatch failed (${response.status})`);
+        if (body.error === "provider_acceptance_unconfirmed") {
+          dispatchError.name = "ProviderAcceptanceUnconfirmedError";
+        }
+        throw dispatchError;
       }
 
       traceOmniSendExit({

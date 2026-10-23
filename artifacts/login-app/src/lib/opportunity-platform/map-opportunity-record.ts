@@ -4,12 +4,38 @@ import { toOpportunity } from "@workspace/opportunity-platform";
 import type { OpportunityReadModel } from "@workspace/application-layer";
 import { EmployeeIdentityService } from "@/lib/employee-identity/employee-identity-service";
 
+export async function loadLeadLifecycleById(
+  client: SupabaseClient,
+  tenantId: string,
+  leadIds: Array<string | null | undefined>,
+): Promise<Map<string, string | null>> {
+  const unique = [...new Set(leadIds.filter((id): id is string => Boolean(id)))];
+  const map = new Map<string, string | null>();
+  if (!unique.length) return map;
+  const { data, error } = await client
+    .from("leads")
+    .select("id, lifecycle_status")
+    .eq("company_id", tenantId)
+    .in("id", unique)
+    .is("deleted_at", null);
+  if (error) throw error;
+  for (const row of data ?? []) {
+    if (!row.id) continue;
+    map.set(
+      String(row.id),
+      row.lifecycle_status != null ? String(row.lifecycle_status) : null,
+    );
+  }
+  return map;
+}
+
 export async function mapOpportunityRecordToReadModel(
   client: SupabaseClient,
   tenantId: string,
   record: OpportunityRecord,
+  leadLifecycleById?: ReadonlyMap<string, string | null>,
 ): Promise<OpportunityReadModel> {
-  const [identity, stageRow] = await Promise.all([
+  const [identity, stageRow, productRow, leadRow] = await Promise.all([
     record.ownerUserId
       ? EmployeeIdentityService.getById(record.ownerUserId)
       : Promise.resolve(null),
@@ -20,6 +46,26 @@ export async function mapOpportunityRecordToReadModel(
       .eq("id", record.stageId)
       .maybeSingle()
       .then((r) => r.data),
+    record.primaryProductId
+      ? client
+          .from("catalog_products")
+          .select("id, name")
+          .eq("company_id", tenantId)
+          .eq("id", record.primaryProductId)
+          .is("deleted_at", null)
+          .maybeSingle()
+          .then((r) => r.data)
+      : Promise.resolve(null),
+    record.leadId && !leadLifecycleById
+      ? client
+          .from("leads")
+          .select("lifecycle_status")
+          .eq("company_id", tenantId)
+          .eq("id", record.leadId)
+          .is("deleted_at", null)
+          .maybeSingle()
+          .then((r) => r.data)
+      : Promise.resolve(null),
   ]);
 
   const stageKey = stageRow?.stage_key
@@ -38,7 +84,15 @@ export async function mapOpportunityRecordToReadModel(
     tenantId: mapped.tenantId,
     name: mapped.name,
     leadId: mapped.leadId,
+    leadLifecycleStatus: record.leadId
+      ? (leadLifecycleById?.get(record.leadId) ??
+        (leadRow && "lifecycle_status" in leadRow && leadRow.lifecycle_status != null
+          ? String(leadRow.lifecycle_status)
+          : null))
+      : null,
     customerId: mapped.customerId,
+    primaryProductId: record.primaryProductId,
+    primaryProductName: productRow?.name ? String(productRow.name) : null,
     companyName: mapped.companyName,
     primaryContact: mapped.primaryContact,
     ownerId: mapped.ownerId,
@@ -62,6 +116,9 @@ export async function mapOpportunityRecordToReadModel(
     aiScoreSnapshot: mapped.aiScoreSnapshot,
     aiContextSnapshot: Object.freeze({ ...record.aiContextSnapshot }),
     currentQuoteId: mapped.currentQuoteId,
+    wonAt: record.wonAt,
+    lostAt: record.lostAt,
+    lostReason: record.lostReason,
     createdAt: mapped.createdAt,
     updatedAt: mapped.updatedAt,
   });

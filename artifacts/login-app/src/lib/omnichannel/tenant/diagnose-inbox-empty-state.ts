@@ -127,3 +127,21 @@ export function isWhatsAppCompanyChannel(
 ): boolean {
   return channel.communication_channel?.key === "whatsapp" && channel.is_enabled !== false && !channel.deleted_at;
 }
+
+/**
+ * Warn only when the open thread is actually outside the signed-in company.
+ * A missing or still-loading channel catalog is not proof that WhatsApp belongs elsewhere.
+ */
+export function resolveWhatsAppChannelMismatch(input: {
+  tenantCompanyId: string | null;
+  selectedCompanyId: string | null;
+  selectedChannel: string | null;
+  selectedChannelId: string | null;
+  companyChannelIds: ReadonlySet<string>;
+  channelsResolved: boolean;
+}): boolean {
+  if (!input.tenantCompanyId || input.selectedChannel !== "whatsapp") return false;
+  if (input.selectedCompanyId && input.selectedCompanyId !== input.tenantCompanyId) return true;
+  if (!input.channelsResolved || !input.selectedChannelId) return false;
+  return !input.companyChannelIds.has(input.selectedChannelId);
+}

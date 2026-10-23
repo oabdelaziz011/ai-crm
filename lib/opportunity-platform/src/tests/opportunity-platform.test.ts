@@ -37,6 +37,7 @@ describe("opportunity-platform foundation", () => {
         name: "Acme Deal",
         leadId: "l1",
         customerId: null,
+        primaryProductId: null,
         primaryContactName: "Ada",
         ownerUserId: "u1",
         companyName: "Acme",

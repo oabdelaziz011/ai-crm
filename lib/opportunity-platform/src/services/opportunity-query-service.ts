@@ -8,6 +8,7 @@ import type {
 } from "../types.js";
 import { OPPORTUNITY_PERMISSIONS } from "../constants.js";
 import { OpportunityPermissionError, OpportunityValidationError } from "../errors.js";
+import { isOpportunityVisibleInModule } from "./demo-opportunity-visibility.js";
 
 function assertCompany(ctx: OpportunityServiceContext, companyId: string) {
   if (!ctx.isSuperAdmin && ctx.companyId !== companyId) {
@@ -30,7 +31,21 @@ export class OpportunityQueryService {
   ): Promise<OpportunityRecord | null> {
     assertCompany(ctx, companyId);
     assertPermission(ctx, OPPORTUNITY_PERMISSIONS.view);
-    return this.deps.opportunities.getOpportunity(companyId, opportunityId);
+    const opportunity = await this.deps.opportunities.getOpportunity(companyId, opportunityId);
+    if (!opportunity) return null;
+    // Module detail must honor the same demo visibility predicate as list/board.
+    const lead = opportunity.leadId
+      ? await this.deps.opportunities.getLeadSnapshot(companyId, opportunity.leadId)
+      : null;
+    if (
+      !isOpportunityVisibleInModule({
+        leadId: opportunity.leadId,
+        leadLifecycleStatus: lead?.lifecycleStatus ?? null,
+      })
+    ) {
+      return null;
+    }
+    return opportunity;
   }
 
   async list(
@@ -42,6 +57,9 @@ export class OpportunityQueryService {
       ownerUserId?: string;
       leadId?: string;
       query?: string;
+      openOnly?: boolean;
+      outcome?: "open" | "won" | "lost";
+      leadLifecycleStatus?: string;
       limit?: number;
       offset?: number;
     },
@@ -55,6 +73,10 @@ export class OpportunityQueryService {
       ownerUserId: input.ownerUserId,
       leadId: input.leadId,
       query: input.query,
+      openOnly: input.openOnly,
+      outcome: input.outcome,
+      leadLifecycleStatus: input.leadLifecycleStatus,
+      applyDemoVisibilityGate: true,
       limit: input.limit ?? 50,
       offset: input.offset ?? 0,
     });
@@ -105,6 +127,7 @@ export class OpportunityQueryService {
     const { items } = await this.deps.opportunities.listOpportunities({
       companyId,
       pipelineId,
+      applyDemoVisibilityGate: true,
       limit: 500,
       offset: 0,
     });

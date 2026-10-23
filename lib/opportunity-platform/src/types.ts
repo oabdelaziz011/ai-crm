@@ -39,6 +39,8 @@ export type OpportunityRecord = {
   name: string;
   leadId: string | null;
   customerId: string | null;
+  /** Canonical commercial-scope catalog product; drives open uniqueness with customer. */
+  primaryProductId: string | null;
   primaryContactName: string;
   ownerUserId: string | null;
   companyName: string | null;

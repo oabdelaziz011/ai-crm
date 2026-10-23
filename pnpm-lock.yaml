@@ -92,6 +92,12 @@ importers:
       '@workspace/platform-observability':
         specifier: workspace:*
         version: link:../../lib/platform-observability
+      '@workspace/product-demo-scheduling':
+        specifier: workspace:*
+        version: link:../../lib/product-demo-scheduling
+      '@workspace/product-platform':
+        specifier: workspace:*
+        version: link:../../lib/product-platform
       '@workspace/quote-platform':
         specifier: workspace:*
         version: link:../../lib/quote-platform
@@ -294,6 +300,9 @@ importers:
       '@workspace/platform-events':
         specifier: workspace:*
         version: link:../../lib/platform-events
+      '@workspace/product-demo-scheduling':
+        specifier: workspace:*
+        version: link:../../lib/product-demo-scheduling
       '@workspace/product-platform':
         specifier: workspace:*
         version: link:../../lib/product-platform
@@ -912,6 +921,15 @@ importers:
       '@workspace/platform-crypto':
         specifier: workspace:*
         version: link:../platform-crypto
+      '@workspace/product-demo-scheduling':
+        specifier: workspace:*
+        version: link:../product-demo-scheduling
+      '@workspace/product-platform':
+        specifier: workspace:*
+        version: link:../product-platform
+      '@workspace/quote-platform':
+        specifier: workspace:*
+        version: link:../quote-platform
       '@workspace/runtime-integration':
         specifier: workspace:*
         version: link:../runtime-integration
@@ -1335,6 +1353,19 @@ importers:
       '@types/node':
         specifier: ^25.3.3
         version: 25.9.4
+
+  lib/product-demo-scheduling:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
 
   lib/product-platform:
     dependencies:

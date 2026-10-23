@@ -160,16 +160,30 @@ function baseBooking(overrides: Partial<Row> = {}): Row {
   };
 }
 
+/** Inside a 90-day search window on any calendar day. Production cutoff is unchanged. */
+function isoDaysBefore(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  date.setUTCHours(9, 0, 0, 0);
+  return date.toISOString();
+}
+
 describe("Phase 3B scheduling mutation ports", () => {
   it("A/B/D. search_bookings is customer-scoped with historical daysBack", async () => {
+    const daysBefore = (days: number) => {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() - days);
+      date.setUTCHours(9, 0, 0, 0);
+      return date.toISOString();
+    };
     const { client } = createMemoryClient({
       bookings: [
-        baseBooking({ id: "b-old", start_at: "2026-07-01T09:00:00.000Z" }),
-        baseBooking({ id: "b-mid", start_at: "2026-08-10T09:00:00.000Z" }),
+        baseBooking({ id: "b-old", start_at: daysBefore(45) }),
+        baseBooking({ id: "b-mid", start_at: daysBefore(10) }),
         baseBooking({
           id: "b-other",
           customer_id: "customer-b",
-          start_at: "2026-08-12T09:00:00.000Z",
+          start_at: daysBefore(8),
           confirmation_number: "BK-000099",
         }),
       ],
@@ -191,8 +205,13 @@ describe("Phase 3B scheduling mutation ports", () => {
   it("C. search_bookings returns no cross-company rows", async () => {
     const { client } = createMemoryClient({
       bookings: [
-        baseBooking({ id: "b-a", company_id: "company-a" }),
-        baseBooking({ id: "b-x", company_id: "company-b", confirmation_number: "BK-000002" }),
+        baseBooking({ id: "b-a", company_id: "company-a", start_at: isoDaysBefore(10) }),
+        baseBooking({
+          id: "b-x",
+          company_id: "company-b",
+          confirmation_number: "BK-000002",
+          start_at: isoDaysBefore(9),
+        }),
       ],
     });
     const result = await executeSearchBookings(client, {
@@ -218,19 +237,19 @@ describe("Phase 3B scheduling mutation ports", () => {
     assert.equal(result.bookings.length, 0);
   });
 
-  it("search_bookings prefers trustedCustomerId over a different phone lookup", async () => {
+  it("search_bookings fails closed when phone conflicts with trustedCustomerId", async () => {
     const { client } = createMemoryClient({
       bookings: [
         baseBooking({
           id: "b-patient",
           customer_id: "customer-patient",
-          start_at: "2026-08-12T09:00:00.000Z",
+          start_at: isoDaysBefore(12),
           confirmation_number: "BK-000055",
         }),
         baseBooking({
           id: "b-trusted",
           customer_id: "customer-a",
-          start_at: "2026-08-13T09:00:00.000Z",
+          start_at: isoDaysBefore(11),
           confirmation_number: "BK-000056",
         }),
       ],
@@ -248,8 +267,73 @@ describe("Phase 3B scheduling mutation ports", () => {
       daysBack: 90,
     });
 
+    assert.equal(result.success, false);
+    assert.deepEqual(result.errors, ["IDENTITY_PHONE_MISMATCH"]);
+    assert.equal(result.bookings.length, 0);
+    assert.equal(result.total, 0);
+    assert.doesNotMatch(JSON.stringify(result), /BK-000056|BK-000055|b-trusted|b-patient/);
+  });
+
+  it("search_bookings allows matching phone with trustedCustomerId", async () => {
+    const { client } = createMemoryClient({
+      bookings: [
+        baseBooking({
+          id: "b-trusted",
+          customer_id: "customer-a",
+          start_at: isoDaysBefore(11),
+          confirmation_number: "BK-000056",
+        }),
+      ],
+      customers: [
+        { id: "customer-a", company_id: "company-a", name: "Ada", phone: "201000000001" },
+      ],
+    });
+
+    const result = await executeSearchBookings(client, {
+      companyId: "company-a",
+      userId: "user-1",
+      trustedCustomerId: "customer-a",
+      phone: "01000000001",
+      daysBack: 90,
+    });
+
     assert.equal(result.success, true);
     assert.deepEqual(result.bookings.map((b) => b.bookingId), ["b-trusted"]);
+  });
+
+  it("search_bookings fails closed for foreign +1 phone vs trusted Egyptian customer", async () => {
+    const { client } = createMemoryClient({
+      bookings: [
+        baseBooking({
+          id: "b-omar",
+          customer_id: "customer-omar",
+          start_at: isoDaysBefore(5),
+          confirmation_number: "BK-000099",
+        }),
+      ],
+      customers: [
+        {
+          id: "customer-omar",
+          company_id: "company-a",
+          name: "Omar",
+          phone: "201011404109",
+          phone_e164: "+201011404109",
+        },
+      ],
+    });
+
+    const result = await executeSearchBookings(client, {
+      companyId: "company-a",
+      userId: "user-1",
+      trustedCustomerId: "customer-omar",
+      phone: "+1(555) 194-8564",
+      daysBack: 90,
+    });
+
+    assert.equal(result.success, false);
+    assert.deepEqual(result.errors, ["IDENTITY_PHONE_MISMATCH"]);
+    assert.equal(result.bookings.length, 0);
+    assert.doesNotMatch(JSON.stringify(result), /BK-000099|b-omar|Omar/);
   });
 
   it("search_bookings by phone returns that patient's bookings when no trusted customer", async () => {
@@ -258,13 +342,13 @@ describe("Phase 3B scheduling mutation ports", () => {
         baseBooking({
           id: "b-patient",
           customer_id: "customer-patient",
-          start_at: "2026-08-12T09:00:00.000Z",
+          start_at: isoDaysBefore(12),
           confirmation_number: "BK-000055",
         }),
         baseBooking({
           id: "b-other",
           customer_id: "customer-a",
-          start_at: "2026-08-13T09:00:00.000Z",
+          start_at: isoDaysBefore(11),
         }),
       ],
       customers: [
@@ -285,7 +369,7 @@ describe("Phase 3B scheduling mutation ports", () => {
     assert.deepEqual(result.bookings.map((b) => b.bookingId), ["b-patient"]);
   });
 
-  it("search_bookings with trusted customer finds future booking for cancel even when WhatsApp phone differs", async () => {
+  it("search_bookings with trusted customer lists own bookings when no conflicting phone is supplied", async () => {
     const futureStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const { client } = createMemoryClient({
       bookings: [
@@ -311,12 +395,99 @@ describe("Phase 3B scheduling mutation ports", () => {
       companyId: "company-a",
       userId: "user-1",
       trustedCustomerId: "customer-trusted",
-      phone: "201011404109",
       daysBack: 90,
     });
 
     assert.equal(result.success, true);
     assert.deepEqual(result.bookings.map((b) => b.bookingId), ["b-future"]);
+  });
+
+  it("search_bookings rejects conflicting WhatsApp phone under trusted identity (no enumeration)", async () => {
+    const futureStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { client } = createMemoryClient({
+      bookings: [
+        baseBooking({
+          id: "b-future",
+          customer_id: "customer-trusted",
+          start_at: futureStart,
+          confirmation_number: "BK-000200",
+          status: "confirmed",
+        }),
+        baseBooking({
+          id: "b-other",
+          customer_id: "customer-other",
+          start_at: futureStart,
+          confirmation_number: "BK-000201",
+          status: "confirmed",
+        }),
+      ],
+      customers: [
+        {
+          id: "customer-trusted",
+          company_id: "company-a",
+          name: "Trusted",
+          phone: "01013363637",
+        },
+        {
+          id: "customer-other",
+          company_id: "company-a",
+          name: "Other",
+          phone: "201011404109",
+        },
+      ],
+    });
+
+    const result = await executeSearchBookings(client, {
+      companyId: "company-a",
+      userId: "user-1",
+      trustedCustomerId: "customer-trusted",
+      phone: "201011404109",
+      daysBack: 90,
+    });
+
+    assert.equal(result.success, false);
+    assert.deepEqual(result.errors, ["IDENTITY_PHONE_MISMATCH"]);
+    assert.equal(result.bookings.length, 0);
+    assert.doesNotMatch(JSON.stringify(result), /BK-000200|BK-000201|b-future|b-other/);
+  });
+
+  it("search_bookings does not return other-company bookings for matching local phone", async () => {
+    const { client } = createMemoryClient({
+      companyId: "company-a",
+      bookings: [
+        baseBooking({
+          id: "b-local",
+          company_id: "company-a",
+          customer_id: "customer-a",
+          start_at: isoDaysBefore(4),
+          confirmation_number: "BK-000010",
+        }),
+        baseBooking({
+          id: "b-foreign-co",
+          company_id: "company-b",
+          customer_id: "customer-x",
+          start_at: isoDaysBefore(3),
+          confirmation_number: "BK-000011",
+        }),
+      ],
+      customers: [
+        { id: "customer-a", company_id: "company-a", name: "Ada", phone: "201000000001" },
+        { id: "customer-x", company_id: "company-b", name: "X", phone: "201000000099" },
+      ],
+    });
+
+    const result = await executeSearchBookings(client, {
+      companyId: "company-a",
+      userId: "user-1",
+      trustedCustomerId: "customer-a",
+      phone: "201000000099",
+      daysBack: 90,
+    });
+
+    assert.equal(result.success, false);
+    assert.deepEqual(result.errors, ["IDENTITY_PHONE_MISMATCH"]);
+    assert.equal(result.bookings.length, 0);
+    assert.doesNotMatch(JSON.stringify(result), /BK-000011|b-foreign-co/);
   });
 
   it("search_bookings collapses digit-equivalent phone duplicates and binds conversation", async () => {
@@ -325,19 +496,19 @@ describe("Phase 3B scheduling mutation ports", () => {
         baseBooking({
           id: "b-canonical",
           customer_id: "customer-canonical",
-          start_at: "2026-08-20T09:00:00.000Z",
+          start_at: isoDaysBefore(8),
           confirmation_number: "BK-000100",
         }),
         baseBooking({
           id: "b-dup",
           customer_id: "customer-dup",
-          start_at: "2026-08-19T09:00:00.000Z",
+          start_at: isoDaysBefore(9),
           confirmation_number: "BK-000101",
         }),
         baseBooking({
           id: "b-canonical-2",
           customer_id: "customer-canonical",
-          start_at: "2026-08-18T09:00:00.000Z",
+          start_at: isoDaysBefore(10),
           confirmation_number: "BK-000102",
         }),
       ],

@@ -5,6 +5,8 @@ import type { RuntimeGatewayPort, RuntimeToolPort } from "@workspace/ai-executio
 import {
   ADD_TICKET_COMMENT_TOOL_KEY,
   ASSIGN_TICKET_TOOL_KEY,
+  CHANGE_TICKET_PRIORITY_TOOL_KEY,
+  CHANGE_TICKET_STATUS_TOOL_KEY,
   CLOSE_TICKET_TOOL_KEY,
   CREATE_TICKET_TOOL_KEY,
   TICKET_TOOL_KEYS,
@@ -287,6 +289,62 @@ describe("ticket tools e2e", () => {
     const result = await loop.run(createLoopInput(tools, "Close ticket."));
     assert.deepEqual(routed, [CLOSE_TICKET_TOOL_KEY]);
     assert.match(result.response.text, /closed/i);
+  });
+
+  it("adds a comment when the customer asks to comment on the ticket", async () => {
+    const routed: string[] = [];
+    const tools = createRecordingToolPort((input) => routed.push(String(input.toolKey)));
+    const gateway = createScenarioGateway([
+      {
+        tool: ADD_TICKET_COMMENT_TOOL_KEY,
+        args: { ticketId: "ticket-e2e-1", body: "Please call me", isInternal: false },
+      },
+      { finalText: "Comment added." },
+    ]);
+    const loop = new ToolCallLoopService({ gateway, tools });
+    await loop.run(createLoopInput(tools, "Add a comment on the ticket."));
+    assert.deepEqual(routed, [ADD_TICKET_COMMENT_TOOL_KEY]);
+  });
+
+  it("changes ticket priority without creating a ticket", async () => {
+    const routed: string[] = [];
+    const tools = createRecordingToolPort((input) => routed.push(String(input.toolKey)));
+    const gateway = createScenarioGateway([
+      { tool: CHANGE_TICKET_PRIORITY_TOOL_KEY, args: { ticketId: "ticket-e2e-1", priority: "high" } },
+      { finalText: "Priority updated." },
+    ]);
+    const loop = new ToolCallLoopService({ gateway, tools });
+    await loop.run(createLoopInput(tools, "Change the ticket priority to high."));
+    assert.deepEqual(routed, [CHANGE_TICKET_PRIORITY_TOOL_KEY]);
+  });
+
+  it("changes ticket status without creating a ticket", async () => {
+    const routed: string[] = [];
+    const tools = createRecordingToolPort((input) => routed.push(String(input.toolKey)));
+    const gateway = createScenarioGateway([
+      { tool: CHANGE_TICKET_STATUS_TOOL_KEY, args: { ticketId: "ticket-e2e-1", status: "pending" } },
+      { finalText: "Status updated." },
+    ]);
+    const loop = new ToolCallLoopService({ gateway, tools });
+    await loop.run(createLoopInput(tools, "Change the ticket status to pending."));
+    assert.deepEqual(routed, [CHANGE_TICKET_STATUS_TOOL_KEY]);
+  });
+
+  it("routes Arabic and German ticket operations to the requested tool", async () => {
+    for (const [text, tool, args] of [
+      ["ضيف تعليق على التذكرة.", ADD_TICKET_COMMENT_TOOL_KEY, { ticketId: "ticket-e2e-1", body: "ملاحظة" }],
+      ["Ändere die Ticket-Priorität.", CHANGE_TICKET_PRIORITY_TOOL_KEY, { ticketId: "ticket-e2e-1", priority: "high" }],
+    ] as const) {
+      const routed: string[] = [];
+      const tools = createRecordingToolPort((input) => routed.push(String(input.toolKey)));
+      const gateway = createScenarioGateway([
+        { tool, args },
+        { finalText: "Done." },
+      ]);
+      const loop = new ToolCallLoopService({ gateway, tools });
+      await loop.run(createLoopInput(tools, text));
+      assert.deepEqual(routed, [tool], text);
+    }
   });
 
   it("adds internal note via tool loop", async () => {

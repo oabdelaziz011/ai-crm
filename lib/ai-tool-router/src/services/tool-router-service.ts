@@ -148,6 +148,9 @@ export class ToolRouterService {
         customerId: conversation.customer_id,
         metadata: conversation.metadata,
       }),
+      trustedConversationTexts: (input.conversationTexts ?? [])
+        .filter((text) => typeof text === "string" && text.trim().length > 0)
+        .slice(0, 20),
     };
 
     const maxAttempts = Math.max(1, definition.retry_policy.maxAttempts);

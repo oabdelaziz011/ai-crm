@@ -12,6 +12,61 @@ import type {
 } from "../types.js";
 const DEFINITIONS_TABLE = "tool_definitions";
 const EXECUTIONS_TABLE = "tool_executions";
+const TOOL_EXECUTION_VISIBLE_COLUMNS = [
+  "id",
+  "company_id",
+  "conversation_id",
+  "tool_definition_id",
+  "tool_key",
+  "status",
+  "error_code",
+  "error_message",
+  "started_at",
+  "completed_at",
+  "duration_ms",
+  "triggered_by",
+  "created_by",
+].join(", ");
+
+function asVisibleRow(data: unknown): Record<string, unknown> {
+  return data as Record<string, unknown>;
+}
+
+function executionFromVisibleRow(
+  row: Record<string, unknown>,
+  payload?: { input?: Record<string, unknown>; output?: Record<string, unknown> | null },
+): ToolExecutionRecord {
+  return mapExecution({
+    ...row,
+    input: payload?.input ?? {},
+    output: payload?.output ?? null,
+  });
+}
+
+function ownExecutionPayload(value: unknown): { input: Record<string, unknown>; output: Record<string, unknown> | null } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const input = row.input && typeof row.input === "object" && !Array.isArray(row.input)
+    ? row.input as Record<string, unknown>
+    : {};
+  const output = row.output && typeof row.output === "object" && !Array.isArray(row.output)
+    ? row.output as Record<string, unknown>
+    : null;
+  return { input, output };
+}
+
+async function readOwnToolExecution(
+  client: SupabaseClient,
+  executionId: string,
+): Promise<{ input: Record<string, unknown>; output: Record<string, unknown> | null } | null> {
+  const { data, error } = await client.rpc("read_own_tool_execution", { p_execution_id: executionId });
+  if (error) {
+    const missing = error.code === "PGRST202" || error.code === "42883";
+    if (missing) return null;
+    throw error;
+  }
+  return ownExecutionPayload(data);
+}
 
 function parseStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -141,11 +196,11 @@ export function createSupabaseToolExecutionRepository(client: SupabaseClient): T
           triggered_by: input.triggeredBy ?? "router",
           created_by: input.createdBy ?? null,
         })
-        .select("*")
+        .select(TOOL_EXECUTION_VISIBLE_COLUMNS)
         .single();
 
       if (error) throw error;
-      return mapExecution(data as Record<string, unknown>);
+      return executionFromVisibleRow(asVisibleRow(data), { input: input.input, output: null });
     },
 
     async markRunning(executionId: string): Promise<ToolExecutionRecord> {
@@ -153,11 +208,11 @@ export function createSupabaseToolExecutionRepository(client: SupabaseClient): T
         .from(EXECUTIONS_TABLE)
         .update({ status: "running" })
         .eq("id", executionId)
-        .select("*")
+        .select(TOOL_EXECUTION_VISIBLE_COLUMNS)
         .single();
 
       if (error) throw error;
-      return mapExecution(data as Record<string, unknown>);
+      return executionFromVisibleRow(asVisibleRow(data));
     },
 
     async complete(input: CompleteToolExecutionInput): Promise<ToolExecutionRecord> {
@@ -173,24 +228,31 @@ export function createSupabaseToolExecutionRepository(client: SupabaseClient): T
           duration_ms: input.durationMs,
         })
         .eq("id", input.executionId)
-        .select("*")
+        .select(TOOL_EXECUTION_VISIBLE_COLUMNS)
         .single();
 
       if (error) throw error;
-      return mapExecution(data as Record<string, unknown>);
+      return executionFromVisibleRow(asVisibleRow(data), {
+        output: input.output ?? null,
+      });
     },
 
     async findById(id: string): Promise<ToolExecutionRecord | null> {
-      const { data, error } = await client.from(EXECUTIONS_TABLE).select("*").eq("id", id).maybeSingle();
+      const { data, error } = await client
+        .from(EXECUTIONS_TABLE)
+        .select(TOOL_EXECUTION_VISIBLE_COLUMNS)
+        .eq("id", id)
+        .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      return mapExecution(data as Record<string, unknown>);
+      const ownPayload = await readOwnToolExecution(client, id);
+      return executionFromVisibleRow(asVisibleRow(data), ownPayload ?? undefined);
     },
 
     async list(filter: ListToolExecutionsFilter): Promise<ToolExecutionRecord[]> {
       let query = client
         .from(EXECUTIONS_TABLE)
-        .select("*")
+        .select(TOOL_EXECUTION_VISIBLE_COLUMNS)
         .eq("company_id", filter.companyId)
         .order("started_at", { ascending: false });
 
@@ -209,7 +271,7 @@ export function createSupabaseToolExecutionRepository(client: SupabaseClient): T
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []).map((row) => mapExecution(row as Record<string, unknown>));
+      return (data ?? []).map((row) => executionFromVisibleRow(asVisibleRow(row)));
     },
   };
 }

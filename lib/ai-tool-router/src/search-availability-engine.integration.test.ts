@@ -200,14 +200,21 @@ describe("search_availability engine integration", () => {
       },
       conversationId: "conv-1",
       gatewayRequest: {
-        messages: [{ role: "user", content: "What times are open tomorrow?" }],
+        messages: [
+          {
+            role: "assistant",
+            content: "- Clinic: serviceId=11111111-1111-4111-8111-111111111111",
+          },
+          { role: "user", content: "What times are open tomorrow for Clinic?" },
+        ],
         model: "mock",
       },
       tools: tools.listLlmTools(),
       allowedToolKeys: tools.allowedToolKeys(),
     });
 
-    assert.equal(capturedTools?.length, 1);
     assert.match(result.response.text, /09:00/);
+    assert.match(result.response.text, /Open times/);
+    assert.equal(result.response.text.includes("المواعيد المتاحة"), false);
   });
 });

@@ -24,6 +24,7 @@ export function createRuntimeToolPort(
         toolKey: input.toolKey,
         input: input.input,
         triggeredBy: input.triggeredBy,
+        conversationTexts: input.conversationTexts,
       });
       return result;
     },

@@ -328,28 +328,33 @@ export class BookingDomainService {
       input.updatedBy ?? null,
     );
 
-    const preservedConfirmation =
-      typeof existing.confirmation_number === "string" && existing.confirmation_number.trim()
-        ? existing.confirmation_number.trim()
-        : null;
-
-    const booking = await this.bookingRepo.create({
-      company_id: input.companyId,
-      branch_id: previousBooking.branch_id,
-      customer_id: previousBooking.customer_id,
-      resource_id: previousBooking.resource_id,
-      service_id: previousBooking.service_id,
-      start_at: validation.context.startAt,
-      end_at: validation.context.endAt,
-      timezone: validation.context.timezone,
-      status: "confirmed",
-      source: previousBooking.source,
-      notes: previousBooking.notes,
-      rescheduled_from_id: previousBooking.id,
-      ...(preservedConfirmation ? { confirmation_number: preservedConfirmation } : {}),
-      created_by: input.updatedBy ?? previousBooking.created_by,
-      updated_by: input.updatedBy ?? null,
-    });
+    let booking;
+    try {
+      booking = await this.bookingRepo.create({
+        company_id: input.companyId,
+        branch_id: previousBooking.branch_id,
+        customer_id: previousBooking.customer_id,
+        resource_id: previousBooking.resource_id,
+        service_id: previousBooking.service_id,
+        start_at: validation.context.startAt,
+        end_at: validation.context.endAt,
+        timezone: validation.context.timezone,
+        status: "confirmed",
+        source: previousBooking.source,
+        notes: previousBooking.notes,
+        rescheduled_from_id: previousBooking.id,
+        created_by: input.updatedBy ?? previousBooking.created_by,
+        updated_by: input.updatedBy ?? null,
+      });
+    } catch (error) {
+      await this.bookingRepo.updateStatus(
+        existing.id,
+        input.companyId,
+        existing.status,
+        existing.updated_by ?? null,
+      );
+      throw error;
+    }
 
     await this.eventPublisher.publish(
       createBookingRescheduledEvent(previousBooking, booking),

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createProductPlatformServices,
   createNoopProductEventPublisher,
+  readAliasGenerationMeta,
   type ProductEventPublisherPort,
   type ProductPlatformServices,
   type CatalogProductRecord,
@@ -10,6 +11,8 @@ import { createSupabaseOpportunityRepository } from "@workspace/opportunity-plat
 import { createModulePublisher } from "@workspace/platform-events";
 import type { CatalogProductReadModel } from "@workspace/application-layer";
 import { getLoginAppPlatformEventBus } from "@/lib/application-layer/platform-event-bus-factory.js";
+import { createLoginAppProductAliasGenerationScheduler } from "@/lib/product-platform/product-alias-generation-scheduler.js";
+import { isLoginAppProductAliasGenerationEnabled } from "@/lib/product-platform/product-alias-generation-flag.js";
 
 export function createProductEventBridge(): ProductEventPublisherPort {
   const bus = () => createModulePublisher(getLoginAppPlatformEventBus(), "products");
@@ -142,6 +145,8 @@ export function createLoginAppProductPlatformServices(client: SupabaseClient): P
         await opportunities.addHistory(input);
       },
     },
+    aliasGeneration: createLoginAppProductAliasGenerationScheduler(client),
+    isAliasGenerationEnabled: () => isLoginAppProductAliasGenerationEnabled(),
   });
 }
 
@@ -152,6 +157,7 @@ export function createLoginAppProductPlatformServicesSilent(
 }
 
 export function mapCatalogProduct(record: CatalogProductRecord): CatalogProductReadModel {
+  const generation = readAliasGenerationMeta(record.metadata);
   return Object.freeze({
     id: record.id,
     tenantId: record.companyId,
@@ -164,6 +170,8 @@ export function mapCatalogProduct(record: CatalogProductRecord): CatalogProductR
     basePrice: record.basePrice,
     currency: record.currency,
     taxClass: record.taxClass,
+    priceTaxMode: record.priceTaxMode,
+    taxPercent: record.taxPercent,
     cost: record.cost,
     marginPercent: record.marginPercent,
     isActive: record.isActive,
@@ -173,8 +181,16 @@ export function mapCatalogProduct(record: CatalogProductRecord): CatalogProductR
     stockQuantity: record.stockQuantity,
     unit: record.unit,
     tags: Object.freeze([...record.tags]),
+    aliases: Object.freeze([...(record.aliases ?? [])]),
     imageUrls: Object.freeze([...record.imageUrls]),
     documentUrls: Object.freeze([...record.documentUrls]),
+    aliasGeneration: generation
+      ? Object.freeze({
+          status: generation.status,
+          primaryLanguage: generation.primaryLanguage ?? null,
+          errorCode: generation.errorCode ?? null,
+        })
+      : null,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   });

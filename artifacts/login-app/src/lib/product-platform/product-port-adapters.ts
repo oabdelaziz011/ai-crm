@@ -95,6 +95,7 @@ export function createLoginAppProductReadPort(
           fieldName: h.fieldName,
           previousValue: h.previousValue,
           newValue: h.newValue,
+          actorUserId: h.actorUserId,
           createdAt: h.createdAt,
         }),
       );
@@ -150,8 +151,17 @@ export function createLoginAppProductWritePort(
         basePrice: input.basePrice,
         currency: input.currency,
         taxClass: input.taxClass,
+        priceTaxMode: input.priceTaxMode,
+        taxPercent: input.taxPercent,
         cost: input.cost,
+        subscriptionInterval: input.subscriptionInterval ?? null,
+        subscriptionPrice: input.subscriptionPrice ?? null,
+        unit: input.unit,
+        trackInventory: input.trackInventory,
+        stockQuantity: input.stockQuantity,
         tags: input.tags ? [...input.tags] : undefined,
+        aliases: input.aliases ? [...input.aliases] : undefined,
+        imageUrls: input.imageUrls ? [...input.imageUrls] : undefined,
       });
       return mapCatalogProduct(product);
     },
@@ -168,13 +178,29 @@ export function createLoginAppProductWritePort(
         basePrice: patch.basePrice,
         currency: patch.currency,
         taxClass: patch.taxClass,
+        priceTaxMode: patch.priceTaxMode,
+        taxPercent: patch.taxPercent,
         cost: patch.cost,
         isActive: patch.isActive,
         productType: patch.productType as ProductType | undefined,
+        subscriptionInterval: patch.subscriptionInterval,
+        subscriptionPrice: patch.subscriptionPrice,
+        unit: patch.unit,
+        trackInventory: patch.trackInventory,
+        stockQuantity: patch.stockQuantity,
         tags: patch.tags ? [...patch.tags] : undefined,
+        aliases: patch.aliases ? [...patch.aliases] : undefined,
         documentUrls: patch.documentUrls ? [...patch.documentUrls] : undefined,
         imageUrls: patch.imageUrls ? [...patch.imageUrls] : undefined,
       });
+      return mapCatalogProduct(product);
+    },
+    async regenerateAliases(tenantId, productId) {
+      assertTenant(tenantId);
+      const { product } = await platform.commands.regenerateProductAliases(
+        buildContext(ctx, tenantId),
+        { companyId: tenantId, productId },
+      );
       return mapCatalogProduct(product);
     },
     async archive(tenantId, productId) {

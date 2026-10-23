@@ -24,7 +24,7 @@ export type BookingConflictResult = {
   conflicts: BookingConflictDetail[];
 };
 
-const PERSONNEL_TYPES: SchedulingResourceType[] = ["doctor", "employee", "therapist"];
+const PERSONNEL_TYPES: SchedulingResourceType[] = ["doctor", "employee", "therapist", "instructor", "engineer"];
 const ROOM_TYPES: SchedulingResourceType[] = ["room"];
 const EQUIPMENT_TYPES: SchedulingResourceType[] = ["equipment", "chair"];
 

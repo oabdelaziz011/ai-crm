@@ -44,6 +44,9 @@ const PRODUCT_TYPE_KEYS: Record<string, string> = {
   addon: "products.types.addon",
   "add-on": "products.types.addon",
   "add on": "products.types.addon",
+  real_estate: "products.types.realEstate",
+  "real estate": "products.types.realEstate",
+  "real-estate": "products.types.realEstate",
 };
 
 const QUOTE_STATUS_KEYS: Record<string, string> = {

@@ -159,6 +159,7 @@ export class BookingValidationService {
       {
         respectBookingRules: true,
         referenceNow,
+        durationMinutes,
       },
     );
 

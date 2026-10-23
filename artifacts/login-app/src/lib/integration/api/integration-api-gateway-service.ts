@@ -583,14 +583,32 @@ export class IntegrationApiGatewayService {
   }
 
   async convertLead(ctx: ApiAuthContext, leadId: string) {
-    return this.leadPlatform.commands.convertLead(this.leadContext(ctx), { companyId: ctx.companyId, leadId });
+    const result = await this.leadPlatform.commands.convertLead(this.leadContext(ctx), {
+      companyId: ctx.companyId,
+      leadId,
+    });
+    void import("@workspace/automation-platform")
+      .then(({ cancelSalesFollowUpAfterLeadStop }) =>
+        cancelSalesFollowUpAfterLeadStop(this.client, {
+          companyId: ctx.companyId,
+          leadId,
+          reason: "converted",
+        }),
+      )
+      .catch(() => {
+        /* non-blocking side effect */
+      });
+    return result;
   }
 
   async qualifyLead(ctx: ApiAuthContext, leadId: string, body?: { score?: number }) {
+    // Integration API = human/system authority; policy not enforced (P1c compatibility).
+    // Follow-up + product-interest promotion are owned by the lead_qualified event publisher.
     return this.leadPlatform.commands.qualifyLead(this.leadContext(ctx), {
       companyId: ctx.companyId,
       leadId,
       score: body?.score,
+      qualificationPolicyMode: "human_override",
     });
   }
 

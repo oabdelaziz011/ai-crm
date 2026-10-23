@@ -1,4 +1,82 @@
 import type { CustomerInvoice, CustomerPayment, RevenueMetrics } from "@/lib/billing/types/financial-types";
+import { TimezoneResolver } from "@/lib/scheduling/availability-engine/timezone-resolver";
+import { resolveQueueDateRange, type QueueDatePreset } from "@/lib/universal-operations/operations-queue-date-range";
+
+export type FinancialReportPreset = "today" | "week" | "month" | "custom";
+
+export type FinancialPeriodReport = {
+  dateFrom: string;
+  dateTo: string;
+  totalCents: number;
+  paidCents: number;
+  remainingCents: number;
+  invoiceCount: number;
+  bookingCount: number;
+};
+
+const REPORT_PRESET_TO_QUEUE: Record<FinancialReportPreset, QueueDatePreset> = {
+  today: "today",
+  week: "this_week",
+  month: "this_month",
+  custom: "custom",
+};
+
+export function resolveFinancialReportRange(
+  preset: FinancialReportPreset,
+  timezone: string,
+  customFrom?: string | null,
+  customTo?: string | null,
+): { dateFrom: string; dateTo: string } {
+  const from = customFrom?.trim() ? customFrom : null;
+  const to = customTo?.trim() ? customTo : null;
+  const range = resolveQueueDateRange(REPORT_PRESET_TO_QUEUE[preset], from, to, timezone);
+  return { dateFrom: range.dateFrom, dateTo: range.dateTo };
+}
+
+export function invoiceCalendarDate(invoice: CustomerInvoice, timezone: string): string | null {
+  const raw = invoice.issuedAt || invoice.createdAt;
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const zone = timezone && TimezoneResolver.isValid(timezone) ? timezone : "UTC";
+  return TimezoneResolver.localDateForInstant(parsed, zone);
+}
+
+export function filterInvoicesForReport(
+  invoices: CustomerInvoice[],
+  dateFrom: string,
+  dateTo: string,
+  timezone: string,
+): CustomerInvoice[] {
+  const from = dateFrom <= dateTo ? dateFrom : dateTo;
+  const to = dateFrom <= dateTo ? dateTo : dateFrom;
+  return invoices.filter((invoice) => {
+    if (invoice.status === "cancelled") return false;
+    const day = invoiceCalendarDate(invoice, timezone);
+    return Boolean(day && day >= from && day <= to);
+  });
+}
+
+export function buildFinancialPeriodReport(input: {
+  invoices: CustomerInvoice[];
+  bookingCount: number;
+  dateFrom: string;
+  dateTo: string;
+  timezone: string;
+}): FinancialPeriodReport {
+  const invoices = filterInvoicesForReport(input.invoices, input.dateFrom, input.dateTo, input.timezone);
+  const totalCents = invoices.reduce((sum, invoice) => sum + Number(invoice.totalCents || 0), 0);
+  const paidCents = invoices.reduce((sum, invoice) => sum + Number(invoice.paidCents || 0), 0);
+  return {
+    dateFrom: input.dateFrom <= input.dateTo ? input.dateFrom : input.dateTo,
+    dateTo: input.dateFrom <= input.dateTo ? input.dateTo : input.dateFrom,
+    totalCents,
+    paidCents,
+    remainingCents: Math.max(0, totalCents - paidCents),
+    invoiceCount: invoices.length,
+    bookingCount: Math.max(0, input.bookingCount),
+  };
+}
 
 export type FinancialWorkspaceKpi = {
   id: string;

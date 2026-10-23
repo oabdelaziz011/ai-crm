@@ -14,6 +14,7 @@ const COLUMN_LABEL_KEYS: Record<string, string> = {
   status: "universalOperations.grid.columns.status",
   payment_status: "universalOperations.grid.columns.paymentStatus",
   waiting_minutes: "universalOperations.grid.columns.waitingTime",
+  people_ahead: "universalOperations.grid.columns.peopleAhead",
   duration_minutes: "universalOperations.grid.columns.duration",
   amount: "universalOperations.grid.columns.amount",
   branch: "universalOperations.grid.columns.branch",
@@ -38,8 +39,9 @@ const STATUS_ALIASES: Record<string, string> = {
   archived: "cancelled",
   cancelled: "cancelled",
   canceled: "cancelled",
-  no_show: "cancelled",
-  noshow: "cancelled",
+  no_show: "no_show",
+  noshow: "no_show",
+  rescheduled: "rescheduled",
 };
 
 /** Enterprise Queue 2.0 status palette (display override). */
@@ -133,6 +135,9 @@ export function resolveOperationsStatusKey(
   rawValue: unknown,
   config?: OperationsWorkspaceConfig | null,
 ): string | null {
+  const rawToken = normalizeToken(String(rawValue ?? ""));
+  if (rawToken && STATUS_ALIASES[rawToken]) return STATUS_ALIASES[rawToken];
+
   const fromConfig = statusId
     ? config?.statuses.find((status) => status.id === statusId)?.internalName
     : undefined;

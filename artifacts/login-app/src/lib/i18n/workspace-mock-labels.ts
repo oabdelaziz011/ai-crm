@@ -170,6 +170,10 @@ export function translateLeadLifecycleStatus(t: TFunction, status: string): stri
     demo: "demo_scheduled",
     demoscheduled: "demo_scheduled",
     demo_scheduled: "demo_scheduled",
+    democompleted: "demo_completed",
+    demo_completed: "demo_completed",
+    "demo completed": "demo_completed",
+    opportunity: "demo_completed",
   };
   const key = `leads.lifecycle.${aliases[normalized] ?? normalized}`;
   const translated = t(key);

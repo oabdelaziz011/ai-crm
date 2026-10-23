@@ -14,7 +14,7 @@ import { mapRecordsToLookupRows } from "./map-lookup-rows";
 import { getLookupEntityDefinition } from "./registry";
 import type { ListLookupConfig, ListLookupFilters, LookupEntityId, LookupOptionRow } from "./types";
 
-const STAFF_RESOURCE_TYPES = new Set(["doctor", "employee", "therapist"]);
+const STAFF_RESOURCE_TYPES = new Set(["doctor", "employee", "therapist", "instructor", "engineer"]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null;

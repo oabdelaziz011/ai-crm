@@ -7,6 +7,10 @@ export type HandoffLifecycleBridgeInput = {
   conversationId: string;
   actorUserId: string | null;
   assigneeUserId?: string | null;
+  /** Human assign targets only. AI employees return through returnConversationToAi. */
+  assignmentTargetType?: "user" | "team" | "department" | "queue" | "ai_employee" | null;
+  aiEmployeeId?: string | null;
+  aiEmployeeLabel?: string | null;
   queueId?: string | null;
   reason?: string;
   escalationTrigger?: EscalationTrigger;
@@ -80,6 +84,14 @@ export async function executeHandoffLifecycleBridge(
     case "reassign":
     case "take_over":
     case "queue_assign":
+      if (input.assignmentTargetType === "ai_employee") {
+        await platform.commands.returnConversationToAi(ctx, {
+          ...base,
+          aiEmployeeId: input.aiEmployeeId ?? null,
+          aiEmployeeLabel: input.aiEmployeeLabel ?? null,
+        });
+        return;
+      }
       if (queueId && !input.assigneeUserId) {
         await platform.commands.queueConversation(ctx, { ...base, queueId });
         return;

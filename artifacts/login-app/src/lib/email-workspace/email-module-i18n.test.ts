@@ -34,15 +34,26 @@ function extractEmailModuleKeys(source: string): Set<string> {
   return keys;
 }
 
-function hasKey(obj: unknown, dotted: string): boolean {
-  const parts = dotted.split(".");
-  let cur: unknown = obj;
-  for (const p of parts) {
-    if (p === "*") return typeof cur === "object" && cur !== null;
-    if (cur == null || typeof cur !== "object" || !(p in (cur as object))) return false;
-    cur = (cur as Record<string, unknown>)[p];
+function segmentPattern(segment: string): RegExp {
+  const escaped = segment.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".+");
+  return new RegExp(`^${escaped}$`);
+}
+
+function hasKeyParts(cur: unknown, parts: string[]): boolean {
+  if (parts.length === 0) {
+    return typeof cur === "string" || (typeof cur === "object" && cur !== null);
   }
-  return typeof cur === "string" || (typeof cur === "object" && cur !== null);
+  const [p, ...rest] = parts;
+  if (p === "*") return typeof cur === "object" && cur !== null;
+  if (cur == null || typeof cur !== "object") return false;
+  const record = cur as Record<string, unknown>;
+  if (!p.includes("*")) return p in record && hasKeyParts(record[p], rest);
+  const pattern = segmentPattern(p);
+  return Object.keys(record).some((k) => pattern.test(k) && hasKeyParts(record[k], rest));
+}
+
+function hasKey(obj: unknown, dotted: string): boolean {
+  return hasKeyParts(obj, dotted.split("."));
 }
 
 function leafValue(obj: unknown, dotted: string): unknown {

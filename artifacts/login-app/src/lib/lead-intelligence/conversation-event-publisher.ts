@@ -27,7 +27,7 @@ export function publishConversationMessageReceived(
   payload: ConversationMessageReceivedPayload,
 ): Promise<unknown> {
   const publisher = createModulePublisher(getLoginAppPlatformEventBus(), "conversation");
-  return publisher.publish("ConversationMessageReceived", payload, {
+  const published = publisher.publish("ConversationMessageReceived", payload, {
     tenantId: payload.companyId,
     correlationId: `${payload.messageId}:ConversationMessageReceived:${payload.receivedAt}`,
     actorId: payload.actorUserId ?? undefined,
@@ -37,6 +37,22 @@ export function publishConversationMessageReceived(
     entityId: payload.conversationId,
     occurredAt: payload.receivedAt,
   });
+
+  // Safety: cancel pending sales follow-ups for this conversation on inbound customer message.
+  void import("@workspace/automation-platform")
+    .then(async ({ cancelSalesFollowUpForConversation }) => {
+      const { supabase } = await import("@/lib/supabase");
+      await cancelSalesFollowUpForConversation(supabase, {
+        companyId: payload.companyId,
+        conversationId: payload.conversationId,
+        reason: "customer_replied",
+      });
+    })
+    .catch(() => {
+      /* non-blocking */
+    });
+
+  return published;
 }
 
 /** Api-server variant with explicit client/bus injection if needed later. */

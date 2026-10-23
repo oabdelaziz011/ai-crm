@@ -27,6 +27,9 @@ function formatPreservedNotes(payload: Record<string, unknown>): string {
   const score = typeof payload.score === "number" ? payload.score : null;
   if (score != null) sections.push(`Lead score: ${score}`);
 
+  const journey = typeof payload.journey === "string" ? payload.journey.trim() : "";
+  if (journey) sections.push(journey);
+
   return sections.join("\n\n");
 }
 
@@ -81,6 +84,19 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
         notes,
         phoneIdentity: phonePreview.identity ?? undefined,
       });
+
+      if (!created && notes.trim()) {
+        const previous = (customer.notes ?? "").trim();
+        if (!previous.includes(notes.trim())) {
+          await customerService.updateCustomer({
+            companyId: input.companyId,
+            userId: ownerUserId,
+            customerId: customer.id,
+            field: "notes",
+            value: [previous, notes.trim()].filter(Boolean).join("\n\n"),
+          });
+        }
+      }
 
       if (input.preservedPayload.conversationId && typeof input.preservedPayload.conversationId === "string") {
         await client

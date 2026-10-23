@@ -39,6 +39,7 @@ const STATIC_TITLE_RULES: readonly StaticTitleRule[] = [
     descriptionKey: "documentMeta.terms",
   },
   { match: (path) => path === "/debug/workflow-builder", titleKey: "documentTitle.workflowDebug" },
+  { match: (path) => /^\/site\/[^/]+$/.test(path), titleKey: "documentTitle.website" },
   { match: (path) => /^\/book\/[^/]+\/flow$/.test(path), titleKey: "documentTitle.bookingFlow" },
   { match: (path) => /^\/book\/[^/]+$/.test(path), titleKey: "documentTitle.booking" },
   { match: (path) => /^\/portal\/[^/]+\/login$/.test(path), titleKey: "documentTitle.portalLogin" },

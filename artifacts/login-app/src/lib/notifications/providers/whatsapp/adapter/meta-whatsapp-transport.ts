@@ -9,6 +9,14 @@ import type {
 
 const DEFAULT_API_VERSION = "v21.0";
 
+/** Graph returned an error response and no message id. Network failures stay ordinary errors. */
+export class WhatsAppProviderRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WhatsAppProviderRejectedError";
+  }
+}
+
 function graphBaseUrl(apiVersion = DEFAULT_API_VERSION): string {
   return `https://graph.facebook.com/${apiVersion}`;
 }
@@ -43,7 +51,7 @@ export class MetaWhatsAppTransport implements WhatsAppTransport {
     };
 
     if (!response.ok) {
-      throw new Error(
+      throw new WhatsAppProviderRejectedError(
         body.error?.error_user_msg ?? body.error?.message ?? `WhatsApp API error (${response.status})`,
       );
     }

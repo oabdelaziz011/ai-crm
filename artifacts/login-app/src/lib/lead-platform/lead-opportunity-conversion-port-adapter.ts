@@ -25,8 +25,16 @@ export function createLoginAppLeadOpportunityConversionPort(
   const resolveDefaultCurrency = (explicit?: string) => explicit?.trim() || companyCurrency() || undefined;
 
   const findExisting = async (companyId: string, leadId: string) => {
-    const existing = await repository.listOpportunities({ companyId, leadId, limit: 1, offset: 0 });
-    return existing.items[0] ?? null;
+    // Only open opportunities (won/lost/soft-deleted excluded). Closed deals must not block
+    // a new Opportunity for the same lead after Won/Lost.
+    const existing = await repository.listOpportunities({
+      companyId,
+      leadId,
+      openOnly: true,
+      limit: 5,
+      offset: 0,
+    });
+    return existing.items.find((item) => !item.wonAt && !item.lostAt) ?? null;
   };
 
   return {

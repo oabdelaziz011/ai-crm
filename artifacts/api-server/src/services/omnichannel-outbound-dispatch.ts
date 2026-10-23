@@ -18,6 +18,8 @@ import {
 
   PermissionDeniedError,
 
+  ProviderAcceptanceUnconfirmedError,
+
   ValidationError,
 
   validateOutboundRoute,
@@ -205,6 +207,10 @@ function mapChannelPlatformError(error: unknown): never {
 
     throw new HttpError(404, error.message, "channel_not_found");
 
+  }
+
+  if (error instanceof ProviderAcceptanceUnconfirmedError) {
+    throw new HttpError(409, error.message, "provider_acceptance_unconfirmed");
   }
 
   throw error;

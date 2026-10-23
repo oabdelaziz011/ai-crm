@@ -117,7 +117,14 @@ export function withPublicWebChatEmployeeToolPolicy(
           ? input.basePageContext.companyChannelId
           : null;
       if (!prepared || !companyChannelId) return prepared;
-      if (!(await resolver.isPublicWebChatChannel(companyChannelId))) return prepared;
+      let isPublicChannel = false;
+      try {
+        isPublicChannel = await resolver.isPublicWebChatChannel(companyChannelId);
+      } catch {
+        // Configuration lookup failure is public-safe: do not leave sales tools offered.
+        isPublicChannel = true;
+      }
+      if (!isPublicChannel) return prepared;
 
       const pageContext = restrictPageContextToPublicWebChat(prepared.runtimeConfig.pageContext ?? {});
       const executionContext = readAgentEmployeeExecutionContext(pageContext);
@@ -125,6 +132,7 @@ export function withPublicWebChatEmployeeToolPolicy(
         registerConversationToolScope(input.conversationId, {
           allowedToolKeys: executionContext.allowedToolKeys,
           employeeId: executionContext.aiEmployeeId,
+          showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
         });
       }
       return {

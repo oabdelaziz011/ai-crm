@@ -15,12 +15,32 @@ type SystemContext = {
  * channel_session are pre-provisioned by web_chat_public_ensure_conversation, so the
  * session engine binds to them instead of creating a new conversation.
  */
+export type PublicWebChatAutomationGate = {
+  evaluate(input: {
+    companyId: string;
+    conversationId: string;
+  }): Promise<{ allowAutomatedReply: boolean; reason?: string }>;
+};
+
+/**
+ * Visitor-facing "human owned" for public web chat notices.
+ * The inbound AI gate may still allow one controlled AI follow-up while an
+ * unassigned escalation is waiting (`waiting_unassigned_follow_up`); the visitor
+ * must still see the handoff notice in that state.
+ */
+export function isPublicWebChatHumanOwned(decision: {
+  allowAutomatedReply: boolean;
+  reason?: string;
+} | null | undefined): boolean {
+  if (!decision) return false;
+  if (!decision.allowAutomatedReply) return true;
+  return decision.reason === "waiting_unassigned_follow_up";
+}
+
 export function createPublicWebChatInboundPort(deps: {
   router: Pick<ChannelRouter, "routeInbound">;
   systemContext: SystemContext;
-  automationGate?: {
-    evaluate(input: { companyId: string; conversationId: string }): Promise<{ allowAutomatedReply: boolean }>;
-  } | null;
+  automationGate?: PublicWebChatAutomationGate | null;
   handoffService: Pick<HandoffServicePort, "requestCustomerHandoff">;
 }): PublicWebChatInboundPort {
   return {
@@ -60,14 +80,14 @@ export function createPublicWebChatInboundPort(deps: {
     async isHumanOwned(input) {
       if (!deps.automationGate) return false;
       const decision = await deps.automationGate.evaluate(input);
-      return !decision.allowAutomatedReply;
+      return isPublicWebChatHumanOwned(decision);
     },
 
     async requestHandoff(input) {
       await deps.handoffService.requestCustomerHandoff({
         companyId: input.companyId,
         conversationId: input.conversationId,
-        triggerCode: "repeated_failures",
+        triggerCode: input.triggerCode ?? "repeated_failures",
         reason: input.reason,
       });
     },

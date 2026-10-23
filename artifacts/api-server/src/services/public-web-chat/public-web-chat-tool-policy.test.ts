@@ -33,6 +33,15 @@ const UNSAFE_TOOLS = [
   "crm_lookup",
   "internal_search",
   "transfer_workflow",
+  "search_products",
+  "get_product_details",
+  "create_draft_quote",
+  "request_send_quote",
+  "qualify_lead",
+  "list_demo_types",
+  "search_demo_availability",
+  "find_next_demo",
+  "create_demo_booking",
 ];
 
 const ctx = {} as ServiceContext;
@@ -162,6 +171,7 @@ describe("29. Public Web Chat tool policy", () => {
     } as never);
     assert.deepEqual(publicPrepared?.runtimeConfig.pageContext?.allowedToolKeys, ["knowledge_search"]);
     assert.deepEqual(resolveActiveToolScope("public-conv-1")?.allowedToolKeys, ["knowledge_search"]);
+    assert.equal(resolveActiveToolScope("public-conv-1")?.showProductPrices, false);
 
     const otherPrepared = await wrapped.prepareForConversation({
       conversationId: "wa-conv-1",
@@ -169,6 +179,68 @@ describe("29. Public Web Chat tool policy", () => {
     } as never);
     assert.deepEqual(otherPrepared?.runtimeConfig.pageContext?.allowedToolKeys, [
       "search_customers",
+      "knowledge_search",
+    ]);
+  });
+
+  it("configuration lookup failure still denies sales, quote, and product-demo tools", async () => {
+    const failingResolver = {
+      async isPublicWebChatConversation() {
+        throw new Error("configuration lookup failed");
+      },
+      async isPublicWebChatChannel() {
+        throw new Error("configuration lookup failed");
+      },
+    };
+    const { port, routed } = createBaseToolPort();
+    const guarded = createPublicWebChatToolGuard(port, failingResolver);
+    for (const toolKey of ["qualify_lead", "create_customer", "create_draft_quote", "create_demo_booking"]) {
+      const result = await guarded.route(ctx, {
+        conversationId: "public-lookup-failed",
+        toolKey,
+        input: {},
+        triggeredBy: "ai",
+      } as RuntimeToolRouteInput);
+      assert.equal(result.status, "failed", toolKey);
+      assert.equal(result.errorCode, PUBLIC_WEB_CHAT_TOOL_DENIED_CODE);
+    }
+    assert.deepEqual(routed, []);
+
+    const base: ChannelEmployeeRuntimePort = {
+      async prepareForConversation() {
+        return {
+          employeeId: "employee-1",
+          runtimeConfig: {
+            providerConnectionId: "provider-1",
+            pageContext: {
+              allowedToolKeys: [
+                "qualify_lead",
+                "create_customer",
+                "create_draft_quote",
+                "list_demo_types",
+                "create_demo_booking",
+                "knowledge_search",
+              ],
+              [AGENT_EMPLOYEE_EXECUTION_CONTEXT_KEY]: executionContext([
+                "qualify_lead",
+                "create_customer",
+                "create_draft_quote",
+                "list_demo_types",
+                "create_demo_booking",
+                "knowledge_search",
+              ]),
+            },
+          },
+        };
+      },
+    } as unknown as ChannelEmployeeRuntimePort;
+    const wrapped = withPublicWebChatEmployeeToolPolicy(base, failingResolver);
+    const prepared = await wrapped.prepareForConversation({
+      conversationId: "public-lookup-failed",
+      basePageContext: { companyChannelId: "widget-channel" },
+    } as never);
+    assert.deepEqual(prepared?.runtimeConfig.pageContext?.allowedToolKeys, ["knowledge_search"]);
+    assert.deepEqual(readAgentEmployeeExecutionContext(prepared?.runtimeConfig.pageContext)?.allowedToolKeys, [
       "knowledge_search",
     ]);
   });

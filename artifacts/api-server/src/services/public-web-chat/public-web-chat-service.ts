@@ -48,7 +48,12 @@ export type PublicWebChatInboundPort = {
     requestId: string | null;
   }): Promise<{ incomingMessageId: string | null; responseContent: string | null; duplicate: boolean }>;
   isHumanOwned(input: { companyId: string; conversationId: string }): Promise<boolean>;
-  requestHandoff(input: { companyId: string; conversationId: string; reason: string }): Promise<void>;
+  requestHandoff(input: {
+    companyId: string;
+    conversationId: string;
+    reason: string;
+    triggerCode?: "customer_requested" | "repeated_failures";
+  }): Promise<void>;
 };
 
 type ServiceLogger = {
@@ -368,7 +373,12 @@ export function createPublicWebChatService(deps: PublicWebChatServiceDeps) {
         }
 
         const externalMessageId = `webchat:${session.sessionId}:${clientMessageId}`;
-        const executeAi = deps.executeAi && session.config.aiEnabled !== false && Boolean(session.aiEmployeeId);
+        const requestHuman = input.body.request_human === true;
+        const executeAi =
+          !requestHuman &&
+          deps.executeAi &&
+          session.config.aiEnabled !== false &&
+          Boolean(session.aiEmployeeId);
 
         try {
           const routed = await deps.inbound.routeVisitorMessage({
@@ -383,6 +393,34 @@ export function createPublicWebChatService(deps: PublicWebChatServiceDeps) {
             aiEmployeeId: executeAi ? session.aiEmployeeId : null,
             requestId: input.requestId ?? null,
           });
+
+          if (requestHuman) {
+            try {
+              await deps.inbound.requestHandoff({
+                companyId: session.companyId,
+                conversationId: binding.conversationId,
+                reason: "public_web_chat_visitor_requested_human",
+                triggerCode: "customer_requested",
+              });
+            } catch (handoffError) {
+              log?.warn(
+                { publicWebChat: true, operation: "request_handoff", ...errorSummary(handoffError) },
+                "public web chat visitor handoff failed",
+              );
+              await complete("completed", "accepted", routed.incomingMessageId);
+              return {
+                ok: true,
+                status: 200,
+                body: { status: "accepted", clientMessageId, notice: copy.received },
+              };
+            }
+            await complete("completed", "handoff", routed.incomingMessageId);
+            return {
+              ok: true,
+              status: 200,
+              body: { status: "handoff", clientMessageId, notice: copy.handoff },
+            };
+          }
 
           let outcome: PublicWebChatSendOutcome = "accepted";
           if (routed.responseContent?.trim()) {

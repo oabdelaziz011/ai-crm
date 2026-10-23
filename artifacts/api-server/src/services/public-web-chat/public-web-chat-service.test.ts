@@ -199,7 +199,12 @@ function createHarness(options: { executeAi?: boolean; apiEnabled?: boolean } = 
   };
 
   const routeCalls: Array<Parameters<PublicWebChatInboundPort["routeVisitorMessage"]>[0]> = [];
-  const handoffRequests: Array<{ companyId: string; conversationId: string; reason: string }> = [];
+  const handoffRequests: Array<{
+    companyId: string;
+    conversationId: string;
+    reason: string;
+    triggerCode?: string;
+  }> = [];
   let routeBehavior: "reply" | "no_reply" | "throw_after_persist" | "throw_before_persist" = "reply";
   let humanOwned = false;
 
@@ -579,6 +584,21 @@ describe("Public Web Chat service — messages", () => {
     await h.send(session, { client_message_id: "msg-00000001", text: "hello" });
     assert.equal(h.fallbacks.length, 1);
     assert.equal(h.handoffRequests.length, 0);
+  });
+
+  it("31b. visitor request_human skips AI and hands the same thread to staff", async () => {
+    const h = createHarness();
+    const session = await h.newSession();
+    const result = await h.send(session, {
+      client_message_id: "msg-00000009",
+      text: "I would like to speak with someone.",
+      request_human: true,
+    });
+    assert.equal(result.ok && result.body.status, "handoff");
+    assert.equal(h.routeCalls[0]?.executeAi, false);
+    assert.equal(h.handoffRequests.length, 1);
+    assert.equal(h.handoffRequests[0]?.triggerCode, "customer_requested");
+    assert.equal(h.fallbacks.length, 0);
   });
 
   it("31 / 32. human handoff: no AI reply, safe visitor notice", async () => {

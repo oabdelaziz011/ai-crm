@@ -177,6 +177,17 @@ const lines = [
   "FRONTEND_ORIGIN=http://localhost:5173",
   "LOGIN_APP_URL=http://localhost:5173",
   "",
+  "# Local-only: AI catalog search may use product aliases (migration 422). Off in production by default.",
+  "VALUEOR_PRODUCT_ALIAS_SEARCH=true",
+  "# Local-only: auto-generate product aliases via platform AI after create/update. Off in production by default.",
+  "VALUEOR_PRODUCT_ALIAS_GENERATION=true",
+  "VITE_VALUEOR_PRODUCT_ALIAS_GENERATION=true",
+  "",
+  "# Local-only: run sales follow-up worker ticks. ALLOW_SEND stays false — no real customer sends.",
+  "SALES_FOLLOW_UP_WORKER_ENABLED=true",
+  "SALES_FOLLOW_UP_WORKER_ALLOW_SEND=false",
+  "SALES_FOLLOW_UP_WORKER_INTERVAL_MS=60000",
+  "",
 ];
 
 // Preserve per-developer tunnel bases from `.env.local.integration` (never production).
@@ -203,6 +214,11 @@ if (integrationWebhookBase && !isProductionWebhookUrl(integrationWebhookBase)) {
   lines.push("");
 }
 
+lines.push("# Local Quote Delivery verification — Fake Provider inside QuoteSendService only.");
+lines.push("# No SMTP/Meta. Does NOT bypass assertLocalExternalOutboundAllowed.");
+lines.push("VALUEOR_QUOTE_SEND_FAKE_PROVIDER=1");
+lines.push("VALUEOR_QUOTE_SEND_FAKE_MODE=success");
+lines.push("");
 lines.push("SESSION_SECRET=dev-secret-change-me");
 lines.push("INTERNAL_API_KEY=dev-internal-api-key");
 lines.push("");

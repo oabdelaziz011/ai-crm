@@ -55,6 +55,11 @@ export const LOCAL_OPTIONAL_MERGE_KEYS = [
   "EMBEDDING_E2E_LIVE",
   "SESSION_SECRET",
   "INTERNAL_API_KEY",
+  // Local sales follow-up worker (also written into .env.localstack by ensure-localstack-env).
+  "SALES_FOLLOW_UP_WORKER_ENABLED",
+  "SALES_FOLLOW_UP_WORKER_ALLOW_SEND",
+  "SALES_FOLLOW_UP_WORKER_INTERVAL_MS",
+  "SALES_FOLLOW_UP_WORKER_LIMIT",
 ];
 
 const PROD_SUPABASE_HOST_RE = /\.supabase\.co\b/i;

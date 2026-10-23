@@ -1,0 +1,337 @@
+{
+  "status": "AWAITING_HUMAN_APPROVAL",
+  "safety": {
+    "historical_rows_modified": false,
+    "repair_sql_executed": false,
+    "environment": "local_only",
+    "note": "No UPDATE may run until a separate explicit approval is provided for this manifest snapshot."
+  },
+  "capturedAt": "2026-10-20T16:02:32.844Z",
+  "summary": {
+    "open_total": 9,
+    "null_customer": 7,
+    "null_product": 8,
+    "both_null": 6,
+    "fully_scoped": 0
+  },
+  "classification_counts": {
+    "human_decision_required": 4,
+    "product_only_requires_decision": 1,
+    "safe_customer_backfill_from_lead": 2,
+    "intentional_general_deal_no_change": 2
+  },
+  "entries": [
+    {
+      "opportunity_id": "78da6aee-12c6-4a5f-9503-b4f1a9831dc3",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": null,
+        "customer_id": null,
+        "primary_product_id": null,
+        "created_from_lead": false,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-09-30T17:59:40.963Z",
+        "lead_customer_id": null,
+        "lead_company_id": null,
+        "lead_customer_in_company": false,
+        "opp_customer_in_company": false,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "human_decision_required",
+      "proposed_change": null,
+      "authoritative_source": null,
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "No authoritative lead/customer relationship; likely legacy manual/unscoped create.",
+      "human_decision_required": "Assign a same-company customer_id, convert/link a lead first, or explicitly keep as unscoped_manual. Do not infer from names.",
+      "exact_sql_after_approval": null,
+      "expected_affected_rows_if_executed": 0
+    },
+    {
+      "opportunity_id": "b6c940bb-71e4-48ca-b69f-2a8ad3799284",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": null,
+        "customer_id": null,
+        "primary_product_id": null,
+        "created_from_lead": false,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-08-08T22:44:48.657Z",
+        "lead_customer_id": null,
+        "lead_company_id": null,
+        "lead_customer_in_company": false,
+        "opp_customer_in_company": false,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "human_decision_required",
+      "proposed_change": null,
+      "authoritative_source": null,
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "No authoritative lead/customer relationship; likely legacy manual/unscoped create.",
+      "human_decision_required": "Assign a same-company customer_id, convert/link a lead first, or explicitly keep as unscoped_manual. Do not infer from names.",
+      "exact_sql_after_approval": null,
+      "expected_affected_rows_if_executed": 0
+    },
+    {
+      "opportunity_id": "919b1f5c-9208-4bd8-8c4e-5b65883cb2ec",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": null,
+        "customer_id": null,
+        "primary_product_id": "6ec22958-25ff-4d40-827d-fb1a96756e32",
+        "created_from_lead": false,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-08-09T00:53:23.624Z",
+        "lead_customer_id": null,
+        "lead_company_id": null,
+        "lead_customer_in_company": false,
+        "opp_customer_in_company": false,
+        "opp_product_in_company": true,
+        "distinct_line_products": 1
+      },
+      "classification": "product_only_requires_decision",
+      "proposed_change": null,
+      "authoritative_source": null,
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "Product-scoped without customer — uniqueness cannot protect this row.",
+      "human_decision_required": "Choose exactly one: (A) provide an authoritative same-company customer_id to assign, or (B) clear primary_product_id to leave the row intentionally unscoped. Do not invent identity.",
+      "exact_sql_after_approval": null,
+      "expected_affected_rows_if_executed": 0
+    },
+    {
+      "opportunity_id": "41fccedc-62bd-4012-ba1a-f84a6746b8de",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": null,
+        "customer_id": null,
+        "primary_product_id": null,
+        "created_from_lead": false,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-08-08T23:08:49.097Z",
+        "lead_customer_id": null,
+        "lead_company_id": null,
+        "lead_customer_in_company": false,
+        "opp_customer_in_company": false,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "human_decision_required",
+      "proposed_change": null,
+      "authoritative_source": null,
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "No authoritative lead/customer relationship; likely legacy manual/unscoped create.",
+      "human_decision_required": "Assign a same-company customer_id, convert/link a lead first, or explicitly keep as unscoped_manual. Do not infer from names.",
+      "exact_sql_after_approval": null,
+      "expected_affected_rows_if_executed": 0
+    },
+    {
+      "opportunity_id": "514ce79b-fdda-49ab-b23a-d821e8cbf563",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": null,
+        "customer_id": null,
+        "primary_product_id": null,
+        "created_from_lead": false,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-08-09T01:22:30.357Z",
+        "lead_customer_id": null,
+        "lead_company_id": null,
+        "lead_customer_in_company": false,
+        "opp_customer_in_company": false,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "human_decision_required",
+      "proposed_change": null,
+      "authoritative_source": null,
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "No authoritative lead/customer relationship; likely legacy manual/unscoped create.",
+      "human_decision_required": "Assign a same-company customer_id, convert/link a lead first, or explicitly keep as unscoped_manual. Do not infer from names.",
+      "exact_sql_after_approval": null,
+      "expected_affected_rows_if_executed": 0
+    },
+    {
+      "opportunity_id": "85aba902-dad2-4b7b-a656-9acfb38c4bf5",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": "88298e9e-e77e-43ef-822a-c83f2fe17790",
+        "customer_id": null,
+        "primary_product_id": null,
+        "created_from_lead": true,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-08-09T16:06:10.427Z",
+        "lead_customer_id": "93266133-fc2b-49c4-9939-1362a4b889e2",
+        "lead_company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "lead_customer_in_company": true,
+        "opp_customer_in_company": false,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "safe_customer_backfill_from_lead",
+      "proposed_change": {
+        "field": "customer_id",
+        "from": null,
+        "to": "93266133-fc2b-49c4-9939-1362a4b889e2",
+        "source": "leads.customer_id (same company, verified)",
+        "alsoStampIdentityScope": "general_deal"
+      },
+      "authoritative_source": "leads.customer_id (same company, verified)",
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "Low — authoritative lead.customer_id in the same company; product remains null (general deal).",
+      "human_decision_required": "Approve customer backfill only. Do not invent a product.",
+      "exact_sql_after_approval": "UPDATE public.opportunities\n   SET customer_id = '93266133-fc2b-49c4-9939-1362a4b889e2'::uuid,\n       metadata = coalesce(metadata, '{}'::jsonb) || '{\"identityScope\":\"general_deal\",\"identityRepair\":\"customer_backfill_from_lead\"}'::jsonb,\n       updated_at = now()\n WHERE id = '85aba902-dad2-4b7b-a656-9acfb38c4bf5'::uuid\n   AND company_id = '2d27f7fb-c15e-4d60-84e9-1793f36f2172'::uuid\n   AND lead_id = '88298e9e-e77e-43ef-822a-c83f2fe17790'::uuid\n   AND customer_id IS NULL\n   AND primary_product_id IS NULL\n   AND deleted_at IS NULL\n   AND won_at IS NULL\n   AND lost_at IS NULL\n   AND updated_at = '2026-08-09T16:06:10.427Z'::timestamptz\n   AND EXISTS (\n         SELECT 1 FROM public.leads l\n          WHERE l.id = '88298e9e-e77e-43ef-822a-c83f2fe17790'::uuid\n            AND l.company_id = '2d27f7fb-c15e-4d60-84e9-1793f36f2172'::uuid\n            AND l.customer_id = '93266133-fc2b-49c4-9939-1362a4b889e2'::uuid\n            AND l.deleted_at IS NULL\n       );",
+      "expected_affected_rows_if_executed": 1
+    },
+    {
+      "opportunity_id": "986fdf9f-74eb-43b3-a449-904e8c55eb65",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": "c38f5d83-9deb-49f7-ab6a-945b083f33bf",
+        "customer_id": null,
+        "primary_product_id": null,
+        "created_from_lead": true,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-08-09T14:27:25.618Z",
+        "lead_customer_id": "bacec734-d05c-45cd-8ee0-543fcc6a70a3",
+        "lead_company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "lead_customer_in_company": true,
+        "opp_customer_in_company": false,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "safe_customer_backfill_from_lead",
+      "proposed_change": {
+        "field": "customer_id",
+        "from": null,
+        "to": "bacec734-d05c-45cd-8ee0-543fcc6a70a3",
+        "source": "leads.customer_id (same company, verified)",
+        "alsoStampIdentityScope": "general_deal"
+      },
+      "authoritative_source": "leads.customer_id (same company, verified)",
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "Low — authoritative lead.customer_id in the same company; product remains null (general deal).",
+      "human_decision_required": "Approve customer backfill only. Do not invent a product.",
+      "exact_sql_after_approval": "UPDATE public.opportunities\n   SET customer_id = 'bacec734-d05c-45cd-8ee0-543fcc6a70a3'::uuid,\n       metadata = coalesce(metadata, '{}'::jsonb) || '{\"identityScope\":\"general_deal\",\"identityRepair\":\"customer_backfill_from_lead\"}'::jsonb,\n       updated_at = now()\n WHERE id = '986fdf9f-74eb-43b3-a449-904e8c55eb65'::uuid\n   AND company_id = '2d27f7fb-c15e-4d60-84e9-1793f36f2172'::uuid\n   AND lead_id = 'c38f5d83-9deb-49f7-ab6a-945b083f33bf'::uuid\n   AND customer_id IS NULL\n   AND primary_product_id IS NULL\n   AND deleted_at IS NULL\n   AND won_at IS NULL\n   AND lost_at IS NULL\n   AND updated_at = '2026-08-09T14:27:25.618Z'::timestamptz\n   AND EXISTS (\n         SELECT 1 FROM public.leads l\n          WHERE l.id = 'c38f5d83-9deb-49f7-ab6a-945b083f33bf'::uuid\n            AND l.company_id = '2d27f7fb-c15e-4d60-84e9-1793f36f2172'::uuid\n            AND l.customer_id = 'bacec734-d05c-45cd-8ee0-543fcc6a70a3'::uuid\n            AND l.deleted_at IS NULL\n       );",
+      "expected_affected_rows_if_executed": 1
+    },
+    {
+      "opportunity_id": "38d50a1b-0f60-4a8b-baca-8ddc8ed13182",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": "4db7b0aa-6f8c-458b-8b9d-9950888855da",
+        "customer_id": "01b50661-7042-42b8-ba52-2bef6fc07cb2",
+        "primary_product_id": null,
+        "created_from_lead": true,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-08-13T22:43:59.934Z",
+        "lead_customer_id": "01b50661-7042-42b8-ba52-2bef6fc07cb2",
+        "lead_company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "lead_customer_in_company": true,
+        "opp_customer_in_company": true,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "intentional_general_deal_no_change",
+      "proposed_change": null,
+      "authoritative_source": null,
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "Low — already has tenant-valid customer; product may remain null as a general deal.",
+      "human_decision_required": "No identity change. Optionally stamp metadata.identityScope=general_deal in a separate approved metadata-only pass.",
+      "exact_sql_after_approval": null,
+      "expected_affected_rows_if_executed": 0
+    },
+    {
+      "opportunity_id": "8fa9bec3-28a3-4c40-8521-ab6c21412354",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "current": {
+        "lead_id": "8a4f7746-4f28-421a-b097-8fd850928b9b",
+        "customer_id": "ce1b47c0-4c06-4873-b56b-afb6aef3a61f",
+        "primary_product_id": null,
+        "created_from_lead": true,
+        "stage_key": "qualification",
+        "is_soft_deleted": false,
+        "is_won": false,
+        "is_lost": false,
+        "opportunity_updated_at": "2026-10-20T02:04:50.797Z",
+        "lead_customer_id": "ce1b47c0-4c06-4873-b56b-afb6aef3a61f",
+        "lead_company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "lead_customer_in_company": true,
+        "opp_customer_in_company": true,
+        "opp_product_in_company": false,
+        "distinct_line_products": 0
+      },
+      "classification": "intentional_general_deal_no_change",
+      "proposed_change": null,
+      "authoritative_source": null,
+      "tenant_validation": {
+        "ok": true,
+        "detail": "company ownership consistent with linked entities"
+      },
+      "risk": "Low — already has tenant-valid customer; product may remain null as a general deal.",
+      "human_decision_required": "No identity change. Optionally stamp metadata.identityScope=general_deal in a separate approved metadata-only pass.",
+      "exact_sql_after_approval": null,
+      "expected_affected_rows_if_executed": 0
+    }
+  ],
+  "execution_safeguards": {
+    "require_explicit_approval_token": "OPPORTUNITY_IDENTITY_REPAIR_APPROVED=1",
+    "require_manifest_capturedAt_match": true,
+    "transaction": true,
+    "match_full_opportunity_id": true,
+    "match_expected_original_field_values": true,
+    "verify_company_and_lead_customer_relationship": true,
+    "abort_on_stale_snapshot": true,
+    "assert_affected_row_count": true,
+    "re_read_all_target_ids_before_commit": true,
+    "refuse_non_local_database_url": true
+  }
+}

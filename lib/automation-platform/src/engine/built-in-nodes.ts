@@ -630,6 +630,11 @@ export const triggerNodeHandler: AutomationNodeHandler = {
   },
 };
 
+function isStoredCustomerPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}
+
 export function createActionNodeHandler(deps?: AutomationActionDeps): AutomationNodeHandler {
   return {
     type: "action",
@@ -659,10 +664,22 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           context.input && context.input[inputKey] !== undefined
             ? context.input[inputKey]
             : null;
+        const knownCustomerPhone =
+          inputKey === "customer_phone" &&
+          context.variables.__knownCustomerPhone === true &&
+          typeof context.variables.customer_phone === "string" &&
+          isStoredCustomerPhone(context.variables.customer_phone)
+            ? context.variables.customer_phone.trim()
+            : null;
+        const resumePhone =
+          knownCustomerPhone &&
+          (resumeValue === null || !isStoredCustomerPhone(String(resumeValue)))
+            ? knownCustomerPhone
+            : resumeValue;
         // After a completed session restart: consume the inbound message as intent
         // without re-asking (and without replaying welcome).
         const prefilled =
-          resumeValue === null &&
+          resumePhone === null &&
           context.variables.__reentryConsumeIntent === true &&
           context.variables[inputKey] !== undefined &&
           context.variables[inputKey] !== null &&
@@ -670,7 +687,7 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
             ? context.variables[inputKey]
             : null;
         const carryForwardText =
-          resumeValue === null &&
+          resumePhone === null &&
           prefilled === null &&
           context.variables[CONSUMED_INBOUND_AS_INPUT_VARIABLE] !== true &&
           (context.input?.[CONSUME_LAST_MESSAGE_AS_INPUT_KEY] === true ||
@@ -681,7 +698,7 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
               ""
             : "";
         const resolvedInput =
-          resumeValue !== null ? resumeValue : prefilled !== null ? prefilled : carryForwardText || null;
+          resumePhone !== null ? resumePhone : prefilled !== null ? prefilled : carryForwardText || null;
         if (resolvedInput !== null) {
           return {
             outcome: "continue",

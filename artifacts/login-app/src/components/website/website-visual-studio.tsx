@@ -49,6 +49,7 @@ import {
   type WebsiteBodySectionKey,
   type WebsiteChannelId,
   type WebsiteContent,
+  type WebsitePreviewProduct,
   type WebsiteCtaAction,
   type WebsiteHeaderStyle,
   type WebsiteBodyScale,
@@ -497,12 +498,12 @@ function TemplateCards({ current, locked, onPick }: { current: WebsiteTemplate; 
               className={`rounded-xl border p-2 text-start ${current === template ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary"}`}
               onClick={() => onPick(template)}
             >
-              <span className="flex h-12 flex-col justify-between overflow-hidden rounded-lg border p-1.5" style={{ background: preset.background }}>
+              <span className="flex h-12 flex-col justify-between overflow-hidden rounded-lg border p-1.5" style={{ background: preset.background ?? undefined }}>
                 <span className="flex items-center gap-1">
-                  <span className="size-2 rounded-full" style={{ background: preset.primary }} />
-                  <span className="h-1 flex-1 rounded" style={{ background: preset.heading }} />
+                  <span className="size-2 rounded-full" style={{ background: preset.primary ?? undefined }} />
+                  <span className="h-1 flex-1 rounded" style={{ background: preset.heading ?? undefined }} />
                 </span>
-                <span className="h-3 w-8 rounded-full" style={{ background: preset.primary }} />
+                <span className="h-3 w-8 rounded-full" style={{ background: preset.primary ?? undefined }} />
               </span>
               <span className="mt-1 block text-xs font-medium">{t(`websiteBuilder.builder.template.${template}`)}</span>
             </button>
@@ -689,7 +690,7 @@ function FontColor({
   onChange,
 }: {
   label: string;
-  value: string;
+  value: string | null;
   fallback: string;
   locked: boolean;
   onChange: (value: string) => void;
@@ -701,7 +702,7 @@ function FontColor({
         type="color"
         aria-label={label}
         disabled={locked}
-        value={/^#[0-9a-f]{6}$/i.test(value) ? value : fallback}
+        value={value && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback}
         className="h-8 w-10 cursor-pointer rounded border bg-transparent"
         onChange={(event) => onChange(event.target.value)}
       />
@@ -759,7 +760,7 @@ function SelectedInspector({
   locked: boolean;
   services: ServiceRow[];
   hours: { key: string; open: string; close: string }[];
-  products: { id: string; name: string; description: string; price: number; currency: string; imageUrl: string | null }[];
+  products: WebsitePreviewProduct[];
   locationLine: string | null;
   branchLines: string[];
   selection: string | null;

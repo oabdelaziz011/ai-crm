@@ -316,8 +316,10 @@ export function WebsiteVisitorBody({
       return;
     }
     const ids = socialLinks.map((link) => link.id);
-    const target = ids[ids.indexOf(token) + direction];
-    if (target) editor?.onMoveChannel?.(token, target);
+    const index = ids.findIndex((id) => id === token);
+    const current = index >= 0 ? ids[index] : undefined;
+    const target = index >= 0 ? ids[index + direction] : undefined;
+    if (current && target) editor?.onMoveChannel?.(current, target);
   };
   const slotMove = (kind: "hero" | "feature" | "service" | "slide" | "channel") => {
     if (!editor || editor.locked) return undefined;

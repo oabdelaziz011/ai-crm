@@ -18,6 +18,7 @@ import {
   reorderWebsiteServices,
   planWebsiteSave,
   reservedWebsiteHost,
+  resolveWebsiteSlugFromHostname,
   resolveWebsiteBranding,
   websiteChannelHref,
   websiteCatalogImages,
@@ -64,7 +65,10 @@ describe("website save plan", () => {
     if (!result.ok) return;
     assert.equal(result.plan.portal.slug, "dr-ahmed");
     assert.equal(reservedWebsiteHost(result.plan.portal.slug), "dr-ahmed.valueor.site");
-    assert.deepEqual(result.plan.widget?.allowedOrigins, ["http://localhost:5173"]);
+    assert.deepEqual(result.plan.widget?.allowedOrigins, [
+      "http://localhost:5173",
+      "https://dr-ahmed.valueor.site",
+    ]);
     assert.equal(result.plan.widget?.provision, true);
     assert.equal(result.plan.widget?.enabled, true);
     assert.equal(result.plan.page.published, true);
@@ -183,6 +187,12 @@ describe("website save plan", () => {
     });
     assert.equal(site?.gallery.slides.length, 1);
     assert.equal(site?.workingHours.monday?.open, "09:00");
+  });
+
+  it("resolves reserved subdomain hosts to path slugs", () => {
+    assert.equal(resolveWebsiteSlugFromHostname("dr-ahmed.valueor.site"), "dr-ahmed");
+    assert.equal(resolveWebsiteSlugFromHostname("localhost"), null);
+    assert.equal(resolveWebsiteSlugFromHostname("valueor.site"), null);
   });
 
   it("recognizes the public site path and ignores chat payloads without a widget key", () => {

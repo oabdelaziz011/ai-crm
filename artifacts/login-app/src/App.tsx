@@ -20,6 +20,7 @@ import {
   isPublicUnauthenticatedPath,
   RESET_PASSWORD_PATH,
 } from "@/lib/auth-redirect";
+import { resolveWebsiteSlugFromHostname } from "@/lib/website/website-model";
 import { usePermissions } from "@/hooks/use-rbac";
 import { Loader2 } from "lucide-react";
 import { DocumentTitleManager } from "@/components/document-title-manager";
@@ -154,9 +155,22 @@ function AuthFlowGuard({ children }: { children: ReactNode }) {
   return children;
 }
 
+function ReservedWebsiteHostRedirect() {
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (location.startsWith("/site/")) return;
+    const slug = resolveWebsiteSlugFromHostname(window.location.hostname);
+    if (!slug) return;
+    setLocation(`/site/${slug}${window.location.search || ""}`);
+  }, [location, setLocation]);
+  return null;
+}
+
 function Router() {
   return (
     <AuthFlowGuard>
+      <ReservedWebsiteHostRedirect />
       <Switch>
         <Route path="/" component={() => <Redirect to="/login" />} />
         <Route path="/login" component={Login} />

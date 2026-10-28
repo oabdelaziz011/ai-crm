@@ -110,6 +110,11 @@ export function PublicCompanyWebsitePage() {
           side={site.content.chat.side}
         />
       ) : null}
+      {site.chat && !apiBaseUrl ? (
+        <div className="fixed bottom-4 inset-inline-end-4 z-40 max-w-sm rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 shadow-sm dark:text-amber-100">
+          {t("websiteBuilder.visitor.chatApiMissing")}
+        </div>
+      ) : null}
     </div>
   );
 }

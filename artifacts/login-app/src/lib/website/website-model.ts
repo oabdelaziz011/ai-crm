@@ -1012,6 +1012,23 @@ export function reservedWebsiteHost(slug: string): string {
   return `${slug}.valueor.site`;
 }
 
+/**
+ * Resolve a public website slug from the browser hostname when using reserved
+ * `*.valueor.site` hosts (or local aliases). Path `/site/:slug` remains primary.
+ */
+export function resolveWebsiteSlugFromHostname(
+  hostname: string,
+  reservedRoot = "valueor.site",
+): string | null {
+  const host = hostname.trim().toLowerCase().split(":")[0] ?? "";
+  if (!host || host === "localhost" || host === "127.0.0.1") return null;
+  const root = reservedRoot.trim().toLowerCase();
+  if (!host.endsWith(`.${root}`)) return null;
+  const subdomain = host.slice(0, -(root.length + 1));
+  if (!subdomain || subdomain.includes(".")) return null;
+  return normalizeWebsiteSlug(subdomain);
+}
+
 export function isPublicCompanyWebsitePath(path: string): boolean {
   const pathname = (path.split("?")[0] ?? path).split("#")[0] ?? path;
   const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
@@ -1040,6 +1057,11 @@ export function planWebsiteSave(
 
   const activateChat = Boolean(input.publish && chatOn);
   const keepWidget = Boolean(input.widgetId) || (chatOn && input.chatFeature);
+  const reservedOrigin = slug ? `https://${reservedWebsiteHost(slug)}` : null;
+  const allowedOrigins =
+    activateChat && origin
+      ? Array.from(new Set([origin, reservedOrigin].filter((value): value is string => Boolean(value))))
+      : [];
   const widget: WebsiteWidgetPlan | null = keepWidget
     ? {
         id: input.widgetId,
@@ -1048,7 +1070,7 @@ export function planWebsiteSave(
         greeting: input.greeting.trim().slice(0, 1000),
         aiEmployeeId: workflowReply ? null : input.aiEmployeeId,
         aiEnabled: !workflowReply && Boolean(input.aiEmployeeId),
-        allowedOrigins: activateChat && origin ? [origin] : [],
+        allowedOrigins,
       }
     : null;
 

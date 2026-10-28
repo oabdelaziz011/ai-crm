@@ -14,7 +14,7 @@ export function useCustomer(customerId: string | null | undefined) {
     queryFn: async (): Promise<Customer> => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, user_id, company_id, name, email, phone, phone_e164, phone_country_iso, phone_region_source, phone_national, age, gender, notes, avatar_url, created_at, updated_at")
+        .select("id, user_id, company_id, name, email, phone, phone_e164, phone_country_iso, phone_region_source, phone_national, age, date_of_birth, gender, company_name, notes, source, status, avatar_url, created_at, updated_at")
         .eq("id", customerId!)
         .maybeSingle();
       // maybeSingle: 0 rows → data=null (cross-tenant / missing). Avoid PostgREST

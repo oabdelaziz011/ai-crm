@@ -16,6 +16,8 @@ export type CreateCustomerInput = {
   phone?: string | null;
   age?: number | null;
   gender?: string | null;
+  /** Organization / employer name (migration 438). Not tenant companyId. */
+  companyName?: string | null;
   notes?: string | null;
   /**
    * First-touch acquisition source (migration 382).

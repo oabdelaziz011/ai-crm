@@ -27,6 +27,11 @@ export type Customer = {
   /** ISO date `YYYY-MM-DD` when set (migration 382). */
   date_of_birth?: string | null;
   gender: string | null;
+  /**
+   * Customer organization / employer name (migration 438).
+   * Distinct from tenant `company_id`.
+   */
+  company_name?: string | null;
   notes: string | null;
   /** First-touch acquisition source (migration 382). Immutable after create. */
   source?: CustomerAcquisitionSource | null;

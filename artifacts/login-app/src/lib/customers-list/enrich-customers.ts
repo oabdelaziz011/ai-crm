@@ -17,7 +17,7 @@ import {
 import type { Booking, Customer, Invoice } from "@/lib/types";
 import type { CustomerListStatus, EnrichedCustomerRow } from "./types";
 
-function deriveCompany(customer: Customer): string | null {
+function deriveCompanyFromEmail(customer: Customer): string | null {
   if (!customer.email) return null;
   const domain = customer.email.split("@")[1]?.trim();
   if (!domain || ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"].includes(domain.toLowerCase())) {
@@ -25,6 +25,13 @@ function deriveCompany(customer: Customer): string | null {
   }
   const label = domain.split(".")[0];
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : null;
+}
+
+/** Prefer persisted organization name; fall back to email-domain heuristic. */
+export function resolveCustomerCompanyLabel(customer: Customer): string | null {
+  const persisted = customer.company_name?.trim();
+  if (persisted) return persisted;
+  return deriveCompanyFromEmail(customer);
 }
 
 function resolveSource(customer: Customer): string {
@@ -91,7 +98,7 @@ export function enrichCustomerRow(
     isVip,
     tags,
     status: resolveStatus(customer),
-    company: deriveCompany(customer),
+    company: resolveCustomerCompanyLabel(customer),
     assignedEmployee: null,
     branch: null,
     source: resolveSource(customer),

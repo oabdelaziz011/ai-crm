@@ -142,6 +142,7 @@ export class InMemoryCustomerRepository implements CustomerRepositoryPort {
       phone,
       age: input.age ?? null,
       gender: input.gender ?? null,
+      companyName: input.companyName?.trim() || null,
       notes: input.notes ?? null,
       source: normalizeCustomerAcquisitionSource(input.source) ?? "manual",
       status: "active",
@@ -181,8 +182,9 @@ export class InMemoryCustomerRepository implements CustomerRepositoryPort {
       }
       customer.phone = phone;
       customer.phoneIdentity = phoneIdentity;
-    } else if (field === "age") customer.age = parseAgeValue(input.value);
+    }     else if (field === "age") customer.age = parseAgeValue(input.value);
     else if (field === "gender") customer.gender = input.value.trim() || null;
+    else if (field === "company_name") customer.companyName = input.value.trim() || null;
     else if (field === "notes") customer.notes = input.value;
     else throw new Error(`Unsupported customer field: ${field}`);
     customer.updatedAt = new Date().toISOString();

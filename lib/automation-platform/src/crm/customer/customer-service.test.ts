@@ -527,3 +527,26 @@ describe("CustomerService phone_e164 dedup (Phase D3)", () => {
     assert.equal(created.customer.name, "B");
   });
 });
+
+describe("CustomerService companyName (organization)", () => {
+  it("persists optional companyName on create and update without touching tenant companyId", async () => {
+    const repository = new InMemoryCustomerRepository();
+    const service = new CustomerService(repository);
+    const created = await service.createCustomer({
+      companyId: "tenant-1",
+      userId: "user-1",
+      name: "Sara",
+      companyName: "Acme Travel",
+    });
+    assert.equal(created.customer.companyName, "Acme Travel");
+
+    const updated = await service.updateCustomer({
+      companyId: "tenant-1",
+      userId: "user-1",
+      customerId: created.customer.id,
+      field: "company_name",
+      value: "Acme Group",
+    });
+    assert.equal(updated.customer.companyName, "Acme Group");
+  });
+});

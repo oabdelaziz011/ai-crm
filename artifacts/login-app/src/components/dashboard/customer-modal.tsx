@@ -30,6 +30,7 @@ import { fmtDate } from "@/lib/customer-workspace/customer-workspace-utils";
 
 type FormValues = {
   name: string;
+  company_name?: string;
   email?: string;
   phone?: string;
   phone_country_iso?: string;
@@ -58,6 +59,7 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
 
   const schema = z.object({
     name: z.string().min(1, t("forms.customer.nameRequired")),
+    company_name: z.string().optional(),
     email: z.string().email(t("forms.customer.invalidEmail")).or(z.literal("")).optional(),
     phone: z.string().optional(),
     phone_country_iso: z.string().optional(),
@@ -73,6 +75,7 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
+      company_name: "",
       email: "",
       phone: "",
       phone_country_iso: "",
@@ -88,6 +91,7 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
       setPhoneRegion(region || null);
       form.reset({
         name: customer?.name ?? "",
+        company_name: customer?.company_name ?? "",
         email: customer?.email ?? "",
         phone: customer?.phone ?? defaultPhone ?? "",
         phone_country_iso: region,
@@ -118,6 +122,7 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
 
     const payload = {
       name: values.name,
+      company_name: values.company_name?.trim() || null,
       email: values.email || null,
       phone,
       phone_country_iso: region,
@@ -194,6 +199,20 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
                       <FormControl>
                         <Input placeholder={t("forms.customer.fullName")} className="bg-background/50 border-border/70" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="company_name" render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>{t("forms.customer.companyName")}</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={t("forms.customer.companyNamePlaceholder")}
+                          className="bg-background/50 border-border/70"
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">{t("forms.customer.companyNameHint")}</p>
                       <FormMessage />
                     </FormItem>
                   )} />

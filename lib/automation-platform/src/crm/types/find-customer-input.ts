@@ -11,6 +11,8 @@ export type CustomerRecord = {
   /** ISO date `YYYY-MM-DD` when selected (migration 382). */
   dateOfBirth?: string | null;
   gender: string | null;
+  /** Organization / employer name (migration 438). Not tenant company_id. */
+  companyName?: string | null;
   notes: string | null;
   /** First-touch acquisition source (migration 382). */
   source?: string | null;

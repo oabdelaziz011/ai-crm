@@ -8,7 +8,7 @@ import { normalizeCustomerEmail } from "../customer/customer-email-utils.js";
 import { resolvePhoneIdentityWrite } from "../customer/customer-phone-identity-write.js";
 
 const CUSTOMER_COLUMNS =
-  "id, name, email, phone, phone_e164, age, date_of_birth, gender, notes, source, status, avatar_url, created_at, updated_at";
+  "id, name, email, phone, phone_e164, age, date_of_birth, gender, company_name, notes, source, status, avatar_url, created_at, updated_at";
 
 function parseAgeValue(value: string): number | null {
   const trimmed = value.trim();
@@ -84,6 +84,7 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
         phone,
         age: input.age ?? null,
         gender: normalizeGender(input.gender),
+        company_name: input.companyName?.trim() || null,
         notes: input.notes?.trim() || null,
         source,
         phone_e164: identity.phone_e164,
@@ -100,7 +101,11 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
 
   async updateCustomer(input: UpdateCustomerInput): Promise<CustomerRecord> {
     const field = input.field.trim();
-    if (!["name", "email", "phone", "age", "gender", "notes", "avatar_url"].includes(field)) {
+    if (
+      !["name", "email", "phone", "age", "gender", "company_name", "notes", "avatar_url"].includes(
+        field,
+      )
+    ) {
       throw new Error(`Unsupported customer field: ${field}`);
     }
 
@@ -172,6 +177,7 @@ function mapCustomerRecord(row: Record<string, unknown>): CustomerRecord {
     age: row.age == null ? null : Number(row.age),
     dateOfBirth: row.date_of_birth == null ? null : String(row.date_of_birth),
     gender: row.gender == null ? null : String(row.gender),
+    companyName: row.company_name == null ? null : String(row.company_name),
     notes: row.notes == null ? null : String(row.notes),
     source: row.source == null ? null : String(row.source),
     status: row.status == null ? null : String(row.status),

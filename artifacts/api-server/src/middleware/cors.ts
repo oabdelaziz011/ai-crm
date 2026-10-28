@@ -12,7 +12,8 @@ export const API_CORS_DEFAULT_ORIGINS = [
 /** Built-in allowlist (env extras are merged at request time via resolveApiCorsAllowedOrigins). */
 export const API_CORS_ALLOWED_ORIGINS = API_CORS_DEFAULT_ORIGINS;
 
-const ALLOWED_METHODS = "GET,POST,OPTIONS";
+/** Include PUT/PATCH — used by CRM import mapping and other authenticated update routes. */
+const ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const ALLOWED_HEADERS = "Authorization, Content-Type";
 
 export function normalizeCorsOrigin(origin: string): string {

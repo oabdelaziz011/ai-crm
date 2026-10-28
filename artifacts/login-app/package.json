@@ -151,6 +151,7 @@
     "@workspace/channel-platform": "workspace:*",
     "@workspace/channel-registry": "workspace:*",
     "@workspace/customer-360": "workspace:*",
+    "@workspace/customer-import": "workspace:*",
     "@workspace/dashboard-engine": "workspace:*",
     "@workspace/embedding-platform": "workspace:*",
     "@workspace/knowledge-platform": "workspace:*",

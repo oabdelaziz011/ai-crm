@@ -79,8 +79,9 @@ app.use(PUBLIC_WEB_CHAT_ROUTE_PREFIX, publicWebChatRouter);
 // Local product-gallery images for WhatsApp (Meta fetches via the developer tunnel).
 app.use(PUBLIC_COMPANY_BRANDING_ROUTE_PREFIX, publicCompanyBrandingRouter);
 
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+// 8mb covers base64 CRM customer-import uploads (5mb raw file ≈ ~6.7mb base64).
+app.use(express.json({ limit: "8mb" }));
+app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 app.use(
   session({
     secret: env.sessionSecret,

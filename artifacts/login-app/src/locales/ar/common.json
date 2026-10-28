@@ -826,7 +826,7 @@
     "events": {
       "newCustomer": {
         "title": "عميل جديد",
-        "message": "تم إنشاء العميل {{name}}."
+        "message": "تم إنشاء العميل {{name}}{{companySuffix}}{{sourceSuffix}}."
       },
       "newBooking": {
         "title": "حجز جديد",
@@ -838,11 +838,11 @@
       },
       "invoicePaid": {
         "title": "تم دفع الفاتورة",
-        "message": "تم تحديد الفاتورة {{invoiceId}} كمدفوعة."
+        "message": "تم تحديد الفاتورة {{invoiceNumber}} كمدفوعة{{customerSuffix}}{{amountSuffix}}."
       },
       "invoiceOverdue": {
         "title": "فاتورة متأخرة",
-        "message": "الفاتورة {{invoiceId}} متأخرة."
+        "message": "الفاتورة {{invoiceNumber}} متأخرة{{customerSuffix}}{{amountSuffix}}."
       },
       "subscriptionExpiresSoon": {
         "title": "ينتهي الاشتراك خلال 5 أيام",
@@ -880,7 +880,8 @@
       "aiTaskCompleted": {
         "title": "اكتملت مهمة الذكاء الاصطناعي",
         "message": "{{detail}}",
-        "fallback": "اكتملت مهمة الذكاء الاصطناعي بنجاح."
+        "fallback": "اكتملت مهمة الذكاء الاصطناعي بنجاح.",
+        "withTask": "اكتملت {{taskName}} بنجاح."
       },
       "billing": {
         "generic": {
@@ -1596,7 +1597,8 @@
       "chatUnavailable": "الدردشة غير متاحة حالياً.",
       "unavailable": "هذا غير متاح حالياً.",
       "invalid": "تحقق من الاسم ووسيلة التواصل والرسالة.",
-      "rate_limited": "طلبات كثيرة. انتظر ثم حاول مرة أخرى."
+      "rate_limited": "طلبات كثيرة. انتظر ثم حاول مرة أخرى.",
+      "chatApiMissing": "الدردشة المباشرة مفعّلة لهذا الموقع، لكن عنوان خادم الواجهة البرمجية غير مضبوط في هذه البيئة."
     }
   },
   "pages": {
@@ -1729,7 +1731,10 @@
         "conflict": "تم تغيير الحالة بواسطة شخص آخر. حدّث الصفحة وحاول مجدداً.",
         "invalidStatus": "حالة العميل غير صالحة.",
         "notFound": "العميل غير موجود."
-      }
+      },
+      "companyName": "الشركة",
+      "companyNamePlaceholder": "المؤسسة أو جهة العمل (اختياري)",
+      "companyNameHint": "اسم مؤسسة العميل — وليس حساب ValueOR الخاص بك."
     },
     "booking": {
       "editTitle": "تعديل الحجز",
@@ -1985,8 +1990,8 @@
         "import": "استيراد",
         "export": "تصدير",
         "exportSuccess": "تم تنزيل تصدير العملاء.",
-        "importSoon": "الاستيراد قريباً",
-        "importSoonDetail": "استيراد CSV سيتوفر في إصدار لاحق.",
+        "importSoon": "استيراد العملاء",
+        "importSoonDetail": "حمّل قالبًا أو ارفع ملف CSV/XLSX لاستيراد العملاء.",
         "openProfile": "فتح الملف",
         "unassigned": "غير معيّن",
         "selectAll": "تحديد كل العملاء",
@@ -17371,6 +17376,158 @@
       "changesBody": "إذا أجرينا تغييرات جوهرية على هذه الشروط، سنحدّث هذه الصفحة. ويُعد استمرار استخدام ValueOR بعد سريان الشروط المحدّثة قبولاً لها، إلا عندما يُطلب إشعار أو اتفاق منفصل.",
       "contactTitle": "التواصل",
       "contactBody": "يمكن إرسال الأسئلة حول هذه الشروط إلى {{email}}."
+    }
+  },
+  "customerImport": {
+    "title": "استيراد العملاء",
+    "subtitle": "حمّل قالبًا أو ارفع ملف CSV/XLSX، اربط الأعمدة، تحقق من البيانات، ثم أكّد الاستيراد.",
+    "method": {
+      "downloadTemplate": "تنزيل قالب Excel",
+      "downloadTemplateHint": "يشمل الأعمدة المطلوبة والاختيارية وتعليمات وصفوف أمثلة واضحة.",
+      "uploadFile": "رفع ملف موجود",
+      "uploadFileHint": "CSV أو XLSX حتى {{size}} / {{rows}} صف."
+    },
+    "connectors": {
+      "title": "مصادر أخرى",
+      "planned": "مخطط لاحقًا",
+      "csvXlsx": {
+        "label": "CSV / Excel",
+        "description": "ارفع جدول بيانات من جهازك."
+      },
+      "hubspot": {
+        "label": "HubSpot",
+        "description": "موصل مستقبلي عبر واجهات HubSpot الرسمية."
+      },
+      "salesforce": {
+        "label": "Salesforce",
+        "description": "موصل مستقبلي عبر واجهات Salesforce الرسمية."
+      }
+    },
+    "upload": {
+      "pick": "اختر ملف CSV أو XLSX",
+      "types": "المدعوم: .csv (UTF-8)، .xlsx",
+      "remove": "إزالة"
+    },
+    "policy": {
+      "label": "عند وجود عميل مطابق",
+      "skip": "تخطي المطابقات الحالية",
+      "update": "تحديث المطابقات (يتطلب صلاحية التعديل)",
+      "flag": "وضع علامة للمراجعة"
+    },
+    "mapping": {
+      "hint": "اربط كل عمود مصدر بحقل عميل في ValueOR، أو تجاهله.",
+      "noSamples": "لا توجد قيم عينة",
+      "unmapped": "غير مربوط",
+      "ignore": "تجاهل العمود"
+    },
+    "fields": {
+      "name": {
+        "label": "اسم العميل",
+        "description": "الاسم المعروض مطلوب."
+      },
+      "email": {
+        "label": "البريد الإلكتروني",
+        "description": "بريد اختياري وفريد لكل شركة."
+      },
+      "phone": {
+        "label": "الهاتف",
+        "description": "يفضّل E.164 (+...). الأرقام المحلية تحتاج منطقة."
+      },
+      "phoneRegion": {
+        "label": "منطقة الهاتف",
+        "description": "رمز دولة ISO-2 للأرقام المحلية."
+      },
+      "gender": {
+        "label": "النوع",
+        "description": "اختياري."
+      },
+      "dateOfBirth": {
+        "label": "تاريخ الميلاد",
+        "description": "اختياري بصيغة YYYY-MM-DD."
+      },
+      "notes": {
+        "label": "ملاحظات",
+        "description": "اختياري."
+      },
+      "companyName": {
+        "label": "الشركة",
+        "description": "اسم مؤسسة العميل أو جهة العمل."
+      },
+      "source": {
+        "label": "المصدر",
+        "description": "مصدر الاستحواذ (الافتراضي: manual)."
+      }
+    },
+    "template": {
+      "sheetCustomers": "العملاء",
+      "sheetInstructions": "التعليمات",
+      "title": "قالب استيراد عملاء ValueOR",
+      "requiredFields": "الحقول المطلوبة",
+      "optionalFields": "الحقول الاختيارية",
+      "emptyCells": "الخلايا الفارغة",
+      "emptyCellsHint": "يمكن ترك الحقول الاختيارية فارغة.",
+      "phoneNumbers": "أرقام الهاتف",
+      "phoneNumbersHint": "يفضّل E.164 (+2010...). الأرقام المحلية تحتاج منطقة هاتف (ISO-2 مثل EG).",
+      "email": "البريد الإلكتروني",
+      "emailHint": "يجب أن يكون بريدًا صالحًا عند توفره.",
+      "sourceValues": "قيم المصدر",
+      "dates": "التواريخ",
+      "datesHint": "استخدم YYYY-MM-DD.",
+      "exampleRows": "صفوف الأمثلة",
+      "exampleRowsHint": "الصفوف المعلّمة كأمثلة هي عينات. احذفها قبل الاستيراد.",
+      "supportedFiles": "الملفات المدعومة",
+      "supportedFilesHint": "CSV (UTF-8) وXLSX. الحد الأقصى 5 ميجابايت / 2000 صف في هذا الإصدار.",
+      "exampleNotes": "صف مثال — احذفه قبل الاستيراد",
+      "exampleNameSara": "مثال — سارة تجريبية",
+      "exampleNameOmar": "مثال — عمر تجريبي"
+    },
+    "summary": {
+      "total": "صفوف المصدر",
+      "valid": "صفوف صالحة",
+      "errors": "صفوف بها أخطاء",
+      "duplicates": "مرشحون للتكرار",
+      "inserts": "إنشاء متوقع",
+      "updates": "تحديث متوقع",
+      "skips": "تخطي متوقع",
+      "flags": "مراجعة متوقعة",
+      "unmapped": "أعمدة غير مربوطة: {{columns}}"
+    },
+    "preview": {
+      "issuesTitle": "مشاكل الصفوف",
+      "empty": "لا توجد صفوف قابلة للاستيراد بعد التحقق.",
+      "examplesOnly": "تم العثور على صفوف أمثلة فقط. احذف صفوف EXAMPLE / مثال من الملف، أضف عملاء حقيقيين، ثم أعد التحقق.",
+      "row": "الصف {{row}}",
+      "noIssues": "لا توجد أخطاء على مستوى الصفوف."
+    },
+    "confirm": {
+      "body": "أكّد لإنشاء العملاء عبر خدمة استيراد CRM. الصفوف الناجحة لن تُكرر عند إعادة المحاولة."
+    },
+    "running": {
+      "label": "جارٍ الاستيراد…",
+      "progress": "تمت معالجة {{processed}} من {{total}} صف"
+    },
+    "results": {
+      "created": "تم الإنشاء",
+      "updated": "تم التحديث",
+      "skipped": "تم التخطي",
+      "flagged": "للمراجعة",
+      "failed": "فشل",
+      "status": "الحالة"
+    },
+    "actions": {
+      "back": "رجوع",
+      "continue": "متابعة",
+      "validate": "تحقق",
+      "reviewConfirm": "مراجعة وتأكيد",
+      "confirmImport": "تأكيد الاستيراد",
+      "cancel": "إلغاء الاستيراد",
+      "downloadErrors": "تنزيل تقرير الأخطاء",
+      "done": "تم"
+    },
+    "errors": {
+      "title": "خطأ في الاستيراد",
+      "generic": "تعذر تنفيذ طلب الاستيراد.",
+      "forbidden": "تحتاج صلاحية customers.import أو customers.create."
     }
   }
 }

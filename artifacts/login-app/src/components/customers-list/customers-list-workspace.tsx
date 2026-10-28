@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { CustomerModal } from "@/components/dashboard/customer-modal";
+import { CustomerImportDialog } from "@/components/customers-list/customer-import-dialog";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import {
   CustomerLifecycleStatusDialog,
@@ -108,6 +109,9 @@ export function CustomersListWorkspace() {
   const canEditCustomers = useHasPermission("customers.edit");
   const canDeleteCustomers = useHasPermission("customers.delete");
   const canCreateCustomers = useHasPermission("customers.create");
+  const canImportCustomers =
+    useHasPermission("customers.import") || canCreateCustomers;
+  const [importOpen, setImportOpen] = useState(false);
 
   const {
     prefs,
@@ -486,14 +490,27 @@ export function CustomersListWorkspace() {
         onToggleColumn={toggleColumn}
         onMoveColumn={handleMoveColumn}
         onExport={() => handleExport(displayedRows)}
-        onImport={() =>
-          toast({
-            title: t("dashboard.customers.list.importSoon"),
-            description: t("dashboard.customers.list.importSoonDetail"),
-          })
-        }
+        onImport={() => {
+          if (!canImportCustomers) {
+            toast({
+              title: t("customerImport.errors.title"),
+              description: t("customerImport.errors.forbidden"),
+              variant: "destructive",
+            });
+            return;
+          }
+          setImportOpen(true);
+        }}
         onCreate={() => setModal({ open: true, customer: null })}
         canCreate={canCreateCustomers}
+      />
+
+      <CustomerImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onCompleted={() => {
+          void queryClient.invalidateQueries({ queryKey: ["customers"] });
+        }}
       />
 
       <CustomersListStats

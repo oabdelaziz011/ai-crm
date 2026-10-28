@@ -24,10 +24,12 @@ import salesFollowUpStatusRouter from "./sales-follow-up-status.js";
 import salesFollowUpApprovalRouter from "./sales-follow-up-approval.js";
 import salesCompleteDemoRouter from "./sales-complete-demo.js";
 import productDemosRouter from "./product-demos.js";
+import customerImportRouter from "./customer-import.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(customerImportRouter);
 router.use(salesFollowUpStatusRouter);
 router.use(salesFollowUpApprovalRouter);
 router.use(salesCompleteDemoRouter);

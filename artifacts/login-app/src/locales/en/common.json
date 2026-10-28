@@ -947,7 +947,7 @@
     "events": {
       "newCustomer": {
         "title": "New Customer",
-        "message": "Customer {{name}} was created."
+        "message": "Customer {{name}} was created{{companySuffix}}{{sourceSuffix}}."
       },
       "newBooking": {
         "title": "New Booking",
@@ -959,11 +959,11 @@
       },
       "invoicePaid": {
         "title": "Invoice Paid",
-        "message": "Invoice {{invoiceId}} was marked as paid."
+        "message": "Invoice {{invoiceNumber}} was marked as paid{{customerSuffix}}{{amountSuffix}}."
       },
       "invoiceOverdue": {
         "title": "Invoice Overdue",
-        "message": "Invoice {{invoiceId}} is overdue."
+        "message": "Invoice {{invoiceNumber}} is overdue{{customerSuffix}}{{amountSuffix}}."
       },
       "subscriptionExpiresSoon": {
         "title": "Subscription expires in 5 days",
@@ -1001,7 +1001,8 @@
       "aiTaskCompleted": {
         "title": "AI task completed",
         "message": "{{detail}}",
-        "fallback": "An AI task completed successfully."
+        "fallback": "An AI task completed successfully.",
+        "withTask": "{{taskName}} completed successfully."
       },
       "billing": {
         "generic": {
@@ -1689,7 +1690,8 @@
       "chatUnavailable": "Chat is unavailable right now.",
       "unavailable": "This is unavailable right now.",
       "invalid": "Check the name, a way to reach you, and the message.",
-      "rate_limited": "Too many requests. Please wait and try again."
+      "rate_limited": "Too many requests. Please wait and try again.",
+      "chatApiMissing": "Live chat is enabled for this site, but the API server URL is not configured in this environment."
     }
   },
   "pages": {
@@ -1822,7 +1824,10 @@
         "conflict": "Status was changed by someone else. Refresh and try again.",
         "invalidStatus": "Invalid customer status.",
         "notFound": "Customer not found."
-      }
+      },
+      "companyName": "Company",
+      "companyNamePlaceholder": "Organization or employer (optional)",
+      "companyNameHint": "The customer’s organization name — not your ValueOR account."
     },
     "booking": {
       "editTitle": "Edit Booking",
@@ -2078,8 +2083,8 @@
         "import": "Import",
         "export": "Export",
         "exportSuccess": "Customer export downloaded.",
-        "importSoon": "Import coming soon",
-        "importSoonDetail": "CSV import will be available in a future release.",
+        "importSoon": "Import customers",
+        "importSoonDetail": "Download a template or upload a CSV/XLSX file to import customers.",
         "openProfile": "Open profile",
         "unassigned": "Unassigned",
         "selectAll": "Select all customers",
@@ -17541,6 +17546,158 @@
       "changesBody": "If we make material changes to these Terms, we will update this page. Continued use of ValueOR after the updated Terms take effect constitutes acceptance, except where a separate notice or agreement is required.",
       "contactTitle": "Contact",
       "contactBody": "Questions about these Terms can be sent to {{email}}."
+    }
+  },
+  "customerImport": {
+    "title": "Import customers",
+    "subtitle": "Download a template or upload a CSV/XLSX file, map columns, validate, then confirm the import.",
+    "method": {
+      "downloadTemplate": "Download Excel template",
+      "downloadTemplateHint": "Includes required and optional columns, instructions, and clearly marked example rows.",
+      "uploadFile": "Upload existing file",
+      "uploadFileHint": "CSV or XLSX up to {{size}} / {{rows}} rows."
+    },
+    "connectors": {
+      "title": "Other sources",
+      "planned": "Planned",
+      "csvXlsx": {
+        "label": "CSV / Excel",
+        "description": "Upload a spreadsheet from your computer."
+      },
+      "hubspot": {
+        "label": "HubSpot",
+        "description": "Future connector via official HubSpot APIs."
+      },
+      "salesforce": {
+        "label": "Salesforce",
+        "description": "Future connector via official Salesforce APIs."
+      }
+    },
+    "upload": {
+      "pick": "Choose a CSV or XLSX file",
+      "types": "Supported: .csv (UTF-8), .xlsx",
+      "remove": "Remove"
+    },
+    "policy": {
+      "label": "When a customer already exists",
+      "skip": "Skip existing matches",
+      "update": "Update existing matches (requires edit permission)",
+      "flag": "Flag matches for review"
+    },
+    "mapping": {
+      "hint": "Map each source column to a ValueOR customer field, or ignore it.",
+      "noSamples": "No sample values",
+      "unmapped": "Not mapped",
+      "ignore": "Ignore column"
+    },
+    "fields": {
+      "name": {
+        "label": "Customer name",
+        "description": "Required display name."
+      },
+      "email": {
+        "label": "Email",
+        "description": "Optional unique email per company."
+      },
+      "phone": {
+        "label": "Phone",
+        "description": "Prefer E.164 (+...). Local numbers need a region."
+      },
+      "phoneRegion": {
+        "label": "Phone region",
+        "description": "ISO-2 country code for local phones."
+      },
+      "gender": {
+        "label": "Gender",
+        "description": "Optional free-text gender."
+      },
+      "dateOfBirth": {
+        "label": "Date of birth",
+        "description": "Optional YYYY-MM-DD."
+      },
+      "notes": {
+        "label": "Notes",
+        "description": "Optional notes."
+      },
+      "companyName": {
+        "label": "Company",
+        "description": "Customer organization or employer name."
+      },
+      "source": {
+        "label": "Source",
+        "description": "Acquisition source (defaults to manual)."
+      }
+    },
+    "template": {
+      "sheetCustomers": "Customers",
+      "sheetInstructions": "Instructions",
+      "title": "ValueOR Customer Import Template",
+      "requiredFields": "Required fields",
+      "optionalFields": "Optional fields",
+      "emptyCells": "Empty cells",
+      "emptyCellsHint": "Optional fields may be left blank.",
+      "phoneNumbers": "Phone numbers",
+      "phoneNumbersHint": "Prefer E.164 (+2010...). Local numbers need phone region (ISO-2, e.g. EG).",
+      "email": "Email",
+      "emailHint": "Must be a valid email address when provided.",
+      "sourceValues": "Source values",
+      "dates": "Dates",
+      "datesHint": "Use YYYY-MM-DD.",
+      "exampleRows": "Example rows",
+      "exampleRowsHint": "Rows marked as examples are samples. Delete them before importing.",
+      "supportedFiles": "Supported files",
+      "supportedFilesHint": "CSV (UTF-8) and XLSX. Maximum 5 MB / 2000 data rows in this release.",
+      "exampleNotes": "Example row — delete before import",
+      "exampleNameSara": "EXAMPLE — Sara Example",
+      "exampleNameOmar": "EXAMPLE — Omar Example"
+    },
+    "summary": {
+      "total": "Source rows",
+      "valid": "Valid rows",
+      "errors": "Rows with errors",
+      "duplicates": "Duplicate candidates",
+      "inserts": "Expected inserts",
+      "updates": "Expected updates",
+      "skips": "Expected skips",
+      "flags": "Expected flags",
+      "unmapped": "Unmapped columns: {{columns}}"
+    },
+    "preview": {
+      "issuesTitle": "Row issues",
+      "empty": "No importable rows after validation.",
+      "examplesOnly": "Only example/sample rows were found. Delete EXAMPLE / مثال rows from the file, add real customers, then validate again.",
+      "row": "Row {{row}}",
+      "noIssues": "No row-level errors."
+    },
+    "confirm": {
+      "body": "Confirm to create customers through the CRM import service. Already successful rows will not be duplicated on retry."
+    },
+    "running": {
+      "label": "Import in progress…",
+      "progress": "{{processed}} of {{total}} rows processed"
+    },
+    "results": {
+      "created": "Created",
+      "updated": "Updated",
+      "skipped": "Skipped",
+      "flagged": "Flagged",
+      "failed": "Failed",
+      "status": "Status"
+    },
+    "actions": {
+      "back": "Back",
+      "continue": "Continue",
+      "validate": "Validate",
+      "reviewConfirm": "Review & confirm",
+      "confirmImport": "Confirm import",
+      "cancel": "Cancel import",
+      "downloadErrors": "Download error report",
+      "done": "Done"
+    },
+    "errors": {
+      "title": "Import error",
+      "generic": "The import request failed.",
+      "forbidden": "You need customers.import or customers.create permission."
     }
   }
 }

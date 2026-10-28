@@ -75,19 +75,30 @@ export function mapPlatformEventToNotificationInput(envelope: PlatformEvent): Ma
 
   switch (envelope.eventType) {
     case "CustomerCreated": {
-      const name = str(payload.displayName, "customer");
+      const name = str(payload.displayName ?? payload.customerName ?? payload.name, "customer");
+      const companyName = str(payload.companyName ?? payload.organizationName);
+      const source = str(payload.source, "manual");
       return baseInput(envelope, {
         eventType: "customer_created",
         title: "New customer",
-        body: `Customer ${name} was added.`,
+        body: companyName
+          ? `Customer ${name} (${companyName}) was added.`
+          : `Customer ${name} was added.`,
         category: "customer",
         priority: "low",
         severity: "success",
         entityType: "customer",
         entityId: customerId,
-        navigationTarget: `/dashboard/customers/${customerId}`,
+        navigationTarget: customerId
+          ? `/dashboard/customers/${customerId}`
+          : "/dashboard/customers",
         recipientRole: "reception",
-        metadata: payloadMeta(payload, { name, customerName: name }),
+        metadata: payloadMeta(payload, {
+          name,
+          customerName: name,
+          companyName,
+          source,
+        }),
       });
     }
     case "LeadConverted":
@@ -239,20 +250,31 @@ export function mapPlatformEventToNotificationInput(envelope: PlatformEvent): Ma
         navigationTarget: "/dashboard/tasks",
         metadata: payloadMeta(payload, { detail: str(payload.title) }),
       });
-    case "TaskCompleted":
+    case "TaskCompleted": {
+      const taskId = str(payload.taskId);
+      const taskTitle = str(payload.title ?? payload.taskName ?? payload.detail);
       return baseInput(envelope, {
         eventType: "generic_system",
         title: "Task completed",
-        body: str(payload.taskId)
-          ? `Task ${str(payload.taskId).slice(0, 8)} was marked complete.`
-          : "A task was marked complete.",
+        body: taskTitle
+          ? `${taskTitle} completed successfully.`
+          : taskId
+            ? `Task ${taskId.slice(0, 8)} was marked complete.`
+            : "A task was marked complete.",
         category: "system",
         priority: "low",
         severity: "success",
         entityType: "task",
-        entityId: str(payload.taskId),
-        metadata: payloadMeta(payload),
+        entityId: taskId,
+        navigationTarget: "/dashboard/tasks",
+        metadata: payloadMeta(payload, {
+          detail: taskTitle || (taskId ? `Task ${taskId.slice(0, 8)} completed.` : ""),
+          taskName: taskTitle,
+          taskId,
+          status: "success",
+        }),
       });
+    }
     case "WorkflowExecuted":
       return baseInput(envelope, {
         eventType: "generic_system",

@@ -26,6 +26,7 @@ describe("Notification platform — event mapper", () => {
       entityType: "booking",
       entityId: "book_1",
       occurredAt: "2026-08-01T10:00:00.000Z",
+      publishedAt: "2026-08-01T10:00:00.000Z",
       payload: { bookingId: "book_1", customerId: "cust_1", scheduledAt: "2026-08-02T09:00:00.000Z" },
     });
 
@@ -50,6 +51,7 @@ describe("Notification platform — event mapper", () => {
       entityType: "task",
       entityId: "task_1",
       occurredAt: "2026-08-01T10:00:00.000Z",
+      publishedAt: "2026-08-01T10:00:00.000Z",
       payload: { taskId: "task_1", assigneeId: "user_99", title: "Follow up VIP" },
     });
 

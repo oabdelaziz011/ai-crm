@@ -69,16 +69,27 @@ async function enrichNotificationParams(
   const invoiceId = (next.invoiceId || next.invoice_id || "").trim();
   const bookingId = (next.bookingId || next.booking_id || "").trim();
 
-  if (customerId && !(next.customerName || next.name || "").trim()) {
+  if (
+    customerId &&
+    (!(next.customerName || next.name || "").trim() ||
+      !(next.companyName || "").trim() ||
+      !(next.source || "").trim())
+  ) {
     const { data } = await client
       .from("customers")
-      .select("name")
+      .select("name, company_name, source")
       .eq("company_id", companyId)
       .eq("id", customerId)
       .maybeSingle();
-    if (data?.name) {
+    if (data?.name && !(next.customerName || next.name || "").trim()) {
       next.customerName = String(data.name);
       next.name = String(data.name);
+    }
+    if (data?.company_name && !(next.companyName || "").trim()) {
+      next.companyName = String(data.company_name);
+    }
+    if (data?.source && !(next.source || "").trim()) {
+      next.source = String(data.source);
     }
   }
 
@@ -113,17 +124,28 @@ async function enrichNotificationParams(
     }
   }
 
-  // Second pass if invoice/booking filled customerId without a name.
-  if (next.customerId && !(next.customerName || next.name || "").trim()) {
+  // Second pass if invoice/booking filled customerId without a name/org.
+  if (
+    next.customerId &&
+    (!(next.customerName || next.name || "").trim() ||
+      !(next.companyName || "").trim() ||
+      !(next.source || "").trim())
+  ) {
     const { data } = await client
       .from("customers")
-      .select("name")
+      .select("name, company_name, source")
       .eq("company_id", companyId)
       .eq("id", next.customerId)
       .maybeSingle();
-    if (data?.name) {
+    if (data?.name && !(next.customerName || next.name || "").trim()) {
       next.customerName = String(data.name);
       next.name = String(data.name);
+    }
+    if (data?.company_name && !(next.companyName || "").trim()) {
+      next.companyName = String(data.company_name);
+    }
+    if (data?.source && !(next.source || "").trim()) {
+      next.source = String(data.source);
     }
   }
 

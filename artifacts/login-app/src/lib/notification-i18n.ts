@@ -331,9 +331,33 @@ function formatNotificationParams(
   if (isBlankDetail(resolved.invoiceNumber, [unknown])) {
     if (resolved.invoiceId && /^INV[-_]/i.test(resolved.invoiceId)) {
       resolved.invoiceNumber = resolved.invoiceId;
+    } else if (resolved.invoiceId) {
+      resolved.invoiceNumber = shortId(resolved.invoiceId);
     } else {
       resolved.invoiceNumber = "";
     }
+  }
+
+  // Optional suffixes for richer SQL/legacy event templates (empty when unknown).
+  const org = resolved.companyName?.trim() || "";
+  resolved.companySuffix =
+    org && !isBlankDetail(org, [unknown, t("notifications.defaults.company")])
+      ? ` (${org})`
+      : "";
+  const source = resolved.source?.trim() || "";
+  resolved.sourceSuffix = source ? ` · ${source}` : "";
+  const customerLabel = resolved.customerName?.trim() || resolved.name?.trim() || "";
+  resolved.customerSuffix =
+    customerLabel && !isBlankDetail(customerLabel, [unknown]) ? ` · ${customerLabel}` : "";
+  resolved.amountSuffix =
+    resolved.amount && looksLikeMoneyAmount(resolved.amount) ? ` · ${resolved.amount}` : "";
+
+  if (
+    messageKey.includes("aiTaskCompleted") &&
+    resolved.taskName?.trim() &&
+    (!resolved.detail?.trim() || resolved.detail === t("notifications.events.aiTaskCompleted.fallback"))
+  ) {
+    resolved.detail = resolved.taskName.trim();
   }
 
   if (isBlankDetail(resolved.amount, [unknown])) {

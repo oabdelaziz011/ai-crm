@@ -135,6 +135,19 @@ export function resolveNotificationHref(notification: Notification): string {
     return `~/dashboard/subscriptions/${encodeURIComponent(companyId)}`;
   }
 
+  const taskId = p.taskId || p.task_id || (p.entityType === "task" ? p.entityId : "");
+  if (taskId) {
+    return "~/dashboard/tasks";
+  }
+
+  if (
+    p.entityType === "ai_task" ||
+    p.entityType === "ai" ||
+    /ai.?task/i.test(`${p.detail ?? ""} ${p.taskName ?? ""} ${notification.titleKey ?? ""}`)
+  ) {
+    return "~/dashboard/ai-analytics";
+  }
+
   switch (notification.category) {
     case "invoice":
     case "payment":

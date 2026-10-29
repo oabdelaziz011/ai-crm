@@ -300,7 +300,12 @@ async function loadCustomerContactMap(
 function mapEnriched(
   lead: LeadRecord | LeadSummary,
   tenantId: string,
-  maps: { stages: Map<string, string>; sources: Map<string, string>; owners: Map<string, string> },
+  maps: {
+    stages: Map<string, string>;
+    sources: Map<string, string>;
+    sourcesByChannel: Map<string, string>;
+    owners: Map<string, string>;
+  },
 ): LeadReadModel {
   return mapLeadRecordToReadModel(lead, tenantId, resolveLabels(lead, maps));
 }
@@ -309,7 +314,12 @@ async function mapEnrichedList(
   client: SupabaseClient,
   tenantId: string,
   leads: Array<LeadRecord | LeadSummary>,
-  maps: { stages: Map<string, string>; sources: Map<string, string>; owners: Map<string, string> },
+  maps: {
+    stages: Map<string, string>;
+    sources: Map<string, string>;
+    sourcesByChannel: Map<string, string>;
+    owners: Map<string, string>;
+  },
 ): Promise<LeadReadModel[]> {
   const mapped = leads.map((lead) => mapEnriched(lead, tenantId, maps));
   const customers = await loadCustomerContactMap(client, tenantId, leads);

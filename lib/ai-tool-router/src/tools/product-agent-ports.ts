@@ -69,5 +69,5 @@ export type ProductAgentToolPorts = {
     productId: string;
     productName: string | null;
     source?: string;
-  }): Promise<void>;
+  }): Promise<{ linked: boolean; reason: string } | void>;
 };

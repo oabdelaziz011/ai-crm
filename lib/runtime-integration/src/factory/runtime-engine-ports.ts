@@ -500,7 +500,7 @@ export function createRuntimeEnginePortsWithContext(
             ? input.pageContext.schedulingCatalogPrompt.trim()
             : "";
         const assembledPrompt = assembleEmployeePromptKnowledge({
-          mode: options.promptMode,
+          mode: options.promptMode ?? "webhook",
           companyInstructions:
             typeof input.pageContext?.systemPrompt === "string" ? input.pageContext.systemPrompt : "",
           catalogAddon: catalogPromptAddon,

@@ -45,6 +45,7 @@ import {
   type WorkspaceNavId,
 } from "@/components/omnichannel/workspace-v2/workspace-nav";
 import type { OmnichannelQueueId } from "@/lib/omnichannel/services/conversation-queues";
+import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
 import { getOperationalProjection, CONVERSATION_LIFECYCLE_PERMISSIONS } from "@/lib/conversation-lifecycle";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useLifecycleMetadataMigration } from "@/hooks/conversations/use-lifecycle-metadata-migration";

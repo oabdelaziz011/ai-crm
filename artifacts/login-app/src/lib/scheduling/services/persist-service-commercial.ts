@@ -27,6 +27,7 @@ export async function persistServiceCommercialEdits(
         status: edit.status,
         category: edit.category,
         description: edit.description,
+        service_kind: "operational",
         price: edit.price,
         duration_minutes: edit.durationMinutes,
         currency: edit.currency,

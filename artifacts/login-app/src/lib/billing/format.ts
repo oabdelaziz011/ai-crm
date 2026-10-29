@@ -20,7 +20,7 @@ function billingFallback(): string {
  */
 export function formatBillingCurrency(
   amount: number | null | undefined,
-  currency?: string,
+  currency?: string | null,
 ): string {
   if (amount == null || Number.isNaN(Number(amount))) return billingFallback();
   return formatCompanyMoney(amount, currency || getCompanyCurrency(), getCompanyIntlLocale());

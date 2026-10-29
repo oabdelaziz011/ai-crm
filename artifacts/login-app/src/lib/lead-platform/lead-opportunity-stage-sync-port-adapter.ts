@@ -169,6 +169,8 @@ export async function reconcileOpportunitiesForVisibleLeads(
   if (!leadRows.length) return { created: 0, repaired: 0 };
 
   const linked = new Set<string>();
+  let created = 0;
+  let repaired = 0;
   for (let index = 0; index < leadRows.length; index += 80) {
     const chunk = leadRows.slice(index, index + 80).map((row) => row.id);
     const { data: existing, error: existingError } = await client
@@ -195,8 +197,6 @@ export async function reconcileOpportunitiesForVisibleLeads(
     }
   }
 
-  let created = 0;
-  let repaired = 0;
   for (const lead of leadRows) {
     if (linked.has(lead.id)) continue;
     try {

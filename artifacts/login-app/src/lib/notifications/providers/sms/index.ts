@@ -12,6 +12,6 @@ export { processSmsQueue, isSmsApiConfigured } from "@/lib/notifications/provide
 
 export function createSmsProviderServices(client: SupabaseClient) {
   return {
-    provider: createSmsProvider(client, new TwilioSmsTransport()),
+    provider: createSmsProvider(client, { twilio: new TwilioSmsTransport() }),
   };
 }

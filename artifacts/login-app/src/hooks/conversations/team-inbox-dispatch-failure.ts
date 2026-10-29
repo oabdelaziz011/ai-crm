@@ -13,7 +13,7 @@ type ConfirmClient = {
   rpc: (
     fn: string,
     args: { p_message_id: string; p_status: string; p_external_message_id: null },
-  ) => Promise<{ error: { message: string } | null }>;
+  ) => PromiseLike<{ error: { message: string } | null }>;
 };
 
 type MessageCache = {

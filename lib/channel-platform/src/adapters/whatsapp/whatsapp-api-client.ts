@@ -265,7 +265,8 @@ export class WhatsAppApiClient {
     const form = new FormData();
     form.append("messaging_product", "whatsapp");
     form.append("type", mimeType);
-    form.append("file", new Blob([input.bytes], { type: mimeType }), filename);
+    const bytes = Uint8Array.from(input.bytes);
+    form.append("file", new Blob([bytes.buffer], { type: mimeType }), filename);
 
     const response = await this.fetchFn(endpoint, {
       method: "POST",

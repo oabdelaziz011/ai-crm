@@ -548,8 +548,8 @@ export function BookingModal({
         notes: values.notes || null,
         source: "crm",
         branchId: effectiveBranchId,
-        pricingRuleId: selectedPricingRule?.id ?? null,
-        visitType: selectedPricingRule?.type?.code ?? null,
+        pricingRuleId: selectedPricingRule?.id ?? undefined,
+        visitType: selectedPricingRule?.type?.code ?? undefined,
       },
       {
         onSuccess: (created) => {

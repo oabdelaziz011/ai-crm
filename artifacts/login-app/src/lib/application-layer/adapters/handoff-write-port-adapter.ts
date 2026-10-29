@@ -31,6 +31,8 @@ export function createLoginAppHandoffWritePort(client: SupabaseClient, ctx: Logi
         ownership: {
           ownerType: result.ownership.ownerType,
           ownerLabel: result.ownership.ownerLabel,
+          assignedUserId: result.ownership.assignedUserId,
+          queueId: result.ownership.queueId,
         },
       };
     },

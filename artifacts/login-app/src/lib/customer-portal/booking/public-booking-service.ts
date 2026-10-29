@@ -98,8 +98,8 @@ export class PublicBookingService {
       serviceId: request.serviceId,
       date: request.date,
       slotStart: request.slotStart,
-      pricingRuleId: request.pricingRuleId,
-      visitType: request.visitType,
+      pricingRuleId: request.pricingRuleId ?? undefined,
+      visitType: request.visitType ?? undefined,
     });
 
     if (!validation.valid) {
@@ -116,8 +116,8 @@ export class PublicBookingService {
       source: "public_booking",
       notes: request.notes ?? null,
       branchId: request.branchId ?? null,
-      pricingRuleId: request.pricingRuleId,
-      visitType: request.visitType,
+      pricingRuleId: request.pricingRuleId ?? undefined,
+      visitType: request.visitType ?? undefined,
       createdBy: null,
     });
 

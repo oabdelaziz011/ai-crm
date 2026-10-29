@@ -10,6 +10,8 @@ export type HandoffEscalationTrigger =
 export type HandoffOwnershipModel = Readonly<{
   ownerType: string;
   ownerLabel?: string;
+  assignedUserId?: string | null;
+  queueId?: string | null;
 }>;
 
 export type HandoffWritePort = {

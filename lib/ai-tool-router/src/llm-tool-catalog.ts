@@ -42,7 +42,7 @@ export type ToolRegistryEntry = {
   displayName: string;
   category: string;
   classification: ToolClassification;
-  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer" | "product_agent";
+  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer" | "product_agent" | "quote_agent";
   description: string;
   requiredPermissions: string[];
   llmDefinition?: LlmFunctionToolDefinition;

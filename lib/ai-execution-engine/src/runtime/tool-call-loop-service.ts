@@ -11971,9 +11971,9 @@ export class ToolCallLoopService {
                     input: { productIds: [productId] },
                     triggeredBy: "agent",
                   });
-                  const detailOutput = wantsProductPhoto
-                    ? detailed.output
-                    : omitProductDeliveryImages(detailed.output);
+                  const detailOutput = productRecord(
+                    wantsProductPhoto ? detailed.output : omitProductDeliveryImages(detailed.output),
+                  );
                   toolExecutions.push({
                     toolKey: detailed.toolKey,
                     executionId: detailed.executionId,

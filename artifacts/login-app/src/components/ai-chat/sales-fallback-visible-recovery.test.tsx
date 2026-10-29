@@ -61,6 +61,7 @@ describe("floating assistant visible fallback recovery", () => {
       gateway,
       tools: {
         allowedToolKeys: () => ["create_draft_quote", "request_send_quote"],
+        listLlmTools: () => [],
         async route(_ctx, request) {
           executed.push(request.toolKey);
           if (request.toolKey === "request_send_quote") throw new Error("quote send must not run");
@@ -75,6 +76,8 @@ describe("floating assistant visible fallback recovery", () => {
               sent: false,
             },
             durationMs: 1,
+            errorCode: null,
+            errorMessage: null,
           };
         },
       },

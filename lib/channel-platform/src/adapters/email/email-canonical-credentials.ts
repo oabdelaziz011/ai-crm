@@ -5,6 +5,14 @@ import type { EmailChannelConfiguration, EmailChannelReferences } from "./email-
 
 export const EMAIL_CREDENTIALS_SOURCE = "company_email_settings" as const;
 
+function readImapLastUid(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
+  return undefined;
+}
+
 export type EmailCanonicalCredentials = {
   fromEmail: string;
   fromName: string;
@@ -227,12 +235,7 @@ function mapDecryptedSettings(row: DecryptedSettingsRow): EmailCanonicalCredenti
         ? row.imap_encryption
         : undefined,
     imapMailbox: typeof row.imap_mailbox === "string" ? row.imap_mailbox : undefined,
-    imapLastUid:
-      typeof row.imap_last_uid === "number"
-        ? row.imap_last_uid
-        : typeof row.imap_last_uid === "string" && row.imap_last_uid.trim() !== "" && Number.isFinite(Number(row.imap_last_uid))
-          ? Number(row.imap_last_uid)
-          : undefined,
+    imapLastUid: readImapLastUid(row.imap_last_uid),
     maxAttachmentBytes:
       typeof row.max_attachment_bytes === "number" ? row.max_attachment_bytes : undefined,
     inboundProvider,

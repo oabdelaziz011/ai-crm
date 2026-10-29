@@ -486,15 +486,23 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
     config: WhatsAppChannelConfiguration,
     payload: WhatsAppSendMessagePayload,
   ): Promise<WhatsAppSendMessagePayload> {
-    const mediaType =
-      payload.type === "image" || payload.type === "video" || payload.type === "audio" || payload.type === "document"
-        ? payload.type
-        : null;
-    if (!mediaType) return payload;
-
-    const media = payload[mediaType] as
-      | { link?: string; id?: string; caption?: string; filename?: string }
-      | undefined;
+    if (
+      payload.type !== "image" &&
+      payload.type !== "video" &&
+      payload.type !== "audio" &&
+      payload.type !== "document"
+    ) {
+      return payload;
+    }
+    const mediaType = payload.type;
+    const media =
+      payload.type === "image"
+        ? payload.image
+        : payload.type === "video"
+          ? payload.video
+          : payload.type === "audio"
+            ? payload.audio
+            : payload.document;
     if (!media || media.id || typeof media.link !== "string") return payload;
     if (!companyBrandingObjectPath(media.link)) return payload;
 
@@ -509,20 +517,21 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
     const mimeType =
       response.headers.get("content-type")?.split(";")[0]?.trim() ||
       (mediaType === "image" ? "image/jpeg" : "application/octet-stream");
+    const caption = "caption" in media && typeof media.caption === "string" ? media.caption : undefined;
+    const namedFile = "filename" in media && typeof media.filename === "string" ? media.filename : undefined;
     const filename =
-      media.filename?.trim() ||
+      namedFile?.trim() ||
       media.link.split("/").pop()?.split("?")[0] ||
       `product.${mimeType.includes("png") ? "png" : "jpg"}`;
     const mediaId = await this.apiClient.uploadMedia(config, { bytes, mimeType, filename });
-
+    const withCaption = { id: mediaId, ...(caption ? { caption } : {}) };
+    if (payload.type === "image") return { ...payload, image: withCaption };
+    if (payload.type === "video") return { ...payload, video: withCaption };
+    if (payload.type === "audio") return { ...payload, audio: { id: mediaId } };
     return {
       ...payload,
-      [mediaType]: {
-        id: mediaId,
-        ...(media.caption ? { caption: media.caption } : {}),
-        ...(media.filename ? { filename: media.filename } : {}),
-      },
-    } as WhatsAppSendMessagePayload;
+      document: { ...withCaption, ...(namedFile ? { filename: namedFile } : {}) },
+    };
   }
 
   private formatMediaPayload(

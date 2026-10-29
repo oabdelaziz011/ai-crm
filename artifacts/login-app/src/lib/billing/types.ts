@@ -95,6 +95,7 @@ export type CompanySubscription = {
     code: string;
     tier_rank: number;
     pricing_mode?: string | null;
+    pricing_currency?: string | null;
     price_monthly: number;
     price_yearly: number;
     max_users: number | null;

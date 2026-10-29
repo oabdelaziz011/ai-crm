@@ -1093,9 +1093,12 @@ export class InboundMessagePipeline {
         this.sessionRepository.touchInbound(session.id),
       );
 
+      const isAiEmployeeIntentTransfer = (
+        source: "channel_binding" | "ai_employee_sticky" | "ai_employee_intent" | null,
+      ): boolean => source === "ai_employee_intent";
       if (
         intentTransferFlowId &&
-        transferSource === "ai_employee_intent" &&
+        isAiEmployeeIntentTransfer(transferSource) &&
         this.ports.conversation.updateConversationMetadata &&
         this.ports.conversation.getConversationMetadata
       ) {

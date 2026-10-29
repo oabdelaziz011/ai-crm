@@ -25,12 +25,16 @@ export function createApplicationLayerHandoffToolPorts(portContext: LoginAppPort
         ctx,
       );
       const payload = unwrapCommand(result);
+      const assignedUserId = payload.ownership.assignedUserId ?? undefined;
       return {
         ownership: {
           ownerType: payload.ownership.ownerType,
           ownerLabel: payload.ownership.ownerLabel ?? "",
         },
         requestId: payload.requestId,
+        assigned: Boolean(assignedUserId),
+        queued: Boolean(payload.ownership.queueId) && !assignedUserId,
+        ...(assignedUserId ? { assigneeUserId: assignedUserId } : {}),
       };
     },
     async queueForHuman(input) {

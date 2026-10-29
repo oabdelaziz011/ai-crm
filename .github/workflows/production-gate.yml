@@ -54,13 +54,22 @@ jobs:
       - name: API server build
         run: pnpm --dir artifacts/api-server build
 
+      # Live billing/runtime probes (gate steps 6–7) require a real Supabase project.
+      # Do not substitute placeholder URL/key values — probes authenticate and call RPCs.
       - name: Production gate (billing + runtime)
         run: pnpm --dir artifacts/login-app production:gate
         env:
           CI: true
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Channel platform E2E
         run: pnpm --dir artifacts/login-app channel:e2e
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
+      # WhatsApp E2E is Local-only (VALUEOR_ENV=local + http://127.0.0.1:54321).
+      # It must not receive production publishable credentials; do not wire those secrets here.
       - name: WhatsApp adapter E2E
         run: pnpm --dir artifacts/login-app whatsapp:e2e

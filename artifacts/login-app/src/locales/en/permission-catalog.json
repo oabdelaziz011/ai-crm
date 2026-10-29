@@ -82,7 +82,7 @@
     },
     "webPresence": {
       "icon": "🌐",
-      "order": 141,
+      "order": 47,
       "label": "Web Presence"
     },
     "email": {
@@ -219,11 +219,6 @@
       "icon": "📊",
       "order": 46,
       "label": "Executive"
-    },
-    "webPresence": {
-      "icon": "🌐",
-      "order": 47,
-      "label": "Web Presence"
     }
   },
   "codes": {
@@ -1549,12 +1544,12 @@
     },
     "web_presence.manage": {
       "name": "Manage Web Presence",
-      "description": "Configure the company web presence portal and public Live Chat widget.",
+      "description": "Configure the Business Page and Web Chat widget settings.",
       "group": "webPresence"
     },
     "web_presence.view": {
       "name": "View Web Presence",
-      "description": "Open Live Chat conversations from the public web widget. Conversation visibility still follows View All or View Assigned.",
+      "description": "View the Business Page and Web Chat widget configuration.",
       "group": "webPresence"
     },
     "whatsapp.run": {
@@ -1576,16 +1571,6 @@
       "name": "Read Workflow",
       "description": "View workflow executions.",
       "group": "automation"
-    },
-    "web_presence.manage": {
-      "name": "Manage Web Presence",
-      "description": "Configure the Business Page and Web Chat widget settings.",
-      "group": "webPresence"
-    },
-    "web_presence.view": {
-      "name": "View Web Presence",
-      "description": "View the Business Page and Web Chat widget configuration.",
-      "group": "webPresence"
     },
     "workspace.view": {
       "name": "Access Workspace",

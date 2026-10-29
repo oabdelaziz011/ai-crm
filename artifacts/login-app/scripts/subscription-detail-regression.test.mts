@@ -67,7 +67,8 @@ const changeDialog = readFileSync(
   "utf8",
 );
 assert.match(changeDialog, /useChangeCompanyPackage/);
-assert.match(changeDialog, /cycleReadOnly|unchanged/);
+// Cycle is displayed read-only via companies.changePackage.cycleUnchanged (not an editable control).
+assert.match(changeDialog, /cycleUnchanged/);
 assert.doesNotMatch(changeDialog, /useAssignSubscriptionPlan/);
 const billingEditHooks = readFileSync(join(root, "src/hooks/billing/use-billing-edit.ts"), "utf8");
 assert.match(billingEditHooks, /change_company_package_v1/);

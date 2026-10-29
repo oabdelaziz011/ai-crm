@@ -33,7 +33,8 @@ describe("Phase 7.9A package-change UI path", () => {
     const hooks = read("src/hooks/billing/use-billing-edit.ts");
     assert.match(dialog, /useChangeCompanyPackage/);
     assert.match(hooks, /change_company_package_v1/);
-    assert.match(dialog, /unchanged|cycleReadOnly/);
+    // Billing cycle is shown read-only; i18n key companies.changePackage.cycleUnchanged.
+    assert.match(dialog, /cycleUnchanged/);
     assert.doesNotMatch(dialog, /assign_subscription_plan/);
     assert.doesNotMatch(dialog, /useAssignSubscriptionPlan/);
   });

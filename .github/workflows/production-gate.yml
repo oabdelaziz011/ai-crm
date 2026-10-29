@@ -33,16 +33,17 @@ jobs:
         working-directory: lib/channel-platform
         run: |
           set -o pipefail
-          pnpm test 2>&1 | tee "${{ runner.temp }}/channel-platform-tests.log"
-          exit "${PIPESTATUS[0]}"
-
-      - name: Upload channel platform test log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: channel-platform-tests-log
-          path: ${{ runner.temp }}/channel-platform-tests.log
-          if-no-files-found: ignore
+          LOG_FILE="${{ runner.temp }}/channel-platform-tests.log"
+          if ! pnpm test 2>&1 | tee "$LOG_FILE"; then
+            {
+              echo "## Channel platform test failure"
+              echo ""
+              echo '```'
+              tail -n 160 "$LOG_FILE"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Login app typecheck
         run: pnpm --dir artifacts/login-app typecheck

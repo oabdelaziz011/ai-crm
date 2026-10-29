@@ -30,7 +30,8 @@ jobs:
         run: pnpm --dir lib/platform-crypto test
 
       - name: Channel platform tests
-        run: pnpm --dir lib/channel-platform exec node --import tsx/esm --test --test-reporter=spec --test-force-exit "src/**/*.test.ts"
+        working-directory: lib/channel-platform
+        run: pnpm test
 
       - name: Login app typecheck
         run: pnpm --dir artifacts/login-app typecheck

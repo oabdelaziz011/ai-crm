@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx/esm --test src/**/*.test.ts"
+    "test": "node --import tsx/esm --test --test-force-exit src/**/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",

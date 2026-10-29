@@ -201,11 +201,11 @@ if (process.argv[2] === "child") {
     process.exit(1);
   });
 } else {
-  const skipWithoutLocalStack = hasLocalStackEnv()
-    ? false
-    : ".env.localstack is required for local Postgres lease tests (skipped in CI/clean checkouts)";
+  const describeLocalPostgres = hasLocalStackEnv()
+    ? describe
+    : describe.skip;
 
-  describe("whatsapp conversation turn lease on local postgres", { concurrency: 1, skip: skipWithoutLocalStack }, () => {
+  describeLocalPostgres("whatsapp conversation turn lease on local postgres", { concurrency: 1 }, () => {
     const conversations: string[] = [];
 
     it("two processes cannot own the same conversation, and a stale owner cannot renew or release", async () => {

@@ -12,7 +12,8 @@ async function configurePdfWorker(pdfjs: PdfJsModule): Promise<void> {
   if (pdfjs.GlobalWorkerOptions.workerSrc) return;
 
   // Browser (Vite): prefer a version-matched CDN worker so bundling never omits the asset.
-  if (typeof window !== "undefined") {
+  // Use globalThis so Node-only tsconfig (`types: ["node"]`) typechecks without DOM libs.
+  if ("window" in globalThis) {
     pdfjs.GlobalWorkerOptions.workerSrc =
       `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
     return;

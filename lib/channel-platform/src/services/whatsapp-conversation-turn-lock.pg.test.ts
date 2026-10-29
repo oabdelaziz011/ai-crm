@@ -16,8 +16,16 @@ const repoRoot = path.resolve(here, "../../../..");
 const require = createRequire(path.join(repoRoot, "lib/db/package.json"));
 const pg = require("pg");
 
+function localStackEnvPath(): string {
+  return path.join(repoRoot, ".env.localstack");
+}
+
+function hasLocalStackEnv(): boolean {
+  return fs.existsSync(localStackEnvPath());
+}
+
 function localEnv(name: string): string {
-  const text = fs.readFileSync(path.join(repoRoot, ".env.localstack"), "utf8");
+  const text = fs.readFileSync(localStackEnvPath(), "utf8");
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed.startsWith(`${name}=`)) continue;
@@ -193,7 +201,11 @@ if (process.argv[2] === "child") {
     process.exit(1);
   });
 } else {
-  describe("whatsapp conversation turn lease on local postgres", { concurrency: 1 }, () => {
+  const skipWithoutLocalStack = hasLocalStackEnv()
+    ? false
+    : ".env.localstack is required for local Postgres lease tests (skipped in CI/clean checkouts)";
+
+  describe("whatsapp conversation turn lease on local postgres", { concurrency: 1, skip: skipWithoutLocalStack }, () => {
     const conversations: string[] = [];
 
     it("two processes cannot own the same conversation, and a stale owner cannot renew or release", async () => {

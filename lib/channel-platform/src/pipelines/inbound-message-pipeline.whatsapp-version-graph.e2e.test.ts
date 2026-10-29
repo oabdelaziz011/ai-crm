@@ -59,8 +59,8 @@ const whatsAppButtonFlowSnapshot: WorkflowGraphSnapshot = {
                 id: "r1",
                 field: "conversation.last_button_id",
                 operator: "equals",
-                // canonicalizeSelectionId("booking") → "book" (bilingual aliases)
-                value: "book",
+                // Opaque button ids are preserved (canonicalizeSelectionId does not remap "booking"→"book").
+                value: "booking",
               },
             ],
           },
@@ -336,7 +336,7 @@ describe("InboundMessagePipeline WhatsApp version graph E2E regression", () => {
     assert.equal(completedRun.variables.__branch, "yes");
     assert.equal(
       (completedRun.variables.conversation as { last_button_id?: string }).last_button_id,
-      "book",
+      "booking",
     );
     assert.equal(await automationEnv.versionGraph.hasNode(pinnedVersionId, END_YES_ID), true);
   });

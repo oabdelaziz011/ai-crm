@@ -86,9 +86,10 @@ export function createMemoryWhatsAppConversationTurnLock(): WhatsAppConversation
 }
 
 function delay(ms: number): Promise<void> {
+  // Referenced on purpose: same Node 22 event-loop drain hazard as the in-memory
+  // conversation turn wait (unref'd polls + bare Promise holds → cancelledByParent).
   return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
+    setTimeout(resolve, ms);
   });
 }
 
@@ -115,6 +116,7 @@ export async function openWhatsAppSharedTurnLock(
 
   let owned = true;
   const renewEvery = Math.max(20, Math.floor(ttlMs / 3));
+  // Keep referenced while this process owns the shared turn (see delay() above).
   const renewTimer = setInterval(() => {
     void lock.renew({ conversationId, owner, ttlMs }).then(
       (ok) => {
@@ -125,7 +127,6 @@ export async function openWhatsAppSharedTurnLock(
       },
     );
   }, renewEvery);
-  renewTimer.unref?.();
 
   return {
     stillOwns: () => owned,

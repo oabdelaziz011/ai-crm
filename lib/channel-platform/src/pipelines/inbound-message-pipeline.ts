@@ -248,9 +248,12 @@ export function abandonConversationTurnForTests(conversationId: string): void {
 }
 
 function delay(ms: number): Promise<void> {
+  // Must stay referenced. Waiters poll while an owner may be paused on a bare
+  // Promise (test gates / in-flight work). Unref'd timers let Node 22's event
+  // loop drain with turn Promises still pending, which cancels the suite with
+  // ERR_TEST_FAILURE ("Promise resolution is still pending...").
   return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
+    setTimeout(resolve, ms);
   });
 }
 
@@ -283,12 +286,13 @@ export async function waitForConversationTurn(conversationId: string): Promise<C
   }
 
   const renewEvery = Math.max(5, Math.floor(ttl / 3));
+  // Referenced for the life of the lease so an owner paused on a bare Promise
+  // (no other I/O) still keeps the event loop alive until release().
   const renewTimer = setInterval(() => {
     const lease = conversationTurns.get(conversationId);
     if (!lease || lease.owner !== owner) return;
     lease.expiresAt = Date.now() + ttl;
   }, renewEvery);
-  renewTimer.unref?.();
   const acquired = conversationTurns.get(conversationId);
   if (acquired?.owner === owner) acquired.renewTimer = renewTimer;
 

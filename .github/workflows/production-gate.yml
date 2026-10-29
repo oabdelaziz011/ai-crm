@@ -31,7 +31,18 @@ jobs:
 
       - name: Channel platform tests
         working-directory: lib/channel-platform
-        run: pnpm test
+        run: |
+          set -o pipefail
+          pnpm test 2>&1 | tee "${{ runner.temp }}/channel-platform-tests.log"
+          exit "${PIPESTATUS[0]}"
+
+      - name: Upload channel platform test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: channel-platform-tests-log
+          path: ${{ runner.temp }}/channel-platform-tests.log
+          if-no-files-found: ignore
 
       - name: Login app typecheck
         run: pnpm --dir artifacts/login-app typecheck

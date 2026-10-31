@@ -5,6 +5,7 @@ import { config as loadDotenv } from "dotenv";
 import {
   LOCAL_OPTIONAL_MERGE_KEYS,
   VALUEOR_ENV_LOCAL,
+  VALUEOR_ENV_PRODUCTION,
   assertLocalEnvironmentSafety,
   resolveValueorEnv,
 } from "../../../scripts/lib/env-mode.mjs";
@@ -103,11 +104,14 @@ function applyEnvAliases(): void {
     }
   }
 
-  if (!process.env.SESSION_SECRET?.trim()) {
+  const nodeEnv =
+    process.env.NODE_ENV?.trim() ||
+    (mode === VALUEOR_ENV_PRODUCTION ? "production" : "development");
+  process.env.NODE_ENV = nodeEnv;
+
+  if (nodeEnv !== "production" && !process.env.SESSION_SECRET?.trim()) {
     process.env.SESSION_SECRET = "dev-secret-change-me";
   }
-
-  const nodeEnv = process.env.NODE_ENV?.trim() || "development";
   if (nodeEnv !== "production" && !process.env.INTERNAL_API_KEY?.trim()) {
     process.env.INTERNAL_API_KEY = "dev-internal-api-key";
   }

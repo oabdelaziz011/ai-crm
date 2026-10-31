@@ -79,4 +79,29 @@ describe("lifecycle HTTP auth and bounds", () => {
     assert.equal(isBillingLifecycleWorkerEnabled({ BILLING_LIFECYCLE_WORKER_ENABLED: "false" }), false);
     assert.equal(isBillingLifecycleWorkerEnabled({ BILLING_LIFECYCLE_WORKER_ENABLED: "true" }), true);
   });
+
+  it("production keeps the worker off until the runtime is confirmed", () => {
+    const production = {
+      NODE_ENV: "production",
+      BILLING_LIFECYCLE_WORKER_ENABLED: "true",
+      SESSION_SECRET: "prod-session-secret",
+      INTERNAL_API_KEY: "prod-internal-key",
+    };
+    assert.equal(isBillingLifecycleWorkerEnabled(production), false);
+    assert.equal(
+      isBillingLifecycleWorkerEnabled({
+        ...production,
+        BILLING_LIFECYCLE_WORKER_CONFIRMED: "true",
+      }),
+      true,
+    );
+    assert.equal(
+      isBillingLifecycleWorkerEnabled({
+        ...production,
+        BILLING_LIFECYCLE_WORKER_CONFIRMED: "true",
+        SESSION_SECRET: "dev-secret-change-me",
+      }),
+      false,
+    );
+  });
 });

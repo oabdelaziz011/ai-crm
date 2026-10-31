@@ -11,6 +11,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { PROJECT_ROOT, readEnvFile } from "./env-utils.mjs";
 import { resolveCloudflaredConfigPath } from "./spawn-utils.mjs";
+import { productionIngressProblems } from "./production-ingress.mjs";
 
 function fail(message) {
   console.error(message);
@@ -27,6 +28,19 @@ function main() {
     console.log("Starting named Cloudflare Tunnel (token mode)...");
     args = ["tunnel", "run", "--token", token];
   } else if (fs.existsSync(configPath)) {
+    const problems = productionIngressProblems(fs.readFileSync(configPath, "utf8"));
+    if (problems.length) {
+      fail(
+        [
+          "Production webhook ingress is not runnable.",
+          ...problems.map((problem) => `  - ${problem}`),
+          "",
+          "Point PRODUCTION_API_ORIGIN at the supervised production API, then run:",
+          "  node scripts/cloudflare/render-production-tunnel.mjs",
+          "Start that rendered config with CLOUDFLARE_TUNNEL_CONFIG. Do not route webhook.valueor.org to localhost.",
+        ].join("\n"),
+      );
+    }
     console.log(`Starting named Cloudflare Tunnel using ${configPath} ...`);
     args = ["tunnel", "--config", configPath, "run"];
   } else {

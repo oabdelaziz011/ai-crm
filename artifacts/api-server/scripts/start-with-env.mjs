@@ -11,6 +11,7 @@ import {
   loadProjectEnv,
   validateApiServerEnv,
 } from "../../../scripts/lib/load-project-env.mjs";
+import { productionRuntimeProblems } from "../../../scripts/lib/production-runtime.mjs";
 
 const apiServerRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const projectRoot = resolve(apiServerRoot, "../..");
@@ -25,6 +26,14 @@ const validation = validateApiServerEnv(env);
 if (!validation.ok) {
   console.error(formatMissingEnvHelp(projectRoot, validation.missing));
   process.exit(1);
+}
+
+if (env.VALUEOR_ENV === "production" || env.NODE_ENV === "production") {
+  const problems = productionRuntimeProblems(env);
+  if (problems.length) {
+    console.error(["Production API process check failed.", ...problems.map((problem) => `  - ${problem}`)].join("\n"));
+    process.exit(1);
+  }
 }
 
 const childEnv = {

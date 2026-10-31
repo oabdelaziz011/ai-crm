@@ -264,17 +264,19 @@ export function normalizeProjectEnv(env, options = {}) {
     }
   }
 
-  if (!out.SESSION_SECRET?.trim()) {
+  const nodeEnv =
+    out.NODE_ENV?.trim() ||
+    (mode === VALUEOR_ENV_PRODUCTION ? "production" : process.env.NODE_ENV?.trim() || "development");
+  out.NODE_ENV = nodeEnv;
+
+  if (nodeEnv !== "production" && !out.SESSION_SECRET?.trim()) {
     out.SESSION_SECRET = "dev-secret-change-me";
   }
-
-  const nodeEnv = out.NODE_ENV?.trim() || process.env.NODE_ENV?.trim() || "development";
   if (nodeEnv !== "production" && !out.INTERNAL_API_KEY?.trim()) {
     out.INTERNAL_API_KEY = "dev-internal-api-key";
   }
 
   out.PORT ??= "3000";
-  out.NODE_ENV ??= mode === VALUEOR_ENV_PRODUCTION ? "production" : "development";
 
   return out;
 }

@@ -147,6 +147,11 @@ function main() {
   if (!Number.isFinite(port) || port <= 0) {
     throw new Error("PORT/API_SERVER_PORT must be a positive number.");
   }
+  if (CLOUDFLARE_TUNNEL_HOSTNAME === "webhook.valueor.org") {
+    throw new Error(
+      "tunnel:setup must not bind webhook.valueor.org to localhost. Set PRODUCTION_API_ORIGIN and run node scripts/cloudflare/render-production-tunnel.mjs.",
+    );
+  }
 
   const tunnel = getOrCreateTunnel(CLOUDFLARE_TUNNEL_NAME);
   routeDns(CLOUDFLARE_TUNNEL_NAME, CLOUDFLARE_TUNNEL_HOSTNAME);

@@ -1,0 +1,15 @@
+# Tracked production ingress shape. Do not put credentials in this file.
+# Render the real gitignored config with:
+#   PRODUCTION_API_ORIGIN=https://<supervised-api> node scripts/cloudflare/render-production-tunnel.mjs
+# webhook.valueor.org must not use localhost.
+
+tunnel: ${CLOUDFLARE_TUNNEL_ID}
+credentials-file: ${CLOUDFLARE_TUNNEL_CREDENTIALS_FILE}
+
+ingress:
+  - hostname: webhook.valueor.org
+    service: http://production-api.invalid:3000
+    originRequest:
+      connectTimeout: 30s
+      noTLSVerify: false
+  - service: http_status:404

@@ -57,6 +57,19 @@ export function resolveInternalLifecycleAuth(input: {
   return { ok: true };
 }
 
+const DEV_SECRET_PLACEHOLDERS = new Set([
+  "dev-secret",
+  "dev-secret-change-me",
+  "dev-internal-api-key",
+]);
+
 export function isBillingLifecycleWorkerEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.BILLING_LIFECYCLE_WORKER_ENABLED === "true";
+  if (env.BILLING_LIFECYCLE_WORKER_ENABLED !== "true") return false;
+  if ((env.NODE_ENV ?? "development") !== "production") return true;
+  if (env.BILLING_LIFECYCLE_WORKER_CONFIRMED !== "true") return false;
+  const session = env.SESSION_SECRET?.trim() ?? "";
+  const internalKey = env.INTERNAL_API_KEY?.trim() ?? "";
+  if (!session || DEV_SECRET_PLACEHOLDERS.has(session)) return false;
+  if (!internalKey || DEV_SECRET_PLACEHOLDERS.has(internalKey)) return false;
+  return true;
 }

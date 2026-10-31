@@ -20,13 +20,16 @@ export function loadSaasProviderEnv(provider: SaasProviderCode): Record<string, 
         merchantCode: process.env.FAWRY_MERCHANT_CODE?.trim(),
         securityKey: process.env.FAWRY_SECURITY_KEY?.trim(),
       };
-    case "sandbox":
-      return {
-        webhookSecret:
-          process.env.SAAS_SANDBOX_WEBHOOK_SECRET?.trim() ||
-          process.env.INTERNAL_API_KEY?.trim() ||
-          "dev-saas-sandbox-webhook",
-      };
+    case "sandbox": {
+      const configured =
+        process.env.SAAS_SANDBOX_WEBHOOK_SECRET?.trim() ||
+        process.env.INTERNAL_API_KEY?.trim();
+      if (configured) return { webhookSecret: configured };
+      if ((process.env.NODE_ENV ?? "development") === "production") {
+        return { webhookSecret: undefined };
+      }
+      return { webhookSecret: "dev-saas-sandbox-webhook" };
+    }
     default:
       return {};
   }

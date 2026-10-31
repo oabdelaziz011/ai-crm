@@ -73,7 +73,10 @@ export async function confirmSandboxSaasCheckout(input: {
     company_id: session.company_id,
   };
   const rawBody = JSON.stringify(payload);
-  const secret = loadSaasProviderEnv("sandbox").webhookSecret ?? "dev-saas-sandbox-webhook";
+  const secret = loadSaasProviderEnv("sandbox").webhookSecret;
+  if (!secret) {
+    throw new HttpError(503, "Sandbox webhook secret is not configured.", "sandbox_webhook_secret_missing");
+  }
   const signature = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
 
   const result = await processSaasPaymentWebhook({

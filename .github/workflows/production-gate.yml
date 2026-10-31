@@ -65,6 +65,8 @@ jobs:
 
       # E2E writes demo data. Run it only against an isolated local Supabase, never Production.
       - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
 
       - name: Start isolated local Supabase for E2E
         run: |

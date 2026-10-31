@@ -19,19 +19,24 @@ begin
       and c.relkind in ('r', 'p', 'v', 'm')
       and not has_table_privilege('service_role', c.oid, 'select')
   loop
-    if r.relkind in ('r', 'p') then
-      execute format(
-        'grant select, insert, update, delete on table %I.%I to service_role',
-        r.schema_name,
-        r.object_name
-      );
-    else
-      execute format(
-        'grant select on table %I.%I to service_role',
-        r.schema_name,
-        r.object_name
-      );
-    end if;
+    begin
+      if r.relkind in ('r', 'p') then
+        execute format(
+          'grant select, insert, update, delete on table %I.%I to service_role',
+          r.schema_name,
+          r.object_name
+        );
+      else
+        execute format(
+          'grant select on table %I.%I to service_role',
+          r.schema_name,
+          r.object_name
+        );
+      end if;
+    exception
+      when insufficient_privilege then
+        null;
+    end;
   end loop;
 
   for r in
@@ -42,10 +47,15 @@ begin
       and c.relkind = 'S'
       and not has_sequence_privilege('service_role', c.oid, 'usage')
   loop
-    execute format(
-      'grant usage, select on sequence %I.%I to service_role',
-      r.schema_name,
-      r.object_name
-    );
+    begin
+      execute format(
+        'grant usage, select on sequence %I.%I to service_role',
+        r.schema_name,
+        r.object_name
+      );
+    exception
+      when insufficient_privilege then
+        null;
+    end;
   end loop;
 end $$;

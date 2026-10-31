@@ -83,8 +83,12 @@ jobs:
           text = re.sub(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "[redacted]", text)
           text = re.sub(r"sb_[A-Za-z0-9_-]+", "[redacted]", text)
           lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-          interesting = [ln for ln in lines if re.search(r"error|failed|fatal|panic|denied|invalid|migration|timeout", ln, re.I)]
-          chosen = (interesting or lines)[-20:]
+          interesting = [
+              ln for ln in lines
+              if re.search(r"error|fatal|panic|denied|invalid", ln, re.I)
+              and "Applying migration" not in ln
+          ]
+          chosen = (interesting or lines)[-12:]
           for ln in chosen:
               safe = ln.replace("%", "%25").replace("\r", "")[:500]
               print(f"::error::{safe}")

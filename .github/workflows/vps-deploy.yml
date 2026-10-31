@@ -1,0 +1,81 @@
+name: VPS deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: deploy builds the selected main SHA; rollback restores the previous image tags
+        type: choice
+        options:
+          - deploy
+          - rollback
+        default: deploy
+      confirm:
+        description: Type deploy or rollback again, matching the action
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    if: github.ref == 'refs/heads/main' && github.event.inputs.confirm == github.event.inputs.action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm manual main-branch action
+        run: echo "Approved ${{ github.event.inputs.action }} for ${{ github.sha }}"
+
+  gate:
+    needs: guard
+    if: github.event.inputs.action == 'deploy'
+    uses: ./.github/workflows/production-gate.yml
+    secrets: inherit
+
+  deploy:
+    needs: [guard, gate]
+    if: always() && needs.guard.result == 'success' && (needs.gate.result == 'success' || needs.gate.result == 'skipped') && github.event.inputs.confirm == github.event.inputs.action
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Run the server script over SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          ACTION: ${{ github.event.inputs.action }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/valueor_vps
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/valueor_vps ~/.ssh/known_hosts
+          PORT="${VPS_SSH_PORT:-22}"
+          ssh -p "$PORT" -i ~/.ssh/valueor_vps -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts "$VPS_USER@$VPS_HOST" "SHA='$GIT_SHA' ACTION='$ACTION' bash -s" <<'EOF'
+          set -euo pipefail
+          APP_DIR=/opt/valueor
+          REPO=https://github.com/oabdelaziz011/ai-crm.git
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Refusing a ref that is not a full git SHA."
+            exit 2
+          fi
+          if [[ ! -d "$APP_DIR/.git" ]]; then
+            git clone "$REPO" "$APP_DIR"
+          fi
+          cd "$APP_DIR"
+          git fetch --prune origin
+          if [[ "$ACTION" == "rollback" ]]; then
+            bash deploy/vps/remote-rollback.sh
+            exit $?
+          fi
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Server worktree is dirty. Refusing to deploy."
+            exit 2
+          fi
+          git checkout --detach "$SHA"
+          bash deploy/vps/remote-deploy.sh "$SHA"
+          EOF

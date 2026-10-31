@@ -1,0 +1,36 @@
+{
+	email {$ACME_EMAIL}
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+# Use this file when the DNS records are DNS-only and ports 80/443 reach this VPS.
+# Proxied Cloudflare records use Caddyfile.cloudflare instead.
+
+app.valueor.org {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	reverse_proxy frontend:8080
+}
+
+api.valueor.org, webhook.valueor.org {
+	encode zstd gzip
+	request_body {
+		max_size 12MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	reverse_proxy api:3000 {
+		flush_interval -1
+	}
+}

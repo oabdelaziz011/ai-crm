@@ -35,6 +35,7 @@
     "test:ticket-platform": "pnpm --dir lib/ticket-platform test",
     "test:channel-platform": "pnpm --dir lib/channel-platform test",
     "check:migrations": "node scripts/check-migration-version-uniqueness.mjs",
+    "validate:vps": "node --test scripts/validate-vps-config.test.mjs",
     "snapshot:local-data": "node scripts/local-dev-snapshot.mjs export",
     "setup:local-data": "node scripts/local-dev-snapshot.mjs import",
     "verify:local-snapshot": "node scripts/local-dev-snapshot.mjs verify-snapshot",

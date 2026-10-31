@@ -1,0 +1,138 @@
+# Single VPS. Supabase Cloud stays the database. One API replica: its process
+# also runs the in-process timers (billing, session idle, email poll, sales
+# follow-up, WhatsApp reply recovery). The embedding worker is the separate
+# process. Do not scale the api service.
+
+name: valueor
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    stop_grace_period: 20s
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ${CADDYFILE:-./Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ${CADDY_CERT_DIR:-./certs}:/etc/caddy/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging: &json-logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--header=Host: api.valueor.org", "http://127.0.0.1/api/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 256m
+    cpus: "0.25"
+
+  frontend:
+    image: valueor-frontend:current
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile
+      target: frontend
+      args:
+        VITE_APP_ORIGIN: ${VITE_APP_ORIGIN}
+        VITE_SITE_URL: ${VITE_SITE_URL}
+        VITE_API_SERVER_URL: ${VITE_API_SERVER_URL}
+        VITE_WEBHOOK_BASE_URL: ${VITE_WEBHOOK_BASE_URL}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    restart: unless-stopped
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      <<: *json-logs
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 128m
+    cpus: "0.25"
+
+  api:
+    image: valueor-app:current
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile
+      target: app
+    restart: unless-stopped
+    stop_grace_period: 30s
+    init: true
+    env_file:
+      - path: production.env
+        required: false
+    environment:
+      NODE_ENV: production
+      VALUEOR_ENV: production
+      PORT: "3000"
+    expose:
+      - "3000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      <<: *json-logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 2560m
+    cpus: "1.50"
+
+  platform-worker:
+    image: valueor-app:current
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile
+      target: app
+    command: ["node", "deploy/vps/start-worker.mjs"]
+    restart: unless-stopped
+    stop_grace_period: 30s
+    env_file:
+      - path: production.env
+        required: false
+    environment:
+      NODE_ENV: production
+      VALUEOR_ENV: production
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      <<: *json-logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 2048m
+    cpus: "1.00"
+
+volumes:
+  caddy-data:
+  caddy-config:

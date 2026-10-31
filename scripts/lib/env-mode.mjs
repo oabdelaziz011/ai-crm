@@ -62,6 +62,7 @@ export const LOCAL_OPTIONAL_MERGE_KEYS = [
   "SALES_FOLLOW_UP_WORKER_LIMIT",
 ];
 
+const RECORDED_PRODUCTION_PROJECT_REF = "lfbtnskmvibikalsxwsm";
 const PROD_SUPABASE_HOST_RE = /\.supabase\.co\b/i;
 const PROD_POOLER_HOST_RE = /(?:pooler\.supabase\.com|\.supabase\.com)\b/i;
 const PROD_WEBHOOK_URL = "https://webhook.valueor.org";
@@ -105,6 +106,23 @@ export function isProductionSupabaseUrl(url) {
 export function isProductionDatabaseUrl(url) {
   if (!url?.trim()) return false;
   return PROD_POOLER_HOST_RE.test(url) || PROD_SUPABASE_HOST_RE.test(url);
+}
+
+export function recordedProductionSupabaseOrigin() {
+  return `https://${RECORDED_PRODUCTION_PROJECT_REF}.supabase.co`;
+}
+
+export function isRecordedProductionSupabaseUrl(url) {
+  if (!isProductionSupabaseUrl(url)) return false;
+  try {
+    return new URL(url.trim()).hostname.toLowerCase() === `${RECORDED_PRODUCTION_PROJECT_REF}.supabase.co`;
+  } catch {
+    return false;
+  }
+}
+
+export function isRecordedProductionDatabaseUrl(url) {
+  return isProductionDatabaseUrl(url) && String(url).includes(RECORDED_PRODUCTION_PROJECT_REF);
 }
 
 export function isProductionWebhookUrl(url) {
@@ -162,7 +180,7 @@ export function assertLocalEnvironmentSafety(env) {
   }
 
   // Reject well-known production project ref when paired with any cloud URL remnant.
-  if (String(env.SUPABASE_PROJECT_REF || "").includes("lfbtnskmvibikalsxwsm")) {
+  if (String(env.SUPABASE_PROJECT_REF || "").includes(RECORDED_PRODUCTION_PROJECT_REF)) {
     offenders.push("SUPABASE_PROJECT_REF (production project ref)");
   }
 
@@ -174,7 +192,7 @@ export function assertLocalEnvironmentSafety(env) {
       ...offenders.map((item) => `  - ${item}`),
       "",
       "Fix: run `node scripts/ensure-localstack-env.mjs` and use `pnpm dev:local` / `pnpm dev:api:local`.",
-      "Do not point local mode at lfbtnskmvibikalsxwsm / webhook.valueor.org.",
+      `Do not point local mode at ${RECORDED_PRODUCTION_PROJECT_REF} / webhook.valueor.org.`,
     ].join("\n");
     throw new Error(message);
   }

@@ -20,6 +20,7 @@ const BATCH_CONCURRENCY = Number(process.env.WORKER_BATCH_SIZE ?? 16);
 const MAX_CYCLES = Number(process.env.WORKER_MAX_CYCLES ?? 0);
 const WORKER_ID = process.env.WORKER_ID ?? `embedding-worker-${process.pid}`;
 const STALE_LOCK_SECONDS = Number(process.env.WORKER_STALE_LOCK_SECONDS ?? 900);
+let wakeSleep = () => {};
 
 const SYSTEM_CONTEXT = {
   userId: null,
@@ -64,7 +65,8 @@ async function listCompaniesWithQueuedJobs(client: ReturnType<typeof createClien
     .limit(100);
 
   if (error) throw error;
-  return [...new Set((data ?? []).map((row) => row.company_id as string))];
+  const rows = (data ?? []) as unknown as Array<{ company_id: string }>;
+  return [...new Set(rows.map((row) => row.company_id))];
 }
 
 async function main() {
@@ -75,8 +77,8 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const vectorStore = createVectorStoreServices(client);
-  const services = createEmbeddingPlatformServices(client, { telemetry, vectorStore });
+  const vectorStore = createVectorStoreServices(client as Parameters<typeof createVectorStoreServices>[0]);
+  const services = createEmbeddingPlatformServices(client as Parameters<typeof createEmbeddingPlatformServices>[0], { telemetry, vectorStore });
   if (!services.worker) {
     throw new Error("Embedding worker orchestrator is unavailable.");
   }
@@ -84,10 +86,13 @@ async function main() {
   let cycles = 0;
   let shuttingDown = false;
 
-  process.on("SIGTERM", () => {
+  const requestShutdown = (signal: string) => {
     shuttingDown = true;
-    logStructured({ event: "worker.shutdown", detail: { workerId: WORKER_ID } });
-  });
+    logStructured({ event: "worker.shutdown", detail: { workerId: WORKER_ID, signal } });
+    wakeSleep();
+  };
+  process.on("SIGTERM", () => requestShutdown("SIGTERM"));
+  process.on("SIGINT", () => requestShutdown("SIGINT"));
 
   logStructured({
     event: "worker.start",
@@ -101,7 +106,7 @@ async function main() {
     let indexedDocuments = 0;
 
     try {
-      const companyIds = await listCompaniesWithQueuedJobs(client);
+      const companyIds = await listCompaniesWithQueuedJobs(client as unknown as ReturnType<typeof createClient>);
 
       for (const companyId of companyIds) {
         const result = await services.worker.processCompanyQueue(SYSTEM_CONTEXT, companyId, {
@@ -144,7 +149,7 @@ async function main() {
         });
       }
 
-      if (processedCount === 0) {
+      if (processedCount === 0 && !shuttingDown) {
         await sleep(POLL_MS);
       }
     } catch (error) {
@@ -155,13 +160,21 @@ async function main() {
         message: error instanceof Error ? error.message : "Unknown worker error",
         labels: { workerId: WORKER_ID },
       });
-      await sleep(POLL_MS);
+      if (!shuttingDown) await sleep(POLL_MS);
     }
   }
+
+  if (shuttingDown) process.exit(0);
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(undefined), ms);
+    wakeSleep = () => {
+      clearTimeout(timer);
+      resolve(undefined);
+    };
+  });
 }
 
 main().catch((error) => {

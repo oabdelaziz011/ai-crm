@@ -246,7 +246,15 @@ async function main() {
   const supabaseUrl = assertExactLocalSupabaseUrl(config.url);
   process.env.VITE_SUPABASE_URL = supabaseUrl;
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY = config.key;
-  const { client, userId } = await signIn(supabaseUrl, config.key);
+  const serviceRoleKey =
+    env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!serviceRoleKey) {
+    safetyAbort("Local SUPABASE_SERVICE_ROLE_KEY is required. This E2E uses the service role, same as the webhook API.");
+  }
+  const client = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { userId } = await signIn(supabaseUrl, config.key);
   const ctx = makeContext(userId);
 
   await client.rpc("_demo_set_triggers", { enabled: false });

@@ -727,7 +727,8 @@ async function main() {
     if (!config) safetyAbort("Supabase configuration not found for local E2E.");
     supabaseTargetUrl = assertExactLocalSupabaseUrl(config.url);
 
-    const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const serviceRoleKey =
+      env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!serviceRoleKey) {
       safetyAbort("Local SUPABASE_SERVICE_ROLE_KEY is required for the WhatsApp turn lease.");
     }
@@ -743,7 +744,7 @@ async function main() {
     printSafetyBanner(supabaseTargetUrl);
 
     const signedIn = await signIn(config.url, config.key);
-    client = signedIn.client;
+    client = turnLockClient;
     ctx = makeContext(signedIn.userId);
     assertDemoBetaCompanyId(ctx.companyId, "main.context");
 

@@ -114,8 +114,9 @@ jobs:
           export VALUEOR_ENV=local
           export VITE_SUPABASE_URL="http://127.0.0.1:54321"
           export VITE_SUPABASE_PUBLISHABLE_KEY="${PUBLISHABLE_KEY:-${ANON_KEY}}"
-          if [ -z "${VITE_SUPABASE_PUBLISHABLE_KEY}" ]; then
-            echo "::error::Local publishable key missing after supabase status"
+          export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_ROLE_KEY}}"
+          if [ -z "${VITE_SUPABASE_PUBLISHABLE_KEY}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "::error::Local Supabase key missing after supabase status"
             exit 1
           fi
           set +e

@@ -68,8 +68,35 @@ jobs:
 
       - name: Start isolated local Supabase for E2E
         run: |
-          supabase start
-          supabase status -o env > "${RUNNER_TEMP}/supabase-local.env"
+          set +e
+          supabase start > "${RUNNER_TEMP}/supabase-start.log" 2>&1
+          start_code=$?
+          set -e
+          if [ "$start_code" -ne 0 ]; then
+            echo "::error::supabase start failed with exit ${start_code}"
+            RUNNER_TEMP="${RUNNER_TEMP}" python3 - << 'PY'
+          import os, re
+          path = os.path.join(os.environ["RUNNER_TEMP"], "supabase-start.log")
+          text = open(path, errors="replace").read()
+          text = re.sub(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "[redacted]", text)
+          text = re.sub(r"sb_[A-Za-z0-9_-]+", "[redacted]", text)
+          lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+          interesting = [ln for ln in lines if re.search(r"error|failed|fatal|panic|denied|invalid|migration|timeout", ln, re.I)]
+          chosen = (interesting or lines)[-20:]
+          for ln in chosen:
+              safe = ln.replace("%", "%25").replace("\r", "")[:500]
+              print(f"::error::{safe}")
+          PY
+            exit "$start_code"
+          fi
+          set +e
+          supabase status -o env > "${RUNNER_TEMP}/supabase-local.env" 2>"${RUNNER_TEMP}/supabase-status.err"
+          status_code=$?
+          set -e
+          if [ "$status_code" -ne 0 ]; then
+            echo "::error::supabase status failed with exit ${status_code}"
+            exit "$status_code"
+          fi
 
       - name: Channel platform E2E
         run: |

@@ -71,7 +71,7 @@ jobs:
       - name: Start isolated local Supabase for E2E
         run: |
           set +e
-          supabase start > "${RUNNER_TEMP}/supabase-start.log" 2>&1
+          supabase start --exclude studio,imgproxy,vector,edge-runtime,analytics > "${RUNNER_TEMP}/supabase-start.log" 2>&1
           start_code=$?
           set -e
           if [ "$start_code" -ne 0 ]; then

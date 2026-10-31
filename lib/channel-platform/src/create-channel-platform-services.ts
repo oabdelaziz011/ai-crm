@@ -62,6 +62,11 @@ export type ChannelPlatformServicesOptions = {
    * (marketing_campaign_recipients). Does not create conversations.
    */
   campaignDeliveryReconciler?: CampaignDeliveryReconcilePort;
+  /**
+   * Client used only for the WhatsApp conversation-turn lease RPCs.
+   * Those functions are granted to service_role. Defaults to `client`.
+   */
+  conversationTurnLockClient?: SupabaseClient;
 };
 
 export type ChannelPlatformServices = {
@@ -150,7 +155,7 @@ export function createChannelPlatformServices(
     options.emailRoutingClassifier,
     options.emailRoutingEngine,
     options.campaignDeliveryReconciler,
-    createSupabaseWhatsAppConversationTurnLock(client),
+    createSupabaseWhatsAppConversationTurnLock(options.conversationTurnLockClient ?? client),
   );
 
   const router = new ChannelRouter(

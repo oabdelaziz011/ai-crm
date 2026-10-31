@@ -5,18 +5,14 @@
 import { createClient, type SupabaseClient } from "../artifacts/login-app/node_modules/@supabase/supabase-js/dist/index.mjs";
 import { createAIObservabilityServices } from "../lib/ai-observability/src/index.ts";
 import { createConversationServices } from "../lib/ai-conversation/src/index.ts";
-import { AIExecutionService } from "../lib/ai-execution-engine/src/services/ai-execution-service.ts";
-import { AIExecutionMetricsService } from "../lib/ai-execution-engine/src/services/ai-execution-metrics-service.ts";
-import { AIExecutionPolicyService } from "../lib/ai-execution-engine/src/services/ai-execution-policy-service.ts";
 import {
-  createSupabaseAIExecutionMetricsRepository,
-  createSupabaseAIExecutionRepository,
-  createSupabasePromptBuildReader,
-  createSupabaseProviderConnectionReader,
-} from "../lib/ai-execution-engine/src/repositories/supabase-execution-repositories.ts";
+  createAIExecutionServices,
+  createEnterpriseRuntimeIntegrations,
+} from "../lib/ai-execution-engine/src/index.ts";
 import { createIntentEngineServices } from "../lib/ai-intent-engine/src/index.ts";
 import {
   AIProviderFactory,
+  createAIGatewayServices,
   createAIProviderAdapterRegistry,
   createOpenAIChatAdapter,
   createStubAdapters,
@@ -43,6 +39,7 @@ const root = resolve(__dirname, "..");
 const DEMO_PASSWORD = "DemoVault2026!";
 const DEMO_BETA_COMPANY_ID = "d0000010-0001-4001-8001-000000000002";
 const PLATFORM_OWNER = "demo-platform@vaultos.local";
+const REQUIRED_LOCAL_SUPABASE_URL = "http://127.0.0.1:54321";
 const MOCK_CHAT_RESPONSE =
   "Enterprise MFA policy requires multi-factor authentication for all users accessing sensitive systems.";
 
@@ -52,6 +49,25 @@ const results: Result[] = [];
 function record(scenario: string, pass: boolean, detail: string, evidence?: Record<string, unknown>) {
   results.push({ scenario, pass, detail, evidence });
   console.log(`[${pass ? "PASS" : "FAIL"}] ${scenario} — ${detail}`);
+}
+
+function safetyAbort(message: string): never {
+  throw new Error(`SAFETY: ${message}`);
+}
+
+function assertValueorEnvLocal(): void {
+  const raw = String(process.env.VALUEOR_ENV ?? "").trim().toLowerCase();
+  if (raw !== "local") {
+    safetyAbort('VALUEOR_ENV must be exactly "local" before any DB operation.');
+  }
+}
+
+function assertExactLocalSupabaseUrl(url: string): string {
+  const normalized = url.trim().replace(/\/+$/, "");
+  if (normalized !== REQUIRED_LOCAL_SUPABASE_URL) {
+    safetyAbort(`Supabase URL must be exactly ${REQUIRED_LOCAL_SUPABASE_URL}.`);
+  }
+  return normalized;
 }
 
 function createMockOpenAIFetch() {
@@ -127,14 +143,19 @@ async function ensureAIProviderConnection(client: SupabaseClient, ctx: ReturnTyp
     createAIProviderAdapterRegistry({
       ...createStubAdapters(),
       openai: (configuration) =>
-        createOpenAIChatAdapter({ apiKey: "e2e-mock-key", model: "gpt-4o-mini", ...configuration }, {
+        createOpenAIChatAdapter({ ...configuration, model: "gpt-4o-mini", apiKey: "e2e-mock-key" }, {
           fetchFn: createMockOpenAIFetch(),
         }),
     }),
   );
   const registry = new AIProviderRegistryService(definitionRepo, connectionRepo, factory);
   const connections = await registry.listConnections(ctx as never, { companyId: DEMO_BETA_COMPANY_ID });
-  const existing = connections.find((item) => item.ai_provider_definition?.key === "openai" && item.is_enabled);
+  const existing = connections.find(
+    (item) =>
+      item.ai_provider_definition?.key === "openai" &&
+      item.is_enabled &&
+      item.display_name === "E2E Channel Platform OpenAI",
+  );
   if (existing) return existing.id;
 
   const provider = await definitionRepo.findByKey("openai");
@@ -146,7 +167,7 @@ async function ensureAIProviderConnection(client: SupabaseClient, ctx: ReturnTyp
     displayName: "E2E Channel Platform OpenAI",
     configuration: { model: "gpt-4o-mini", apiKey: "e2e-mock-key", execution_policy: { streaming: true } },
     isEnabled: true,
-    isDefault: true,
+    isDefault: false,
   });
   return created.id;
 }
@@ -192,27 +213,6 @@ async function ensureAssistant(client: SupabaseClient) {
   return data.id;
 }
 
-function createExecutionServices(client: SupabaseClient, factory: AIProviderFactory) {
-  const executionRepository = createSupabaseAIExecutionRepository(client);
-  const metricsRepository = createSupabaseAIExecutionMetricsRepository(client);
-  const promptBuildReader = createSupabasePromptBuildReader(client);
-  const providerConnectionReader = createSupabaseProviderConnectionReader(client);
-  const policyService = new AIExecutionPolicyService();
-
-  return {
-    execution: new AIExecutionService(
-      executionRepository,
-      metricsRepository,
-      promptBuildReader,
-      providerConnectionReader,
-      factory,
-      policyService,
-    ),
-    policy: policyService,
-    metrics: new AIExecutionMetricsService(executionRepository, metricsRepository),
-  };
-}
-
 async function ensureExecutionPolicy(client: SupabaseClient) {
   const { data: existing } = await client
     .from("execution_policies")
@@ -237,12 +237,16 @@ async function ensureExecutionPolicy(client: SupabaseClient) {
 }
 
 async function main() {
+  assertValueorEnvLocal();
   const env = loadSupabaseEnv(root);
   const config = resolveSupabaseConfig(env);
   if (!config) {
     throw new Error("Supabase configuration not found. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.");
   }
-  const { client, userId } = await signIn(config.url, config.key);
+  const supabaseUrl = assertExactLocalSupabaseUrl(config.url);
+  process.env.VITE_SUPABASE_URL = supabaseUrl;
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY = config.key;
+  const { client, userId } = await signIn(supabaseUrl, config.key);
   const ctx = makeContext(userId);
 
   await client.rpc("_demo_set_triggers", { enabled: false });
@@ -266,12 +270,19 @@ async function main() {
     createAIProviderAdapterRegistry({
       ...createStubAdapters(),
       openai: (configuration) =>
-        createOpenAIChatAdapter({ apiKey: "e2e-mock-key", model: "gpt-4o-mini", ...configuration }, {
+        createOpenAIChatAdapter({ ...configuration, model: "gpt-4o-mini", apiKey: "e2e-mock-key" }, {
           fetchFn: createMockOpenAIFetch(),
         }),
     }),
   );
-  const executionServices = createExecutionServices(client, aiFactory);
+  const executionServices = createAIExecutionServices(
+    client,
+    createEnterpriseRuntimeIntegrations({
+      promptRuntime: promptServices.runtime,
+      gateway: createAIGatewayServices(aiFactory).gateway,
+      knowledge: retrievalServices.knowledge,
+    }),
+  );
   const providerServices = {
     registry: new AIProviderRegistryService(definitionRepo, connectionRepo, aiFactory),
     factory: aiFactory,

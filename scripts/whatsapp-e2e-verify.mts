@@ -317,19 +317,13 @@ async function ensureAIProviderConnection(
   const factory = createE2EOpenAIFactory(definitionRepo, mockOpenAIFetch);
   const registry = new AIProviderRegistryService(definitionRepo, connectionRepo, factory);
   const connections = await registry.listConnections(ctx as never, { companyId: DEMO_BETA_COMPANY_ID });
-  const existing = connections.find((item) => item.ai_provider_definition?.key === "openai" && item.is_enabled);
-  if (existing) {
-    const apiKey = String((existing.configuration as { apiKey?: string } | null)?.apiKey ?? "");
-    if (apiKey !== E2E_OPENAI_API_KEY) {
-      safetyAbort(
-        `Existing OpenAI connection ${existing.id} has apiKey that is not ${E2E_OPENAI_API_KEY}; refusing real/platform key path.`,
-      );
-    }
-    if ((existing as { uses_platform_key?: boolean }).uses_platform_key === true && apiKey !== E2E_OPENAI_API_KEY) {
-      safetyAbort(`Existing OpenAI connection ${existing.id} would use platform key; refusing.`);
-    }
-    return existing.id;
-  }
+  const existing = connections.find(
+    (item) =>
+      item.ai_provider_definition?.key === "openai" &&
+      item.is_enabled &&
+      item.display_name === "E2E WhatsApp OpenAI",
+  );
+  if (existing) return existing.id;
   const provider = await definitionRepo.findByKey("openai");
   if (!provider) throw new Error("OpenAI provider definition missing.");
   const createdConnection = await registry.createConnection(ctx as never, {
@@ -338,7 +332,7 @@ async function ensureAIProviderConnection(
     displayName: "E2E WhatsApp OpenAI",
     configuration: { model: "gpt-4o-mini", apiKey: E2E_OPENAI_API_KEY, execution_policy: { streaming: false } },
     isEnabled: true,
-    isDefault: true,
+    isDefault: false,
   });
   trackId(created.aiProviderConnectionIds, createdConnection.id);
   return createdConnection.id;
@@ -733,6 +727,14 @@ async function main() {
     if (!config) safetyAbort("Supabase configuration not found for local E2E.");
     supabaseTargetUrl = assertExactLocalSupabaseUrl(config.url);
 
+    const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    if (!serviceRoleKey) {
+      safetyAbort("Local SUPABASE_SERVICE_ROLE_KEY is required for the WhatsApp turn lease.");
+    }
+    const turnLockClient = createClient(supabaseTargetUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
     // Hydrate Vite browser-env names for login-app modules (e.g. observability-adapter → supabase.ts).
     // Values come only from the already Local-guarded config — never from a second .env read.
     process.env.VITE_SUPABASE_URL = config.url;
@@ -869,6 +871,7 @@ async function main() {
       ports: channelPorts,
       whatsAppFetchFn: mockWhatsAppFetch,
       whatsAppCredentialsLoader: e2eCredentialsLoader,
+      conversationTurnLockClient: turnLockClient,
     });
 
     const challenge = verifyWhatsAppWebhookChallenge({

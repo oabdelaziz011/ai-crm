@@ -237,6 +237,8 @@ describe("Runtime metadata mapping", () => {
       companyId: "c1",
       isSuperAdmin: false,
       hasPermission: () => true,
+      isWorkflowFeatureEnabled: () => true,
+      isAiChatFeatureEnabled: () => true,
     }));
 
     const result = await bridge.executeNode({

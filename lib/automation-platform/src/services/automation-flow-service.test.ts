@@ -25,6 +25,7 @@ function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
         "automation.publish",
         "automation.execute",
       ].includes(code),
+    isWorkflowFeatureEnabled: () => true,
     ...overrides,
   };
 }

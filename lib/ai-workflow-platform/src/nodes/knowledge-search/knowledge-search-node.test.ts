@@ -120,6 +120,10 @@ describe("AI Knowledge Search node execution", () => {
       companyId: "c1",
       isSuperAdmin: false,
       hasPermission: () => true,
+      isWorkflowFeatureEnabled: () => true,
+      isAiChatFeatureEnabled: () => true,
+      isKnowledgeFeatureEnabled: () => true,
+      isEmbeddingsFeatureEnabled: () => true,
     }));
 
     const config = createDefaultKnowledgeSearchNodeConfig();

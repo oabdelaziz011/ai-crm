@@ -88,6 +88,8 @@ describe("AI Summarizer node", () => {
       companyId: "c1",
       isSuperAdmin: false,
       hasPermission: () => true,
+      isWorkflowFeatureEnabled: () => true,
+      isAiChatFeatureEnabled: () => true,
     }));
 
     const config = createDefaultSummarizerNodeConfig();

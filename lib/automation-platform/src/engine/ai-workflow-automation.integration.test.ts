@@ -41,6 +41,7 @@ function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
     companyId: "company-1",
     isSuperAdmin: false,
     hasPermission: (code) => code === "automation.execute" || code === "automation.view",
+    isWorkflowFeatureEnabled: () => true,
     ...overrides,
   };
 }
@@ -175,6 +176,10 @@ function createAIEnabledEnvironment(channel: ConversationSessionRecord["channel"
     companyId: "company-1",
     isSuperAdmin: false,
     hasPermission: () => true,
+    isWorkflowFeatureEnabled: () => true,
+    isAiChatFeatureEnabled: () => true,
+    isKnowledgeFeatureEnabled: () => true,
+    isEmbeddingsFeatureEnabled: () => true,
   }));
 
   const handlers = createBuiltInAutomationNodeHandlers().map((handler) =>
@@ -585,6 +590,10 @@ describe("AutomationEngine AI workflow integration", () => {
       companyId: "company-1",
       isSuperAdmin: false,
       hasPermission: () => true,
+      isWorkflowFeatureEnabled: () => true,
+      isAiChatFeatureEnabled: () => true,
+      isKnowledgeFeatureEnabled: () => true,
+      isEmbeddingsFeatureEnabled: () => true,
     }));
     const wrapped = wrapAutomationActionHandlerWithAIWorkflow(
       actionNodeHandler,

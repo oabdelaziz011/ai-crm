@@ -47,6 +47,7 @@ function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
     companyId: "company-1",
     isSuperAdmin: false,
     hasPermission: (code) => code === "automation.execute" || code === "automation.view",
+    isWorkflowFeatureEnabled: () => true,
     ...overrides,
   };
 }

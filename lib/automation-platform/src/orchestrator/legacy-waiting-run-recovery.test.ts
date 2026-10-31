@@ -16,6 +16,7 @@ function createContext() {
     companyId: "company-1",
     isSuperAdmin: false,
     hasPermission: (code: string) => ["automation.execute", "automation.view"].includes(code),
+    isWorkflowFeatureEnabled: () => true,
   };
 }
 

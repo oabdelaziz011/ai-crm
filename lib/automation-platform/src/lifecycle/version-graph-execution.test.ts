@@ -39,6 +39,7 @@ function createContext(): ServiceContext {
     isSuperAdmin: false,
     hasPermission: (code) =>
       ["automation.execute", "automation.view", "automation.publish"].includes(code),
+    isWorkflowFeatureEnabled: () => true,
   };
 }
 

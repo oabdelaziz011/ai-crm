@@ -64,11 +64,17 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       # E2E writes demo data. Run it only against an isolated local Supabase, never Production.
+      # CLI 2.109.1 tries public.ecr.aws first. GitHub-hosted runners share that
+      # registry's anonymous 500 GB/month quota. setup-cli forces ghcr.io only for
+      # CLI versions below 2.108.0, so this step sets the same registry. Pulls stay
+      # anonymous: these public ghcr.io/supabase tags do not need a token.
       - uses: supabase/setup-cli@v1
         with:
           version: 2.109.1
 
       - name: Start isolated local Supabase for E2E
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
         run: |
           set +e
           supabase start --exclude studio,imgproxy,vector,edge-runtime,analytics > "${RUNNER_TEMP}/supabase-start.log" 2>&1

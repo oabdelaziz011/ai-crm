@@ -99,26 +99,77 @@ jobs:
             echo "::error::supabase status failed with exit ${status_code}"
             exit "$status_code"
           fi
+          grep -E '^[A-Z0-9_]+=' "${RUNNER_TEMP}/supabase-local.env" > "${RUNNER_TEMP}/supabase-local.clean.env" || true
+          if [ ! -s "${RUNNER_TEMP}/supabase-local.clean.env" ]; then
+            echo "::error::supabase status did not emit KEY=VALUE lines"
+            exit 1
+          fi
 
       - name: Channel platform E2E
         run: |
           set -a
           # shellcheck disable=SC1091
-          . "${RUNNER_TEMP}/supabase-local.env"
+          . "${RUNNER_TEMP}/supabase-local.clean.env"
           set +a
           export VALUEOR_ENV=local
           export VITE_SUPABASE_URL="http://127.0.0.1:54321"
           export VITE_SUPABASE_PUBLISHABLE_KEY="${PUBLISHABLE_KEY:-${ANON_KEY}}"
-          pnpm --dir artifacts/login-app channel:e2e
+          if [ -z "${VITE_SUPABASE_PUBLISHABLE_KEY}" ]; then
+            echo "::error::Local publishable key missing after supabase status"
+            exit 1
+          fi
+          set +e
+          pnpm --dir artifacts/login-app channel:e2e > "${RUNNER_TEMP}/channel-e2e.log" 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "::error::Channel platform E2E failed with exit ${code}"
+            RUNNER_TEMP="${RUNNER_TEMP}" LOG_NAME=channel-e2e.log python3 - << 'PY'
+          import os, re
+          path = os.path.join(os.environ["RUNNER_TEMP"], os.environ["LOG_NAME"])
+          text = open(path, errors="replace").read()
+          text = re.sub(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "[redacted]", text)
+          text = re.sub(r"sb_[A-Za-z0-9_-]+", "[redacted]", text)
+          lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+          interesting = [ln for ln in lines if re.search(r"error|fail|SAFETY|missing|invalid|denied", ln, re.I)]
+          for ln in (interesting or lines)[-15:]:
+              safe = ln.replace("%", "%25").replace("\r", "")[:500]
+              print(f"::error::{safe}")
+          PY
+            exit "$code"
+          fi
 
       - name: WhatsApp adapter E2E
         run: |
           set -a
           # shellcheck disable=SC1091
-          . "${RUNNER_TEMP}/supabase-local.env"
+          . "${RUNNER_TEMP}/supabase-local.clean.env"
           set +a
           export VALUEOR_ENV=local
           export VITE_SUPABASE_URL="http://127.0.0.1:54321"
           export VITE_SUPABASE_PUBLISHABLE_KEY="${PUBLISHABLE_KEY:-${ANON_KEY}}"
           export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_ROLE_KEY}}"
-          pnpm --dir artifacts/login-app whatsapp:e2e
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "::error::Local service role key missing after supabase status"
+            exit 1
+          fi
+          set +e
+          pnpm --dir artifacts/login-app whatsapp:e2e > "${RUNNER_TEMP}/whatsapp-e2e.log" 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "::error::WhatsApp adapter E2E failed with exit ${code}"
+            RUNNER_TEMP="${RUNNER_TEMP}" LOG_NAME=whatsapp-e2e.log python3 - << 'PY'
+          import os, re
+          path = os.path.join(os.environ["RUNNER_TEMP"], os.environ["LOG_NAME"])
+          text = open(path, errors="replace").read()
+          text = re.sub(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "[redacted]", text)
+          text = re.sub(r"sb_[A-Za-z0-9_-]+", "[redacted]", text)
+          lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+          interesting = [ln for ln in lines if re.search(r"error|fail|SAFETY|missing|invalid|denied", ln, re.I)]
+          for ln in (interesting or lines)[-15:]:
+              safe = ln.replace("%", "%25").replace("\r", "")[:500]
+              print(f"::error::{safe}")
+          PY
+            exit "$code"
+          fi

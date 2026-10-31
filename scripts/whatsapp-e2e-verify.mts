@@ -671,10 +671,10 @@ async function runCleanup(
   await collectDependentIds(client, created);
 
   await deleteIds(client, "channel_delivery_events", created.deliveryEventIds, failures);
-  await deleteIds(client, "conversation_messages", created.conversationMessageIds, failures);
+  // conversation_messages are append-only. Leave the rows and retire the parent.
   await deleteIds(client, "channel_inbound_events", created.inboundEventIds, failures);
   await deleteIds(client, "channel_sessions", created.channelSessionIds, failures);
-  await deleteIds(client, "conversations", created.conversationIds, failures);
+  await deleteIds(client, "conversations", created.conversationIds, failures, "soft");
   await deleteIds(client, "ai_execution_metrics", created.aiExecutionMetricIds, failures);
   await deleteIds(client, "ai_trace_spans", created.aiTraceSpanIds, failures);
   await deleteIds(client, "ai_execution_analytics", created.aiExecutionAnalyticsIds, failures);

@@ -63,9 +63,16 @@ sudo bash /opt/valueor/deploy/vps/deploy-production.sh preflight --expected-sha 
 sudo bash /opt/valueor/deploy/vps/deploy-production.sh backup
 sudo bash /opt/valueor/deploy/vps/deploy-production.sh install
 # Only after explicit approval:
+sudo bash /opt/valueor/deploy/vps/deploy-production.sh reload-nginx --confirm-reload-nginx
 sudo bash /opt/valueor/deploy/vps/deploy-production.sh handover --confirm-stop-port-holder
 sudo bash /opt/valueor/deploy/vps/deploy-production.sh health
 ```
+
+Session SQL (hosted Supabase, manual):
+
+1. `supabase/ops/443_express_sessions_readonly_preflight.sql` (SELECT only)
+2. After approval: `supabase/ops/443_express_sessions_apply.sql`
+
 
 The unit:
 

@@ -10,6 +10,7 @@ FRONTEND_SRC="${FRONTEND_SRC:-}"
 BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/valueor}"
 STAGE="${1:-}"
 CONFIRM_STOP=0
+CONFIRM_RELOAD_NGINX=0
 
 shift_args() {
   if [[ $# -gt 0 ]]; then shift; fi
@@ -23,6 +24,8 @@ Stages:
   preflight              Disk/memory/git/env-name/port checks. No changes.
   backup                 Backup Nginx sites and record PIDs owning API_PORT.
   install                Install Nginx templates + systemd unit; nginx -t; daemon-reload.
+                         Does not reload Nginx or start the API.
+  reload-nginx           Reload Nginx after install. Requires --confirm-reload-nginx.
   publish-frontend       Publish FRONTEND_SRC into /var/www/valueor (keeps previous).
   handover               Stop ONLY the recorded API_PORT holder, then start systemd.
                          Requires --confirm-stop-port-holder.
@@ -33,6 +36,7 @@ Stages:
 
 Options:
   --confirm-stop-port-holder   Required for handover.
+  --confirm-reload-nginx       Required for reload-nginx.
   --expected-sha <sha>         Fail if /opt/valueor HEAD does not match.
   --frontend-src <dir>         Dist directory for publish-frontend.
   --api-port <port>            Default 3001.
@@ -52,6 +56,7 @@ i=0
 while [[ $i -lt ${#ARGS[@]} ]]; do
   case "${ARGS[$i]}" in
     --confirm-stop-port-holder) CONFIRM_STOP=1 ;;
+    --confirm-reload-nginx) CONFIRM_RELOAD_NGINX=1 ;;
     --expected-sha)
       i=$((i + 1)); EXPECTED_SHA="${ARGS[$i]:-}" ;;
     --frontend-src)
@@ -59,7 +64,7 @@ while [[ $i -lt ${#ARGS[@]} ]]; do
     --api-port)
       i=$((i + 1)); API_PORT="${ARGS[$i]:-}" ;;
     help|-h|--help) usage; exit 0 ;;
-    preflight|backup|install|publish-frontend|handover|health|status|rollback-service)
+    preflight|backup|install|reload-nginx|publish-frontend|handover|health|status|rollback-service)
       STAGE="${ARGS[$i]}"
       ;;
     *)
@@ -188,7 +193,18 @@ stage_install() {
   nginx -t
   install -m 0644 "${APP_DIR}/deploy/vps/systemd/valueor-api.service" /etc/systemd/system/valueor-api.service
   systemctl daemon-reload
-  echo "install complete (service not started)"
+  echo "install complete (Nginx not reloaded; API not started)"
+}
+
+stage_reload_nginx() {
+  echo "== reload-nginx =="
+  if [[ "$CONFIRM_RELOAD_NGINX" -ne 1 ]]; then
+    echo "Refusing Nginx reload without --confirm-reload-nginx" >&2
+    exit 2
+  fi
+  nginx -t
+  systemctl reload nginx
+  echo "nginx reloaded"
 }
 
 stage_publish_frontend() {
@@ -278,6 +294,7 @@ case "$STAGE" in
   preflight) stage_preflight ;;
   backup) stage_backup ;;
   install) stage_install ;;
+  reload-nginx) stage_reload_nginx ;;
   publish-frontend) stage_publish_frontend ;;
   handover) stage_handover ;;
   health) stage_health ;;

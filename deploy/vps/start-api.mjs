@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Production API entry for the VPS image.
+ * Production API entry for the VPS and Fly image.
  * Reads process environment only. Does not load workstation env files.
+ * Source maps stay on disk. They are not loaded into the process.
  */
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
@@ -15,7 +16,7 @@ if (problems.length) {
   process.exit(1);
 }
 
-const child = spawn(process.execPath, ["--enable-source-maps", resolve(root, "artifacts/api-server/dist/main.mjs")], {
+const child = spawn(process.execPath, [resolve(root, "artifacts/api-server/dist/main.mjs")], {
   cwd: root,
   env: process.env,
   stdio: "inherit",

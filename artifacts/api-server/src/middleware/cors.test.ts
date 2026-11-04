@@ -69,6 +69,7 @@ describe("API CORS origin parsing", () => {
   it("always includes production and local frontend origins", () => {
     const origins = resolveApiCorsAllowedOrigins({});
     assert.ok(origins.includes(PRODUCTION_FRONTEND_ORIGIN));
+    assert.ok(origins.includes("https://www.valueor.org"));
     assert.ok(origins.includes("http://localhost:5173"));
     assert.ok(origins.includes("http://127.0.0.1:5173"));
   });

@@ -1,0 +1,43 @@
+[Unit]
+Description=ValueOR production API
+Documentation=file:///opt/valueor/docs/operations/hetzner-nginx-cutover.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=valueor
+Group=valueor
+WorkingDirectory=/opt/valueor
+# Required. Do not put secret values in this unit file.
+EnvironmentFile=/opt/valueor/.env
+Environment=VALUEOR_ENV=production
+Environment=NODE_ENV=production
+Environment=PORT=3001
+# Keep heavy or sensitive workers off this 2 GB host unless deliberately confirmed.
+Environment=EMBEDDING_WORKER_ENABLED=false
+Environment=BILLING_LIFECYCLE_WORKER_ENABLED=false
+Environment=BILLING_LIFECYCLE_WORKER_CONFIRMED=false
+Environment=SALES_FOLLOW_UP_WORKER_ENABLED=false
+Environment=SALES_FOLLOW_UP_WORKER_ALLOW_SEND=false
+Environment=WHATSAPP_REPLY_RECOVERY_WORKER_ENABLED=false
+# Timers stay off until cutover approval so a manual process and systemd cannot poll twice.
+Environment=EMAIL_POLL_WORKER_ENABLED=false
+Environment=EMAIL_POLL_WORKER_EXECUTE_AI=false
+Environment=SESSION_IDLE_TIMEOUT_WORKER_ENABLED=false
+ExecStart=/usr/bin/node /opt/valueor/deploy/vps/start-api.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+LimitNOFILE=65535
+MemoryMax=1200M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/valueor
+SyslogIdentifier=valueor-api
+
+[Install]
+WantedBy=multi-user.target

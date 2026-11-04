@@ -6,6 +6,7 @@ export const API_CORS_DEFAULT_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "https://valueor.org",
+  "https://www.valueor.org",
   "https://app.valueor.org",
 ] as const;
 
@@ -14,7 +15,7 @@ export const API_CORS_ALLOWED_ORIGINS = API_CORS_DEFAULT_ORIGINS;
 
 /** Include PUT/PATCH — used by CRM import mapping and other authenticated update routes. */
 const ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
-const ALLOWED_HEADERS = "Authorization, Content-Type";
+const ALLOWED_HEADERS = "Authorization, Content-Type, X-ValueOR-Instance";
 
 export function normalizeCorsOrigin(origin: string): string {
   return origin.trim().replace(/\/+$/, "");

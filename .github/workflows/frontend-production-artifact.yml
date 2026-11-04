@@ -1,0 +1,53 @@
+name: Frontend production artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "artifacts/login-app/**"
+      - "scripts/verify-frontend-production-bundle.mjs"
+      - ".github/workflows/frontend-production-artifact.yml"
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build login-app for production hosts
+        run: pnpm --dir artifacts/login-app build
+        env:
+          VITE_APP_ORIGIN: https://www.valueor.org
+          VITE_SITE_URL: https://www.valueor.org
+          VITE_API_SERVER_URL: https://api.valueor.org
+          VITE_WEBHOOK_BASE_URL: https://webhook.valueor.org
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
+      - name: Write version.json
+        run: |
+          printf '{"commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > artifacts/login-app/dist/public/version.json
+
+      - name: Verify production hosts in bundle
+        run: node scripts/verify-frontend-production-bundle.mjs artifacts/login-app/dist/public
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: valueor-frontend-build
+          path: artifacts/login-app/dist/public
+          if-no-files-found: error
+          retention-days: 14

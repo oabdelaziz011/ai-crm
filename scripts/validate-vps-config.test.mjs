@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { platformWorkerProblems } from "./check-production-worker.mjs";
 import { deploymentFileProblems, serverEnvProblems } from "./validate-vps-config.mjs";
 import { recordedProductionSupabaseOrigin } from "./lib/env-mode.mjs";
 import { VPS_PUBLIC_URLS } from "./lib/vps-runtime.mjs";
@@ -67,6 +68,19 @@ describe("VPS deployment files", () => {
     };
     const problems = serverEnvProblems(env);
     assert.deepEqual(problems, []);
+    assert.deepEqual(serverEnvProblems({ ...env, EMBEDDING_WORKER_ENABLED: "false" }), []);
+    assert.deepEqual(
+      serverEnvProblems({
+        ...env,
+        VITE_APP_ORIGIN: "https://www.valueor.org",
+        FRONTEND_ORIGIN: "https://www.valueor.org",
+        VITE_SITE_URL: "https://www.valueor.org",
+      }),
+      [],
+    );
+    assert.ok(
+      platformWorkerProblems({ ...env, EMBEDDING_WORKER_ENABLED: "false" }).includes("EMBEDDING_WORKER_ENABLED is false."),
+    );
     const directory = mkdtempSync(join(tmpdir(), "valueor-vps-"));
     const file = join(directory, "production.env");
     writeFileSync(file, Object.entries(env).map(([key, value]) => `${key}=${value}`).join("\n"));

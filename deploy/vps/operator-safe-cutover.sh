@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Safe VPS stages only: fetch approved SHA, preflight, backup, install.
+# Safe VPS stages only: fetch release branch tip (or EXPECTED_SHA), preflight, backup, install.
 # Does NOT reload Nginx, stop API processes, change DNS/Meta/SQL, or touch .env values.
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/valueor}"
-EXPECTED_SHA="${EXPECTED_SHA:-90fbb889ff61bddceae7efec3884482cd6dfa4de}"
+# Optional override. When unset, uses the fetched tip of BRANCH.
+EXPECTED_SHA="${EXPECTED_SHA:-}"
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-release/hetzner-nginx-cutover}"
 
@@ -25,18 +26,24 @@ fi
 
 echo "== fetch approved release =="
 git fetch --no-tags "${REMOTE}" "${BRANCH}"
-ACTUAL="$(git rev-parse "${REMOTE}/${BRANCH}")"
-if [[ "${ACTUAL}" != "${EXPECTED_SHA}" && "${ACTUAL}" != "${EXPECTED_SHA:0:40}" ]]; then
-  # Also accept exact object if tip moved; require exact SHA checkout below.
-  echo "Remote tip=${ACTUAL}; will check out exact EXPECTED_SHA=${EXPECTED_SHA}"
+TIP="$(git rev-parse "${REMOTE}/${BRANCH}")"
+if [[ -z "${EXPECTED_SHA}" ]]; then
+  EXPECTED_SHA="${TIP}"
+else
+  EXPECTED_SHA="$(git rev-parse "${EXPECTED_SHA}")"
+fi
+echo "remote_tip=${TIP}"
+echo "deploy_sha=${EXPECTED_SHA}"
+if [[ "${TIP}" != "${EXPECTED_SHA}" ]]; then
+  echo "Note: deploying pinned EXPECTED_SHA (not branch tip)."
 fi
 if ! git cat-file -e "${EXPECTED_SHA}^{commit}"; then
   echo "Expected SHA not present after fetch." >&2
   exit 2
 fi
 git checkout --detach "${EXPECTED_SHA}"
-git rev-parse HEAD
 test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"
+git rev-parse HEAD
 
 echo "== deploy-production safe stages =="
 sudo bash deploy/vps/deploy-production.sh preflight --expected-sha "${EXPECTED_SHA}"

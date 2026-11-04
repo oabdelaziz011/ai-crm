@@ -55,28 +55,27 @@ explicit approval. Do not point the running API at `public.user_sessions` withou
 ## systemd
 
 Tracked unit: `deploy/vps/systemd/valueor-api.service`.
-Idempotent installer: `deploy/vps/install-nginx-systemd-cutover.sh`.
+Primary installer: `deploy/vps/deploy-production.sh`.
+Secondary installer: `deploy/vps/install-nginx-systemd-cutover.sh`.
 
 ```bash
-# Copy files and validate Nginx only. Does not stop the live process.
-sudo bash /opt/valueor/deploy/vps/install-nginx-systemd-cutover.sh --install-only
-
-# After review, stop the current :3001 holder and start systemd.
-sudo bash /opt/valueor/deploy/vps/install-nginx-systemd-cutover.sh --confirm-stop-port-holder
-
-sudo systemctl status valueor-api.service
-journalctl -u valueor-api.service -e --no-pager
+sudo bash /opt/valueor/deploy/vps/deploy-production.sh preflight --expected-sha <release-sha>
+sudo bash /opt/valueor/deploy/vps/deploy-production.sh backup
+sudo bash /opt/valueor/deploy/vps/deploy-production.sh install
+# Only after explicit approval:
+sudo bash /opt/valueor/deploy/vps/deploy-production.sh handover --confirm-stop-port-holder
+sudo bash /opt/valueor/deploy/vps/deploy-production.sh health
 ```
 
 The unit:
 
-- Loads `/opt/valueor/.env` through `EnvironmentFile`.
+- Requires `/opt/valueor/.env` through `EnvironmentFile`.
 - Starts `node /opt/valueor/deploy/vps/start-api.mjs` (no source maps, production checks).
 - Listens on `PORT=3001`.
 - Restarts on failure, stops with `SIGTERM`, caps memory at 1200M.
-- Leaves billing lifecycle, sales send, WhatsApp recovery, and the embedding worker off.
+- Leaves billing lifecycle, sales send, WhatsApp recovery, embedding, email poll, and session-idle workers off until exclusive ownership is confirmed.
 
-Do not put secret values in the unit file. Confirm `EMAIL_POLL_WORKER_ENABLED` and `SESSION_IDLE_TIMEOUT_WORKER_ENABLED` only after cutover approval; keep them false while both the old and new processes would otherwise poll the same mailbox.
+Do not put secret values in the unit file. After systemd alone owns port 3001, enable email poll / session-idle in `/opt/valueor/.env` or override drop-ins only with approval.
 
 ## Nginx templates
 

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/valueor}"
-EXPECTED_SHA="${EXPECTED_SHA:-6ae06319f5b2c55926a2a27fbcce6d8f6de58ff9}"
+EXPECTED_SHA="${EXPECTED_SHA:-90fbb889ff61bddceae7efec3884482cd6dfa4de}"
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-release/hetzner-nginx-cutover}"
 

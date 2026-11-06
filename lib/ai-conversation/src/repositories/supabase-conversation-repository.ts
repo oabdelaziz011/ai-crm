@@ -554,6 +554,34 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
       return mapRow(current.data as Record<string, unknown>);
     },
 
+    async markEmployeeUnread(conversationId: string, updatedBy?: string | null): Promise<ConversationRecord> {
+      // A read conversation becomes unread with a count of one. An existing
+      // inbound count stays as it is, so this does not invent a second flag.
+      const { data, error } = await client
+        .from(TABLE)
+        .update({
+          unread_count_employee: 1,
+          updated_by: updatedBy ?? null,
+        })
+        .eq("id", conversationId)
+        .is("deleted_at", null)
+        .eq("unread_count_employee", 0)
+        .select("*")
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) return mapRow(data as Record<string, unknown>);
+      const current = await client
+        .from(TABLE)
+        .select("*")
+        .eq("id", conversationId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (current.error) throw current.error;
+      if (!current.data) throw new ConversationNotFoundError(conversationId);
+      return mapRow(current.data as Record<string, unknown>);
+    },
+
     async resetCustomerUnread(conversationId: string, updatedBy?: string | null): Promise<ConversationRecord> {
       const { data, error } = await client
         .from(TABLE)

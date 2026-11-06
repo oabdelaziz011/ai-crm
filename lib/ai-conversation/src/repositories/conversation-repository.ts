@@ -26,6 +26,7 @@ export interface ConversationRepository {
   updateMetadata(input: UpdateConversationMetadataInput): Promise<ConversationRecord>;
   applyMessageCache(input: ApplyMessageCacheInput): Promise<void>;
   resetEmployeeUnread(conversationId: string, updatedBy?: string | null): Promise<ConversationRecord>;
+  markEmployeeUnread(conversationId: string, updatedBy?: string | null): Promise<ConversationRecord>;
   resetCustomerUnread(conversationId: string, updatedBy?: string | null): Promise<ConversationRecord>;
   applyStateTransition(input: ApplyStateTransitionInput): Promise<ConversationRecord>;
   /** @deprecated Use applyMessageCache instead. Preserved for backward compatibility. */

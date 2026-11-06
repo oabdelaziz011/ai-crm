@@ -4041,7 +4041,9 @@ describe("ToolCallLoopService", () => {
 
     // Early force-cancel should short-circuit before the LLM re-lists.
     assert.equal(cancelInput?.bookingReference, "BK-000024");
-    assert.match(result.response.text, /تم إلغاء الحجز BK-000024/);
+    // The customer wrote in English, so the Arabic tool sentence is localized.
+    assert.match(result.response.text, /Your booking BK-000024 has been cancelled successfully/);
+    assert.doesNotMatch(result.response.text, /provider_rate_limit_exceeded/);
   });
 
   it("cancels by BK with phone ownership when cancel list scrolled out of history", async () => {

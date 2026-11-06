@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createApplicationLayerRegistry, createContext } from "../index.js";
+import type { SearchAvailabilityQuery } from "../ports/scheduling-query-port.js";
 import { createMockApplicationPorts } from "../testing/mock-ports.js";
 import { createConfiguredPlatformEventBus } from "@workspace/platform-events";
 
@@ -25,7 +26,7 @@ describe("GA-1.6A AI architecture compliance", () => {
     let called = false;
     const schedulingQuery = {
       ...ports.schedulingQuery,
-      async searchAvailability(input) {
+      async searchAvailability(input: SearchAvailabilityQuery) {
         called = true;
         assert.equal(input.serviceId, "svc-1");
         return ports.schedulingQuery.searchAvailability(input);

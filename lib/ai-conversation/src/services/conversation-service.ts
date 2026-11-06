@@ -435,6 +435,20 @@ export class ConversationService {
     return this.repository.resetEmployeeUnread(conversationId, ctx.userId);
   }
 
+  /**
+   * Employee inbox unread. Uses the same company and read visibility checks
+   * as resetEmployeeUnread. A count of zero becomes one; a positive count
+   * is left unchanged.
+   */
+  async markEmployeeUnread(ctx: ServiceContext, conversationId: string): Promise<ConversationRecord> {
+    const existing = await this.getConversation(ctx, conversationId);
+    const updated = await this.repository.markEmployeeUnread(conversationId, ctx.userId);
+    if (existing.unread_count_employee === 0 && updated.unread_count_employee < 1) {
+      throw new PermissionDeniedError(CONVERSATION_PERMISSIONS.view);
+    }
+    return updated;
+  }
+
   async resetCustomerUnread(ctx: ServiceContext, conversationId: string): Promise<ConversationRecord> {
     await this.getConversation(ctx, conversationId);
 

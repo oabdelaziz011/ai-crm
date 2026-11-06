@@ -59,6 +59,7 @@ import type { LookupOptionsPort } from "../ports/lookup-options-port.js";
 import {
   normalizeSelectedDate,
   readDatePickerRuntimeConfig,
+  resolveDatePickerBranchId,
   validateSelectedDate,
 } from "../runtime/date-picker-validation.js";
 import { isListLookupMode, resolveListNodeSections, readListLookupRuntimeConfig, AVAILABLE_DATES_LOOKUP, resolveAvailableDatesEmptyMessageFromConfig } from "../runtime/list-lookup-resolver.js";
@@ -133,6 +134,7 @@ async function executeDatePickerAction(
     readString(localizedConfig.prompt) ??
     readString(localizedConfig.question);
   const pickerConfig = readDatePickerRuntimeConfig(localizedConfig);
+  pickerConfig.branchId = resolveDatePickerBranchId(pickerConfig.branchId ?? null, context.variables);
 
   let constraints = null;
   if (deps?.businessCalendar) {

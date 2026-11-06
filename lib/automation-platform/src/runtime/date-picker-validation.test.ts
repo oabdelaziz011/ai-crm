@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   normalizeSelectedDate,
+  resolveDatePickerBranchId,
   validateSelectedDate,
 } from "./date-picker-validation.js";
 
@@ -36,5 +37,14 @@ describe("date picker validation", () => {
       reasonParams: { title: "Holiday" },
     });
     assert.deepEqual(validateSelectedDate("2026-08-02", constraints), { ok: true });
+  });
+
+  it("uses the branch the customer selected, then the node fallback", () => {
+    assert.equal(
+      resolveDatePickerBranchId("configured-branch", { selected_branch: { id: "customer-branch" } }),
+      "customer-branch",
+    );
+    assert.equal(resolveDatePickerBranchId("configured-branch", {}), "configured-branch");
+    assert.equal(resolveDatePickerBranchId(null, {}), null);
   });
 });

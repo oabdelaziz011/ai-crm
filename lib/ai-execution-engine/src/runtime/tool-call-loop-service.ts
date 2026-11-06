@@ -11380,6 +11380,7 @@ export class ToolCallLoopService {
           wantsProductDetail ||
           looksLikeCurrentCatalogFactQuestion(latestCustomerText));
       if (
+        productToolsOffered &&
         bareCatalogFollowUp &&
         !looksLikePreviousProductRef(latestCustomerText) &&
         !catalogListOrdinal(latestCustomerText)
@@ -13978,7 +13979,7 @@ export class ToolCallLoopService {
         }
       }
     } catch (error) {
-      console.warn("[sales-tool] final stream failed", error instanceof Error ? error.message : "unknown");
+      console.warn("[sales-tool] final stream failed", error instanceof Error ? error.name : "unknown");
     }
 
     if (streamedText.trim()) {

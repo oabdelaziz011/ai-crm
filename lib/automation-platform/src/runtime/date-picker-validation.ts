@@ -17,6 +17,19 @@ export function readDatePickerRuntimeConfig(config: Record<string, unknown>): Da
   };
 }
 
+/** The branch the customer picked wins. A fixed node branch is the fallback. */
+export function resolveDatePickerBranchId(
+  configBranchId: string | null,
+  variables: Record<string, unknown>,
+): string | null {
+  const selected = variables.selected_branch;
+  if (selected && typeof selected === "object" && !Array.isArray(selected)) {
+    const id = readString((selected as { id?: unknown }).id);
+    if (id) return id;
+  }
+  return configBranchId;
+}
+
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function normalizeSelectedDate(value: unknown): string | null {

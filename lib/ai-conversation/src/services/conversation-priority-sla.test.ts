@@ -64,6 +64,7 @@ function stubRepo(overrides: Partial<ConversationRepository> = {}): Conversation
     updateMetadata: async () => baseRecord(),
     applyMessageCache: async () => undefined,
     resetEmployeeUnread: async () => baseRecord(),
+    markEmployeeUnread: async () => baseRecord({ unread_count_employee: 1 }),
     resetCustomerUnread: async () => baseRecord(),
     applyStateTransition: async () => baseRecord(),
     touchLastMessageAt: async () => undefined,

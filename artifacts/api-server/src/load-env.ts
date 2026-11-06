@@ -6,7 +6,10 @@ import {
   LOCAL_OPTIONAL_MERGE_KEYS,
   VALUEOR_ENV_LOCAL,
   VALUEOR_ENV_PRODUCTION,
+  VALUEOR_ENV_STAGING,
   assertLocalEnvironmentSafety,
+  assertStagingEnvironmentSafety,
+  assertProductionEnvironmentSafety,
   resolveValueorEnv,
 } from "../../../scripts/lib/env-mode.mjs";
 
@@ -61,6 +64,11 @@ function applyEnvAliases(): void {
   process.env.SUPABASE_ANON_KEY ??= process.env.SUPABASE_PUBLISHABLE_KEY;
   process.env.SUPABASE_SECRET_KEY ??= process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  if (mode === VALUEOR_ENV_STAGING) {
+    process.env.PORT ??= "3011";
+    process.env.VITE_API_SERVER_URL ??= "http://127.0.0.1:3011";
+  }
+
   if (mode === VALUEOR_ENV_LOCAL) {
     if (!process.env.DATABASE_URL?.trim()) {
       process.env.DATABASE_URL =
@@ -106,7 +114,7 @@ function applyEnvAliases(): void {
 
   const nodeEnv =
     process.env.NODE_ENV?.trim() ||
-    (mode === VALUEOR_ENV_PRODUCTION ? "production" : "development");
+    (mode === VALUEOR_ENV_PRODUCTION || mode === VALUEOR_ENV_STAGING ? "production" : "development");
   process.env.NODE_ENV = nodeEnv;
 
   if (nodeEnv !== "production" && !process.env.SESSION_SECRET?.trim()) {
@@ -136,6 +144,14 @@ if (mode === VALUEOR_ENV_LOCAL) {
   if (existsSync(workerPath)) {
     loadDotenv({ path: workerPath, override: false });
   }
+} else if (mode === VALUEOR_ENV_STAGING) {
+  const stagingPath = resolve(repoRoot, ".env.staging");
+  if (!existsSync(stagingPath)) {
+    throw new Error(
+      "STAGING ENVIRONMENT IS NOT CONFIGURED. Add .env.staging from .env.staging.example. Staging does not load the production .env.",
+    );
+  }
+  loadDotenv({ path: stagingPath, override: false });
 } else {
   for (const relativePath of [".env", "artifacts/platform-worker/.env"] as const) {
     const path = resolve(repoRoot, relativePath);
@@ -147,3 +163,5 @@ if (mode === VALUEOR_ENV_LOCAL) {
 
 applyEnvAliases();
 assertLocalEnvironmentSafety(process.env as Record<string, string | undefined>);
+assertStagingEnvironmentSafety(process.env as Record<string, string | undefined>);
+assertProductionEnvironmentSafety(process.env as Record<string, string | undefined>);

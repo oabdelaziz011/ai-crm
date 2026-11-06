@@ -25,6 +25,8 @@ import salesFollowUpApprovalRouter from "./sales-follow-up-approval.js";
 import salesCompleteDemoRouter from "./sales-complete-demo.js";
 import productDemosRouter from "./product-demos.js";
 import customerImportRouter from "./customer-import.js";
+import mobileSessionRouter from "./mobile-session.js";
+import mobileRecordsRouter from "./mobile-records.js";
 
 const router: IRouter = Router();
 
@@ -35,6 +37,8 @@ router.use(salesFollowUpApprovalRouter);
 router.use(salesCompleteDemoRouter);
 router.use(productDemosRouter);
 router.use(authRouter);
+router.use(mobileSessionRouter);
+router.use(mobileRecordsRouter);
 // Mount before channel routers that apply global requireCompanyScope — those
 // middleware stacks run for every unmatched request and would reject checkout
 // bodies that intentionally omit companyId (JWT company is authoritative).

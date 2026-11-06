@@ -28,7 +28,7 @@ describe("Public Web Chat — mount + auth chain", () => {
     const app = read("app.ts");
     const mount = app.indexOf("app.use(PUBLIC_WEB_CHAT_ROUTE_PREFIX, publicWebChatRouter)");
     assert.ok(mount > 0);
-    assert.ok(mount < app.indexOf("session({"));
+    assert.ok(mount < app.indexOf("createApiSessionMiddleware("));
     assert.ok(mount < app.indexOf('app.use("/api", router)'));
     assert.ok(mount > app.indexOf("app.use(globalRateLimiter)"));
     assert.match(read("services/public-web-chat/public-web-chat-config.ts"), /"\/api\/public\/web-chat"/);

@@ -26,13 +26,36 @@ let emailInboundPollWorker: { stop: () => void } | null = null;
 let salesFollowUpWorker: { stop: () => Promise<void> | void } | null = null;
 let whatsAppReplyRecoveryWorker: { stop: () => void } | null = null;
 
-const server = app.listen(port, (err) => {
+const listenHost = process.env.VALUEOR_ENV === "staging" ? "127.0.0.1" : undefined;
+const server = listenHost
+  ? app.listen(port, listenHost, onListen)
+  : app.listen(port, onListen);
+
+function onListen(err: Error | undefined) {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
 
   logger.info({ port, nodeEnv: env.nodeEnv }, "Server listening");
+  if (process.env.VALUEOR_MEMORY_PROBE === "1") {
+    const sampleMemory = () => {
+      const usage = process.memoryUsage();
+      logger.info(
+        {
+          rss: usage.rss,
+          heapUsed: usage.heapUsed,
+          heapTotal: usage.heapTotal,
+          external: usage.external,
+          arrayBuffers: usage.arrayBuffers,
+        },
+        "memory.sample",
+      );
+    };
+    sampleMemory();
+    const timer = setInterval(sampleMemory, 2000);
+    timer.unref();
+  }
 
   // Warm webhook platform once at boot so the first inbound WhatsApp message
   // does not pay full singleton construction latency.
@@ -91,7 +114,7 @@ const server = app.listen(port, (err) => {
     .catch((workerErr) => {
       logger.warn({ err: workerErr }, "WhatsApp reply recovery worker failed to start");
     });
-});
+}
 
 function shutdown(signal: string): void {
   logger.info({ signal }, "Shutting down");
@@ -110,6 +133,8 @@ function shutdown(signal: string): void {
         logger.error({ err }, "Error during shutdown");
         process.exit(1);
       }
+      const store = app.get("sessionStore") as { stop?: () => void } | undefined;
+      store?.stop?.();
       process.exit(0);
     });
   });

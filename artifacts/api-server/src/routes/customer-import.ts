@@ -2,6 +2,7 @@
  * CRM customer import API — CSV/XLSX template, upload, map, validate, confirm, progress, error report.
  */
 import { Router, type IRouter, type Request, json as expressJson } from "express";
+import { CUSTOMER_IMPORT_JSON_LIMIT } from "../http/body-limits.js";
 import { createClient } from "@supabase/supabase-js";
 import {
   CUSTOMER_IMPORT_CONNECTORS,
@@ -17,8 +18,7 @@ import {
 import { CustomerImportService } from "../services/customer-import/customer-import-service.js";
 
 const router: IRouter = Router();
-// Base64 file payloads need headroom above the global 1mb JSON limit.
-router.use(expressJson({ limit: "8mb" }));
+router.use(expressJson({ limit: CUSTOMER_IMPORT_JSON_LIMIT }));
 router.use(requireSupabaseAuth);
 
 function getServiceClient() {

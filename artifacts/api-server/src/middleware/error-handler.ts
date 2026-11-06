@@ -24,21 +24,43 @@ export function notFoundHandler(req: Request, res: Response): void {
   });
 }
 
+function bodyParserStatus(err: unknown): number | null {
+  if (!err || typeof err !== "object") return null;
+  const record = err as { status?: unknown; statusCode?: unknown; type?: unknown };
+  const status =
+    typeof record.status === "number"
+      ? record.status
+      : typeof record.statusCode === "number"
+        ? record.statusCode
+        : null;
+  if (status === 413 && record.type === "entity.too.large") return 413;
+  if (status === 400 && record.type === "entity.parse.failed") return 400;
+  return null;
+}
+
 export function errorHandler(
   err: unknown,
   req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
-  const statusCode = err instanceof HttpError ? err.statusCode : 500;
-  const code = err instanceof HttpError ? err.code ?? "internal_error" : "internal_error";
+  const parsedStatus = err instanceof HttpError ? null : bodyParserStatus(err);
+  const statusCode = err instanceof HttpError ? err.statusCode : parsedStatus ?? 500;
+  const code =
+    err instanceof HttpError
+      ? err.code ?? "internal_error"
+      : statusCode === 413
+        ? "payload_too_large"
+        : statusCode === 400
+          ? "invalid_json"
+          : "internal_error";
   const message =
     err instanceof HttpError
       ? err.message
-      : statusCode >= 500
-        ? "An unexpected error occurred."
-        : err instanceof Error
-          ? err.message
+      : statusCode === 413
+        ? "Request body is too large."
+        : statusCode === 400
+          ? "Request body is not valid JSON."
           : "An unexpected error occurred.";
 
   if (statusCode >= 500) {

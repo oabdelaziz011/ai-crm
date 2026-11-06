@@ -8,6 +8,7 @@ import {
   passOutboundValidation,
   recordOutbound400FromHttpError,
 } from "../debug/omni-outbound-dispatch-audit.js";
+import { parseCompanyHost } from "@login-app/lib/platform/company-subdomain";
 
 declare global {
   namespace Express {
@@ -17,6 +18,8 @@ declare global {
       supabaseIsSuperAdmin?: boolean;
       supabaseAuthToken?: string;
       supabaseScopedCompanyIds?: Set<string>;
+      /** Set only when the request hostname is a company subdomain. */
+      supabaseTenantCompanyId?: string | null;
     }
   }
 }
@@ -99,6 +102,42 @@ export async function requireSupabaseAuth(
     req.supabaseIsSuperAdmin = Boolean(profile?.is_super_admin);
     req.supabaseAuthToken = token;
 
+    const host = parseCompanyHost(req.hostname);
+    if (host.kind === "tenant") {
+      const { data: company } = await client
+        .from("companies")
+        .select("id, status, approval_status")
+        .eq("subdomain", host.subdomain)
+        .maybeSingle();
+      const inactive =
+        !company ||
+        company.status === "Suspended" ||
+        company.approval_status === "rejected";
+      if (inactive || !company) {
+        throw new HttpError(403, "Company host is not available.", "tenant_host_unavailable");
+      }
+      if (req.supabaseIsSuperAdmin) {
+        const { data: adminContext } = await client
+          .from("platform_admin_contexts")
+          .select("id")
+          .eq("actor_id", data.user.id)
+          .eq("company_id", company.id)
+          .is("revoked_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .maybeSingle();
+        if (!adminContext) {
+          throw new HttpError(
+            403,
+            "Platform administration context is required for this company.",
+            "admin_context_required",
+          );
+        }
+      } else if (profile?.company_id !== company.id) {
+        throw new HttpError(403, "Access denied for this company.", "forbidden");
+      }
+      req.supabaseTenantCompanyId = company.id;
+    }
+
     next();
   } catch (error) {
     next(error);
@@ -146,6 +185,10 @@ export function requireCompanyScope(field = "companyId") {
       }
       if (isOutboundDispatchPath(req)) {
         passOutboundValidation("middleware.requireCompanyScope", { requestedCompanyId });
+      }
+
+      if (req.supabaseTenantCompanyId && req.supabaseTenantCompanyId !== requestedCompanyId) {
+        throw new HttpError(403, "Access denied for this company.", "forbidden");
       }
 
       if (req.supabaseIsSuperAdmin) {

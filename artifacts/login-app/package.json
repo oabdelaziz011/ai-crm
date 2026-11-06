@@ -180,6 +180,7 @@
     "@workspace/universal-workspace-platform": "workspace:*",
     "@xyflow/react": "^12.8.2",
     "i18next": "^26.3.6",
+    "qrcode": "^1.5.4",
     "nodemailer": "^7.0.5",
     "react-i18next": "^17.0.9"
   }

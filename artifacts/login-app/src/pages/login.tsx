@@ -2,6 +2,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginExperienceLayout } from "@/components/auth/login-experience-layout";
+import { MobileAppDownload } from "@/components/auth/mobile-app-download";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -192,6 +193,7 @@ export default function Login() {
           {t("auth.login.requestEntry")}
         </Link>
       </div>
+      <MobileAppDownload />
     </LoginExperienceLayout>
   );
 }

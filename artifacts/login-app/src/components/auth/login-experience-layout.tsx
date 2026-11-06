@@ -56,7 +56,7 @@ function LoginLanguageToggle() {
   return (
     <div
       dir="ltr"
-      className="inline-flex h-[42px] w-[175px] items-center gap-1.5 rounded-full border border-white/15 bg-black/25 p-1 backdrop-blur-md"
+      className="inline-flex h-[42px] w-max max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-black/25 p-1 backdrop-blur-md"
       role="group"
       aria-label={t("legal.language")}
     >
@@ -100,7 +100,7 @@ export function LoginExperienceLayout({
   useLoginDocumentLtrLock(i18n);
 
   return (
-    <div dir="ltr" className="relative min-h-screen w-full overflow-x-hidden">
+    <div dir="ltr" className="relative min-h-[100dvh] w-full overflow-x-hidden">
       {/* Full-page green brand canvas */}
       <div className="absolute inset-0">
         <LoginProductShowcase />
@@ -116,15 +116,13 @@ export function LoginExperienceLayout({
         aria-hidden
       />
 
-      {/* Floating login — shell always LTR so card stays in the same place.
-          Left column hosts the dashboard in the center “red box” slot. */}
-      <div className="pointer-events-none relative z-10 grid min-h-screen w-full grid-cols-1 lg:grid-cols-[1.12fr_0.88fr]">
-        <div className="relative hidden min-h-screen lg:block" aria-hidden>
-          {/* Brand line sits above the dashboard so it never gets covered */}
-          <div
-            dir="ltr"
-            className="absolute top-[7%] left-[48%] z-20 w-[min(420px,calc(100%-0.5rem))] text-left"
-          >
+      {/* Shell stays LTR. Marketing copy, the preview, and the form are separate columns
+          so the preview cannot cover the tagline or the footer. */}
+      <div className="pointer-events-none relative z-10 grid min-h-[100dvh] w-full grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(300px,1fr)_minmax(340px,0.86fr)]">
+        <div className="hidden lg:block" aria-hidden />
+
+        <div className="hidden min-h-0 flex-col justify-center gap-4 px-3 py-8 lg:flex">
+          <div dir="ltr" className="shrink-0 text-left">
             <p className="text-[15px] font-medium leading-snug text-teal-100/95">
               {t("auth.login.experience.brandStatement")}
             </p>
@@ -132,23 +130,15 @@ export function LoginExperienceLayout({
               {t("auth.login.experience.scriptAccentTop")}
             </p>
           </div>
-
-          {/* Dashboard nudged up a bit — keeps brand line clear, reveals script below */}
-          <div className="absolute top-[15.5%] left-[48%] w-[min(640px,calc(100%-0.5rem))]">
-            <div
-              className="pointer-events-none absolute -inset-10 rounded-full opacity-50 blur-3xl"
-              style={{
-                background: "radial-gradient(circle, rgba(13,148,136,0.38), transparent 70%)",
-              }}
-            />
+          <div className="min-h-0">
             <LoginDashboardPreview />
-            <p className="mt-4 pb-1 text-center font-[cursive] text-sm italic text-teal-300/85">
-              {t("auth.login.experience.scriptAccentBottom")}
-            </p>
           </div>
+          <p className="shrink-0 pb-1 text-center font-[cursive] text-sm italic text-teal-300/85">
+            {t("auth.login.experience.scriptAccentBottom")}
+          </p>
         </div>
 
-        <div className="pointer-events-auto flex items-center justify-center px-5 py-8 sm:px-8 lg:px-10 xl:px-14">
+        <div className="pointer-events-auto flex max-h-[100dvh] min-h-0 w-full items-center justify-center overflow-y-auto px-5 py-4 sm:px-8 lg:px-10 lg:py-4 xl:px-14">
           <aside className="flex w-full max-w-[440px] flex-col">
             <div className="mb-4 flex justify-center lg:mb-5 lg:justify-end">
               <LoginLanguageToggle />

@@ -97,7 +97,7 @@ export function LoginDashboardPreview() {
         className="overflow-hidden rounded-2xl border border-white/20 bg-[#0A1C20]/96 shadow-[0_32px_90px_rgba(0,0,0,0.55)] backdrop-blur-md"
         style={{ transform: "perspective(1400px) rotateY(-3.5deg) rotateX(1.1deg)" }}
       >
-        <div className="flex h-[580px] overflow-hidden xl:h-[620px]">
+        <div className="flex h-[min(440px,calc(100vh-13.5rem))] overflow-hidden xl:h-[min(520px,calc(100vh-12rem))]">
           <aside className="hidden w-[158px] shrink-0 border-e border-white/10 bg-[#061214] p-3.5 sm:block">
             <p className="mb-4 truncate px-1.5 text-[12px] font-bold tracking-wide text-teal-300">
               ValueOR

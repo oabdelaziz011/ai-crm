@@ -97,7 +97,7 @@ export function LoginProductShowcase({ className }: { className?: string }) {
       />
 
       {/* Left copy column only — dashboard lives in the center slot of the login overlay */}
-      <div className="relative z-10 flex h-screen min-h-0 flex-1 flex-col overflow-hidden px-8 py-8 sm:px-10 lg:max-w-[46%] lg:px-12 lg:py-9 xl:px-14">
+      <div className="relative z-10 hidden h-screen min-h-0 flex-1 flex-col overflow-hidden px-8 py-8 sm:px-10 lg:flex lg:w-[33%] lg:max-w-none lg:px-8 lg:py-9 xl:px-10">
         <header className="relative z-20 mb-5 flex h-[80px] shrink-0 items-start overflow-hidden">
           <div dir="ltr" className="w-[236px] shrink-0">
             <div className="origin-top-left scale-[1.48]">
@@ -177,7 +177,7 @@ export function LoginProductShowcase({ className }: { className?: string }) {
               <p dir={copyDir} className="mb-3 text-left text-[12px] font-medium text-white/55">
                 {t("auth.login.experience.businessTypesTitle")}
               </p>
-              <ul dir="ltr" className="flex h-[32px] flex-nowrap items-center gap-2.5 overflow-hidden">
+              <ul dir="ltr" className="flex flex-wrap items-center gap-2.5">
                 {BUSINESS_TYPES.map(({ icon: Icon, key }) => (
                   <li
                     key={key}
@@ -192,13 +192,13 @@ export function LoginProductShowcase({ className }: { className?: string }) {
               </ul>
             </div>
 
-            <ul dir="ltr" className="flex h-[40px] flex-nowrap items-center gap-x-5 overflow-hidden">
+            <ul dir="ltr" className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {TRUST_ITEMS.map(({ icon: Icon, key }) => (
                 <li key={key} className="flex shrink-0 items-center gap-2 text-[12px] text-white/70">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-teal-400/15 text-teal-200">
                     <Icon className="size-3.5" aria-hidden strokeWidth={1.75} />
                   </span>
-                  <span dir={copyDir} className="max-w-[180px] truncate text-left leading-snug">
+                  <span dir={copyDir} className="text-left leading-snug">
                     {t(`auth.login.experience.trust.${key}`)}
                   </span>
                 </li>

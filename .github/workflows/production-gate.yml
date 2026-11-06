@@ -51,6 +51,18 @@ jobs:
 
       - name: Login app production build
         run: pnpm --dir artifacts/login-app build
+        env:
+          VITE_API_SERVER_URL: https://api.valueor.org
+          VITE_WEBHOOK_BASE_URL: https://webhook.valueor.org
+          VITE_APP_ORIGIN: https://www.valueor.org
+
+      - name: Upload frontend production build
+        uses: actions/upload-artifact@v4
+        with:
+          name: valueor-frontend-build
+          path: artifacts/login-app/dist/public/
+          if-no-files-found: error
+          retention-days: 7
 
       - name: API server build
         run: pnpm --dir artifacts/api-server build

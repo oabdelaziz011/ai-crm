@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import {
   type DashboardRouteDefinition,
   isDashboardRoutePermitted,
@@ -9,6 +9,7 @@ import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-featu
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import AccessDeniedPage from "@/pages/access-denied";
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/lib/supabase";
 
 type DashboardSectionRouteProps = {
   route: DashboardRouteDefinition;
@@ -20,14 +21,6 @@ export function DashboardSectionRoute({ route }: DashboardSectionRouteProps) {
   const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
   const { lookup: commercialFeatureEnabled, isLoading: commercialLoading } =
     useCommercialFeatureLookup();
-
-  if (route.commercialFeatureCode && commercialLoading && !isSuperAdmin) {
-    return <DashboardPageFallback />;
-  }
-  if (route.requiresAnyChannelEntitlement && commercialLoading && !isSuperAdmin) {
-    return <DashboardPageFallback />;
-  }
-
   const permitted = isDashboardRoutePermitted(
     route,
     isSuperAdmin,
@@ -35,6 +28,19 @@ export function DashboardSectionRoute({ route }: DashboardSectionRouteProps) {
     platformFeatureEnabled,
     commercialFeatureEnabled,
   );
+
+  useEffect(() => {
+    if (!permitted && route.superAdminOnly && !isSuperAdmin) {
+      void supabase.rpc("log_platform_access_denied", { p_event: "platform_route_denied" });
+    }
+  }, [permitted, route.superAdminOnly, isSuperAdmin]);
+
+  if (route.commercialFeatureCode && commercialLoading && !isSuperAdmin) {
+    return <DashboardPageFallback />;
+  }
+  if (route.requiresAnyChannelEntitlement && commercialLoading && !isSuperAdmin) {
+    return <DashboardPageFallback />;
+  }
 
   if (!permitted) {
     if (route.commercialFeatureCode || route.requiresAnyChannelEntitlement) {

@@ -1,0 +1,117 @@
+{
+  "languages": {
+    "de": "Deutsch",
+    "german": "Deutsch"
+  },
+  "auth": {
+    "validation": {
+      "firstName": "Enter a first name.",
+      "middleName": "Enter a middle name.",
+      "lastName": "Enter a last name.",
+      "nameTooLong": "Each name part must be 80 characters or fewer, and the combined name must be 200 or fewer."
+    },
+    "register": {
+      "firstName": "First name",
+      "middleName": "Middle name",
+      "lastName": "Last name",
+      "displayName": "Display name",
+      "optional": "Optional",
+      "required": "Required",
+      "review": {
+        "branches": "Branches"
+      },
+      "steps": {
+        "branches": {
+          "label": "Branches",
+          "title": "Main branch and hours",
+          "description": "The company address becomes the main branch. Add a map link and working hours, then add other branches if you need them."
+        }
+      },
+      "branches": {
+        "mainTitle": "Main branch",
+        "extraTitle": "Additional branch",
+        "add": "Add branch",
+        "remove": "Remove branch",
+        "name": "Branch name",
+        "address": "Branch address",
+        "locationUrl": "Location URL",
+        "locationHint": "Required. Use a Google Maps link, such as maps.google.com, google.com/maps, or maps.app.goo.gl.",
+        "hours": "Working hours",
+        "hoursHint": "Set each day separately. A closed day is not a working day.",
+        "closed": "Closed",
+        "opens": "Opens",
+        "closes": "Closes",
+        "empty": "Add the main branch before you continue.",
+        "saveFailed": "The company was created, but the branches were not saved. Apply the local branch migration, then try again.",
+        "weekdays": {
+          "0": "Sunday",
+          "1": "Monday",
+          "2": "Tuesday",
+          "3": "Wednesday",
+          "4": "Thursday",
+          "5": "Friday",
+          "6": "Saturday"
+        },
+        "errors": {
+          "required": "This field is required.",
+          "invalidUrl": "Enter a valid http or https URL.",
+          "invalidHours": "Choose at least one open day, and make sure closing time is after opening time.",
+          "duplicateName": "Each branch needs its own name."
+        }
+      }
+    }
+  },
+  "branches": {
+    "form": {
+      "locationUrl": "Location URL",
+      "locationUrlHint": "Google Maps link. Leave blank only if this branch has no public map link yet."
+    }
+  },
+  "legal": {
+    "contact": {
+      "emailLabel": "Email",
+      "phoneLabel": "Mobile"
+    },
+    "review": {
+      "title": "What still needs owner or legal review",
+      "intro": "The statements on this page describe the product as it is implemented. They are not a certification, and the items below are not settled by the software.",
+      "item1": "No GDPR or other compliance certification is claimed, because none is implemented or evidenced in this product.",
+      "item2": "No automatic deletion deadline is implemented. Any number of days must be confirmed by the owner before it is promised.",
+      "item3": "No specific encryption algorithm, at-rest encryption, or security certification is claimed.",
+      "item4": "A promise not to sell personal information, and the limits on advertising use, still need owner confirmation.",
+      "item5": "Retention periods for billing records, technical logs, and backups are not fixed in the application.",
+      "item6": "ValueOR cannot delete data that only Meta, a payment provider, or an email host stores.",
+      "item7": "Children’s privacy, international transfers, warranties, and liability wording need legal review before they are treated as final."
+    },
+    "privacy": {
+      "retentionBody": "Company workspace records remain until an authorized user deletes them in the product or ValueOR completes a reviewed deletion request. The application does not enforce a fixed retention period. Billing and payment records may be kept when accounting, a dispute, or a legal obligation requires it, but no retention length is configured here. Technical logs are used for security and operations; their exact lifetime needs owner confirmation. Backup copies, if the host keeps them, are outside this page.",
+      "securityBody": "Company access is limited by sign-in, role permissions, and company membership. The public site is intended to be served over HTTPS by its host. This page does not claim a specific encryption algorithm, encryption at rest, or a security certification.",
+      "deletionBody": "Where the product has a delete control, an authorized user can delete that record. There is no automatic wipe of a company workspace. Anyone can email a deletion request from the Data Deletion page. ValueOR reviews that request manually. The product does not implement a completion deadline.",
+      "contactBody": "For privacy questions or a deletion request, email {{email}} or use mobile {{phone}}. You can also open the Data Deletion page. Do not include passwords or access tokens.",
+      "metaNoSell": "The product does not include a feature that sells personal information. Treating that as a binding promise still needs owner confirmation.",
+      "metaNoAds": "Customer message content is used to operate the channels a company has connected. A formal restriction on advertising use still needs owner confirmation.",
+      "childrenBody": "ValueOR is a business workspace and does not include a children’s account. Whether a children’s-privacy rule applies needs legal confirmation.",
+      "internationalBody": "Hosting and connected providers may process data outside the country where the company operates. The product does not implement a separate transfer agreement. Any cross-border safeguard needs legal confirmation."
+    },
+    "dataDeletion": {
+      "requestBody": "There is no self-serve wipe of a company workspace on this page. Email {{email}} or call {{phone}}. Use the subject “ValueOR data deletion request” so the message can be recognized.",
+      "afterBody": "ValueOR reviews the request manually and may ask for enough detail to match it to an account or a company. The product does not delete data automatically and does not enforce a number of days. Some records may be kept for a legal, security, or financial reason; the exact list is not defined in the software and needs owner confirmation. Data stored only by Meta, a payment provider, or an email host is not deleted by this page."
+    },
+    "terms": {
+      "contactBody": "Questions about these Terms can be sent to {{email}} or {{phone}}.",
+      "liabilityBody": "ValueOR is provided as the software currently operates. This page is not a warranty and it is not a cap on liability that has been reviewed by counsel. Those terms need legal confirmation before they are treated as final.",
+      "availabilityBody": "The service can be interrupted by hosting, database, or third-party channel outages. Features can change. These Terms can be updated on this page. No uptime percentage is promised."
+    }
+  },
+  "platformAdmin": {
+    "openCompany": "Open company",
+    "banner": "You are administering {{company}} as a platform administrator. Your own account is unchanged.",
+    "exit": "Return to platform",
+    "subdomain": "Subdomain",
+    "deniedTitle": "This company workspace is not available to this account",
+    "deniedBody": "The hostname does not match your company, or the company is not active. Platform administration stays on the app host.",
+    "unknownHost": "No company uses this hostname.",
+    "inactive": "This company is not active.",
+    "forbidden": "This account is not a member of the company for this hostname."
+  }
+}

@@ -1,12 +1,14 @@
 import type { BranchRepository } from "@/lib/company/branches/repositories/branch-repository";
 import type {
   BranchFormValues,
+  BranchInsert,
   BranchListFilter,
   BranchListPage,
   BranchRecord,
   BranchStats,
   BranchWithStats,
 } from "@/lib/company/branches/types";
+import { mergeBranchLocationUrl } from "@/lib/company/branches/branch-location-url";
 import {
   formValuesToInsert,
   formValuesToUpdate,
@@ -79,7 +81,11 @@ export class BranchManagementService {
       await this.repository.clearPrimaryForCompany(companyId);
     }
 
-    return this.repository.create(formValuesToInsert(companyId, values, actorId));
+    const insert: BranchInsert = formValuesToInsert(companyId, values, actorId);
+    if (values.locationUrl?.trim()) {
+      insert.settings = mergeBranchLocationUrl(null, values.locationUrl);
+    }
+    return this.repository.create(insert);
   }
 
   async update(
@@ -99,7 +105,10 @@ export class BranchManagementService {
       await this.repository.clearPrimaryExcept(companyId, id);
     }
 
-    return this.repository.update(id, companyId, formValuesToUpdate(values, actorId));
+    return this.repository.update(id, companyId, {
+      ...formValuesToUpdate(values, actorId),
+      settings: mergeBranchLocationUrl(existing.settings ?? null, values.locationUrl ?? ""),
+    });
   }
 
   async deactivate(id: string, companyId: string): Promise<BranchRecord> {

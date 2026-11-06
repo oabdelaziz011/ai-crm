@@ -7,6 +7,7 @@ import { wxRecordServiceResolution } from "@workspace/automation-platform";
 import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
 import { fetchAvailableDatesLookupOptions } from "./available-dates/available-dates-lookup-service";
+import { recordMatchesIncludedBranchIds } from "./included-branch-ids";
 import { fetchAvailableSlotsLookupOptions } from "./available-slots/available-slots-lookup-service";
 import { fetchCustomerSchedulingBookingsLookupOptions } from "./customer-scheduling-bookings/customer-scheduling-bookings-lookup-service";
 import { fetchRecommendedAppointmentsLookupOptions } from "./recommended-appointments/recommended-appointments-lookup-service";
@@ -32,6 +33,7 @@ function applyLookupFilters(
       if (expected == null || expected === "") return true;
       // Scheduling/display meta (e.g. conversation language) must not filter entity rows.
       if (LOOKUP_META_FILTER_KEYS.has(key)) return true;
+      if (key === "ids") return recordMatchesIncludedBranchIds(record.id, expected);
       const actual = record[key];
       if (typeof expected === "boolean") return Boolean(actual) === expected;
       return String(actual ?? "") === String(expected);

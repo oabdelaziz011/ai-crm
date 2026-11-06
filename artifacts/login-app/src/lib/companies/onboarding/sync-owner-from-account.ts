@@ -71,20 +71,30 @@ export function syncOwnerFromAccount<
 >(
   values: T,
   account: {
-    fullName: string;
+    fullName?: string;
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
     email: string;
     phone: string;
     phoneRegion: string;
     jobTitle: string;
   },
   splitFullName: (fullName: string) => { first: string; last: string },
-  buildOwnerDisplayName: (first: string, last: string, fallback?: string) => string,
+  buildOwnerDisplayName: (first: string, last: string, fallback?: string, middle?: string) => string,
 ): T {
-  const { first, last } = splitFullName(account.fullName);
+  const hasParts =
+    account.firstName != null || account.middleName != null || account.lastName != null;
+  const split = hasParts ? { first: "", last: "" } : splitFullName(account.fullName ?? "");
+  const first = hasParts ? (account.firstName ?? "").trim() : split.first;
+  const middle = hasParts ? (account.middleName ?? "").trim() : "";
+  const last = hasParts ? (account.lastName ?? "").trim() : split.last;
+  const structured = [first, middle, last].filter(Boolean).join(" ");
   const displayName =
     values.ownerDisplayName.trim() ||
-    account.fullName.trim() ||
-    buildOwnerDisplayName(first, last, account.email);
+    structured ||
+    (account.fullName ?? "").trim() ||
+    buildOwnerDisplayName(first, last, account.email, middle);
 
   return {
     ...values,

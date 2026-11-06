@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import {
   buildDataDeletionMailtoHref,
   DEFAULT_PRIVACY_CONTACT_EMAIL,
+  DEFAULT_PRIVACY_CONTACT_PHONE,
   getPrivacyContactEmail,
+  getPrivacyContactPhone,
 } from "./privacy-contact.ts";
 
 describe("privacy contact", () => {
@@ -11,17 +13,19 @@ describe("privacy contact", () => {
     const email = getPrivacyContactEmail();
     assert.equal(email.includes("@"), true);
     assert.doesNotMatch(email, /service.role|access.token|secret/i);
-    assert.equal(DEFAULT_PRIVACY_CONTACT_EMAIL, "privacy@valueor.org");
+    assert.equal(DEFAULT_PRIVACY_CONTACT_EMAIL, "valueor@admin.org");
+    assert.equal(getPrivacyContactPhone(), DEFAULT_PRIVACY_CONTACT_PHONE);
+    assert.equal(DEFAULT_PRIVACY_CONTACT_PHONE, "+201011404109");
   });
 
   it("builds a mailto deletion request without a backend API", () => {
     const href = buildDataDeletionMailtoHref(
-      "privacy@valueor.org",
+      "valueor@admin.org",
       "ValueOR data deletion request",
     );
     assert.equal(
       href,
-      "mailto:privacy@valueor.org?subject=ValueOR%20data%20deletion%20request",
+      "mailto:valueor@admin.org?subject=ValueOR%20data%20deletion%20request",
     );
   });
 });

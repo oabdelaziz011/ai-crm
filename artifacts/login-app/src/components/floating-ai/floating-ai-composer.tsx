@@ -35,6 +35,7 @@ export function FloatingAiComposer({
   const [input, setInput] = useState("");
   const [showSlashHints, setShowSlashHints] = useState(false);
   const localRef = useRef<HTMLTextAreaElement | null>(null);
+  const submitLockRef = useRef(false);
 
   const setRef = useCallback(
     (node: HTMLTextAreaElement | null) => {
@@ -64,10 +65,15 @@ export function FloatingAiComposer({
 
   const submit = async () => {
     const trimmed = input.trim();
-    if (!trimmed || disabled || isSending) return;
+    if (!trimmed || disabled || isSending || submitLockRef.current) return;
+    submitLockRef.current = true;
     setInput("");
     setShowSlashHints(false);
-    await onSend(trimmed);
+    try {
+      await onSend(trimmed);
+    } finally {
+      submitLockRef.current = false;
+    }
   };
 
   const applySlashCommand = (command: string) => {

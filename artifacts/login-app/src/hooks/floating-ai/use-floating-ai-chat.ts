@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAiChatWorkspace } from "@/hooks/ai-chat/use-ai-chat-workspace";
+import { useFloatingAiRuntimeOverride } from "@/hooks/floating-ai/floating-ai-runtime-override";
 import { useFloatingAi } from "@/context/floating-ai-context";
 import { useAiTasks } from "@/context/ai-task-context";
 import { buildRuntimePageContext } from "@/lib/floating-ai/global-context";
@@ -12,6 +13,7 @@ import {
 import { parseSlashCommand } from "@/lib/floating-ai/slash-commands";
 
 export function useFloatingAiChat() {
+  const runtimeOverride = useFloatingAiRuntimeOverride();
   const { pageContext, incrementNotifications } = useFloatingAi();
   const { startTask, updateTaskProgress, completeTask, failTask } = useAiTasks();
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
@@ -94,7 +96,7 @@ export function useFloatingAiChat() {
     [pageContext],
   );
 
-  return {
+  const chat = {
     ...workspace,
     sendMessage,
     confirmPendingAction,
@@ -104,4 +106,6 @@ export function useFloatingAiChat() {
     pendingConfirmation,
     incrementNotifications,
   };
+  if (!runtimeOverride) return chat;
+  return { ...chat, ...runtimeOverride };
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isHttpLocationUrl, readBranchLocationUrl } from "@/lib/company/branches/branch-location-url";
 
 export const branchStatusSchema = z.enum(["active", "inactive", "archived"]);
 
@@ -11,6 +12,14 @@ export const branchFormSchema = z.object({
     .max(32, "Branch code must be 32 characters or less")
     .regex(/^[A-Za-z0-9_-]+$/, "Branch code may only contain letters, numbers, hyphens, and underscores"),
   address: z.string().trim().optional().default(""),
+  locationUrl: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine((value) => !value || isHttpLocationUrl(value), {
+      message: "Enter a Google Maps link",
+    }),
   city: z.string().trim().optional().default(""),
   state: z.string().trim().optional().default(""),
   country: z.string().trim().optional().default(""),
@@ -80,25 +89,29 @@ export function formValuesToUpdate(values: BranchFormSchema, actorId?: string | 
   };
 }
 
-export function branchToFormValues(branch: {
-  name: string;
-  code: string | null;
-  address_line1: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  postal_code: string | null;
-  phone: string | null;
-  email: string | null;
-  timezone: string;
-  is_primary: boolean;
-  status: "active" | "inactive" | "archived";
-  manager_user_id?: string | null;
-}): BranchFormSchema {
+export function branchToFormValues(
+  branch: {
+    name: string;
+    code: string | null;
+    address_line1: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    postal_code: string | null;
+    phone: string | null;
+    email: string | null;
+    timezone: string;
+    is_primary: boolean;
+    status: "active" | "inactive" | "archived";
+    manager_user_id?: string | null;
+    settings?: Record<string, unknown> | null;
+  },
+): BranchFormSchema {
   return {
     name: branch.name,
     code: branch.code ?? "",
     address: branch.address_line1 ?? "",
+    locationUrl: readBranchLocationUrl(branch.settings ?? null),
     city: branch.city ?? "",
     state: branch.state ?? "",
     country: branch.country ?? "",

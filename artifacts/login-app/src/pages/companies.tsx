@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthUser } from "@/hooks/use-rbac";
+import { supabase } from "@/lib/supabase";
+import { companyHostname } from "@/lib/platform/company-subdomain";
+import {
+  openPlatformCompanyContext,
+  prepareAdminHostHandoff,
+  tenantWorkspaceUrl,
+} from "@/lib/platform/platform-admin-context";
 import {
   canCreateCompanies,
   canDeleteCompanies,
@@ -675,6 +682,42 @@ export function CompaniesPage() {
                           <CompanyAvatar company={company} />
                           <div className="min-w-0">
                             <p className="truncate font-medium text-foreground">{company.name}</p>
+                            {company.subdomain ? (
+                              <p className="truncate text-xs text-muted-foreground" dir="ltr">
+                                {t("platformAdmin.subdomain")}: {companyHostname(company.subdomain)}
+                              </p>
+                            ) : null}
+                            {isSuperAdmin && company.subdomain ? (
+                              <Button
+                                type="button"
+                                variant="link"
+                                size="sm"
+                                className="h-auto px-0 text-xs"
+                                onClick={() => {
+                                  void openPlatformCompanyContext({
+                                    companyId: company.id,
+                                    companyName: company.name,
+                                    subdomain: company.subdomain ?? "",
+                                  })
+                                    .then(async (stored) => {
+                                      await prepareAdminHostHandoff(stored);
+                                      window.location.assign(tenantWorkspaceUrl(company.subdomain ?? ""));
+                                    })
+                                    .catch(() => {
+                                      void supabase.rpc("log_platform_access_denied", {
+                                        p_event: "open_company_denied",
+                                      });
+                                      toast({
+                                        title: t("platformAdmin.deniedTitle"),
+                                        description: t("platformAdmin.forbidden"),
+                                        variant: "destructive",
+                                      });
+                                    });
+                                }}
+                              >
+                                {t("platformAdmin.openCompany")}
+                              </Button>
+                            ) : null}
                             {companyInternalFlag(company) ? (
                               <span className="mt-1 inline-flex rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
                                 {companyInternalFlag(company) === "suspended"

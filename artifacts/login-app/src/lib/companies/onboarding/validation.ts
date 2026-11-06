@@ -238,8 +238,12 @@ export function buildOwnerDisplayName(
   firstName: string,
   lastName: string,
   fallback = "",
+  middleName = "",
 ): string {
-  const combined = `${firstName.trim()} ${lastName.trim()}`.trim();
+  const combined = [firstName, middleName, lastName]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
   return combined || fallback.trim();
 }
 

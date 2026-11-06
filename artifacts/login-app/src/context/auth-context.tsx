@@ -43,6 +43,10 @@ export interface ProfileRecord {
   id: string;
   company_id: string | null;
   full_name: string | null;
+  /** Present after migration 444. Older rows keep full_name only. */
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
   is_super_admin: boolean;
   preferred_language: string | null;
   preferred_theme: string | null;
@@ -116,6 +120,9 @@ export type AuthActionsContextValue = {
     password: string,
     options?: {
       fullName?: string;
+      firstName?: string;
+      middleName?: string;
+      lastName?: string;
       jobTitle?: string;
       phone?: string;
       preferredLanguage?: string;
@@ -137,10 +144,10 @@ export type AuthActionsContextValue = {
 /** Combined view — prefer slice hooks to avoid cross-slice re-renders. */
 export interface AuthContextType extends SessionContextValue, UserContextValue, PermissionsContextValue, AuthActionsContextValue {}
 
-const SessionContext = createContext<SessionContextValue | null>(null);
-const UserContext = createContext<UserContextValue | null>(null);
-const PermissionsContext = createContext<PermissionsContextValue | null>(null);
-const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
+export const SessionContext = createContext<SessionContextValue | null>(null);
+export const UserContext = createContext<UserContextValue | null>(null);
+export const PermissionsContext = createContext<PermissionsContextValue | null>(null);
+export const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -299,6 +306,10 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
         nextRoles,
       );
 
+      if (trigger === "SIGNED_IN" && nextProfile?.is_super_admin) {
+        void supabase.rpc("record_platform_admin_login");
+      }
+
       if (mode === "bootstrap") {
         bootstrapCompleteRef.current = true;
         logOmniAuthBootstrapOnce({
@@ -452,12 +463,21 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
       password: string,
       options?: {
         fullName?: string;
+        firstName?: string;
+        middleName?: string;
+        lastName?: string;
         jobTitle?: string;
         phone?: string;
         preferredLanguage?: string;
       },
     ) => {
-      const fullName = options?.fullName?.trim() || undefined;
+      const firstName = options?.firstName?.trim() || undefined;
+      const middleName = options?.middleName?.trim() || undefined;
+      const lastName = options?.lastName?.trim() || undefined;
+      const fullName =
+        [firstName, middleName, lastName].filter(Boolean).join(" ") ||
+        options?.fullName?.trim() ||
+        undefined;
       const jobTitle = options?.jobTitle?.trim() || "Owner";
       const phone = options?.phone?.trim() || undefined;
       const preferredLanguage = options?.preferredLanguage?.trim() || undefined;
@@ -468,6 +488,9 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
           emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
           data: {
             ...(fullName ? { full_name: fullName } : {}),
+            ...(firstName ? { first_name: firstName } : {}),
+            ...(middleName ? { middle_name: middleName } : {}),
+            ...(lastName ? { last_name: lastName } : {}),
             job_title: jobTitle,
             ...(phone ? { phone } : {}),
             ...(preferredLanguage ? { preferred_language: preferredLanguage } : {}),
@@ -560,7 +583,14 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     await loadAuthContext(userId, "background", "manual");
   }, [session?.user?.id]);
 
-  const displayName = profile?.full_name || session?.user?.email?.split("@")[0] || "User";
+  const displayName =
+    [profile?.first_name, profile?.middle_name, profile?.last_name]
+      .map((part) => part?.trim() ?? "")
+      .filter(Boolean)
+      .join(" ") ||
+    profile?.full_name ||
+    session?.user?.email?.split("@")[0] ||
+    "User";
 
   const sessionValue = useMemo<SessionContextValue>(
     () => ({

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ValueOrLogo } from "@/components/brand/valueor-logo";
 import { Button } from "@/components/ui/button";
 import { LEGAL_POLICY_LAST_UPDATED } from "@/lib/legal/public-legal-paths";
+import { getPrivacyContactEmail, getPrivacyContactPhone } from "@/lib/legal/privacy-contact";
 import {
   cacheAppLanguage,
   isAppLanguage,
@@ -13,7 +14,8 @@ import {
 import { cn } from "@/lib/utils";
 
 function formatPolicyDate(language: string): string {
-  const locale = language.toLowerCase().startsWith("ar") ? "ar" : "en-GB";
+  const normalized = language.toLowerCase();
+  const locale = normalized.startsWith("ar") ? "ar" : normalized.startsWith("de") ? "de-DE" : "en-GB";
   return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "long",
@@ -135,5 +137,36 @@ export function LegalList({ items }: { items: string[] }) {
         <li key={item}>{item}</li>
       ))}
     </ul>
+  );
+}
+
+const REVIEW_ITEMS = ["item1", "item2", "item3", "item4", "item5", "item6", "item7"] as const;
+
+export function LegalReviewNotice() {
+  const { t } = useTranslation("common");
+  return (
+    <LegalSection title={t("legal.review.title")}>
+      <p>{t("legal.review.intro")}</p>
+      <LegalList items={REVIEW_ITEMS.map((key) => t(`legal.review.${key}`))} />
+    </LegalSection>
+  );
+}
+
+export function LegalContactLines() {
+  const { t } = useTranslation("common");
+  const email = getPrivacyContactEmail();
+  const phone = getPrivacyContactPhone();
+  return (
+    <p>
+      {t("legal.contact.emailLabel")}:{" "}
+      <a className="text-primary font-medium underline-offset-4 hover:underline" href={`mailto:${email}`}>
+        {email}
+      </a>
+      <br />
+      {t("legal.contact.phoneLabel")}:{" "}
+      <a className="text-primary font-medium underline-offset-4 hover:underline" href={`tel:${phone}`}>
+        {phone}
+      </a>
+    </p>
   );
 }

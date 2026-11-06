@@ -24,7 +24,55 @@ import {
   type ListDataSourceMode,
 } from "@/lib/lookups";
 import { readAvailableDatesEmptyMessage } from "@/lib/lookups/available-dates/available-dates-lookup-service";
+import { useBranches } from "@/lib/company/branches/hooks/use-branches";
 import { ListRowsEditor } from "../property-editors";
+
+function IncludedBranchesField(props: {
+  companyId: string | null;
+  value: string;
+  onChange: (value: string | undefined) => void;
+}) {
+  const { t } = useTranslation("common");
+  const branches = useBranches(props.companyId, { status: "active" });
+  const selected = useMemo(
+    () => new Set(props.value.split(/[\s,]+/).map((id) => id.trim()).filter(Boolean)),
+    [props.value],
+  );
+
+  const toggle = (id: string, checked: boolean) => {
+    const next = new Set(selected);
+    if (checked) next.add(id);
+    else next.delete(id);
+    const joined = [...next].join(",");
+    props.onChange(joined || undefined);
+  };
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/50 bg-muted/10 p-3">
+      <Label className="text-sm font-medium">{t("workflowBuilder.logic.includedBranches")}</Label>
+      <p className="text-xs text-muted-foreground">{t("workflowBuilder.logic.includedBranchesHint")}</p>
+      {branches.isLoading ? (
+        <p className="text-sm text-muted-foreground">{t("workflowBuilder.logic.includedBranchesLoading")}</p>
+      ) : (branches.data ?? []).length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("workflowBuilder.logic.includedBranchesNone")}</p>
+      ) : (
+        <div className="max-h-48 space-y-2 overflow-y-auto">
+          {(branches.data ?? []).map((branch) => (
+            <label key={branch.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-input"
+                checked={selected.has(branch.id)}
+                onChange={(event) => toggle(branch.id, event.target.checked)}
+              />
+              <span>{branch.name}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function readRowsPreview(config: Record<string, unknown>) {
   if (!Array.isArray(config._lookupPreviewRows)) return [];
@@ -214,7 +262,22 @@ export function ListOptionsEditor(props: NodePropertyEditorProps) {
                       {t("workflowBuilder.logic.lookupContextHint")}
                     </p>
                   ) : null}
-                  {definition.filters.map((filter) => (
+                  {definition.filters.map((filter) =>
+                    filter.id === "ids" ? (
+                      <IncludedBranchesField
+                        key={filter.id}
+                        companyId={props.context?.document.companyId ?? null}
+                        value={String(lookupConfig?.filters?.ids ?? "")}
+                        onChange={(ids) =>
+                          updateLookup({
+                            filters: {
+                              ...(lookupConfig?.filters ?? {}),
+                              ids,
+                            },
+                          })
+                        }
+                      />
+                    ) : (
                     <div key={filter.id} className="space-y-2">
                       <Label className="text-xs text-muted-foreground">
                         {t(filter.labelKey, { defaultValue: filter.id })}
@@ -259,15 +322,18 @@ export function ListOptionsEditor(props: NodePropertyEditorProps) {
                               ? "{{selected_service.id}}"
                               : filter.id === "resource_id"
                                 ? "{{selected_resource.id}}"
-                                : filter.id === "date"
-                                  ? "{{selected_date}}"
-                                  : undefined
+                                : filter.id === "branch_id"
+                                  ? "{{selected_branch.id}}"
+                                  : filter.id === "date"
+                                    ? "{{selected_date}}"
+                                    : undefined
                           }
                           className="rounded-xl bg-background/80 font-mono text-sm"
                         />
                       )}
                     </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               )}
 

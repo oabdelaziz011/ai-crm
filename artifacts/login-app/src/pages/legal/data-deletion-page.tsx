@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import {
   buildDataDeletionMailtoHref,
   getPrivacyContactEmail,
+  getPrivacyContactPhone,
 } from "@/lib/legal/privacy-contact";
-import { LegalList, LegalPageLayout, LegalSection } from "@/pages/legal/legal-page-layout";
+import { LegalContactLines, LegalList, LegalPageLayout, LegalReviewNotice, LegalSection } from "@/pages/legal/legal-page-layout";
 
 export default function DataDeletionPage() {
   const { t } = useTranslation("common");
   const email = getPrivacyContactEmail();
+  const phone = getPrivacyContactPhone();
   const mailto = buildDataDeletionMailtoHref(email, t("legal.dataDeletion.emailSubject"));
 
   return (
@@ -40,18 +42,13 @@ export default function DataDeletionPage() {
       </LegalSection>
 
       <LegalSection title={t("legal.dataDeletion.requestTitle")}>
-        <p>{t("legal.dataDeletion.requestBody", { email })}</p>
+        <p>{t("legal.dataDeletion.requestBody", { email, phone })}</p>
         <div className="pt-2">
           <Button asChild>
             <a href={mailto}>{t("legal.dataDeletion.requestCta")}</a>
           </Button>
         </div>
-        <p className="text-sm">
-          {t("legal.dataDeletion.emailLabel")}:{" "}
-          <a className="text-primary font-medium underline-offset-4 hover:underline" href={mailto}>
-            {email}
-          </a>
-        </p>
+        <LegalContactLines />
       </LegalSection>
 
       <LegalSection title={t("legal.dataDeletion.afterTitle")}>
@@ -61,6 +58,8 @@ export default function DataDeletionPage() {
       <LegalSection title={t("legal.dataDeletion.controllerTitle")}>
         <p>{t("legal.dataDeletion.controllerBody")}</p>
       </LegalSection>
+
+      <LegalReviewNotice />
 
       <LegalSection title={t("legal.dataDeletion.relatedTitle")}>
         <p>

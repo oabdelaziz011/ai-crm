@@ -18,6 +18,7 @@ import { useRuntimeChatConfig } from "./use-runtime-chat-config";
 import { useWebChatCompanyChannel } from "./use-web-chat-company-channel";
 import { shouldClearStreamingBeforeRefresh, buildDisplayMessages, hasPersistedOutgoingForPending } from "./streaming-refresh-lifecycle";
 import { resolveFloatingTurnIdempotencyKey } from "./floating-turn-idempotency";
+import { toCustomerFacingSendError } from "./customer-facing-send-error";
 import i18n from "@/i18n";
 
 const CONVERSATION_STORAGE_PREFIX = "vault-ai-chat-conversation";
@@ -384,11 +385,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
       } catch (error) {
         if (controller.signal.aborted) return;
         setPendingAssistantContent(null);
-        setSendError(
-          error instanceof Error && !error.message.includes("_")
-            ? error.message
-            : "channel_route_failed",
-        );
+        setSendError(toCustomerFacingSendError(error));
       } finally {
         setIsSending(false);
         setStreamingContent("");

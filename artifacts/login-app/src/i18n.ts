@@ -5,6 +5,9 @@ import enCommon from "@/locales/en/common.json";
 import arCommon from "@/locales/ar/common.json";
 import enBillingSettingsFields from "@/locales/en/billing-settings-fields.json";
 import arBillingSettingsFields from "@/locales/ar/billing-settings-fields.json";
+import enPublicSurfaces from "@/locales/overlays/public-surfaces.en.json";
+import arPublicSurfaces from "@/locales/overlays/public-surfaces.ar.json";
+import dePublicSurfaces from "@/locales/overlays/public-surfaces.de.json";
 import {
   cacheAppLanguage,
   isAppLanguage,
@@ -12,6 +15,26 @@ import {
 } from "@/lib/i18n/resolve-app-language";
 
 const RTL_LANGUAGES = new Set(["ar"]);
+
+function mergeMessages(base: Record<string, unknown>, overlay: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(overlay)) {
+    const current = merged[key];
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      current &&
+      typeof current === "object" &&
+      !Array.isArray(current)
+    ) {
+      merged[key] = mergeMessages(current as Record<string, unknown>, value as Record<string, unknown>);
+    } else {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
 
 function applyDocumentLanguage(language: string) {
   if (typeof document === "undefined") {
@@ -28,7 +51,7 @@ void i18n.use(initReactI18next).init({
   resources: {
     en: {
       common: {
-        ...enCommon,
+        ...mergeMessages(enCommon as Record<string, unknown>, enPublicSurfaces as Record<string, unknown>),
         billing: {
           ...enCommon.billing,
           settings: {
@@ -61,7 +84,7 @@ void i18n.use(initReactI18next).init({
     },
     ar: {
       common: {
-        ...arCommon,
+        ...mergeMessages(arCommon as Record<string, unknown>, arPublicSurfaces as Record<string, unknown>),
         billing: {
           ...arCommon.billing,
           settings: {
@@ -96,10 +119,13 @@ void i18n.use(initReactI18next).init({
         },
       },
     },
+    de: {
+      common: dePublicSurfaces,
+    },
   },
   lng: resolveBootstrapAppLanguage(),
   fallbackLng: "en",
-  supportedLngs: ["en", "ar"],
+  supportedLngs: ["en", "ar", "de"],
   defaultNS: "common",
   ns: ["common"],
   interpolation: {

@@ -1,5 +1,6 @@
-/** Default public privacy inbox (product domain). Overridable via Vite env. */
-export const DEFAULT_PRIVACY_CONTACT_EMAIL = "privacy@valueor.org";
+/** Public privacy inbox supplied for ValueOR. Overridable via Vite env. */
+export const DEFAULT_PRIVACY_CONTACT_EMAIL = "valueor@admin.org";
+export const DEFAULT_PRIVACY_CONTACT_PHONE = "+201011404109";
 
 function readViteString(name: string): string {
   try {
@@ -16,6 +17,10 @@ function readViteString(name: string): string {
  */
 export function getPrivacyContactEmail(): string {
   return readViteString("VITE_PRIVACY_CONTACT_EMAIL") || DEFAULT_PRIVACY_CONTACT_EMAIL;
+}
+
+export function getPrivacyContactPhone(): string {
+  return readViteString("VITE_PRIVACY_CONTACT_PHONE") || DEFAULT_PRIVACY_CONTACT_PHONE;
 }
 
 export function buildDataDeletionMailtoHref(email: string, subject: string): string {

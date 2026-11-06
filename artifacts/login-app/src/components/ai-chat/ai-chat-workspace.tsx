@@ -8,6 +8,7 @@ import { DashboardCard, DashboardErrorBanner } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { useHasPermission } from "@/hooks/use-rbac";
 import { useAiChatWorkspace } from "@/hooks/ai-chat/use-ai-chat-workspace";
+import { resolveFloatingSendErrorMessage } from "@/hooks/ai-chat/customer-facing-send-error";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
 
 export function AiChatWorkspace() {
@@ -45,12 +46,11 @@ export function AiChatWorkspace() {
     if (sendError === "web_chat_channel_missing") {
       return t("dashboard.ai.errors.webChatChannelMissing");
     }
-    if (sendError === "channel_route_failed") {
-      return t("dashboard.ai.errors.channelRouteFailed");
-    }
-    if (sendError) {
-      return t("dashboard.ai.errors.runtimeFailed", { detail: sendError });
-    }
+    const resolved = resolveFloatingSendErrorMessage(sendError, {
+      channelRouteFailed: t("dashboard.ai.errors.channelRouteFailed"),
+      runtimeFailed: (detail) => t("dashboard.ai.errors.runtimeFailed", { detail }),
+    });
+    if (resolved) return resolved;
     if (showProviderSetupCta) {
       return t("dashboard.ai.errors.runtimeNotConfiguredDetail");
     }

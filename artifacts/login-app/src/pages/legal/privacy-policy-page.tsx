@@ -1,11 +1,12 @@
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { getPrivacyContactEmail } from "@/lib/legal/privacy-contact";
-import { LegalList, LegalPageLayout, LegalSection } from "@/pages/legal/legal-page-layout";
+import { getPrivacyContactEmail, getPrivacyContactPhone } from "@/lib/legal/privacy-contact";
+import { LegalContactLines, LegalList, LegalPageLayout, LegalReviewNotice, LegalSection } from "@/pages/legal/legal-page-layout";
 
 export default function PrivacyPolicyPage() {
   const { t } = useTranslation("common");
   const email = getPrivacyContactEmail();
+  const phone = getPrivacyContactPhone();
 
   return (
     <LegalPageLayout title={t("legal.privacy.title")}>
@@ -123,8 +124,10 @@ export default function PrivacyPolicyPage() {
       </LegalSection>
 
       <LegalSection title={t("legal.privacy.contactTitle")}>
-        <p>{t("legal.privacy.contactBody", { email })}</p>
+        <p>{t("legal.privacy.contactBody", { email, phone })}</p>
+        <LegalContactLines />
       </LegalSection>
+      <LegalReviewNotice />
     </LegalPageLayout>
   );
 }

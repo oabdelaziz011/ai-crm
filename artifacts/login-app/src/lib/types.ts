@@ -225,6 +225,8 @@ export type Company = {
   id: string;
   name: string;
   logo_url: string | null;
+  /** Public hostname label. Stable company id does not change when this changes. */
+  subdomain?: string | null;
   company_type?: string | null;
   /** Business type (clinic, retail, …). Distinct from company_type tenant class. */
   business_type?: string | null;

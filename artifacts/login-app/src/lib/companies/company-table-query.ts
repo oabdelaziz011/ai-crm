@@ -245,6 +245,7 @@ export function matchesCompanyTableFilters(
   if (search) {
     const haystack = [
       company.name,
+      company.subdomain,
       company.subscription_plan,
       firstPlan(company)?.name,
       firstPlan(company)?.code,

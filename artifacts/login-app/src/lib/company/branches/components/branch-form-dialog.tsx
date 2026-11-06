@@ -196,6 +196,31 @@ export function BranchFormDialog({
 
               <FormField
                 control={form.control}
+                name="locationUrl"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>{t("branches.form.locationUrl", { defaultValue: "Location URL" })}</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="url"
+                        inputMode="url"
+                        placeholder="https://"
+                        className="bg-background/50 border-white/10"
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t("branches.form.locationUrlHint", {
+                        defaultValue: "Google Maps or another http(s) map link. Optional for an existing branch.",
+                      })}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="city"
                 render={({ field }) => (
                   <FormItem>

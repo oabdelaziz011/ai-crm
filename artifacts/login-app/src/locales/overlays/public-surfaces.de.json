@@ -1,0 +1,336 @@
+{
+  "documentTitle": {
+    "privacyPolicy": "Datenschutz | ValueOR",
+    "dataDeletion": "Datenlöschung",
+    "terms": "Nutzungsbedingungen"
+  },
+  "languages": {
+    "en": "English",
+    "ar": "العربية",
+    "de": "Deutsch",
+    "english": "English",
+    "arabic": "Arabisch",
+    "german": "Deutsch"
+  },
+  "auth": {
+    "login": {
+      "mobileApps": {
+        "title": "Mobile Apps",
+        "androidTitle": "Android",
+        "androidPending": "Die signierte Android-APK erscheint hier, nachdem sie erstellt und die Download-Adresse geprüft wurde. Es gibt noch keinen Download.",
+        "androidDownload": "Android-APK herunterladen",
+        "androidInstall": "Laden Sie die APK herunter und erlauben Sie die Installation, wenn Android danach fragt.",
+        "version": "Version {{version}}",
+        "qrAlt": "QR-Code für den Android-Download",
+        "iosTitle": "iPhone",
+        "iosPending": "Die iPhone-App wird nach der Freigabe durch Apple über den App Store verteilt. Ein direkter IPA-Link steht nicht zur Verfügung."
+      },
+      "experience": {
+        "brandStatement": "Aus dem ersten Kontakt wird ein Kunde",
+        "scriptAccentTop": "Every Conversation Creates Opportunity",
+        "scriptAccentBottom": "Smarter Business Together",
+        "welcomeTitle": "Willkommen zurück",
+        "welcomeSubtitle": "Melden Sie sich bei Ihrem Konto an",
+        "securityTitle": "Geschützte Anmeldung",
+        "securityBody": "Ihre Sitzung bleibt an dieses Gerät gebunden."
+      }
+    },
+    "validation": {
+      "passwordMin": "Das Passwort muss mindestens 6 Zeichen haben.",
+      "email": "Geben Sie eine gültige E-Mail-Adresse ein.",
+      "firstName": "Geben Sie einen Vornamen ein.",
+      "middleName": "Geben Sie einen zweiten Vornamen ein.",
+      "lastName": "Geben Sie einen Nachnamen ein.",
+      "nameTooLong": "Jeder Namensteil darf höchstens 80 Zeichen haben, der volle Name höchstens 200."
+    },
+    "register": {
+      "title": "Konto erstellen",
+      "subtitle": "Legen Sie Ihre Identität, das Unternehmen und die erste Filiale an.",
+      "progressLabel": "Registrierungsschritte",
+      "identity": "E-Mail",
+      "ownerJobTitle": "Funktion des Inhabers",
+      "jobTitleHint": "Nur eine Bezeichnung — die Rechte kommen aus den Rollen.",
+      "passkey": "Passwort",
+      "submit": "Konto erstellen",
+      "formIncomplete": "Bitte korrigieren Sie die markierten Felder.",
+      "already": "Sie haben schon ein Konto?",
+      "authenticateHere": "Hier anmelden",
+      "firstName": "Vorname",
+      "middleName": "Zweiter Vorname",
+      "lastName": "Nachname",
+      "displayName": "Anzeigename",
+      "optional": "Optional",
+      "required": "Pflichtfeld",
+      "review": {
+        "account": "Ihr Konto",
+        "company": "Unternehmen",
+        "business": "Standort",
+        "plan": "Tarif",
+        "branches": "Filialen"
+      },
+      "steps": {
+        "account": {
+          "label": "Konto",
+          "title": "Ihre Identität",
+          "description": "Legen Sie die Zugangsdaten fest, mit denen Sie sich anmelden."
+        },
+        "company": {
+          "label": "Unternehmen",
+          "title": "Unternehmensdaten",
+          "description": "Name, Art und Kontaktdaten des Unternehmens."
+        },
+        "business": {
+          "label": "Standort",
+          "title": "Land und Einstellungen",
+          "description": "Land, Stadt, Zeitzone und Währung."
+        },
+        "plan": {
+          "label": "Tarif",
+          "title": "Startabo",
+          "description": "Der Starttarif wird automatisch zugewiesen."
+        },
+        "review": {
+          "label": "Prüfung",
+          "title": "Prüfen und abschließen",
+          "description": "Prüfen Sie die Angaben, bevor das Konto angelegt wird."
+        },
+        "branches": {
+          "label": "Filialen",
+          "title": "Hauptfiliale und Öffnungszeiten",
+          "description": "Die Firmenadresse wird die Hauptfiliale. Fügen Sie einen Kartenlink und Öffnungszeiten hinzu und weitere Filialen, wenn Sie sie brauchen."
+        }
+      },
+      "branches": {
+        "mainTitle": "Hauptfiliale",
+        "extraTitle": "Weitere Filiale",
+        "add": "Filiale hinzufügen",
+        "remove": "Filiale entfernen",
+        "name": "Name der Filiale",
+        "address": "Adresse der Filiale",
+        "locationUrl": "Standort-URL",
+        "locationHint": "Pflichtfeld. Ein Google-Maps-Link, zum Beispiel maps.google.com, google.com/maps oder maps.app.goo.gl.",
+        "hours": "Öffnungszeiten",
+        "hoursHint": "Jeder Tag ist einzeln. Ein geschlossener Tag ist kein Arbeitstag.",
+        "closed": "Geschlossen",
+        "opens": "Öffnet",
+        "closes": "Schließt",
+        "empty": "Legen Sie die Hauptfiliale fest, bevor Sie fortfahren.",
+        "saveFailed": "Das Unternehmen wurde angelegt, die Filialen aber nicht gespeichert. Wenden Sie die lokale Migration an und versuchen Sie es erneut.",
+        "weekdays": {
+          "0": "Sonntag",
+          "1": "Montag",
+          "2": "Dienstag",
+          "3": "Mittwoch",
+          "4": "Donnerstag",
+          "5": "Freitag",
+          "6": "Samstag"
+        },
+        "errors": {
+          "required": "Dieses Feld ist erforderlich.",
+          "invalidUrl": "Geben Sie eine gültige http- oder https-Adresse ein.",
+          "invalidHours": "Wählen Sie mindestens einen offenen Tag. Die Schließzeit muss nach der Öffnungszeit liegen.",
+          "duplicateName": "Jede Filiale braucht einen eigenen Namen."
+        }
+      }
+    }
+  },
+  "forms": {
+    "customer": {
+      "phoneCountry": "Land"
+    }
+  },
+  "companyOnboarding": {
+    "actions": {
+      "next": "Weiter",
+      "back": "Zurück"
+    },
+    "fields": {
+      "accountPhone": "Telefon",
+      "ownerPhone": "Telefon",
+      "contactPhone": "Telefon",
+      "country": "Land",
+      "phoneFormatHint": "Geben Sie die lokale Nummer ein. Die Ländervorwahl wird separat gewählt."
+    },
+    "validation": {
+      "required": "Dieses Feld ist erforderlich."
+    }
+  },
+  "branches": {
+    "form": {
+      "locationUrl": "Standort-URL",
+      "locationUrlHint": "Google-Maps-Link. Leer lassen nur, wenn diese Filiale noch keinen öffentlichen Link hat."
+    }
+  },
+  "legal": {
+    "language": "Sprache",
+    "signIn": "Anmelden",
+    "navLabel": "Rechtliche Seiten",
+    "lastUpdated": "Zuletzt aktualisiert: {{date}}",
+    "nav": {
+      "privacy": "Datenschutz",
+      "dataDeletion": "Datenlöschung",
+      "terms": "Nutzungsbedingungen"
+    },
+    "contact": {
+      "emailLabel": "E-Mail",
+      "phoneLabel": "Mobil"
+    },
+    "review": {
+      "title": "Was noch eine Prüfung durch Inhaber oder Rechtsberatung braucht",
+      "intro": "Diese Seite beschreibt das Produkt so, wie es umgesetzt ist. Sie ist keine Zertifizierung. Die folgenden Punkte sind in der Software nicht abschließend geregelt.",
+      "item1": "Es wird keine DSGVO- oder sonstige Compliance-Zertifizierung behauptet, weil keine im Produkt umgesetzt oder belegt ist.",
+      "item2": "Eine automatische Löschfrist ist nicht umgesetzt. Eine Anzahl von Tagen muss der Inhaber bestätigen, bevor sie zugesagt wird.",
+      "item3": "Es wird kein bestimmter Verschlüsselungsalgorithmus, keine Verschlüsselung im Ruhezustand und kein Sicherheitszertifikat behauptet.",
+      "item4": "Das Versprechen, personenbezogene Daten nicht zu verkaufen, und die Grenzen der Werbenutzung brauchen noch eine Bestätigung des Inhabers.",
+      "item5": "Aufbewahrungsfristen für Abrechnung, technische Protokolle und Sicherungen sind in der Anwendung nicht festgelegt.",
+      "item6": "ValueOR kann Daten nicht löschen, die nur Meta, ein Zahlungsanbieter oder ein E-Mail-Host speichert.",
+      "item7": "Kinderdatenschutz, internationale Übermittlung, Gewährleistung und Haftung brauchen eine rechtliche Prüfung, bevor sie als endgültig gelten."
+    },
+    "privacy": {
+      "title": "Datenschutz von ValueOR",
+      "scopeTitle": "Geltungsbereich",
+      "scopeBody": "Diese Seite beschreibt, welche Daten ValueOR verarbeitet, wenn Sie die Plattform nutzen. ValueOR ist eine Mehrkunden-Software für CRM, Nachrichtenkanäle, KI-Funktionen, Terminplanung und Abonnements. Die Seite gilt für Kontonutzer und für Personen, deren Daten ein ValueOR-Kunde in seinem Arbeitsbereich verarbeitet.",
+      "platformTitle": "Was ValueOR ist",
+      "platformBody": "Je nach freigeschalteten Funktionen kann ein Unternehmen Folgendes nutzen:",
+      "platformCrm": "CRM-Daten: Kunden, Tickets, Leads, Chancen, Angebote, Rechnungen, Aufgaben und zugehörige Notizen.",
+      "platformOmni": "Nachrichten über WhatsApp, Instagram, Messenger, E-Mail und SMS, soweit der Kanal verbunden ist.",
+      "platformAi": "KI-Entwürfe, Übersetzung, Wissenssuche und Automatisierung nur mit Inhalten, die das Unternehmen in ValueOR oder einen verbundenen Kanal gelegt hat.",
+      "platformOps": "Termine, Filialen, Rollen und Berechtigungen.",
+      "platformBilling": "Abonnement, Rechnungen, Belege und die Sperre des Arbeitsbereichs, wenn ein Abonnement endet.",
+      "collectTitle": "Welche Daten verarbeitet werden",
+      "collectIntro": "Je nach Einrichtung können das sein:",
+      "collectAccount": "Konto- und Unternehmensdaten: Namen, Anmelde-E-Mail, Rollen, Filialzuordnung, Sprache und Darstellung.",
+      "collectContact": "Kontaktdaten: Telefonnummern, E-Mail-Adressen und Nachrichtenkennungen.",
+      "collectCrm": "CRM- und Vorgangsdaten, die berechtigte Nutzer eingeben.",
+      "collectMessages": "Nachrichten, die über ValueOR gesendet oder empfangen werden.",
+      "collectWhatsapp": "WhatsApp-Inhalte, Nummern, Zustellstatus und Vorlagen, wenn WhatsApp verbunden ist.",
+      "collectInstagram": "Instagram- und Messenger-Kennungen, Nachrichten und Anhänge, wenn diese Meta-Kanäle verbunden sind.",
+      "collectEmailSms": "E-Mail- und SMS-Inhalte, Empfänger und Zustellprotokolle, wenn diese Kanäle verbunden sind.",
+      "collectBilling": "Tarif, Abrechnungszeitraum, Beträge, Rechnungen, Belege und der Zugangsstatus des Unternehmens.",
+      "collectTechnical": "Technische Protokolle wie IP-Adresse, Browsertyp und Zeitstempel, soweit der Betrieb sie erzeugt.",
+      "useTitle": "Wozu die Daten verwendet werden",
+      "useIntro": "Die Daten werden verwendet, um die Funktionen bereitzustellen, die das Unternehmen eingeschaltet hat:",
+      "useOperate": "Anmeldung, Arbeitsbereiche und Trennung der Unternehmen.",
+      "useCrm": "CRM, Tickets, Pipelines, Termine und Berichte, die das Paket erlaubt.",
+      "useAi": "KI- und Automatisierungsfunktionen nur mit den Inhalten, die dafür nötig sind.",
+      "useMessaging": "Senden und Empfangen auf verbundenen Kanälen.",
+      "useBilling": "Abonnement, Zahlung und Sperre des Arbeitsbereichs bei ausbleibender Zahlung.",
+      "useSecurity": "Sicherheit, Fehlersuche und Missbrauchsvermeidung.",
+      "tenancyTitle": "Trennung der Unternehmen",
+      "tenancyBody": "Daten eines Unternehmens sind an dessen Arbeitsbereich gebunden. Nutzer sehen, was ihre Rolle erlaubt. Wenn ein Abonnement endet, kann der Arbeitsbereich für normale Nutzer gesperrt werden. Oberflächen für die Verlängerung können für berechtigte Administratoren offen bleiben.",
+      "metaTitle": "Meta, Instagram und WhatsApp",
+      "metaBody": "Wenn ein Kunde Meta-Produkte verbindet, verarbeitet ValueOR diese Daten, um die eingeschalteten Kanal-Funktionen zu betreiben.",
+      "metaEnabledOnly": "Instagram, WhatsApp und Messenger werden nur verarbeitet, soweit der Kunde den Kanal eingeschaltet hat.",
+      "metaNoSell": "Das Produkt enthält keine Funktion zum Verkauf personenbezogener Daten. Eine verbindliche Zusage dazu braucht noch die Bestätigung des Inhabers.",
+      "metaNoAds": "Nachrichteninhalte dienen dem Betrieb der verbundenen Kanäle. Eine formale Werbebeschränkung braucht noch die Bestätigung des Inhabers.",
+      "providersTitle": "Andere Anbieter",
+      "providersIntro": "Für den Betrieb können weitere Anbieter beteiligt sein:",
+      "providersMeta": "Meta-, Instagram-, WhatsApp- und Messenger-Schnittstellen, wenn diese Kanäle verbunden sind.",
+      "providersAi": "KI-Anbieter, wenn das Unternehmen eine KI-Funktion nutzt, die einen externen Aufruf braucht.",
+      "providersPayments": "Zahlungsanbieter für Abonnementzahlungen, soweit eine Zahlung eingerichtet ist.",
+      "providersCloud": "Hosting, Datenbank, E-Mail und Protokollierung.",
+      "providersLimit": "Diese Anbieter verarbeiten Daten im Rahmen ihres Dienstes. Einzelne Verträge und eine Auftragsverarbeiterliste sind hier nicht nachgewiesen.",
+      "retentionTitle": "Aufbewahrung",
+      "retentionBody": "Arbeitsbereichsdaten bleiben, bis ein berechtigter Nutzer sie im Produkt löscht oder ValueOR einen geprüften Löschantrag abschließt. Eine feste Frist ist nicht hinterlegt. Abrechnungsdaten können bleiben, wenn Buchhaltung, ein Streit oder eine gesetzliche Pflicht das verlangt. Die genaue Dauer von Protokollen und Sicherungen braucht eine Bestätigung des Inhabers.",
+      "securityTitle": "Sicherheit",
+      "securityBody": "Der Zugang ist durch Anmeldung, Rollen und Unternehmenszugehörigkeit begrenzt. Die öffentliche Website soll vom Host über HTTPS ausgeliefert werden. Diese Seite behauptet keinen bestimmten Algorithmus, keine Verschlüsselung im Ruhezustand und kein Zertifikat.",
+      "deletionTitle": "Löschung",
+      "deletionBody": "Wo das Produkt eine Löschfunktion hat, kann ein berechtigter Nutzer den betreffenden Datensatz löschen. Ein automatisches Leeren des Arbeitsbereichs gibt es nicht. Ein Löschantrag wird über die Seite Datenlöschung per E-Mail gestellt und manuell geprüft. Eine Erledigungsfrist ist nicht umgesetzt.",
+      "rightsTitle": "Anfragen",
+      "rightsBody": "Welche Rechte eine Person hat, hängt vom anwendbaren Recht ab und ist hier nicht als Zusage formuliert. Eine Anfrage kann an die genannte E-Mail-Adresse gehen. ValueOR kann die Identität und den Bezug zu einem Kundenkonto prüfen. Endkunden eines Unternehmens können an dieses Unternehmen verwiesen werden.",
+      "cookiesTitle": "Cookies und Sitzung",
+      "cookiesBody": "Die Anmeldung verwendet ein Sitzungs-Cookie. Sprache und Darstellung können im Browser gespeichert werden. Diese Techniken dienen dem Betrieb der Anwendung. Eine Werbenutzung von WhatsApp- oder Instagram-Inhalten ist im Produkt nicht als eigene Funktion vorhanden.",
+      "childrenTitle": "Kinder",
+      "childrenBody": "ValueOR ist ein Arbeitsbereich für Unternehmen und hat keinen Kinder-Kontotyp. Ob eine besondere Kinderregel gilt, braucht eine rechtliche Bestätigung.",
+      "internationalTitle": "Verarbeitung in anderen Ländern",
+      "internationalBody": "Hosting und verbundene Anbieter können Daten außerhalb des Landes des Unternehmens verarbeiten. Eine eigene Übermittlungsvereinbarung ist im Produkt nicht umgesetzt und braucht rechtliche Bestätigung.",
+      "changesTitle": "Änderungen",
+      "changesBody": "Diese Seite kann geändert werden. Das Datum oben wird dann aktualisiert.",
+      "contactTitle": "Kontakt",
+      "contactBody": "Für Datenschutzfragen oder einen Löschantrag schreiben Sie an {{email}} oder nutzen Sie {{phone}}. Öffnen Sie auch die Seite Datenlöschung. Senden Sie keine Passwörter oder Zugriffstoken."
+    },
+    "dataDeletion": {
+      "title": "Datenlöschung bei ValueOR",
+      "scopeTitle": "Worum es geht",
+      "scopeBody": "Über diese Seite beantragen Sie die Löschung personenbezogener Daten, die ValueOR im Zusammenhang mit der Plattform hält. Je nach Beziehung zu einem Unternehmen kann das betreffen:",
+      "scopeAccount": "Ein Nutzerkonto oder Anmeldedaten.",
+      "scopeWorkspace": "CRM- oder Vorgangsdaten, die ValueOR speichert oder auf Weisung verarbeitet.",
+      "scopeChannels": "Nachrichtendaten zu WhatsApp, Instagram, Messenger, E-Mail oder SMS.",
+      "scopeAi": "KI- oder Automatisierungsdaten, die noch personenbezogene Angaben enthalten.",
+      "howTitle": "So stellen Sie den Antrag",
+      "howBody": "Eine Anmeldung ist nicht nötig. Schreiben Sie von einer Adresse, mit der der Antrag geprüft werden kann, und nennen Sie:",
+      "includeName": "Ihren Namen.",
+      "includeEmail": "Die E-Mail-Adresse oder Telefonnummer, die zu Ihrer Nutzung gehört, falls vorhanden.",
+      "includeCompany": "Den Namen des Unternehmens, wenn Sie mit einem ValueOR-Kunden zu tun hatten.",
+      "includeChannel": "WhatsApp-Nummer, Instagram-Name, E-Mail, SMS-Nummer oder eine andere Kennung, nach der gesucht werden soll.",
+      "includeDetails": "Was gelöscht werden soll, zum Beispiel Konto, Gesprächsverlauf oder Kundendatensatz.",
+      "requestTitle": "Antrag senden",
+      "requestBody": "Es gibt auf dieser Seite kein Selbstlöschen eines Unternehmens. Schreiben Sie an {{email}} oder rufen Sie {{phone}} an. Betreff: „ValueOR data deletion request“.",
+      "requestCta": "Löschantrag per E-Mail",
+      "emailLabel": "E-Mail",
+      "emailSubject": "ValueOR data deletion request",
+      "afterTitle": "Was danach geschieht",
+      "afterBody": "ValueOR prüft den Antrag manuell und kann weitere Angaben verlangen, um ihn einem Konto oder Unternehmen zuzuordnen. Das Produkt löscht nicht automatisch und setzt keine Frist in Tagen. Daten können bleiben, wenn ein rechtlicher, sicherheitsbezogener oder finanzieller Grund das verlangt. Die genaue Liste ist in der Software nicht festgelegt und braucht eine Bestätigung des Inhabers. Daten, die nur Meta, ein Zahlungsanbieter oder ein E-Mail-Host speichert, löscht diese Seite nicht.",
+      "controllerTitle": "Wenn das Unternehmen verantwortlich ist",
+      "controllerBody": "Wenn ein ValueOR-Kunde für Ihre Daten verantwortlich ist, kann ValueOR dessen Bestätigung brauchen oder Sie an dieses Unternehmen verweisen.",
+      "relatedTitle": "Weitere Seiten",
+      "relatedBody": "Löschanträge stehen im Zusammenhang mit unserer"
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen von ValueOR",
+      "agreementTitle": "Vereinbarung",
+      "agreementBody": "Diese Bedingungen gelten für die Nutzung von ValueOR. Wenn Sie ein Konto anlegen oder die Software nutzen, tun Sie das für sich und, falls zutreffend, für das Unternehmen, das Sie vertreten.",
+      "serviceTitle": "Der Dienst",
+      "serviceBody": "Je nach Paket und Einrichtung kann ValueOR umfassen:",
+      "serviceCrm": "CRM für Kunden, Tickets, Leads, Chancen, Angebote, Rechnungen und Aufgaben.",
+      "serviceMessaging": "WhatsApp, Instagram, Messenger, E-Mail und SMS, soweit der Anbieter erreichbar ist und das Unternehmen die Einrichtung abschließt.",
+      "serviceAi": "Optionale KI-Funktionen, die Inhalte verarbeiten, die das Unternehmen bereitstellt. Ergebnisse können falsch sein und ersetzen keine Prüfung durch das Unternehmen.",
+      "serviceBooking": "Termine und Buchungen, wenn das Unternehmen sie einschaltet.",
+      "serviceOrg": "Filialen, Rollen und Berechtigungen.",
+      "serviceBilling": "Abonnement, Kasse, Rechnungen und die Sperre des Zugangs, wenn eine Zahlung ausbleibt.",
+      "subscriptionTitle": "Abonnement und Zahlung",
+      "subscriptionBody": "ValueOR wird als Abonnement angeboten, soweit kein kostenloses Paket oder eine genehmigte Testphase gilt.",
+      "subscriptionPlans": "Paket und Abrechnungszeitraum gelten für das Unternehmen. Der zahlbare Betrag wird serverseitig bestimmt.",
+      "subscriptionRenew": "Berechtigte Nutzer können über die Abrechnungsseiten und die eingerichteten Zahlungswege zahlen.",
+      "subscriptionLock": "Wenn ein Abonnement endet, kann der Arbeitsbereich für normale Nutzer gesperrt werden. Zahlungsberechtigte Administratoren können die Verlängerung weiter erreichen.",
+      "subscriptionRestore": "Nach einer bestätigten Zahlung wird der Zugang nach den Abrechnungssystemen wiederhergestellt. Andere Sperren können ein Eingreifen des Betreibers brauchen.",
+      "accountsTitle": "Konten",
+      "accountsBody": "Sie sind für richtige Kontodaten, den Schutz der Zugangsdaten und die Daten verantwortlich, die Sie eingeben. Wer Nachrichten an Kontakte sendet, ist für die dafür nötigen Einwilligungen und für die Regeln von Meta, WhatsApp, Instagram, E-Mail und SMS verantwortlich.",
+      "accessTitle": "Rollen und Unternehmensgrenzen",
+      "accessBody": "Der Zugriff innerhalb eines Unternehmens folgt Rollen und Berechtigungen. Der Zugriff auf Daten eines anderen Unternehmens ist nicht erlaubt. Funktionen können vom Paket abhängen.",
+      "customerDataTitle": "Kundendaten",
+      "customerDataBody": "Zwischen Ihnen und ValueOR bleiben die von Ihnen eingegebenen Inhalte bei Ihrem Unternehmen. ValueOR verarbeitet sie, um das Produkt zu betreiben.",
+      "integrationsTitle": "Nachrichten und Dritte",
+      "integrationsBody": "WhatsApp, Instagram, Messenger, E-Mail, SMS und Zahlungsdienste stammen von diesen Anbietern. Deren Ausfälle, Regeln und Kontosperren liegen nicht bei ValueOR.",
+      "acceptableTitle": "Zulässige Nutzung",
+      "acceptableBody": "Unbefugter Zugriff, Störungen, Spam, unzulässiges Auslesen von Daten und ein Verstoß gegen Kanalregeln sind nicht erlaubt. Der Zugang kann gesperrt werden, wenn diese Bedingungen, ein Abonnement oder das Gesetz verletzt werden.",
+      "availabilityTitle": "Verfügbarkeit",
+      "availabilityBody": "Der Dienst kann durch Hosting, Datenbank oder Kanäle Dritter unterbrochen werden. Funktionen können sich ändern. Diese Bedingungen können auf dieser Seite aktualisiert werden. Eine Verfügbarkeit in Prozent wird nicht zugesagt.",
+      "liabilityTitle": "Haftung",
+      "liabilityBody": "ValueOR wird so bereitgestellt, wie die Software derzeit arbeitet. Diese Seite ist keine anwaltlich geprüfte Gewährleistung und keine Haftungsgrenze. Diese Formulierung braucht eine rechtliche Bestätigung, bevor sie als endgültig gilt.",
+      "privacyTitle": "Datenschutz",
+      "privacyBody": "Der Umgang mit personenbezogenen Daten ist beschrieben in",
+      "privacyAnd": "und",
+      "changesTitle": "Änderungen",
+      "changesBody": "Bei einer Änderung wird diese Seite aktualisiert.",
+      "contactTitle": "Kontakt",
+      "contactBody": "Fragen zu diesen Bedingungen senden Sie an {{email}} oder {{phone}}."
+    }
+  },
+  "pages": {
+    "accessDenied": {
+      "superAdminRequired": "Dafür ist ein Plattform-Superadministrator erforderlich."
+    }
+  },
+  "platformAdmin": {
+    "openCompany": "Unternehmen öffnen",
+    "banner": "Sie verwalten {{company}} als Plattformadministrator. Ihr eigenes Konto bleibt unverändert.",
+    "exit": "Zurück zur Plattform",
+    "subdomain": "Subdomain",
+    "deniedTitle": "Dieser Unternehmensbereich ist für dieses Konto nicht verfügbar",
+    "deniedBody": "Der Hostname passt nicht zu Ihrem Unternehmen, oder das Unternehmen ist nicht aktiv. Die Plattformverwaltung bleibt auf dem App-Host.",
+    "unknownHost": "Kein Unternehmen verwendet diesen Hostnamen.",
+    "inactive": "Dieses Unternehmen ist nicht aktiv.",
+    "forbidden": "Dieses Konto gehört nicht zum Unternehmen dieses Hostnamens."
+  }
+}

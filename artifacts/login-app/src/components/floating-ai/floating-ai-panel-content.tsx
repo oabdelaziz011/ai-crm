@@ -36,6 +36,7 @@ import { FloatingAiComposer } from "./floating-ai-composer";
 import { ActionConfirmationDialog } from "./action-confirmation-dialog";
 import { AgentWorkflowPanel } from "./agent-workflow-panel";
 import { AI_PANEL_SIZE_DIMENSIONS } from "@/lib/floating-ai/types";
+import { resolveFloatingSendErrorMessage } from "@/hooks/ai-chat/customer-facing-send-error";
 
 type FloatingAiPanelContentProps = {
   layout: "floating" | "sheet" | "drawer";
@@ -102,8 +103,11 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
       return t("dashboard.ai.errors.providerNotConfigured");
     }
     if (sendError === "web_chat_channel_missing") return t("dashboard.ai.errors.webChatChannelMissing");
-    if (sendError === "channel_route_failed") return t("dashboard.ai.errors.channelRouteFailed");
-    if (sendError) return t("dashboard.ai.errors.runtimeFailed", { detail: sendError });
+    const resolved = resolveFloatingSendErrorMessage(sendError, {
+      channelRouteFailed: t("dashboard.ai.errors.channelRouteFailed"),
+      runtimeFailed: (detail) => t("dashboard.ai.errors.runtimeFailed", { detail }),
+    });
+    if (resolved) return resolved;
     if (showPlatformAdminCta) {
       if (runtimeConfig?.errorCode === "AI_PROVIDER_UNAVAILABLE") {
         return t("dashboard.ai.errors.providerUnavailable");

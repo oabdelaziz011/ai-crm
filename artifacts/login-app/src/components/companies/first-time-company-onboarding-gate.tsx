@@ -18,9 +18,15 @@ import {
   wasCompanyOnboardingJustCompleted,
   type CompanyOnboardingValues,
 } from "@/lib/companies/onboarding";
+import { supabase } from "@/lib/supabase";
 import { persistPreferredLanguage } from "@/lib/i18n/persist-preferred-language";
 import { resolveBootstrapAppLanguage } from "@/lib/i18n/resolve-app-language";
 import { isPublicUnauthenticatedPath, RESET_PASSWORD_PATH } from "@/lib/auth-redirect";
+import {
+  clearPendingOnboardingBranches,
+  loadPendingOnboardingBranches,
+} from "@/lib/companies/onboarding/branch-draft-storage";
+import { saveOnboardingBranches } from "@/lib/companies/onboarding/save-onboarding-branches";
 
 /**
  * Only for users who signed up but never got a company (e.g. email-confirm path).
@@ -126,6 +132,23 @@ export function FirstTimeCompanyOnboardingGate({
             companyId: result.companyId,
             companyName: result.company?.name ?? pending.name,
           });
+          const drafts = loadPendingOnboardingBranches();
+          if (drafts?.length) {
+            try {
+              await saveOnboardingBranches({
+                companyId: result.companyId,
+                drafts,
+                timezone: pending.timezone || "UTC",
+                city: pending.city || "",
+                country: pending.country || "",
+              });
+              clearPendingOnboardingBranches();
+            } catch {
+              toast({
+                title: t("auth.register.branches.saveFailed"),
+              });
+            }
+          }
           clearPendingCompanyOnboarding();
           clearAwaitingCompanyMembership();
           markCompanyOnboardingCompleted();
@@ -139,6 +162,31 @@ export function FirstTimeCompanyOnboardingGate({
         } catch (error) {
           const message = error instanceof Error ? error.message : "";
           if (message === "company_already_assigned") {
+            const drafts = loadPendingOnboardingBranches();
+            if (drafts?.length && user?.id) {
+              const { data: row } = await supabase
+                .from("profiles")
+                .select("company_id, timezone")
+                .eq("id", user.id)
+                .maybeSingle();
+              const companyId = row?.company_id;
+              if (companyId) {
+                try {
+                  await saveOnboardingBranches({
+                    companyId,
+                    drafts,
+                    timezone: row.timezone || pending.timezone || "UTC",
+                    city: pending.city || "",
+                    country: pending.country || "",
+                  });
+                  clearPendingOnboardingBranches();
+                } catch {
+                  toast({
+                    title: t("auth.register.branches.saveFailed"),
+                  });
+                }
+              }
+            }
             clearPendingCompanyOnboarding();
             clearAwaitingCompanyMembership();
             markCompanyOnboardingCompleted();

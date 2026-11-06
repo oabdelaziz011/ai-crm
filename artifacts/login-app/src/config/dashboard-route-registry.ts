@@ -521,6 +521,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.companies",
     icon: Building2,
     permission: "companies.view",
+    superAdminOnly: true,
     Page: lazyNamed(() => import("@/pages/companies"), "CompaniesPage"),
   },
   {

@@ -21,6 +21,8 @@ import {
 } from "@/hooks/notifications/use-inbound-channel-alerts";
 import { preloadLikelyNextRoute } from "@/lib/bundle/route-preloaders";
 import { sectionIdFromNestedPath } from "@/config/dashboard-route-registry";
+import { PlatformAdminBanner } from "@/components/platform/platform-admin-banner";
+import { TenantHostGate } from "@/components/platform/tenant-host-gate";
 
 const FloatingAiAssistant = lazy(() =>
   import("@/components/floating-ai/floating-ai-assistant").then((m) => ({
@@ -108,7 +110,8 @@ function DashboardLayoutInner({ children }: DashboardLayoutProps) {
                 : "relative min-w-0 flex-1 overflow-y-auto focus:outline-none"
             }
           >
-            {children}
+            <PlatformAdminBanner />
+            <TenantHostGate>{children}</TenantHostGate>
           </main>
         </div>
       </div>

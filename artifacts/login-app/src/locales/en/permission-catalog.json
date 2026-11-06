@@ -82,7 +82,7 @@
     },
     "webPresence": {
       "icon": "🌐",
-      "order": 47,
+      "order": 141,
       "label": "Web Presence"
     },
     "email": {
@@ -219,6 +219,11 @@
       "icon": "📊",
       "order": 46,
       "label": "Executive"
+    },
+    "webPresence": {
+      "icon": "🌐",
+      "order": 47,
+      "label": "Web Presence"
     }
   },
   "codes": {
@@ -728,8 +733,8 @@
       "group": "customers"
     },
     "customers.import": {
-      "name": "Import Customers (CRM Agent)",
-      "description": "Allows CRM agent bulk import tools. Implies customers.create for RLS when used via agent tools.",
+      "name": "Import Customers",
+      "description": "Allows CRM customer import from CSV/XLSX and CRM agent bulk import tools. Implies customers.create for RLS when used via agent tools.",
       "group": "customers"
     },
     "customers.merge": {
@@ -1544,12 +1549,12 @@
     },
     "web_presence.manage": {
       "name": "Manage Web Presence",
-      "description": "Configure the Business Page and Web Chat widget settings.",
+      "description": "Configure the company web presence portal and public Live Chat widget.",
       "group": "webPresence"
     },
     "web_presence.view": {
       "name": "View Web Presence",
-      "description": "View the Business Page and Web Chat widget configuration.",
+      "description": "Open Live Chat conversations from the public web widget. Conversation visibility still follows View All or View Assigned.",
       "group": "webPresence"
     },
     "whatsapp.run": {
@@ -1571,6 +1576,16 @@
       "name": "Read Workflow",
       "description": "View workflow executions.",
       "group": "automation"
+    },
+    "web_presence.manage": {
+      "name": "Manage Web Presence",
+      "description": "Configure the Business Page and Web Chat widget settings.",
+      "group": "webPresence"
+    },
+    "web_presence.view": {
+      "name": "View Web Presence",
+      "description": "View the Business Page and Web Chat widget configuration.",
+      "group": "webPresence"
     },
     "workspace.view": {
       "name": "Access Workspace",

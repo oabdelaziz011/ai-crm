@@ -170,6 +170,11 @@ export const LOOKUP_ENTITY_REGISTRY: LookupEntityDefinition[] = [
           { value: "inactive", labelKey: "lookups.filters.inactive" },
         ],
       },
+      {
+        id: "ids",
+        labelKey: "lookups.filters.includedBranches",
+        type: "text",
+      },
     ],
   },
   {

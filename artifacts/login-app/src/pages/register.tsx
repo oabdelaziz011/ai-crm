@@ -16,6 +16,7 @@ import { AUTH_CONTROL_CLASS } from "@/lib/auth/auth-field-styles";
 import { resolveAuthErrorKey } from "@/lib/auth-errors";
 import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
 import { CompanyAcquisitionSourceField } from "@/components/companies/company-acquisition-source-field";
+import { OnboardingBranchesStep } from "@/components/companies/onboarding-branches-step";
 import { OnboardingPhoneField } from "@/components/companies/onboarding-phone-field";
 import { persistPreferredLanguage } from "@/lib/i18n/persist-preferred-language";
 import { isAppLanguage } from "@/lib/i18n/resolve-app-language";
@@ -49,19 +50,34 @@ import {
 } from "@/lib/companies/geo";
 import { PROFILE_TIMEZONE_OPTIONS } from "@/lib/profile-timezones";
 import { cn } from "@/lib/utils";
+import {
+  createBranchDraft,
+  validateBranchDrafts,
+  type BranchDraft,
+} from "@/lib/companies/onboarding/branch-draft";
+import {
+  clearPendingOnboardingBranches,
+  loadPendingOnboardingBranches,
+  savePendingOnboardingBranches,
+} from "@/lib/companies/onboarding/branch-draft-storage";
+import { saveOnboardingBranches } from "@/lib/companies/onboarding/save-onboarding-branches";
+import { composePersonName, validatePersonNameParts } from "@/lib/profile/person-name";
 
-type RegisterStepId = "account" | "company" | "business" | "plan" | "review";
+type RegisterStepId = "account" | "company" | "business" | "branches" | "plan" | "review";
 
 const REGISTER_STEPS: readonly RegisterStepId[] = [
   "account",
   "company",
   "business",
+  "branches",
   "plan",
   "review",
 ] as const;
 
 type AccountDraft = {
-  fullName: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   jobTitle: string;
   email: string;
   password: string;
@@ -69,7 +85,7 @@ type AccountDraft = {
   phoneRegion: string;
 };
 
-type AccountFieldErrors = Partial<Record<keyof AccountDraft | "phoneRegion", string>>;
+type AccountFieldErrors = Partial<Record<keyof AccountDraft | "phoneRegion" | "fullName", string>>;
 
 function RequiredMark() {
   return <span className="text-destructive"> *</span>;
@@ -98,7 +114,9 @@ function ownerJobTitleLabel(
 }
 
 const REGISTER_FIELD_IDS: Record<string, string> = {
-  fullName: "reg-full-name",
+  firstName: "reg-first-name",
+  middleName: "reg-middle-name",
+  lastName: "reg-last-name",
   jobTitle: "reg-job-title",
   email: "reg-email",
   password: "reg-password",
@@ -130,8 +148,9 @@ function scrollToFirstError(fieldKey: string | undefined) {
 const MIN_PASSWORD_LENGTH = 6;
 
 function validateAccountStep(account: AccountDraft): AccountFieldErrors {
-  const errors: AccountFieldErrors = {};
-  if (!account.fullName.trim()) errors.fullName = "required";
+  const errors: AccountFieldErrors = {
+    ...validatePersonNameParts(account),
+  };
   if (!account.jobTitle.trim()) errors.jobTitle = "required";
   const phoneCheck = validateOnboardingPhoneInput({
     phone: account.phone,
@@ -155,7 +174,7 @@ function isAccountStepValid(account: AccountDraft): boolean {
 }
 
 function accountErrorMessage(
-  field: keyof AccountDraft,
+  field: keyof AccountDraft | "fullName",
   code: string | undefined,
   translate: (key: string, options?: Record<string, string>) => string,
 ): string | undefined {
@@ -191,6 +210,12 @@ function accountErrorMessage(
       defaultValue: translate("companyOnboarding.validation.required"),
     });
   }
+  if (field === "firstName" || field === "middleName" || field === "lastName" || field === "fullName") {
+    if (code === "tooLong") return translate("auth.validation.nameTooLong");
+    if (field === "firstName") return translate("auth.validation.firstName");
+    if (field === "middleName") return translate("auth.validation.middleName");
+    if (field === "lastName") return translate("auth.validation.lastName");
+  }
   return translate(`companyOnboarding.validation.${code}`, { defaultValue: code });
 }
 
@@ -198,7 +223,20 @@ function syncFromAccount(
   values: CompanyOnboardingValues,
   account: AccountDraft,
 ): CompanyOnboardingValues {
-  return syncOwnerFromAccount(values, account, splitFullName, buildOwnerDisplayName);
+  return syncOwnerFromAccount(
+    values,
+    {
+      firstName: account.firstName,
+      middleName: account.middleName,
+      lastName: account.lastName,
+      email: account.email,
+      phone: account.phone,
+      phoneRegion: account.phoneRegion,
+      jobTitle: account.jobTitle,
+    },
+    splitFullName,
+    buildOwnerDisplayName,
+  );
 }
 
 export default function Register() {
@@ -213,7 +251,9 @@ export default function Register() {
   const { data: plans = [] } = usePlans();
   const submittingRef = useRef(false);
   const accountRef = useRef<AccountDraft>({
-    fullName: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     jobTitle: "Owner",
     email: "",
     password: "",
@@ -223,7 +263,9 @@ export default function Register() {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [account, setAccount] = useState<AccountDraft>({
-    fullName: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     jobTitle: "Owner",
     email: "",
     password: "",
@@ -238,6 +280,12 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState<CompanyOnboardingFieldErrors>({});
   const [rootError, setRootError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [branchDrafts, setBranchDrafts] = useState<BranchDraft[]>(
+    () => loadPendingOnboardingBranches() ?? [],
+  );
+  const [branchErrors, setBranchErrors] = useState<
+    Record<string, Partial<Record<"name" | "address" | "locationUrl" | "hours", "required" | "invalidUrl" | "invalidHours" | "duplicateName">>>
+  >({});
 
   accountRef.current = account;
   const accountValid = isAccountStepValid(account);
@@ -326,6 +374,27 @@ export default function Register() {
         scrollToFirstError(Object.keys(errors)[0]);
         return;
       }
+      if (step === "business") {
+        setBranchDrafts((current) => {
+          if (current.some((draft) => draft.isMain)) return current;
+          const seeded = [
+            createBranchDraft({
+              isMain: true,
+              name: values.name.trim(),
+              address: values.address.trim(),
+            }),
+          ];
+          savePendingOnboardingBranches(seeded);
+          return seeded;
+        });
+      }
+    }
+
+    if (step === "branches") {
+      const result = validateBranchDrafts(branchDrafts);
+      setBranchErrors(result.byId);
+      if (!result.ok) return;
+      savePendingOnboardingBranches(branchDrafts);
     }
 
     setStepIndex((index) => Math.min(REGISTER_STEPS.length - 1, index + 1));
@@ -342,6 +411,13 @@ export default function Register() {
       if (Object.keys(accountCheck).length > 0) {
         setStepIndex(0);
         scrollToFirstError(Object.keys(accountCheck)[0]);
+        return;
+      }
+
+      const branchCheck = validateBranchDrafts(branchDrafts);
+      if (!branchCheck.ok) {
+        setBranchErrors(branchCheck.byId);
+        setStepIndex(REGISTER_STEPS.indexOf("branches"));
         return;
       }
 
@@ -372,7 +448,10 @@ export default function Register() {
         accountRef.current.email.trim(),
         accountRef.current.password,
         {
-          fullName: accountRef.current.fullName.trim(),
+          fullName: composePersonName(accountRef.current),
+          firstName: accountRef.current.firstName.trim(),
+          middleName: accountRef.current.middleName.trim(),
+          lastName: accountRef.current.lastName.trim(),
           jobTitle: accountRef.current.jobTitle.trim() || "Owner",
           phone: accountPhoneE164 || synced.ownerPhone.trim() || undefined,
           preferredLanguage: i18n.language,
@@ -441,6 +520,20 @@ export default function Register() {
           companyId: onboardResult.companyId,
           companyName: onboardResult.company?.name ?? payload.name,
         });
+        try {
+          await saveOnboardingBranches({
+            companyId: onboardResult.companyId,
+            drafts: branchDrafts,
+            timezone: synced.timezone,
+            city: synced.city,
+            country: synced.country,
+          });
+          clearPendingOnboardingBranches();
+        } catch {
+          setStepIndex(REGISTER_STEPS.indexOf("branches"));
+          setRootError(t("auth.register.branches.saveFailed"));
+          return;
+        }
         clearPendingCompanyOnboarding();
         clearAwaitingCompanyMembership();
         markCompanyOnboardingCompleted();
@@ -458,6 +551,23 @@ export default function Register() {
             ? onboardError.message
             : t("companyOnboarding.errors.generic");
         if (message === "company_already_assigned") {
+          const existingCompanyId = profile?.company_id;
+          if (existingCompanyId && branchDrafts.length > 0) {
+            try {
+              await saveOnboardingBranches({
+                companyId: existingCompanyId,
+                drafts: branchDrafts,
+                timezone: synced.timezone,
+                city: synced.city,
+                country: synced.country,
+              });
+              clearPendingOnboardingBranches();
+            } catch {
+              setStepIndex(REGISTER_STEPS.indexOf("branches"));
+              setRootError(t("auth.register.branches.saveFailed"));
+              return;
+            }
+          }
           clearPendingCompanyOnboarding();
           clearAwaitingCompanyMembership();
           markCompanyOnboardingCompleted();
@@ -579,32 +689,39 @@ export default function Register() {
             }}
             noValidate
           >
-            <div className="md:col-span-2">
-              <Label htmlFor="reg-full-name">
-                {t("auth.register.fullName")}
-                <RequiredMark />
-              </Label>
-              <Input
-                id="reg-full-name"
-                className={cn(
-                  "mt-1.5",
-                  AUTH_CONTROL_CLASS,
-                  accountErrors.fullName && "border-destructive focus-visible:ring-destructive/40",
-                )}
-                value={account.fullName}
-                onChange={(event) => patchAccount({ fullName: event.target.value })}
-                onBlur={() => validateAccountField("fullName")}
-                placeholder={t("auth.placeholders.fullName", { defaultValue: "Ahmed Hassan" })}
-                aria-invalid={Boolean(accountErrors.fullName)}
-              />
-              <FieldError
-                message={
-                  accountErrors.fullName
-                    ? accountErrorMessage("fullName", accountErrors.fullName, t)
-                    : undefined
-                }
-              />
-            </div>
+            {(["firstName", "middleName", "lastName"] as const).map((field) => (
+              <div key={field}>
+                <Label htmlFor={REGISTER_FIELD_IDS[field]}>
+                  {t(`auth.register.${field}`)}
+                  <RequiredMark />
+                </Label>
+                <Input
+                  id={REGISTER_FIELD_IDS[field]}
+                  className={cn(
+                    "mt-1.5",
+                    AUTH_CONTROL_CLASS,
+                    accountErrors[field] && "border-destructive focus-visible:ring-destructive/40",
+                  )}
+                  value={account[field]}
+                  onChange={(event) => patchAccount({ [field]: event.target.value })}
+                  onBlur={() => validateAccountField(field)}
+                  autoComplete={field === "firstName" ? "given-name" : field === "lastName" ? "family-name" : "additional-name"}
+                  aria-invalid={Boolean(accountErrors[field])}
+                />
+                <FieldError
+                  message={
+                    accountErrors[field]
+                      ? accountErrorMessage(field, accountErrors[field], t)
+                      : undefined
+                  }
+                />
+              </div>
+            ))}
+            {accountErrors.fullName ? (
+              <div className="md:col-span-2">
+                <FieldError message={accountErrorMessage("fullName", accountErrors.fullName, t)} />
+              </div>
+            ) : null}
             <div>
               <Label htmlFor="reg-job-title">
                 {t("auth.register.ownerJobTitle")}
@@ -1100,6 +1217,18 @@ export default function Register() {
           </div>
         ) : null}
 
+        {step === "branches" ? (
+          <OnboardingBranchesStep
+            drafts={branchDrafts}
+            errors={branchErrors}
+            onChange={(next) => {
+              setBranchDrafts(next);
+              savePendingOnboardingBranches(next);
+              setBranchErrors({});
+            }}
+          />
+        ) : null}
+
         {step === "plan" ? (
           <div className="rounded-2xl border border-border/70 bg-muted/10 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1159,7 +1288,10 @@ export default function Register() {
                 {
                   id: "account" as const,
                   rows: [
-                    ["fullName", account.fullName],
+                    ["firstName", account.firstName],
+                    ["middleName", account.middleName],
+                    ["lastName", account.lastName],
+                    ["displayName", composePersonName(account)],
                     ["ownerJobTitle", ownerJobTitleLabel(account.jobTitle, t)],
                     ["identity", account.email],
                     ["ownerPhone", account.phone],
@@ -1270,6 +1402,38 @@ export default function Register() {
                 </dl>
               </section>
             ))}
+            <section className="rounded-2xl border border-border/70 bg-background">
+              <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+                <h4 className="text-sm font-semibold text-foreground">
+                  {t("auth.register.review.branches")}
+                </h4>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => goToStep("branches")}
+                  disabled={isSubmitting}
+                >
+                  {t("companyOnboarding.review.edit")}
+                </Button>
+              </div>
+              <dl className="grid grid-cols-1 gap-3 px-4 py-4">
+                {branchDrafts.map((draft) => (
+                  <div key={draft.clientId}>
+                    <dt className="text-xs text-muted-foreground">
+                      {draft.isMain
+                        ? t("auth.register.branches.mainTitle")
+                        : t("auth.register.branches.extraTitle")}
+                    </dt>
+                    <dd className="mt-1 break-words text-sm font-medium text-foreground">
+                      {draft.name} — {draft.address}
+                      <br />
+                      {draft.locationUrl}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           </div>
         ) : null}
       </div>

@@ -82,8 +82,8 @@
     },
     "webPresence": {
       "icon": "🌐",
-      "order": 47,
-      "label": "الحضور الرقمي"
+      "order": 141,
+      "label": "الحضور على الويب"
     },
     "email": {
       "icon": "✉️",
@@ -219,6 +219,11 @@
       "icon": "📊",
       "order": 46,
       "label": "التنفيذي"
+    },
+    "webPresence": {
+      "icon": "🌐",
+      "order": 47,
+      "label": "الحضور الرقمي"
     }
   },
   "codes": {
@@ -728,8 +733,8 @@
       "group": "customers"
     },
     "customers.import": {
-      "name": "استيراد العملاء (وكيل CRM)",
-      "description": "يسمح بأدوات الاستيراد الجماعي عبر وكيل CRM. يعادل customers.create على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "name": "استيراد العملاء",
+      "description": "يسمح باستيراد العملاء من CSV/XLSX وأدوات الاستيراد الجماعي عبر وكيل CRM. يعادل customers.create على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
       "group": "customers"
     },
     "customers.merge": {
@@ -1543,13 +1548,13 @@
       "group": "aiPlatform"
     },
     "web_presence.manage": {
-      "name": "إدارة الحضور الرقمي",
-      "description": "ضبط إعدادات صفحة النشاط التجاري وأداة الدردشة على الموقع.",
+      "name": "إدارة الحضور على الويب",
+      "description": "تهيئة بوابة حضور الشركة على الويب وأداة الدردشة المباشرة العامة.",
       "group": "webPresence"
     },
     "web_presence.view": {
-      "name": "عرض الحضور الرقمي",
-      "description": "عرض إعدادات صفحة النشاط التجاري وأداة الدردشة على الموقع.",
+      "name": "عرض الحضور على الويب",
+      "description": "فتح محادثات الدردشة المباشرة من أداة الويب العامة. ظهور المحادثات ما زال يتبع عرض الكل أو عرض المعيَّن.",
       "group": "webPresence"
     },
     "whatsapp.run": {
@@ -1571,6 +1576,16 @@
       "name": "عرض تنفيذات سير العمل",
       "description": "عرض تنفيذات سير العمل.",
       "group": "automation"
+    },
+    "web_presence.manage": {
+      "name": "إدارة الحضور الرقمي",
+      "description": "ضبط إعدادات صفحة النشاط التجاري وأداة الدردشة على الموقع.",
+      "group": "webPresence"
+    },
+    "web_presence.view": {
+      "name": "عرض الحضور الرقمي",
+      "description": "عرض إعدادات صفحة النشاط التجاري وأداة الدردشة على الموقع.",
+      "group": "webPresence"
     },
     "workspace.view": {
       "name": "الوصول إلى بيئة العمل",

@@ -1,13 +1,13 @@
 export const LANGUAGE_STORAGE_KEY = "app.language";
 
-export const SUPPORTED_APP_LANGUAGES = ["en", "ar"] as const;
+export const SUPPORTED_APP_LANGUAGES = ["en", "ar", "de"] as const;
 
 export type AppLanguage = (typeof SUPPORTED_APP_LANGUAGES)[number];
 
 export const DEFAULT_APP_LANGUAGE: AppLanguage = "ar";
 
 export function isAppLanguage(value: string | null | undefined): value is AppLanguage {
-  return value === "en" || value === "ar";
+  return value === "en" || value === "ar" || value === "de";
 }
 
 export function readCachedAppLanguage(): AppLanguage | null {
@@ -28,6 +28,9 @@ export function readBrowserAppLanguage(): AppLanguage | null {
   }
   if (primary.startsWith("en")) {
     return "en";
+  }
+  if (primary.startsWith("de")) {
+    return "de";
   }
   return null;
 }

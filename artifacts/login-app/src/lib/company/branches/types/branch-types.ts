@@ -30,6 +30,7 @@ export type BranchFormValues = {
   name: string;
   code: string;
   address: string;
+  locationUrl: string;
   city: string;
   state: string;
   country: string;

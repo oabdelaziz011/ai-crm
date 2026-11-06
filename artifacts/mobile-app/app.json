@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "ValueOR",
+    "slug": "valueor",
+    "owner": "omarabdelazizs-team",
+    "extra": {
+      "eas": {
+        "projectId": "1f249759-6e18-499f-a046-e652a8524cfd"
+      }
+    }
+  }
+}

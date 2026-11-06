@@ -4,6 +4,7 @@
  */
 
 export const VALUEOR_ENV_LOCAL = "local";
+export const VALUEOR_ENV_STAGING = "staging";
 export const VALUEOR_ENV_PRODUCTION = "production";
 
 /** Keys that must never be written into Vite / login-app/.env.local */
@@ -74,6 +75,9 @@ export function resolveValueorEnv(raw = process.env.VALUEOR_ENV) {
   if (value === VALUEOR_ENV_PRODUCTION || value === "prod") {
     return VALUEOR_ENV_PRODUCTION;
   }
+  if (value === VALUEOR_ENV_STAGING || value === "stage") {
+    return VALUEOR_ENV_STAGING;
+  }
   if (value === VALUEOR_ENV_LOCAL || value === "localstack" || value === "development") {
     return VALUEOR_ENV_LOCAL;
   }
@@ -140,6 +144,27 @@ export function isLocalDatabaseUrl(url) {
   return LOCAL_DB_HOST_RE.test(url);
 }
 
+function isLocalListenerUrl(url) {
+  try {
+    const parsed = new URL(String(url).trim());
+    const host = parsed.hostname.toLowerCase();
+    return parsed.protocol === "http:" && (host === "127.0.0.1" || host === "localhost");
+  } catch {
+    return false;
+  }
+}
+
+function isSafeStagingDeviceUrl(url) {
+  if (!String(url ?? "").startsWith("https://")) return false;
+  if (isProductionPublicHost(url) || isProductionWebhookUrl(url)) return false;
+  try {
+    const host = new URL(String(url).trim()).hostname.toLowerCase();
+    return host !== "localhost" && host !== "127.0.0.1" && host !== "::1" && host !== "0.0.0.0";
+  } catch {
+    return false;
+  }
+}
+
 function normalizeOrigin(url) {
   return url.trim().replace(/\/+$/, "").toLowerCase();
 }
@@ -147,6 +172,108 @@ function normalizeOrigin(url) {
 /**
  * Fail-fast local-mode safety checks. Never prints secret values.
  */
+const PRODUCTION_PUBLIC_HOSTS = new Set(["api.valueor.org", "app.valueor.org", "webhook.valueor.org"]);
+
+export function isProductionPublicHost(url) {
+  if (!url?.trim()) return false;
+  try {
+    return PRODUCTION_PUBLIC_HOSTS.has(new URL(url.trim()).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Staging must be its own hosted project. It must not reuse Production or a loopback database.
+ * Error text names the failing key and does not print secret values.
+ */
+export function assertStagingEnvironmentSafety(env) {
+  const mode = resolveValueorEnv(env.VALUEOR_ENV);
+  if (mode !== VALUEOR_ENV_STAGING) return;
+
+  const offenders = [];
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const listenUrl = env.VITE_API_SERVER_URL || env.API_URL;
+  const deviceUrl = env.EXPO_PUBLIC_API_URL;
+
+  if (!supabaseUrl?.trim() || isLocalSupabaseUrl(supabaseUrl) || !isProductionSupabaseUrl(supabaseUrl)) {
+    offenders.push("SUPABASE_URL (staging requires its own hosted Supabase project)");
+  } else if (isRecordedProductionSupabaseUrl(supabaseUrl)) {
+    offenders.push("SUPABASE_URL (recorded Production project)");
+  }
+  if (env.DATABASE_URL && (isLocalDatabaseUrl(env.DATABASE_URL) || isRecordedProductionDatabaseUrl(env.DATABASE_URL))) {
+    offenders.push("DATABASE_URL (local or recorded Production database)");
+  }
+  if (listenUrl?.trim() && !isLocalListenerUrl(listenUrl) && !isSafeStagingDeviceUrl(listenUrl)) {
+    offenders.push("VITE_API_SERVER_URL (use the local listener or a non-Production HTTPS tunnel)");
+  }
+  if (deviceUrl?.trim() && !isSafeStagingDeviceUrl(deviceUrl)) {
+    offenders.push("EXPO_PUBLIC_API_URL (device URL must be the temporary HTTPS tunnel, not Production or loopback)");
+  }
+  for (const key of ["WEBHOOK_BASE_URL", "VITE_WEBHOOK_BASE_URL", "PUBLIC_WEBHOOK_BASE_URL"]) {
+    if (isProductionWebhookUrl(env[key]) || isProductionPublicHost(env[key])) {
+      offenders.push(`${key} (Production webhook)`);
+    }
+  }
+  if (!env.SESSION_SECRET?.trim() || env.SESSION_SECRET === "dev-secret-change-me") {
+    offenders.push("SESSION_SECRET (missing or development placeholder)");
+  }
+  if (!env.INTERNAL_API_KEY?.trim() || env.INTERNAL_API_KEY === "dev-internal-api-key") {
+    offenders.push("INTERNAL_API_KEY (missing or development placeholder)");
+  }
+  if (!env.SUPABASE_SERVICE_ROLE_KEY?.trim() && !env.SUPABASE_SECRET_KEY?.trim()) {
+    offenders.push("SUPABASE_SERVICE_ROLE_KEY (required on the server, never in the mobile app)");
+  }
+
+  if (offenders.length > 0) {
+    throw new Error(
+      [
+        "STAGING ENVIRONMENT SAFETY CHECK FAILED",
+        "VALUEOR_ENV=staging cannot use the Production project, the Production API, or the local database.",
+        "Offending configuration:",
+        ...offenders.map((item) => `  - ${item}`),
+        "",
+        "Create .env.staging from .env.staging.example after the staging project exists.",
+      ].join("\n"),
+    );
+  }
+}
+
+/**
+ * Production keeps the recorded Production project. Another hosted project is a staging credential
+ * and must not be accepted. This does not change the existing local checks.
+ */
+export function assertProductionEnvironmentSafety(env) {
+  const mode = resolveValueorEnv(env.VALUEOR_ENV);
+  if (mode !== VALUEOR_ENV_PRODUCTION) return;
+
+  const offenders = [];
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  if (supabaseUrl?.trim() && !isRecordedProductionSupabaseUrl(supabaseUrl)) {
+    offenders.push("SUPABASE_URL (not the recorded Production project)");
+  }
+  if (isLocalDatabaseUrl(env.DATABASE_URL)) {
+    offenders.push("DATABASE_URL (local database)");
+  } else if (env.DATABASE_URL?.trim() && /postgres\.[a-z0-9]+\b/i.test(env.DATABASE_URL) && !isRecordedProductionDatabaseUrl(env.DATABASE_URL)) {
+    offenders.push("DATABASE_URL (different hosted project)");
+  }
+  const apiUrl = env.EXPO_PUBLIC_API_URL || env.VITE_API_SERVER_URL;
+  if (apiUrl?.trim() && isProductionSupabaseUrl(apiUrl)) {
+    offenders.push("API URL (a Supabase host is not the Production API)");
+  }
+
+  if (offenders.length > 0) {
+    throw new Error(
+      [
+        "PRODUCTION ENVIRONMENT SAFETY CHECK FAILED",
+        "VALUEOR_ENV=production cannot use staging or local database credentials.",
+        "Offending configuration:",
+        ...offenders.map((item) => `  - ${item}`),
+      ].join("\n"),
+    );
+  }
+}
+
 export function assertLocalEnvironmentSafety(env) {
   const mode = resolveValueorEnv(env.VALUEOR_ENV);
   if (mode !== VALUEOR_ENV_LOCAL) return;

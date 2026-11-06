@@ -1,0 +1,59 @@
+# One always-on API Machine. The embedding worker is not a process here.
+# Public values only. Secrets are set with `fly secrets set` and are not in this file.
+
+app = "valueor-api"
+primary_region = "arn"
+kill_signal = "SIGTERM"
+kill_timeout = 30
+
+[build]
+  dockerfile = "deploy/vps/Dockerfile"
+  build-target = "app"
+
+[env]
+  NODE_ENV = "production"
+  VALUEOR_ENV = "production"
+  PORT = "3000"
+  NODE_OPTIONS = "--max-old-space-size=512"
+  VITE_APP_ORIGIN = "https://app.valueor.org"
+  FRONTEND_ORIGIN = "https://app.valueor.org"
+  VITE_SITE_URL = "https://app.valueor.org"
+  VITE_API_SERVER_URL = "https://api.valueor.org"
+  WEBHOOK_BASE_URL = "https://webhook.valueor.org"
+  VITE_WEBHOOK_BASE_URL = "https://webhook.valueor.org"
+  PUBLIC_WEBHOOK_BASE_URL = "https://webhook.valueor.org"
+  EMBEDDING_WORKER_ENABLED = "false"
+  BILLING_LIFECYCLE_WORKER_ENABLED = "false"
+  BILLING_LIFECYCLE_WORKER_CONFIRMED = "false"
+  SALES_FOLLOW_UP_WORKER_ENABLED = "false"
+  SALES_FOLLOW_UP_WORKER_ALLOW_SEND = "false"
+  EMAIL_POLL_WORKER_ENABLED = "true"
+  EMAIL_POLL_WORKER_EXECUTE_AI = "false"
+  SESSION_IDLE_TIMEOUT_WORKER_ENABLED = "true"
+  WHATSAPP_REPLY_RECOVERY_WORKER_ENABLED = "false"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 150
+
+[[http_service.checks]]
+  grace_period = "40s"
+  interval = "15s"
+  method = "GET"
+  timeout = "5s"
+  path = "/api/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  cpus = 1
+  cpu_kind = "shared"
+  processes = ["app"]

@@ -1,9 +1,9 @@
 # Phase 7 — WhatsApp Cloud Adapter E2E Verification Report (LOCAL-ONLY)
 
-**Generated:** 2026-09-19T20:03:44.786Z
+**Generated:** 2026-10-31T11:06:28.121Z
 **Target:** http://127.0.0.1:54321
 **DEMO Beta company:** d0000010-0001-4001-8001-000000000002
-**Channel ID:** 9fcafcb6-8a50-4914-9a04-a1fe901fc731
+**Channel ID:** 0a28c1ba-1ffa-48a0-83ca-a6c5e90539db
 **phoneNumberId:** 100000000000001
 **Cleanup:** OK
 
@@ -13,29 +13,31 @@
 {
   "executionPolicyIds": [],
   "aiProviderConnectionIds": [
-    "baedb4ba-13e6-4b7f-9746-d5d3f0eeafae"
+    "32f66b53-51d2-4797-9a62-9a54e70836f1"
   ],
-  "companyChannelIds": [],
+  "companyChannelIds": [
+    "0a28c1ba-1ffa-48a0-83ca-a6c5e90539db"
+  ],
   "inboundEventIds": [
-    "2e645739-ae1f-4d7c-8d93-779e8bbd741d",
-    "0f24db9d-5fb3-4da9-9f16-a83e9f8cf5b3"
+    "319e2574-b110-4f66-babf-c12ac598fd27",
+    "620a0e44-1d18-467b-a620-f65d1192abfe"
   ],
   "channelSessionIds": [
-    "756ee213-b380-4046-aafd-c9d472de0868"
+    "4a654dd6-9df2-4d0d-a149-e857490cdbe5"
   ],
   "conversationIds": [
-    "35b6f454-5fb9-4ebb-ab3d-d2c03eb5aaf3"
+    "28e3649f-b57c-46ed-9729-ae8daff5d143"
   ],
   "conversationMessageIds": [
-    "1053d77a-d29c-487a-8bd1-4630ff3ed876",
-    "0dfad97b-a560-45f7-ab26-48c7dd68a18c",
-    "76c244b9-73df-481b-914a-ad279bdb7847",
-    "8cdac554-8bb2-410f-b99c-22abe6e17ef4",
-    "c89b82f2-5686-4c04-8686-4255c66c941c"
+    "8e574363-4ff0-48bf-881c-038491a4fe7c",
+    "7fa20842-42a7-4067-8f90-53c12a87d6b1",
+    "9a862459-bc30-450c-b6c8-4966ea06b97f"
   ],
-  "deliveryEventIds": [],
+  "deliveryEventIds": [
+    "470b161f-de96-489b-8eff-6f2ad017ce39"
+  ],
   "aiExecutionIds": [
-    "e476939a-b71d-4382-81dd-b6f514492a85"
+    "10783202-9e76-4935-8b24-1ce65e0461c9"
   ],
   "aiExecutionMetricIds": [],
   "aiTraceIds": [],
@@ -52,8 +54,8 @@
 
 ## Test Results
 
-- **Passed:** 6
-- **Failed:** 3
+- **Passed:** 9
+- **Failed:** 0
 - **Total:** 9
 
 ### 1. Webhook verification
@@ -64,37 +66,37 @@
 ### 2. Incoming WhatsApp message routed
 
 - **Status:** PASS
-- **Detail:** inboundEventId=2e645739-ae1f-4d7c-8d93-779e8bbd741d
+- **Detail:** inboundEventId=319e2574-b110-4f66-babf-c12ac598fd27
 
 ### 3. Conversation session resolved
 
 - **Status:** PASS
-- **Detail:** conversationId=35b6f454-5fb9-4ebb-ab3d-d2c03eb5aaf3
+- **Detail:** conversationId=28e3649f-b57c-46ed-9729-ae8daff5d143
 
 ### 4. Runtime execution triggered
 
 - **Status:** PASS
-- **Detail:** executionId=e476939a-b71d-4382-81dd-b6f514492a85
+- **Detail:** executionId=10783202-9e76-4935-8b24-1ce65e0461c9
 
 ### 5. Outbound WhatsApp delivery
 
-- **Status:** FAIL
-- **Detail:** deliveryId=n/a, graphCalls=0
+- **Status:** PASS
+- **Detail:** deliveryId=470b161f-de96-489b-8eff-6f2ad017ce39, graphCalls=1
 
 ### 6. Delivery status update
 
-- **Status:** FAIL
-- **Detail:** status=undefined
+- **Status:** PASS
+- **Detail:** status=delivered
 
 ### 7. Read receipt tracked
 
-- **Status:** FAIL
-- **Detail:** status=undefined
+- **Status:** PASS
+- **Detail:** status=read
 
 ### 8. Media inbound handling
 
 - **Status:** PASS
-- **Detail:** inboundEventId=0f24db9d-5fb3-4da9-9f16-a83e9f8cf5b3
+- **Detail:** inboundEventId=620a0e44-1d18-467b-a620-f65d1192abfe
 
 ### 9. Error handling for empty webhook
 

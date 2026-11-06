@@ -17,6 +17,7 @@ const PENDING = [
   "361",
   ...Array.from({ length: 440 - 373 + 1 }, (_, index) => String(373 + index)),
   "441",
+  "442",
 ];
 
 const PATTERNS = [
@@ -47,12 +48,17 @@ function filesByVersion() {
 
 function lineFindings(sql) {
   const findings = [];
-  for (const line of sql.split(/\n/)) {
-    if (/alter\s+publication\b/i.test(line) && /\bdrop\s+table\b/i.test(line)) continue;
-    for (const pattern of PATTERNS) {
-      if (pattern.re.test(line) && !findings.some((finding) => finding.id === pattern.id)) {
-        findings.push({ id: pattern.id, severity: pattern.severity });
-      }
+  const collapsed = sql.replace(/\s+/g, " ");
+  for (const pattern of PATTERNS) {
+    if (pattern.id === "drop-table") {
+      const dropsTable = sql.split(/\n/).some((line) => (
+        pattern.re.test(line) && !(/alter\s+publication\b/i.test(line) && /\bdrop\s+table\b/i.test(line))
+      ));
+      if (dropsTable) findings.push({ id: pattern.id, severity: pattern.severity });
+      continue;
+    }
+    if (pattern.re.test(collapsed)) {
+      findings.push({ id: pattern.id, severity: pattern.severity });
     }
   }
   return findings;
@@ -79,12 +85,12 @@ function render(report) {
     "# Pending Production migrations",
     "",
     `Scanned ${report.pendingCount} files. Local migration files seen: ${report.available}.`,
-    "This list is the Production gap recorded on 2026-10-31 (latest applied version 372, hole at 361), plus local migration 441, which is not on Production.",
+    "This list is the Production gap recorded on 2026-10-31 (latest applied version 372, hole at 361), plus local migrations 441 and 442, which are not on Production.",
     "Re-read `supabase_migrations.schema_migrations` before applying. Do not mark versions by hand and do not skip any file.",
     "",
     "## Apply order",
     "",
-    "361, then 373 through 441. Migration 441 is the privilege repair and must stay last.",
+    "361, then 373 through 442. Migrations 441 and 442 repair privileges and must stay last, with 442 after 441.",
     "",
     "## Findings",
     "",

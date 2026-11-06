@@ -28,10 +28,11 @@ async function privilege(role, table, privilege) {
 }
 
 const applied = await client.query(
-  "select 1 from supabase_migrations.schema_migrations where version = '441'",
+  "select version from supabase_migrations.schema_migrations where version in ('441', '442') order by version",
 );
-if (applied.rowCount !== 1) {
-  console.error("Migration 441 is not recorded on the local database. Apply it with the local CLI first.");
+const versions = applied.rows.map((row) => row.version);
+if (!versions.includes("441") || !versions.includes("442")) {
+  console.error(`Local database is missing 441 or 442. Found: ${versions.join(", ") || "none"}`);
   await client.end();
   process.exit(1);
 }
@@ -48,6 +49,10 @@ const checks = [
   ["anon", "public.plans", "select", false],
   ["authenticated", "public.plans", "select", true],
   ["anon", "public.companies", "insert", false],
+  ["authenticated", "public.company_subscriptions", "select", true],
+  ["authenticated", "public.company_subscriptions", "insert", false],
+  ["authenticated", "public.company_subscriptions", "truncate", false],
+  ["anon", "public.company_subscriptions", "select", false],
 ];
 
 const failures = [];

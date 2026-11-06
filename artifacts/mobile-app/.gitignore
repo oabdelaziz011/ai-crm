@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+credentials.json
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist

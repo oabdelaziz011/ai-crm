@@ -1,0 +1,6 @@
+# Copy to android-signing.properties outside source control.
+# Do not commit the keystore or the filled-in copy of this file.
+storeFile=
+storePassword=
+keyAlias=valueor
+keyPassword=

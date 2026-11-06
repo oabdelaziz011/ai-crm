@@ -4,7 +4,10 @@ import {
   LOCAL_OPTIONAL_MERGE_KEYS,
   VALUEOR_ENV_LOCAL,
   VALUEOR_ENV_PRODUCTION,
+  VALUEOR_ENV_STAGING,
   assertLocalEnvironmentSafety,
+  assertStagingEnvironmentSafety,
+  assertProductionEnvironmentSafety,
   isLocalValueorEnv,
   isProductionDatabaseUrl,
   isProductionSupabaseUrl,
@@ -52,6 +55,9 @@ export function resolveEnvFilesForMode(mode = resolveValueorEnv()) {
     // via LOCAL_OPTIONAL_MERGE_KEYS — never login-app/.env.local (Vite-only).
     return [".env.localstack", ".env", "artifacts/platform-worker/.env"];
   }
+  if (mode === VALUEOR_ENV_STAGING) {
+    return [".env.staging"];
+  }
   // Production / hosted: root + worker. Never login-app/.env.local.
   return [".env", "artifacts/platform-worker/.env"];
 }
@@ -88,6 +94,12 @@ export function loadProjectEnv(projectRoot, options = {}) {
   const files = options.files ?? resolveEnvFilesForMode(mode);
 
   let env;
+  if (mode === VALUEOR_ENV_STAGING && !existsSync(resolve(projectRoot, ".env.staging"))) {
+    throw new Error(
+      "STAGING ENVIRONMENT IS NOT CONFIGURED. Add .env.staging from .env.staging.example. Staging does not load the production .env.",
+    );
+  }
+
   if (mode === VALUEOR_ENV_LOCAL && !options.files) {
     // First file (.env.localstack) unrestricted; root `.env` optional-keys only.
     env = {};
@@ -167,6 +179,8 @@ export function loadProjectEnv(projectRoot, options = {}) {
     const merged = normalizeProjectEnv(normalized, { mode });
     if (options.assertSafety !== false) {
       assertLocalEnvironmentSafety(merged);
+      assertStagingEnvironmentSafety(merged);
+      assertProductionEnvironmentSafety(merged);
     }
     return merged;
   }
@@ -182,6 +196,8 @@ export function loadProjectEnv(projectRoot, options = {}) {
 
   if (options.assertSafety !== false) {
     assertLocalEnvironmentSafety(normalized);
+    assertStagingEnvironmentSafety(normalized);
+    assertProductionEnvironmentSafety(normalized);
   }
 
   return normalized;
@@ -245,6 +261,11 @@ export function normalizeProjectEnv(env, options = {}) {
     }
   }
 
+  if (mode === VALUEOR_ENV_STAGING) {
+    out.PORT ??= "3011";
+    out.VITE_API_SERVER_URL ??= "http://127.0.0.1:3011";
+  }
+
   if (mode === VALUEOR_ENV_LOCAL) {
     out.VITE_API_SERVER_URL ??= LOCAL_API_ORIGIN;
     out.VITE_APP_ORIGIN ??= "http://localhost:5173";
@@ -266,7 +287,9 @@ export function normalizeProjectEnv(env, options = {}) {
 
   const nodeEnv =
     out.NODE_ENV?.trim() ||
-    (mode === VALUEOR_ENV_PRODUCTION ? "production" : process.env.NODE_ENV?.trim() || "development");
+    (mode === VALUEOR_ENV_PRODUCTION || mode === VALUEOR_ENV_STAGING
+      ? "production"
+      : process.env.NODE_ENV?.trim() || "development");
   out.NODE_ENV = nodeEnv;
 
   if (nodeEnv !== "production" && !out.SESSION_SECRET?.trim()) {
@@ -312,7 +335,12 @@ export function formatMissingEnvHelp(projectRoot, missing) {
     "",
   ];
 
-  if (mode === VALUEOR_ENV_LOCAL) {
+  if (mode === VALUEOR_ENV_STAGING) {
+    lines.push(
+      "Staging mode loads only `.env.staging`.",
+      "It does not read the Production root `.env` or the local database.",
+    );
+  } else if (mode === VALUEOR_ENV_LOCAL) {
     lines.push(
       "LOCAL mode loads `.env.localstack` (see `node scripts/ensure-localstack-env.mjs`).",
       "Run: node scripts/ensure-localstack-env.mjs",
@@ -351,6 +379,9 @@ export {
   resolveValueorEnv,
   isLocalValueorEnv,
   assertLocalEnvironmentSafety,
+  assertStagingEnvironmentSafety,
+  assertProductionEnvironmentSafety,
   VALUEOR_ENV_LOCAL,
+  VALUEOR_ENV_STAGING,
   VALUEOR_ENV_PRODUCTION,
 } from "./env-mode.mjs";

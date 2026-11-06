@@ -21,7 +21,7 @@ console.log(`Local rehearsal only. Do not use --linked and do not apply this to 
 
 1. Confirm a restorable Production backup id. This script does not create one.
 2. Restore that backup into a disposable database, or use the isolated local stack at 127.0.0.1:54322.
-3. Apply pending files in order: 361, then 373 through 441.
+3. Apply pending files in order: 361, then 373 through 442.
 4. Use the Supabase CLI against that disposable target. Do not insert rows into schema_migrations by hand.
 5. Run: node scripts/verify-least-privilege.mjs
 `);

@@ -61,6 +61,34 @@ export function deploymentFileProblems() {
   const caddy = read("Caddyfile");
   const cloudflare = read("Caddyfile.cloudflare");
   const example = parseEnvFile(read("production.env.example"));
+  const systemd = read("systemd/valueor-api.service");
+  const nginxFrontend = read("nginx/valueor-frontend.conf");
+  const nginxApi = read("nginx/valueor-api.conf");
+
+  if (!systemd.includes("deploy/vps/start-api.mjs") || !systemd.includes("EnvironmentFile=/opt/valueor/.env")) {
+    problems.push("systemd/valueor-api.service must start start-api.mjs with the server EnvironmentFile.");
+  }
+  if (!systemd.includes("PORT=3001")) {
+    problems.push("systemd/valueor-api.service must keep PORT=3001 for the Nginx upstream.");
+  }
+  if (!systemd.includes('EMAIL_POLL_WORKER_ENABLED=false') || !systemd.includes('SESSION_IDLE_TIMEOUT_WORKER_ENABLED=false')) {
+    problems.push("systemd/valueor-api.service must keep email/session workers off until exclusive ownership.");
+  }
+  if (!nginxApi.includes("127.0.0.1:3001") || !nginxApi.includes("api.valueor.org") || !nginxApi.includes("webhook.valueor.org")) {
+    problems.push("nginx/valueor-api.conf must proxy api and webhook hostnames to 127.0.0.1:3001.");
+  }
+  if (!nginxApi.includes("server_tokens off") || !nginxFrontend.includes("server_tokens off")) {
+    problems.push("Nginx templates must set server_tokens off.");
+  }
+  if (!nginxFrontend.includes("/var/www/valueor") || !nginxFrontend.includes("origin-cert.pem")) {
+    problems.push("nginx/valueor-frontend.conf must serve /var/www/valueor with the Origin Certificate.");
+  }
+  if (!nginxFrontend.includes("www.valueor.org")) {
+    problems.push("nginx/valueor-frontend.conf must serve www.valueor.org.");
+  }
+  if (nginxFrontend.includes("app.valueor.org")) {
+    problems.push("nginx/valueor-frontend.conf must not claim app.valueor.org while it remains on Vercel.");
+  }
 
   for (const service of ["caddy:", "frontend:", "api:", "platform-worker:"]) {
     if (!compose.includes(service)) problems.push(`compose.yml is missing ${service}`);

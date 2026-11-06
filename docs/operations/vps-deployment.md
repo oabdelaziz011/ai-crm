@@ -1,6 +1,6 @@
 # VPS deployment
 
-This is the Hetzner deployment for `app.valueor.org`, `api.valueor.org`, and `webhook.valueor.org`. Supabase Cloud remains PostgreSQL, Auth, and Storage. Nothing in this file changes Production, DNS, or live secrets.
+The first customer launch does not buy this server. Use `docs/operations/low-cost-launch.md` until the API needs more than one always-on Node process. This file remains the later Hetzner path for `app.valueor.org`, `api.valueor.org`, and `webhook.valueor.org`. Supabase Cloud remains PostgreSQL, Auth, and Storage. Nothing in this file changes Production, DNS, or live secrets.
 
 The current Vercel file `vercel.json` and the Cloudflare tunnel scripts under `infra/cloudflare/` and `scripts/cloudflare/` stay in place. Vercel is still the existing frontend host until DNS is changed. Developer tunnels stay for local work. Production `webhook.valueor.org` can point at only one origin, so the tunnel and this VPS are not both active for that hostname.
 

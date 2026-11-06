@@ -1,7 +1,7 @@
 # Phase 6 — Enterprise Channel Platform E2E Verification Report
 
-**Generated:** 2026-07-18T04:55:49.462Z
-**Target:** [REDACTED]
+**Generated:** 2026-10-31T11:01:19.531Z
+**Target:** http://127.0.0.1:54321
 **Migration:** 108_channel_platform.sql applied
 
 ## Executive Summary
@@ -17,22 +17,22 @@ Channel Platform verification passed against live Supabase. Inbound routing, ses
 ### 1. Incoming channel event routed
 
 - **Status:** PASS
-- **Detail:** inboundEventId=d01f3f25-de7a-40f2-817d-e4fd310461ff
+- **Detail:** inboundEventId=ae0f5260-be85-4785-a457-9ef0f7bad036
 
 ### 2. Conversation session resolved
 
 - **Status:** PASS
-- **Detail:** conversationId=51cc38f5-2d37-47d6-8a95-17c06021ee60, sessionId=08fced76-0633-454c-9f6c-62de16e0e22c
+- **Detail:** conversationId=8e664808-e6d5-4ac2-aede-c95bbaef8291, sessionId=289e6320-9223-4ef4-ba94-729ff807eb1f
 
 ### 3. Runtime execution triggered
 
 - **Status:** PASS
-- **Detail:** executionId=540bd2dc-f5e1-4c06-8fa7-e0215a3d1133
+- **Detail:** executionId=7d63bd29-4b10-44e1-901f-2de7b04c44dc
 
 ### 4. Outbound channel response dispatched
 
 - **Status:** PASS
-- **Detail:** deliveryId=bd5039a7-2ed1-4e78-a858-fb3e5c82a752
+- **Detail:** deliveryId=05ad84f0-1bd2-4f07-8c2b-f1493f32874d
 
 ### 5. Inbound event processed
 
@@ -42,12 +42,12 @@ Channel Platform verification passed against live Supabase. Inbound routing, ses
 ### 6. Delivery status tracked
 
 - **Status:** PASS
-- **Detail:** status=sent, externalMessageId=a6350a42-16ec-4f17-bd5c-b277430818e6
+- **Detail:** status=sent, externalMessageId=d5070166-013d-4832-99c1-647e271fb588
 
 ### 7. Channel session updated
 
 - **Status:** PASS
-- **Detail:** lastInbound=2026-07-18T04:55:39.914+00:00, lastOutbound=2026-07-18T04:55:48.641+00:00
+- **Detail:** lastInbound=2026-10-31T11:01:11.303+00:00, lastOutbound=2026-10-31T11:01:19.45+00:00
 
 ### 8. Conversation messages persisted via runtime
 

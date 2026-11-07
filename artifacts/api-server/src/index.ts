@@ -26,7 +26,7 @@ let emailInboundPollWorker: { stop: () => void } | null = null;
 let salesFollowUpWorker: { stop: () => Promise<void> | void } | null = null;
 let whatsAppReplyRecoveryWorker: { stop: () => void } | null = null;
 
-const listenHost = process.env.VALUEOR_ENV === "staging" ? "127.0.0.1" : undefined;
+const listenHost = "127.0.0.1";
 const server = listenHost
   ? app.listen(port, listenHost, onListen)
   : app.listen(port, onListen);

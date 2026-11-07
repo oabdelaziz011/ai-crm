@@ -28,6 +28,21 @@ export type MobilePrincipal =
       userClient: SupabaseClient;
     };
 
+function isTenantSchemaMissingError(error: { message?: string; code?: string } | null): boolean {
+  const message = error?.message ?? "";
+  const code = error?.code ?? "";
+  return (
+    code === "42P01"
+    || code === "42703"
+    || /companies\.subdomain/i.test(message)
+    || /column .*subdomain.* does not exist/i.test(message)
+    || /platform_admin_contexts/i.test(message)
+    || /Could not find the table/i.test(message)
+    || /Could not find the .* column/i.test(message)
+    || /schema cache/i.test(message)
+  );
+}
+
 function serviceClient() {
   const env = loadPlatformEnv();
   if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
@@ -73,7 +88,16 @@ export async function resolveMobilePrincipal(input: {
       .select("id, name, status, approval_status, subdomain")
       .eq("subdomain", subdomain)
       .maybeSingle();
-    if (error) throw new HttpError(503, "Authentication service unavailable.", "auth_unavailable");
+    if (error) {
+      if (isTenantSchemaMissingError(error)) {
+        throw new HttpError(
+          503,
+          "Company host resolution is not available until its database migration is approved.",
+          "tenant_schema_unavailable",
+        );
+      }
+      throw new HttpError(503, "Authentication service unavailable.", "auth_unavailable");
+    }
     if (data) {
       company = {
         id: String(data.id),
@@ -95,7 +119,16 @@ export async function resolveMobilePrincipal(input: {
       .is("revoked_at", null)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
-    if (error) throw new HttpError(503, "Authentication service unavailable.", "auth_unavailable");
+    if (error) {
+      if (isTenantSchemaMissingError(error)) {
+        throw new HttpError(
+          503,
+          "Platform administration context is not available until its database migration is approved.",
+          "tenant_schema_unavailable",
+        );
+      }
+      throw new HttpError(503, "Authentication service unavailable.", "auth_unavailable");
+    }
     hasLiveAdminContext = Boolean(data?.id);
   }
 

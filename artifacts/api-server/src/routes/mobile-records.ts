@@ -19,7 +19,9 @@ import {
 import { resolveMobilePrincipal, type MobilePrincipal } from "../mobile/mobile-principal.js";
 import {
   decidePushRegistration,
+  isPushStorageMissingError,
   pushRegistryClient,
+  pushStorageBlockedResponse,
   revokeStoredPushRegistrations,
   savePushRegistration,
 } from "../mobile/mobile-push.js";
@@ -264,14 +266,23 @@ router.post("/mobile/push-token", async (req, res, next) => {
       res.status(decision.status).json({ code: decision.code, message: decision.message });
       return;
     }
-    const saved = await savePushRegistration(pushRegistryClient(), {
-      userId: principal.userId,
-      companyId: principal.company?.id ?? "",
-      token: decision.token,
-      platform: decision.platform,
-      deviceName: decision.deviceName,
-    });
-    res.json({ ok: true, stored: true, duplicate: saved.duplicate, delivered: false });
+    try {
+      const saved = await savePushRegistration(pushRegistryClient(), {
+        userId: principal.userId,
+        companyId: principal.company?.id ?? "",
+        token: decision.token,
+        platform: decision.platform,
+        deviceName: decision.deviceName,
+      });
+      res.json({ ok: true, stored: true, duplicate: saved.duplicate, delivered: false });
+    } catch (error) {
+      if (isPushStorageMissingError(error)) {
+        const blocked = pushStorageBlockedResponse();
+        res.status(blocked.status).json(blocked.body);
+        return;
+      }
+      throw error;
+    }
   } catch (error) {
     next(error);
   }
@@ -288,8 +299,17 @@ router.delete("/mobile/push-token", async (req, res, next) => {
       res.status(403).json({ code: "tenant_required", message: "A company workspace is required." });
       return;
     }
-    await revokeStoredPushRegistrations(pushRegistryClient(), principal.userId, principal.company.id);
-    res.json({ ok: true, revoked: true, delivered: false });
+    try {
+      await revokeStoredPushRegistrations(pushRegistryClient(), principal.userId, principal.company.id);
+      res.json({ ok: true, revoked: true, delivered: false });
+    } catch (error) {
+      if (isPushStorageMissingError(error)) {
+        const blocked = pushStorageBlockedResponse();
+        res.status(blocked.status).json(blocked.body);
+        return;
+      }
+      throw error;
+    }
   } catch (error) {
     next(error);
   }

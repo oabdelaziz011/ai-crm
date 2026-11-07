@@ -133,11 +133,12 @@ describe("PostgreSQL session store", () => {
     assert.match(source, /maxAge: SEVEN_DAYS_MS/);
     assert.doesNotMatch(source, /new session\.MemoryStore|MemoryStore\(/);
     const migration = readFileSync(resolve(root, "supabase/migrations/443_api_runtime_express_sessions.sql"), "utf8");
+    const migrationSql = migration.replace(/--.*$/gm, "");
     assert.match(migration, /enable row level security/);
     assert.match(migration, /revoke all on table api_runtime\.express_sessions from anon/);
     assert.match(migration, /revoke all on table api_runtime\.express_sessions from authenticated/);
     assert.match(migration, /revoke all on table api_runtime\.express_sessions from service_role/);
-    assert.doesNotMatch(migration, /grant .+ to anon|grant .+ to authenticated|grant .+ to service_role/i);
+    assert.doesNotMatch(migrationSql, /\bgrant\b[\s\S]{0,120}\bto\s+(anon|authenticated|service_role)\b/i);
     assert.match(migration, /drop schema if exists api_runtime cascade/);
     const startApi = readFileSync(resolve(root, "deploy/vps/start-api.mjs"), "utf8");
     assert.doesNotMatch(startApi, /--enable-source-maps/);

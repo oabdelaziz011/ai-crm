@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node ./scripts/start-with-env.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx/esm --test src/**/*.test.ts"
+    "test": "node --import ./src/test/set-local-client-env.mjs --import tsx/esm --test src/**/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",

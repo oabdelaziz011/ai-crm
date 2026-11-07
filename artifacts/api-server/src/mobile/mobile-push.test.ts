@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   applyPushRegistration,
   decidePushDelivery,
   decidePushRegistration,
+  isPushStorageMissingError,
+  pushStorageBlockedResponse,
   revokePushRegistrations,
   type PushDeviceRow,
 } from "./mobile-push.js";
@@ -94,5 +97,23 @@ describe("mobile push registration", () => {
     });
     assert.equal(allowed.status, 501);
     assert.equal(allowed.delivered, false);
+  });
+
+  it("blocks registration and revocation when mobile_push_devices is absent", () => {
+    const blocked = pushStorageBlockedResponse();
+    assert.equal(blocked.status, 503);
+    assert.equal(blocked.body.code, "push_storage_unavailable");
+    assert.equal(blocked.body.stored, false);
+    assert.equal(blocked.body.revoked, false);
+    assert.equal(blocked.body.delivered, false);
+    assert.equal(isPushStorageMissingError(new Error("Could not find the table 'public.mobile_push_devices' in the schema cache")), true);
+    assert.equal(isPushStorageMissingError(new Error("relation \"public.mobile_push_devices\" does not exist")), true);
+    assert.equal(isPushStorageMissingError({ code: "42P01", message: "undefined_table" }), true);
+    assert.equal(isPushStorageMissingError(new Error("permission denied")), false);
+    assert.equal(isPushStorageMissingError(new Error("permission denied for table mobile_push_devices")), false);
+    const route = readFileSync(new URL("../routes/mobile-records.ts", import.meta.url), "utf8");
+    assert.match(route, /isPushStorageMissingError\(/);
+    assert.match(route, /savePushRegistration\(/);
+    assert.match(route, /revokeStoredPushRegistrations\(/);
   });
 });

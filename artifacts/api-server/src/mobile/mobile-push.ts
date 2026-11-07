@@ -87,6 +87,57 @@ export function decidePushDelivery(input?: {
   return unverified;
 }
 
+/**
+ * Device storage depends on public.mobile_push_devices (migration 446).
+ * When that table is absent, registration and revocation return this body
+ * so a missing relation cannot fail startup or any other mobile route.
+ * Delivery stays unverified even when storage is present.
+ */
+export function pushStorageBlockedResponse(): {
+  status: 503;
+  body: {
+    ok: false;
+    code: "push_storage_unavailable";
+    message: string;
+    stored: false;
+    revoked: false;
+    delivered: false;
+  };
+} {
+  return {
+    status: 503,
+    body: {
+      ok: false,
+      code: "push_storage_unavailable",
+      message: "Push device storage is not available until its database migration is approved.",
+      stored: false,
+      revoked: false,
+      delivered: false,
+    },
+  };
+}
+
+export function isPushStorageMissingError(error: unknown): boolean {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === "string"
+      ? error
+      : error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message ?? "")
+        : "";
+  const code = error && typeof error === "object" && "code" in error
+    ? String((error as { code?: unknown }).code ?? "")
+    : "";
+  if (/permission denied|row-level security|rls/i.test(message)) return false;
+  return (
+    code === "42P01"
+    || /Could not find the table ['"]?public\.mobile_push_devices/i.test(message)
+    || /relation ['"]?public\.mobile_push_devices['"]? does not exist/i.test(message)
+    || /relation ['"]?mobile_push_devices['"]? does not exist/i.test(message)
+    || (/mobile_push_devices/i.test(message) && /schema cache|does not exist|undefined_table/i.test(message))
+  );
+}
+
 export function decidePushRegistration(body: unknown, sessionCompanyId: string | null): PushRegistration {
   if (!sessionCompanyId) {
     return { ok: false, status: 403, code: "tenant_required", message: "A company workspace is required." };

@@ -2,6 +2,12 @@ name: Frontend production artifact
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_www:
+        description: Set to publish-www to copy the built SPA into /var/www/valueor on the production VPS
+        required: false
+        default: ""
+        type: string
   push:
     branches: [main, master]
     paths:
@@ -38,7 +44,7 @@ jobs:
 
       - name: Write version.json
         run: |
-          printf '{"commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          printf '{"service":"login-app","sha":"%s"}\n' "${GITHUB_SHA}" \
             > artifacts/login-app/dist/public/version.json
 
       - name: Verify production hosts in bundle
@@ -51,3 +57,66 @@ jobs:
           path: artifacts/login-app/dist/public
           if-no-files-found: error
           retention-days: 14
+
+  publish-www:
+    needs: build-frontend
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.publish_www == 'publish-www'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: valueor-frontend-build
+          path: frontend-dist
+
+      - name: Publish /var/www/valueor over SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -f frontend-dist/index.html
+          test -f frontend-dist/version.json
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/valueor_vps
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/valueor_vps ~/.ssh/known_hosts
+          PORT="${VPS_SSH_PORT:-22}"
+          tar -C frontend-dist -czf /tmp/valueor-frontend.tgz .
+          scp -P "$PORT" -i ~/.ssh/valueor_vps -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+            /tmp/valueor-frontend.tgz "$VPS_USER@$VPS_HOST:/tmp/valueor-frontend-${GIT_SHA}.tgz"
+          ssh -p "$PORT" -i ~/.ssh/valueor_vps -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$VPS_USER@$VPS_HOST" "SHA='$GIT_SHA' bash -s" <<'EOF'
+          set -euo pipefail
+          TAR="/tmp/valueor-frontend-${SHA}.tgz"
+          STAGE="/tmp/valueor-frontend-${SHA}"
+          test -f "$TAR"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          tar -xzf "$TAR" -C "$STAGE"
+          test -f "$STAGE/index.html"
+          test -f "$STAGE/version.json"
+          if [[ -f /opt/valueor/deploy/vps/deploy-production.sh ]]; then
+            sudo bash /opt/valueor/deploy/vps/deploy-production.sh publish-frontend --frontend-src "$STAGE"
+          else
+            mkdir -p /var/www
+            if [[ -d /var/www/valueor ]]; then
+              rm -rf /var/www/valueor.previous
+              mv /var/www/valueor /var/www/valueor.previous
+            fi
+            mkdir -p /var/www/valueor
+            cp -a "${STAGE}/." /var/www/valueor/
+          fi
+          if [[ -f /opt/valueor/scripts/verify-frontend-production-bundle.mjs ]]; then
+            /usr/bin/node /opt/valueor/scripts/verify-frontend-production-bundle.mjs /var/www/valueor
+          fi
+          cat /var/www/valueor/version.json
+          rm -rf "$STAGE" "$TAR"
+          EOF

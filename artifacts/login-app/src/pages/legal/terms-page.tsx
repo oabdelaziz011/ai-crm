@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { getPrivacyContactEmail, getPrivacyContactPhone } from "@/lib/legal/privacy-contact";
-import { LegalContactLines, LegalList, LegalPageLayout, LegalReviewNotice, LegalSection } from "@/pages/legal/legal-page-layout";
+import { LegalContactLines, LegalList, LegalPageLayout, LegalSection } from "@/pages/legal/legal-page-layout";
 
 export default function TermsPage() {
   const { t } = useTranslation("common");
@@ -90,7 +90,6 @@ export default function TermsPage() {
         <p>{t("legal.terms.contactBody", { email, phone })}</p>
         <LegalContactLines />
       </LegalSection>
-      <LegalReviewNotice />
     </LegalPageLayout>
   );
 }

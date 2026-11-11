@@ -6,7 +6,7 @@ import {
   getPrivacyContactEmail,
   getPrivacyContactPhone,
 } from "@/lib/legal/privacy-contact";
-import { LegalContactLines, LegalList, LegalPageLayout, LegalReviewNotice, LegalSection } from "@/pages/legal/legal-page-layout";
+import { LegalContactLines, LegalList, LegalPageLayout, LegalSection } from "@/pages/legal/legal-page-layout";
 
 export default function DataDeletionPage() {
   const { t } = useTranslation("common");
@@ -52,14 +52,14 @@ export default function DataDeletionPage() {
       </LegalSection>
 
       <LegalSection title={t("legal.dataDeletion.afterTitle")}>
-        <p>{t("legal.dataDeletion.afterBody")}</p>
+        <p>{t("legal.dataDeletion.afterP1")}</p>
+        <p>{t("legal.dataDeletion.afterP2")}</p>
+        <p>{t("legal.dataDeletion.afterP3")}</p>
       </LegalSection>
 
       <LegalSection title={t("legal.dataDeletion.controllerTitle")}>
         <p>{t("legal.dataDeletion.controllerBody")}</p>
       </LegalSection>
-
-      <LegalReviewNotice />
 
       <LegalSection title={t("legal.dataDeletion.relatedTitle")}>
         <p>

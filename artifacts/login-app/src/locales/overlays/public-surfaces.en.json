@@ -72,34 +72,39 @@
       "emailLabel": "Email",
       "phoneLabel": "Mobile"
     },
-    "review": {
-      "title": "What still needs owner or legal review",
-      "intro": "The statements on this page describe the product as it is implemented. They are not a certification, and the items below are not settled by the software.",
-      "item1": "No GDPR or other compliance certification is claimed, because none is implemented or evidenced in this product.",
-      "item2": "No automatic deletion deadline is implemented. Any number of days must be confirmed by the owner before it is promised.",
-      "item3": "No specific encryption algorithm, at-rest encryption, or security certification is claimed.",
-      "item4": "A promise not to sell personal information, and the limits on advertising use, still need owner confirmation.",
-      "item5": "Retention periods for billing records, technical logs, and backups are not fixed in the application.",
-      "item6": "ValueOR cannot delete data that only Meta, a payment provider, or an email host stores.",
-      "item7": "Children’s privacy, international transfers, warranties, and liability wording need legal review before they are treated as final."
-    },
     "privacy": {
-      "retentionBody": "Company workspace records remain until an authorized user deletes them in the product or ValueOR completes a reviewed deletion request. The application does not enforce a fixed retention period. Billing and payment records may be kept when accounting, a dispute, or a legal obligation requires it, but no retention length is configured here. Technical logs are used for security and operations; their exact lifetime needs owner confirmation. Backup copies, if the host keeps them, are outside this page.",
       "securityBody": "Company access is limited by sign-in, role permissions, and company membership. The public site is intended to be served over HTTPS by its host. This page does not claim a specific encryption algorithm, encryption at rest, or a security certification.",
-      "deletionBody": "Where the product has a delete control, an authorized user can delete that record. There is no automatic wipe of a company workspace. Anyone can email a deletion request from the Data Deletion page. ValueOR reviews that request manually. The product does not implement a completion deadline.",
       "contactBody": "For privacy questions or a deletion request, email {{email}} or use mobile {{phone}}. You can also open the Data Deletion page. Do not include passwords or access tokens.",
-      "metaNoSell": "The product does not include a feature that sells personal information. Treating that as a binding promise still needs owner confirmation.",
-      "metaNoAds": "Customer message content is used to operate the channels a company has connected. A formal restriction on advertising use still needs owner confirmation.",
-      "childrenBody": "ValueOR is a business workspace and does not include a children’s account. Whether a children’s-privacy rule applies needs legal confirmation.",
-      "internationalBody": "Hosting and connected providers may process data outside the country where the company operates. The product does not implement a separate transfer agreement. Any cross-border safeguard needs legal confirmation."
+      "childrenBody": "ValueOR is a business workspace. It is not directed to children and does not offer a children's account.",
+      "internationalBody": "Hosting and connected providers may process data outside the country where the company operates. That processing is subject to those providers' terms and tooling.",
+      "metaTitle": "Communication channels (WhatsApp, Instagram, and others)",
+      "metaP1": "When communication channels such as WhatsApp, Instagram, and others are connected to ValueOR, related data may be processed, including message content, phone numbers, account identifiers, attachments, message statuses, and metadata needed to provide the service.",
+      "metaP2": "This data is used to provide inbound messaging, authorized replies, conversation management, customer support, automation, and other features the customer enables.",
+      "metaP3": "When AI features are used, relevant content may be shared with OpenAI as described in the AI data-processing section of this policy.",
+      "metaP4": "Processing through these channels is also subject to the terms and policies of the relevant providers.",
+      "aiTitle": "AI data processing (OpenAI)",
+      "aiP1": "Some ValueOR features may use artificial intelligence provided through OpenAI APIs. When an authorized user uses one of these features, relevant content—such as message text, conversation context, or data needed to fulfill the request—may be shared with OpenAI to process the request and return the required result.",
+      "aiP2": "Within ValueOR, use of this data is limited to providing the AI feature the user requested, according to account permissions and service settings. Processing by OpenAI is subject to that provider's applicable terms, policies, and API account settings.",
+      "aiP3": "ValueOR does not make guarantees about how long OpenAI retains data or whether OpenAI uses it for training, except to the extent confirmed by the actual terms and settings of the service in use.",
+      "providersAi": "OpenAI and related APIs when an authorized user uses ValueOR AI features.",
+      "retentionP1": "ValueOR retains data for as long as there is an operational, contractual, or legal need to keep it, or until a valid deletion request is processed under the applicable procedures.",
+      "retentionP2": "Deletion requests are handled manually by ValueOR administration after the request is reviewed and the requester's identity and authority are verified. Some data may be retained where legal or accounting obligations apply, or where retention is needed for security, fraud prevention, or dispute resolution.",
+      "retentionP3": "Backups, operational logs, and data processed by external providers may be subject to those providers' own retention policies and procedures.",
+      "deletionP1": "A user or an authorized company representative may submit a data deletion request through the data deletion page at https://www.valueor.org/data-deletion or by email at valueor@admin.org.",
+      "deletionP2": "Requests are reviewed manually by ValueOR administration. The requester may be asked for additional information to verify identity or authority.",
+      "deletionP3": "After verification, administration processes deletion of data held in systems ValueOR controls, subject to any legal or accounting obligations or other legitimate retention requirements.",
+      "deletionP4": "Submitting a request does not mean deletion is automatic or immediate. ValueOR does not guarantee deletion of data controlled by Meta, OpenAI, or another external provider. A separate request to the relevant provider may be required.",
+      "useSecurity": "Security, troubleshooting, abuse prevention, auditability, and operating the service."
     },
     "dataDeletion": {
-      "requestBody": "There is no self-serve wipe of a company workspace on this page. Email {{email}} or call {{phone}}. Use the subject “ValueOR data deletion request” so the message can be recognized.",
-      "afterBody": "ValueOR reviews the request manually and may ask for enough detail to match it to an account or a company. The product does not delete data automatically and does not enforce a number of days. Some records may be kept for a legal, security, or financial reason; the exact list is not defined in the software and needs owner confirmation. Data stored only by Meta, a payment provider, or an email host is not deleted by this page."
+      "requestBody": "There is no self-serve wipe of a company workspace on this page. Email {{email}} or call {{phone}}. Use the subject \"ValueOR data deletion request\" so the message can be recognized.",
+      "afterP1": "Requests are reviewed manually by ValueOR administration. The requester may be asked for additional information to verify identity or authority.",
+      "afterP2": "After verification, administration processes deletion of data held in systems ValueOR controls, subject to any legal or accounting obligations or other legitimate retention requirements.",
+      "afterP3": "Submitting a request does not mean deletion is automatic or immediate. ValueOR does not guarantee deletion of data controlled by Meta, OpenAI, or another external provider. A separate request to the relevant provider may be required."
     },
     "terms": {
       "contactBody": "Questions about these Terms can be sent to {{email}} or {{phone}}.",
-      "liabilityBody": "ValueOR is provided as the software currently operates. This page is not a warranty and it is not a cap on liability that has been reviewed by counsel. Those terms need legal confirmation before they are treated as final.",
+      "liabilityBody": "ValueOR is provided as the software currently operates. This page is not a warranty statement and does not set a liability cap.",
       "availabilityBody": "The service can be interrupted by hosting, database, or third-party channel outages. Features can change. These Terms can be updated on this page. No uptime percentage is promised."
     }
   },

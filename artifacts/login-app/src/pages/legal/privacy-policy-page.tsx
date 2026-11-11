@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { getPrivacyContactEmail, getPrivacyContactPhone } from "@/lib/legal/privacy-contact";
-import { LegalContactLines, LegalList, LegalPageLayout, LegalReviewNotice, LegalSection } from "@/pages/legal/legal-page-layout";
+import { LegalContactLines, LegalList, LegalPageLayout, LegalSection } from "@/pages/legal/legal-page-layout";
 
 export default function PrivacyPolicyPage() {
   const { t } = useTranslation("common");
@@ -63,14 +63,16 @@ export default function PrivacyPolicyPage() {
       </LegalSection>
 
       <LegalSection title={t("legal.privacy.metaTitle")}>
-        <p>{t("legal.privacy.metaBody")}</p>
-        <LegalList
-          items={[
-            t("legal.privacy.metaEnabledOnly"),
-            t("legal.privacy.metaNoSell"),
-            t("legal.privacy.metaNoAds"),
-          ]}
-        />
+        <p>{t("legal.privacy.metaP1")}</p>
+        <p>{t("legal.privacy.metaP2")}</p>
+        <p>{t("legal.privacy.metaP3")}</p>
+        <p>{t("legal.privacy.metaP4")}</p>
+      </LegalSection>
+
+      <LegalSection title={t("legal.privacy.aiTitle")}>
+        <p>{t("legal.privacy.aiP1")}</p>
+        <p>{t("legal.privacy.aiP2")}</p>
+        <p>{t("legal.privacy.aiP3")}</p>
       </LegalSection>
 
       <LegalSection title={t("legal.privacy.providersTitle")}>
@@ -87,7 +89,9 @@ export default function PrivacyPolicyPage() {
       </LegalSection>
 
       <LegalSection title={t("legal.privacy.retentionTitle")}>
-        <p>{t("legal.privacy.retentionBody")}</p>
+        <p>{t("legal.privacy.retentionP1")}</p>
+        <p>{t("legal.privacy.retentionP2")}</p>
+        <p>{t("legal.privacy.retentionP3")}</p>
       </LegalSection>
 
       <LegalSection title={t("legal.privacy.securityTitle")}>
@@ -95,7 +99,10 @@ export default function PrivacyPolicyPage() {
       </LegalSection>
 
       <LegalSection title={t("legal.privacy.deletionTitle")}>
-        <p>{t("legal.privacy.deletionBody")}</p>
+        <p>{t("legal.privacy.deletionP1")}</p>
+        <p>{t("legal.privacy.deletionP2")}</p>
+        <p>{t("legal.privacy.deletionP3")}</p>
+        <p>{t("legal.privacy.deletionP4")}</p>
         <p>
           <Link href="/data-deletion" className="text-primary font-medium underline-offset-4 hover:underline">
             {t("legal.nav.dataDeletion")}
@@ -127,7 +134,6 @@ export default function PrivacyPolicyPage() {
         <p>{t("legal.privacy.contactBody", { email, phone })}</p>
         <LegalContactLines />
       </LegalSection>
-      <LegalReviewNotice />
     </LegalPageLayout>
   );
 }

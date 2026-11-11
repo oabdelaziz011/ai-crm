@@ -46,15 +46,42 @@
       "ignore": "Ignore column"
     },
     "fields": {
-      "name": { "label": "Customer name", "description": "Required display name." },
-      "email": { "label": "Email", "description": "Optional unique email per company." },
-      "phone": { "label": "Phone", "description": "Prefer E.164 (+...). Local numbers need a region." },
-      "phoneRegion": { "label": "Phone region", "description": "ISO-2 country code for local phones." },
-      "gender": { "label": "Gender", "description": "Optional free-text gender." },
-      "dateOfBirth": { "label": "Date of birth", "description": "Optional YYYY-MM-DD." },
-      "notes": { "label": "Notes", "description": "Optional notes." },
-      "companyName": { "label": "Company", "description": "Customer organization or employer name." },
-      "source": { "label": "Source", "description": "Acquisition source (defaults to manual)." }
+      "name": {
+        "label": "Customer name",
+        "description": "Required display name."
+      },
+      "email": {
+        "label": "Email",
+        "description": "Optional unique email per company."
+      },
+      "phone": {
+        "label": "Phone",
+        "description": "Prefer E.164 (+...). Local numbers need a region."
+      },
+      "phoneRegion": {
+        "label": "Phone region",
+        "description": "ISO-2 country code for local phones."
+      },
+      "gender": {
+        "label": "Gender",
+        "description": "Optional free-text gender."
+      },
+      "dateOfBirth": {
+        "label": "Date of birth",
+        "description": "Optional YYYY-MM-DD."
+      },
+      "notes": {
+        "label": "Notes",
+        "description": "Optional notes."
+      },
+      "companyName": {
+        "label": "Company",
+        "description": "Customer organization or employer name."
+      },
+      "source": {
+        "label": "Source",
+        "description": "Acquisition source (defaults to manual)."
+      }
     },
     "template": {
       "sheetCustomers": "Customers",
@@ -17587,39 +17614,48 @@
       "useAi": "Power AI and automation features the customer enables (drafts, routing, extraction, knowledge search, AI employees), using only the content required for that feature.",
       "useMessaging": "Operate omnichannel messaging so customers can receive and send authorized messages on channels they have connected.",
       "useBilling": "Administer subscriptions and payments: renewals, invoices, receipts, payment confirmation, and enforcing workspace access when a company subscription is unpaid or expired.",
-      "useSecurity": "Security, troubleshooting, abuse prevention, auditability, and service improvement — without selling personal data.",
+      "useSecurity": "Security, troubleshooting, abuse prevention, auditability, and operating the service.",
       "tenancyTitle": "Multi-tenant isolation and access control",
       "tenancyBody": "ValueOR is built as a multi-tenant system. Company data is scoped to that company’s workspace. Authorized users see only what their company membership and role permissions allow. Super-administrators of the platform may access company context only as needed to operate and support the service. When a company’s subscription ends and company access is suspended, workspace business data is locked for tenant users until renewal; limited billing and account surfaces needed to renew may remain available to billing-capable administrators.",
-      "metaTitle": "How we process Meta, Instagram, and WhatsApp data",
-      "metaBody": "When a customer connects Meta products (including Instagram messaging, Messenger, and WhatsApp), ValueOR processes that data as a service provider for the customer’s business use of ValueOR.",
-      "metaEnabledOnly": "We process Instagram, WhatsApp, Messenger, and related Meta platform data only to provide the features the customer has enabled — receiving messages, sending authorized replies, running configured automations, and displaying conversations in ValueOR.",
-      "metaNoSell": "We do not sell personal information.",
-      "metaNoAds": "We do not use customer message content for unrelated advertising, and we do not use WhatsApp or Instagram message content to build advertising profiles or to advertise to people on Meta products.",
+      "metaTitle": "Communication channels (WhatsApp, Instagram, and others)",
       "providersTitle": "Third-party service providers",
       "providersIntro": "We use service providers to operate ValueOR. They process data only as needed to provide their services to us:",
       "providersMeta": "Meta, Instagram, WhatsApp, and Messenger APIs to send and receive messages and related metadata when those integrations are enabled.",
-      "providersAi": "AI and API providers where a customer uses AI, automation, translation, or related features that require a model or API call.",
+      "providersAi": "OpenAI and related APIs when an authorized user uses ValueOR AI features.",
       "providersPayments": "Payment and checkout providers (and sandbox processors in non-production environments) to collect subscription payments and confirm settlement.",
       "providersCloud": "Cloud, database, email, and infrastructure providers that host the application, store data, and provide logging or operational services.",
       "providersLimit": "These providers may process personal data only as needed to provide ValueOR, subject to their agreements with us and applicable law.",
       "retentionTitle": "Data retention",
-      "retentionBody": "We retain personal information for as long as needed to provide ValueOR, comply with legal obligations, resolve disputes, and enforce agreements. Customer workspace data is generally retained for the life of the customer account unless the customer deletes it sooner or a valid deletion request is completed. Billing records may be retained longer where required for tax, accounting, or dispute resolution. Technical logs are kept for a limited period needed for security and operations. After deletion or account closure, residual copies may remain in backups for a limited time until those backups expire.",
       "securityTitle": "Data security",
       "securityBody": "We use administrative, technical, and organizational measures designed to protect personal information, including authentication, role-based access control, tenant scoping, encryption in transit, and least-privilege practices. No method of transmission or storage is completely secure, and we cannot guarantee absolute security.",
       "deletionTitle": "User and customer data deletion",
-      "deletionBody": "Authorized ValueOR users can delete records they control inside the product where those controls exist. Individuals and customers may also request deletion of ValueOR-related personal data. Instructions are published on our Data Deletion page. We will review requests and delete or de-identify personal data we control, except where we must retain information for legal, security, billing, or operational reasons.",
       "rightsTitle": "User rights and privacy requests",
       "rightsBody": "Depending on your location, you may have rights to access, correct, delete, or restrict processing of your personal information, or to object to certain processing. You may submit a request using the privacy contact email on this page. We may need to verify your identity and the relationship of the request to a ValueOR customer account before completing it. If you are an end customer of a business that uses ValueOR, we may direct you to that business when they are the data controller.",
       "cookiesTitle": "Cookies and technical data",
       "cookiesBody": "ValueOR uses essential cookies and similar technologies, plus browser local storage, to keep you signed in, remember language and theme preferences, and operate the application. We use technical logs and diagnostics to keep the service secure and reliable. These technologies are not used to sell your information or to advertise using WhatsApp or Instagram message content.",
       "childrenTitle": "Children’s privacy",
-      "childrenBody": "ValueOR is a business platform and is not directed to children. We do not knowingly collect personal information from children. If you believe a child has provided personal information to ValueOR, contact us and we will take appropriate steps to delete it.",
+      "childrenBody": "ValueOR is a business workspace. It is not directed to children and does not offer a children's account.",
       "internationalTitle": "International data processing",
-      "internationalBody": "ValueOR may process and store information in the country where you or the customer are located and in other countries where we or our service providers operate. Those countries may have different data-protection laws. Where required, we use appropriate safeguards for cross-border transfers.",
+      "internationalBody": "Hosting and connected providers may process data outside the country where the company operates. That processing is subject to those providers' terms and tooling.",
       "changesTitle": "Changes to this Privacy Policy",
       "changesBody": "We may update this Privacy Policy from time to time. The “Last updated” date at the top of this page will change when we do. Continued use of ValueOR after an update means the revised policy applies to that use, except where a later notice or consent is required by law.",
       "contactTitle": "Contact information",
-      "contactBody": "For privacy questions, access requests, or deletion requests, email {{email}}. You can also use the public Data Deletion page to send a deletion request. Please do not include passwords, access tokens, or other secrets in your message."
+      "contactBody": "For privacy questions or a deletion request, email {{email}} or use mobile {{phone}}. You can also open the Data Deletion page. Do not include passwords or access tokens.",
+      "metaP1": "When communication channels such as WhatsApp, Instagram, and others are connected to ValueOR, related data may be processed, including message content, phone numbers, account identifiers, attachments, message statuses, and metadata needed to provide the service.",
+      "metaP2": "This data is used to provide inbound messaging, authorized replies, conversation management, customer support, automation, and other features the customer enables.",
+      "metaP3": "When AI features are used, relevant content may be shared with OpenAI as described in the AI data-processing section of this policy.",
+      "metaP4": "Processing through these channels is also subject to the terms and policies of the relevant providers.",
+      "aiTitle": "AI data processing (OpenAI)",
+      "aiP1": "Some ValueOR features may use artificial intelligence provided through OpenAI APIs. When an authorized user uses one of these features, relevant content—such as message text, conversation context, or data needed to fulfill the request—may be shared with OpenAI to process the request and return the required result.",
+      "aiP2": "Within ValueOR, use of this data is limited to providing the AI feature the user requested, according to account permissions and service settings. Processing by OpenAI is subject to that provider's applicable terms, policies, and API account settings.",
+      "aiP3": "ValueOR does not make guarantees about how long OpenAI retains data or whether OpenAI uses it for training, except to the extent confirmed by the actual terms and settings of the service in use.",
+      "retentionP1": "ValueOR retains data for as long as there is an operational, contractual, or legal need to keep it, or until a valid deletion request is processed under the applicable procedures.",
+      "retentionP2": "Deletion requests are handled manually by ValueOR administration after the request is reviewed and the requester's identity and authority are verified. Some data may be retained where legal or accounting obligations apply, or where retention is needed for security, fraud prevention, or dispute resolution.",
+      "retentionP3": "Backups, operational logs, and data processed by external providers may be subject to those providers' own retention policies and procedures.",
+      "deletionP1": "A user or an authorized company representative may submit a data deletion request through the data deletion page at https://www.valueor.org/data-deletion or by email at valueor@admin.org.",
+      "deletionP2": "Requests are reviewed manually by ValueOR administration. The requester may be asked for additional information to verify identity or authority.",
+      "deletionP3": "After verification, administration processes deletion of data held in systems ValueOR controls, subject to any legal or accounting obligations or other legitimate retention requirements.",
+      "deletionP4": "Submitting a request does not mean deletion is automatic or immediate. ValueOR does not guarantee deletion of data controlled by Meta, OpenAI, or another external provider. A separate request to the relevant provider may be required."
     },
     "dataDeletion": {
       "title": "ValueOR Data Deletion",
@@ -17637,16 +17673,18 @@
       "includeChannel": "Any WhatsApp number, Instagram username, email address, SMS number, or other messaging identifier we should search.",
       "includeDetails": "A short description of what you want deleted (for example: user account, conversation history, customer record, or all personal data you can identify).",
       "requestTitle": "Submit a deletion request",
-      "requestBody": "There is no anonymous self-serve wipe of an entire production workspace from this public page. Send an email to {{email}} using the button below or your own email client. Use the subject line “ValueOR data deletion request” so we can route it correctly.",
+      "requestBody": "There is no self-serve wipe of a company workspace on this page. Email {{email}} or call {{phone}}. Use the subject \"ValueOR data deletion request\" so the message can be recognized.",
       "requestCta": "Email a deletion request",
       "emailLabel": "Privacy contact email",
       "emailSubject": "ValueOR data deletion request",
       "afterTitle": "What happens after you request deletion",
-      "afterBody": "We will review the request, verify it where needed, and delete or de-identify personal data we control, typically within 30 days unless a longer period is required by law or the request is complex. We may retain limited information when we must do so for security, dispute resolution, tax or billing compliance, legal obligations, or backup rotation.",
       "controllerTitle": "When a business customer is the controller",
       "controllerBody": "If a business customer of ValueOR is the controller of your data (for example you are their end customer or their employee), we may need that customer’s confirmation, or we may refer you to them to exercise your rights through their organization. ValueOR processes that workspace data to provide the product to the customer under our Terms and Privacy Policy.",
       "relatedTitle": "Related policies",
-      "relatedBody": "Deletion requests are handled under our"
+      "relatedBody": "Deletion requests are handled under our",
+      "afterP1": "Requests are reviewed manually by ValueOR administration. The requester may be asked for additional information to verify identity or authority.",
+      "afterP2": "After verification, administration processes deletion of data held in systems ValueOR controls, subject to any legal or accounting obligations or other legitimate retention requirements.",
+      "afterP3": "Submitting a request does not mean deletion is automatic or immediate. ValueOR does not guarantee deletion of data controlled by Meta, OpenAI, or another external provider. A separate request to the relevant provider may be required."
     },
     "terms": {
       "title": "ValueOR Terms of Service",

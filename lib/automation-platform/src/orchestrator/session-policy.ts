@@ -199,11 +199,13 @@ export function buildResumeInput(
       const outbound = readLatestOutbound(run.variables);
       const options = collectInteractiveMenuOptions(outbound);
       const matchedId = matchFreeTextToInteractiveOptions(inboundText, options);
+      const freeTextInteractionType =
+        outbound?.kind === "list" ? "list_reply" : "button";
       if (matchedId) {
         input.replyId = matchedId;
         input.title = inboundText.trim() || matchedId;
         input[INTERACTIVE_SELECTION_INPUT_KEY] = matchedId;
-        input.interactionType = "button";
+        input.interactionType = freeTextInteractionType;
         input.kind = "interactive_reply";
       } else {
         const continueId = resolveContinueLikeSelectionId(options);
@@ -211,7 +213,7 @@ export function buildResumeInput(
           input.replyId = continueId;
           input.title = inboundText.trim() || continueId;
           input[INTERACTIVE_SELECTION_INPUT_KEY] = continueId;
-          input.interactionType = "button";
+          input.interactionType = freeTextInteractionType;
           input.kind = "interactive_reply";
           input[CONSUME_LAST_MESSAGE_AS_INPUT_KEY] = true;
           input.lastMessage = inboundText.trim();

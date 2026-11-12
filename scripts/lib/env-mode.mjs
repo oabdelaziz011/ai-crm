@@ -61,6 +61,20 @@ export const LOCAL_OPTIONAL_MERGE_KEYS = [
   "SALES_FOLLOW_UP_WORKER_ALLOW_SEND",
   "SALES_FOLLOW_UP_WORKER_INTERVAL_MS",
   "SALES_FOLLOW_UP_WORKER_LIMIT",
+  // Local Development Meta Embedded Signup (never Production).
+  "META_EMBEDDED_SIGNUP_APP_ID",
+  "META_EMBEDDED_SIGNUP_APP_SECRET",
+  "META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID",
+  "META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID",
+  "META_EMBEDDED_SIGNUP_STATE_SECRET",
+  "META_EMBEDDED_SIGNUP_GRAPH_VERSION",
+  "WHATSAPP_EMBEDDED_SIGNUP_ENABLED",
+  "WHATSAPP_COEXISTENCE_ENABLED",
+  "WHATSAPP_EMBEDDED_SIGNUP_AUTO_SUBSCRIBE",
+  "WHATSAPP_EMBEDDED_SIGNUP_ALLOW_PRODUCTION_SUBSCRIBE",
+  "WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE",
+  "VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED",
+  "VITE_WHATSAPP_COEXISTENCE_ENABLED",
 ];
 
 const RECORDED_PRODUCTION_PROJECT_REF = "lfbtnskmvibikalsxwsm";
@@ -274,6 +288,24 @@ export function assertProductionEnvironmentSafety(env) {
   }
 }
 
+/**
+ * ValueOR allows exactly two environments: Development (`local`) and Production.
+ * Staging remains in legacy helpers for historical tests only; normal workflows must fail.
+ */
+export function assertTwoEnvironmentPolicy(env = process.env) {
+  const mode = resolveValueorEnv(env.VALUEOR_ENV ?? env);
+  if (mode !== VALUEOR_ENV_STAGING) return;
+  if (String(env.VALUEOR_ALLOW_STAGING_LEGACY ?? "").trim() === "1") return;
+  throw new Error(
+    [
+      "ENVIRONMENT POLICY FAILED",
+      "ValueOR supports exactly two environments: Development (VALUEOR_ENV=local) and Production.",
+      "Staging is not a supported environment for engineering or mobile builds.",
+      "Use local Supabase + local API for Development. Do not create a third hosted project for day-to-day work.",
+    ].join("\n"),
+  );
+}
+
 export function assertLocalEnvironmentSafety(env) {
   const mode = resolveValueorEnv(env.VALUEOR_ENV);
   if (mode !== VALUEOR_ENV_LOCAL) return;
@@ -287,6 +319,25 @@ export function assertLocalEnvironmentSafety(env) {
 
   if (env.DATABASE_URL && isProductionDatabaseUrl(env.DATABASE_URL)) {
     offenders.push("DATABASE_URL (production Supabase pooler/cloud host)");
+  }
+
+  for (const key of [
+    "VITE_API_SERVER_URL",
+    "API_URL",
+    "EXPO_PUBLIC_API_URL",
+    "EXPO_PUBLIC_SUPABASE_URL",
+  ]) {
+    const value = env[key];
+    if (!value?.trim()) continue;
+    if (isProductionPublicHost(value) || isProductionWebhookUrl(value)) {
+      offenders.push(`${key} (production public host)`);
+    }
+    if (key.includes("SUPABASE") && isProductionSupabaseUrl(value)) {
+      offenders.push(`${key} (production supabase.co host)`);
+    }
+    if (key.includes("SUPABASE") && isRecordedProductionSupabaseUrl(value)) {
+      offenders.push(`${key} (recorded production project)`);
+    }
   }
 
   if (isProductionWebhookUrl(env.WEBHOOK_BASE_URL)) {
@@ -314,12 +365,13 @@ export function assertLocalEnvironmentSafety(env) {
   if (offenders.length > 0) {
     const message = [
       "LOCAL ENVIRONMENT SAFETY CHECK FAILED",
-      "VALUEOR_ENV=local cannot use production Supabase, production DATABASE_URL, or production webhook URLs.",
+      "VALUEOR_ENV=local cannot use production Supabase, production API hosts, production DATABASE_URL, or production webhook URLs.",
       "Offending configuration:",
       ...offenders.map((item) => `  - ${item}`),
       "",
       "Fix: run `node scripts/ensure-localstack-env.mjs` and use `pnpm dev:local` / `pnpm dev:api:local`.",
-      `Do not point local mode at ${RECORDED_PRODUCTION_PROJECT_REF} / webhook.valueor.org.`,
+      `Do not point local mode at ${RECORDED_PRODUCTION_PROJECT_REF} / api.valueor.org / webhook.valueor.org.`,
+      "Android Emulator must reach the host API via http://10.0.2.2:<dev-api-port> (not 127.0.0.1).",
     ].join("\n");
     throw new Error(message);
   }

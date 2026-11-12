@@ -38,23 +38,44 @@ export function isWhatsAppEmbeddedSignupAllowProductionSubscribe(): boolean {
   return envFlagTrue("WHATSAPP_EMBEDDED_SIGNUP_ALLOW_PRODUCTION_SUBSCRIBE");
 }
 
+export type WhatsAppEmbeddedSignupOnboardingMode = "cloud_api_new" | "coexistence";
+
+/** App credentials required for code exchange. Path-specific config IDs are resolved separately. */
 export type MetaEmbeddedSignupEnvConfig = {
   appId: string;
   appSecret: string;
-  configId: string;
   graphApiVersion: string;
 };
+
+export const META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV =
+  "META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID";
+export const META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV =
+  "META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID";
 
 export function readMetaEmbeddedSignupEnvConfig(): MetaEmbeddedSignupEnvConfig | null {
   const appId = String(process.env.META_EMBEDDED_SIGNUP_APP_ID ?? "").trim();
   const appSecret = String(process.env.META_EMBEDDED_SIGNUP_APP_SECRET ?? "").trim();
-  const configId = String(process.env.META_EMBEDDED_SIGNUP_CONFIG_ID ?? "").trim();
   const graphApiVersion =
     String(process.env.META_EMBEDDED_SIGNUP_GRAPH_VERSION ?? "").trim() || "v21.0";
 
-  if (!appId || !appSecret || !configId) {
+  if (!appId || !appSecret) {
     return null;
   }
 
-  return { appId, appSecret, configId, graphApiVersion };
+  return { appId, appSecret, graphApiVersion };
+}
+
+/**
+ * Resolve the Meta Login for Business configuration ID for one onboarding path.
+ * Never falls back to the other path's ID. Returns null when the required env is unset.
+ */
+export function readMetaEmbeddedSignupConfigIdForMode(
+  mode: WhatsAppEmbeddedSignupOnboardingMode,
+): string | null {
+  const envName =
+    mode === "coexistence"
+      ? META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV
+      : META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV;
+  const configId = String(process.env[envName] ?? "").trim();
+  return configId || null;
 }

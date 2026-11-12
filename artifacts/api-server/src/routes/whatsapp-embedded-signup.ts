@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
+import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
 import { isWhatsAppEmbeddedSignupEnabled } from "../services/whatsapp-embedded-signup-flags.js";
@@ -14,6 +15,7 @@ import {
 const router: IRouter = Router();
 
 router.use(providerOpsRateLimiter);
+router.use(confineToPathPrefixes("/whatsapp"));
 router.use(requireSupabaseAuth);
 router.use(requireCompanyScope("companyId"));
 
@@ -50,9 +52,14 @@ router.post("/whatsapp/embedded-signup/session", async (req, res, next) => {
     }
     await assertRouteCommercialFeature(companyId, "whatsapp_channel");
 
+    const modeRaw = String(req.body?.onboardingMode ?? "").trim();
+    const onboardingMode =
+      modeRaw === "coexistence" ? "coexistence" : modeRaw === "cloud_api_new" ? "cloud_api_new" : null;
+
     const session = await createWhatsAppEmbeddedSignupSession({
       companyId,
       userId: req.supabaseUser?.id ?? null,
+      onboardingMode,
     });
     res.json(session);
   } catch (error) {

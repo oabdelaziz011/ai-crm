@@ -3,11 +3,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isWhatsAppCoexistenceEnabled,
   isWhatsAppEmbeddedSignupEnabled,
+  META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV,
+  META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV,
+  readMetaEmbeddedSignupConfigIdForMode,
   readMetaEmbeddedSignupEnvConfig,
+  type WhatsAppEmbeddedSignupOnboardingMode,
 } from "./whatsapp-embedded-signup-flags.js";
 import { maybeSubscribeWabaToWebhook } from "./whatsapp-embedded-signup-waba-subscribe.js";
 
 const STATE_TTL_MS = 15 * 60 * 1000;
+
+export type { WhatsAppEmbeddedSignupOnboardingMode };
 
 export type WhatsAppEmbeddedSignupSessionResult = {
   enabled: true;
@@ -18,6 +24,7 @@ export type WhatsAppEmbeddedSignupSessionResult = {
   coexistenceEnabled: boolean;
   /** Public only — never include app secret. */
   featureType: "whatsapp_business_app_onboarding" | null;
+  onboardingMode: WhatsAppEmbeddedSignupOnboardingMode;
 };
 
 export type WhatsAppEmbeddedSignupCompleteInput = {
@@ -25,11 +32,17 @@ export type WhatsAppEmbeddedSignupCompleteInput = {
   userId: string | null;
   code: string;
   state: string;
+  /** Required for Option B. Optional for Coexistence — resolved via Graph WABA phone_numbers when omitted. */
   phoneNumberId: string;
   businessAccountId: string;
   businessPortfolioId?: string | null;
   replaceExisting?: boolean;
   coexistenceEligible?: boolean | null;
+};
+
+export type WhatsAppCoexistenceSyncResult = {
+  contacts: { attempted: boolean; ok: boolean; requestId?: string; error?: string };
+  history: { attempted: boolean; ok: boolean; requestId?: string; error?: string };
 };
 
 export type WhatsAppEmbeddedSignupCredentialStatus = "persisted";
@@ -51,6 +64,7 @@ export type WhatsAppEmbeddedSignupCompleteResult = {
    * already_subscribed | subscribed. Never true solely because secrets were saved.
    */
   fullyOnboarded: boolean;
+  coexistenceSync?: WhatsAppCoexistenceSyncResult | null;
 };
 
 export class WhatsAppEmbeddedSignupError extends Error {
@@ -186,7 +200,12 @@ async function exchangeAuthorizationCode(input: {
 }
 
 export async function createWhatsAppEmbeddedSignupSession(
-  input: { companyId: string; userId: string | null },
+  input: {
+    companyId: string;
+    userId: string | null;
+    /** cloud_api_new = Option B; coexistence = Option A (Meta-owned QR when eligible). */
+    onboardingMode?: WhatsAppEmbeddedSignupOnboardingMode | null;
+  },
   deps: Pick<WhatsAppEmbeddedSignupDeps, "nowMs" | "stateSecret"> = {},
 ): Promise<WhatsAppEmbeddedSignupSessionResult> {
   if (!isWhatsAppEmbeddedSignupEnabled()) {
@@ -200,8 +219,36 @@ export async function createWhatsAppEmbeddedSignupSession(
   const meta = readMetaEmbeddedSignupEnvConfig();
   if (!meta) {
     throw new WhatsAppEmbeddedSignupError(
-      "Meta Embedded Signup is not configured (META_EMBEDDED_SIGNUP_APP_ID / APP_SECRET / CONFIG_ID).",
+      "Meta Embedded Signup is not configured (META_EMBEDDED_SIGNUP_APP_ID / META_EMBEDDED_SIGNUP_APP_SECRET).",
       "ES_META_CONFIG_MISSING",
+      503,
+    );
+  }
+
+  const mode: WhatsAppEmbeddedSignupOnboardingMode =
+    input.onboardingMode === "coexistence" ? "coexistence" : "cloud_api_new";
+
+  const coexistenceEnabled = isWhatsAppCoexistenceEnabled();
+  if (mode === "coexistence" && !coexistenceEnabled) {
+    throw new WhatsAppEmbeddedSignupError(
+      "WhatsApp Business App Coexistence onboarding is disabled for this environment.",
+      "ES_COEXISTENCE_DISABLED",
+      403,
+    );
+  }
+
+  // Path-specific FLB configuration ID. Never fall back to the other path's env var.
+  const configId = readMetaEmbeddedSignupConfigIdForMode(mode);
+  if (!configId) {
+    const envName =
+      mode === "coexistence"
+        ? META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV
+        : META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV;
+    throw new WhatsAppEmbeddedSignupError(
+      mode === "coexistence"
+        ? `Meta Coexistence Embedded Signup configuration ID is not configured (${envName}).`
+        : `Meta Cloud API Embedded Signup configuration ID is not configured (${envName}).`,
+      "ES_META_CONFIG_ID_MISSING",
       503,
     );
   }
@@ -218,16 +265,17 @@ export async function createWhatsAppEmbeddedSignupSession(
     secret,
   );
 
-  const coexistenceEnabled = isWhatsAppCoexistenceEnabled();
-
   return {
     enabled: true,
     appId: meta.appId,
-    configId: meta.configId,
+    configId,
     state,
     graphApiVersion: meta.graphApiVersion,
     coexistenceEnabled,
-    featureType: coexistenceEnabled ? "whatsapp_business_app_onboarding" : null,
+    // Only Option A requests Meta's coexistence Embedded Signup featureType.
+    // Meta owns any QR; ValueOR never fabricates QR codes.
+    featureType: mode === "coexistence" ? "whatsapp_business_app_onboarding" : null,
+    onboardingMode: mode,
   };
 }
 
@@ -246,12 +294,20 @@ export async function completeWhatsAppEmbeddedSignup(
   const companyId = input.companyId.trim();
   const code = input.code.trim();
   const state = input.state.trim();
-  const phoneNumberId = input.phoneNumberId.trim();
+  let phoneNumberId = input.phoneNumberId.trim();
   const businessAccountId = input.businessAccountId.trim();
+  const coexistenceEligible = input.coexistenceEligible === true;
 
-  if (!companyId || !code || !state || !phoneNumberId || !businessAccountId) {
+  if (!companyId || !code || !state || !businessAccountId) {
     throw new WhatsAppEmbeddedSignupError(
-      "code, state, phoneNumberId, and businessAccountId are required.",
+      "code, state, and businessAccountId are required.",
+      "ES_INVALID_REQUEST",
+      400,
+    );
+  }
+  if (!phoneNumberId && !coexistenceEligible) {
+    throw new WhatsAppEmbeddedSignupError(
+      "phoneNumberId is required for Cloud API Embedded Signup.",
       "ES_INVALID_REQUEST",
       400,
     );
@@ -264,7 +320,7 @@ export async function completeWhatsAppEmbeddedSignup(
   const meta = readMetaEmbeddedSignupEnvConfig();
   if (!meta) {
     throw new WhatsAppEmbeddedSignupError(
-      "Meta Embedded Signup is not configured (META_EMBEDDED_SIGNUP_APP_ID / APP_SECRET / CONFIG_ID).",
+      "Meta Embedded Signup is not configured (META_EMBEDDED_SIGNUP_APP_ID / META_EMBEDDED_SIGNUP_APP_SECRET).",
       "ES_META_CONFIG_MISSING",
       503,
     );
@@ -307,22 +363,29 @@ export async function completeWhatsAppEmbeddedSignup(
     );
   }
 
-  const { data: duplicateRows, error: duplicateError } = await client
-    .from("company_whatsapp_settings")
-    .select("company_id, phone_number_id")
-    .eq("phone_number_id", phoneNumberId)
-    .neq("company_id", companyId)
-    .limit(5);
+  const assertPhoneNotInUse = async (candidatePhoneNumberId: string) => {
+    const { data: duplicateRows, error: duplicateError } = await client
+      .from("company_whatsapp_settings")
+      .select("company_id, phone_number_id")
+      .eq("phone_number_id", candidatePhoneNumberId)
+      .neq("company_id", companyId)
+      .limit(5);
 
-  if (duplicateError) {
-    throw new WhatsAppEmbeddedSignupError(duplicateError.message, "ES_DUPLICATE_CHECK_FAILED", 500);
-  }
-  if (Array.isArray(duplicateRows) && duplicateRows.length > 0) {
-    throw new WhatsAppEmbeddedSignupError(
-      "This phone_number_id is already connected to another company.",
-      "ES_PHONE_IN_USE",
-      409,
-    );
+    if (duplicateError) {
+      throw new WhatsAppEmbeddedSignupError(duplicateError.message, "ES_DUPLICATE_CHECK_FAILED", 500);
+    }
+    if (Array.isArray(duplicateRows) && duplicateRows.length > 0) {
+      throw new WhatsAppEmbeddedSignupError(
+        "This phone_number_id is already connected to another company.",
+        "ES_PHONE_IN_USE",
+        409,
+      );
+    }
+  };
+
+  // When Meta already returned phone_number_id, enforce tenant isolation before code exchange.
+  if (phoneNumberId) {
+    await assertPhoneNotInUse(phoneNumberId);
   }
 
   const accessToken = await exchangeAuthorizationCode({
@@ -332,6 +395,17 @@ export async function completeWhatsAppEmbeddedSignup(
     graphApiVersion: meta.graphApiVersion,
     fetchImpl,
   });
+
+  // Coexistence FINISH event may only return waba_id; resolve phone_number_id via Graph.
+  if (!phoneNumberId) {
+    phoneNumberId = await resolvePhoneNumberIdForWaba({
+      wabaId: businessAccountId,
+      accessToken,
+      graphApiVersion: meta.graphApiVersion,
+      fetchImpl,
+    });
+    await assertPhoneNotInUse(phoneNumberId);
+  }
 
   const existingVerifyPresent = Boolean(existing.has_webhook_verify_token);
   const webhookVerifyToken = existingVerifyPresent ? "" : generateVerifyToken();
@@ -352,8 +426,9 @@ export async function completeWhatsAppEmbeddedSignup(
     p_default_language: defaultLanguage,
     p_max_retry_count: maxRetryCount,
     p_api_version: apiVersion,
-    // Empty app secret preserves existing encrypted secret (same Manual semantics).
-    p_app_secret: "",
+    // Persist Meta app secret so webhook HMAC verification works for this tenant.
+    // Never returned to the client.
+    p_app_secret: meta.appSecret,
     p_webhook_callback_url: webhookCallbackUrl,
   });
 
@@ -408,6 +483,62 @@ export async function completeWhatsAppEmbeddedSignup(
       ? null
       : subscription.error ?? `Webhook subscription status: ${subscription.status}`;
 
+  // Cloud API register is for Option B only. Meta docs: skip register for Coexistence numbers.
+  if (!coexistenceEligible && envFlagTrue("WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE")) {
+    try {
+      const registerUrl = `https://graph.facebook.com/${meta.graphApiVersion}/${encodeURIComponent(phoneNumberId)}/register`;
+      await fetchImpl(registerUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messaging_product: "whatsapp", pin: "000000" }),
+      });
+    } catch {
+      // Non-fatal — owner may complete registration in Meta Business Suite.
+    }
+  }
+
+  let connectionTestOk: boolean | null = null;
+  try {
+    const meUrl = new URL(`https://graph.facebook.com/${meta.graphApiVersion}/${encodeURIComponent(phoneNumberId)}`);
+    meUrl.searchParams.set(
+      "fields",
+      coexistenceEligible
+        ? "id,display_phone_number,verified_name,is_on_biz_app,platform_type"
+        : "id,display_phone_number,verified_name",
+    );
+    const probe = await fetchImpl(meUrl.toString(), {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    connectionTestOk = probe.ok;
+  } catch {
+    connectionTestOk = false;
+  }
+
+  // Official Coexistence: initiate contacts + history sync within 24h of onboarding.
+  let coexistenceSync: WhatsAppCoexistenceSyncResult | null = null;
+  if (coexistenceEligible) {
+    coexistenceSync = await initiateCoexistenceSmbAppDataSync({
+      phoneNumberId,
+      accessToken,
+      graphApiVersion: meta.graphApiVersion,
+      fetchImpl,
+    });
+  }
+
+  const coexistenceSyncError =
+    coexistenceSync && (!coexistenceSync.contacts.ok || !coexistenceSync.history.ok)
+      ? [
+          coexistenceSync.contacts.ok ? null : `contacts:${coexistenceSync.contacts.error ?? "failed"}`,
+          coexistenceSync.history.ok ? null : `history:${coexistenceSync.history.error ?? "failed"}`,
+        ]
+          .filter(Boolean)
+          .join("; ")
+      : null;
+
   await upsertEmbeddedSignupMetadata(client, {
     companyId,
     userId: input.userId,
@@ -416,9 +547,9 @@ export async function completeWhatsAppEmbeddedSignup(
     phoneNumberId,
     businessAccountId,
     businessPortfolioId: input.businessPortfolioId ?? null,
-    coexistenceEligible: input.coexistenceEligible ?? null,
+    coexistenceEligible,
     coexistenceEnabled: isWhatsAppCoexistenceEnabled(),
-    lastError: metadataError,
+    lastError: [metadataError, coexistenceSyncError].filter(Boolean).join(" | ") || null,
     completed: true,
   });
 
@@ -430,9 +561,90 @@ export async function completeWhatsAppEmbeddedSignup(
     businessAccountId,
     onboardingMethod: "embedded_signup",
     subscription,
-    connectionTestOk: null,
-    fullyOnboarded: webhookOk,
+    connectionTestOk,
+    fullyOnboarded: webhookOk && connectionTestOk === true,
+    coexistenceSync,
   };
+}
+
+async function resolvePhoneNumberIdForWaba(input: {
+  wabaId: string;
+  accessToken: string;
+  graphApiVersion: string;
+  fetchImpl: typeof fetch;
+}): Promise<string> {
+  const url = new URL(
+    `https://graph.facebook.com/${input.graphApiVersion}/${encodeURIComponent(input.wabaId)}/phone_numbers`,
+  );
+  url.searchParams.set("fields", "id,display_phone_number,verified_name");
+  const response = await input.fetchImpl(url.toString(), {
+    method: "GET",
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    data?: Array<{ id?: string }>;
+    error?: { message?: string };
+  };
+  const id = payload.data?.find((row) => String(row.id ?? "").trim())?.id?.trim() ?? "";
+  if (!response.ok || !id) {
+    throw new WhatsAppEmbeddedSignupError(
+      payload.error?.message ??
+        "Could not resolve phone_number_id from WABA after Coexistence Embedded Signup.",
+      "ES_PHONE_RESOLVE_FAILED",
+      400,
+    );
+  }
+  return id;
+}
+
+async function initiateCoexistenceSmbAppDataSync(input: {
+  phoneNumberId: string;
+  accessToken: string;
+  graphApiVersion: string;
+  fetchImpl: typeof fetch;
+}): Promise<WhatsAppCoexistenceSyncResult> {
+  const run = async (syncType: "smb_app_state_sync" | "history") => {
+    try {
+      const url = `https://graph.facebook.com/${input.graphApiVersion}/${encodeURIComponent(input.phoneNumberId)}/smb_app_data`;
+      const response = await input.fetchImpl(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${input.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messaging_product: "whatsapp", sync_type: syncType }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        request_id?: string;
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        return {
+          attempted: true,
+          ok: false,
+          error: payload.error?.message ?? `HTTP ${response.status}`,
+        };
+      }
+      return { attempted: true, ok: true, requestId: payload.request_id };
+    } catch (error) {
+      return {
+        attempted: true,
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  };
+
+  const contacts = await run("smb_app_state_sync");
+  const history = await run("history");
+  return { contacts, history };
+}
+
+function envFlagTrue(name: string): boolean {
+  const raw = String(process.env[name] ?? "")
+    .trim()
+    .toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
 async function upsertEmbeddedSignupMetadata(

@@ -41,6 +41,8 @@ async function postEmbeddedSignupApi<T>(path: string, body: Record<string, unkno
   return payload;
 }
 
+export type WhatsAppEmbeddedSignupOnboardingMode = "cloud_api_new" | "coexistence";
+
 export type WhatsAppEmbeddedSignupSessionResponse = {
   enabled: true;
   appId: string;
@@ -49,6 +51,7 @@ export type WhatsAppEmbeddedSignupSessionResponse = {
   graphApiVersion: string;
   coexistenceEnabled: boolean;
   featureType: "whatsapp_business_app_onboarding" | null;
+  onboardingMode: WhatsAppEmbeddedSignupOnboardingMode;
 };
 
 export type WhatsAppEmbeddedSignupCompleteResponse = {
@@ -61,14 +64,19 @@ export type WhatsAppEmbeddedSignupCompleteResponse = {
     reason?: string;
     ok?: boolean;
     error?: string;
+    status?: string;
   };
   connectionTestOk: boolean | null;
+  fullyOnboarded?: boolean;
 };
 
-export function createWhatsAppEmbeddedSignupSession(companyId: string) {
+export function createWhatsAppEmbeddedSignupSession(
+  companyId: string,
+  onboardingMode: WhatsAppEmbeddedSignupOnboardingMode = "cloud_api_new",
+) {
   return postEmbeddedSignupApi<WhatsAppEmbeddedSignupSessionResponse>(
     "/whatsapp/embedded-signup/session",
-    { companyId },
+    { companyId, onboardingMode },
   );
 }
 

@@ -4,6 +4,9 @@ import {
   isWhatsAppCoexistenceEnabled,
   isWhatsAppEmbeddedSignupAutoSubscribeEnabled,
   isWhatsAppEmbeddedSignupEnabled,
+  META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV,
+  META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV,
+  readMetaEmbeddedSignupConfigIdForMode,
   readMetaEmbeddedSignupEnvConfig,
 } from "./whatsapp-embedded-signup-flags.js";
 import { maybeSubscribeWabaToWebhook } from "./whatsapp-embedded-signup-waba-subscribe.js";
@@ -23,6 +26,8 @@ const ENV_KEYS = [
   "META_EMBEDDED_SIGNUP_APP_ID",
   "META_EMBEDDED_SIGNUP_APP_SECRET",
   "META_EMBEDDED_SIGNUP_CONFIG_ID",
+  META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV,
+  META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV,
   "META_EMBEDDED_SIGNUP_STATE_SECRET",
   "META_EMBEDDED_SIGNUP_GRAPH_VERSION",
 ] as const;
@@ -45,7 +50,8 @@ function restoreEnv() {
 function setMetaConfig() {
   process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
   process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
-  process.env.META_EMBEDDED_SIGNUP_CONFIG_ID = "config-456";
+  process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV] = "cloud-config-111";
+  process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV] = "coex-config-222";
   process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
 }
 
@@ -69,8 +75,32 @@ describe("whatsapp-embedded-signup-flags", () => {
     const cfg = readMetaEmbeddedSignupEnvConfig();
     assert.ok(cfg);
     assert.equal(cfg?.appId, "app-123");
-    assert.equal(cfg?.configId, "config-456");
     assert.equal(cfg?.appSecret, "secret-xyz");
+    assert.equal(
+      readMetaEmbeddedSignupConfigIdForMode("cloud_api_new"),
+      "cloud-config-111",
+    );
+    assert.equal(
+      readMetaEmbeddedSignupConfigIdForMode("coexistence"),
+      "coex-config-222",
+    );
+  });
+
+  it("does not cross-fall back between Cloud API and Coexistence config IDs", () => {
+    snapshotEnv();
+    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
+    process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
+    process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV] = "cloud-only";
+    delete process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV];
+    delete process.env.META_EMBEDDED_SIGNUP_CONFIG_ID;
+
+    assert.equal(readMetaEmbeddedSignupConfigIdForMode("cloud_api_new"), "cloud-only");
+    assert.equal(readMetaEmbeddedSignupConfigIdForMode("coexistence"), null);
+
+    delete process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV];
+    process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV] = "coex-only";
+    assert.equal(readMetaEmbeddedSignupConfigIdForMode("cloud_api_new"), null);
+    assert.equal(readMetaEmbeddedSignupConfigIdForMode("coexistence"), "coex-only");
   });
 });
 
@@ -339,7 +369,248 @@ describe("whatsapp-embedded-signup service", () => {
     assert.equal(upsertPayloads[0]?.p_access_token, "EAAB-test-token");
     assert.equal(upsertPayloads[0]?.p_phone_number_id, "1214681355059951");
     assert.equal(upsertPayloads[0]?.p_business_account_id, "1584022663181525");
-    // Empty app secret preserves existing encrypted secret semantics.
-    assert.equal(upsertPayloads[0]?.p_app_secret, "");
+    // Persist Meta app secret for tenant webhook HMAC verification (never returned to clients).
+    assert.equal(upsertPayloads[0]?.p_app_secret, "secret-xyz");
+  });
+
+  it("creates coexistence session with Meta featureType when enabled", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    process.env.WHATSAPP_COEXISTENCE_ENABLED = "true";
+    setMetaConfig();
+
+    const session = await createWhatsAppEmbeddedSignupSession({
+      companyId: "company-1",
+      userId: "user-1",
+      onboardingMode: "coexistence",
+    });
+
+    assert.equal(session.onboardingMode, "coexistence");
+    assert.equal(session.featureType, "whatsapp_business_app_onboarding");
+    assert.equal(session.coexistenceEnabled, true);
+    assert.equal(session.configId, "coex-config-222");
+    assert.ok(session.state.length > 10);
+  });
+
+  it("rejects coexistence session when coexistence flag is off", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    delete process.env.WHATSAPP_COEXISTENCE_ENABLED;
+    setMetaConfig();
+
+    await assert.rejects(
+      () =>
+        createWhatsAppEmbeddedSignupSession({
+          companyId: "company-1",
+          userId: "user-1",
+          onboardingMode: "coexistence",
+        }),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_COEXISTENCE_DISABLED",
+    );
+  });
+
+  it("creates cloud_api_new session without coexistence featureType", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    setMetaConfig();
+
+    const session = await createWhatsAppEmbeddedSignupSession({
+      companyId: "company-1",
+      userId: "user-1",
+      onboardingMode: "cloud_api_new",
+    });
+
+    assert.equal(session.onboardingMode, "cloud_api_new");
+    assert.equal(session.featureType, null);
+    assert.equal(session.configId, "cloud-config-111");
+  });
+
+  it("selects Cloud API config ID for cloud_api_new and never the Coexistence ID", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    setMetaConfig();
+
+    const session = await createWhatsAppEmbeddedSignupSession({
+      companyId: "company-1",
+      userId: "user-1",
+      onboardingMode: "cloud_api_new",
+    });
+
+    assert.equal(session.configId, "cloud-config-111");
+    assert.notEqual(session.configId, "coex-config-222");
+  });
+
+  it("selects Coexistence config ID for coexistence and never the Cloud API ID", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    process.env.WHATSAPP_COEXISTENCE_ENABLED = "true";
+    setMetaConfig();
+
+    const session = await createWhatsAppEmbeddedSignupSession({
+      companyId: "company-1",
+      userId: "user-1",
+      onboardingMode: "coexistence",
+    });
+
+    assert.equal(session.configId, "coex-config-222");
+    assert.notEqual(session.configId, "cloud-config-111");
+  });
+
+  it("fails safely when Cloud API config ID is missing (no Coexistence fallback)", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
+    process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
+    process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
+    delete process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV];
+    process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV] = "coex-config-222";
+
+    await assert.rejects(
+      () =>
+        createWhatsAppEmbeddedSignupSession({
+          companyId: "company-1",
+          userId: "user-1",
+          onboardingMode: "cloud_api_new",
+        }),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError &&
+        err.code === "ES_META_CONFIG_ID_MISSING" &&
+        err.message.includes(META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV) &&
+        !err.message.includes("coex-config-222"),
+    );
+  });
+
+  it("fails safely when Coexistence config ID is missing (no Cloud API fallback)", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    process.env.WHATSAPP_COEXISTENCE_ENABLED = "true";
+    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
+    process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
+    process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
+    process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV] = "cloud-config-111";
+    delete process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV];
+
+    await assert.rejects(
+      () =>
+        createWhatsAppEmbeddedSignupSession({
+          companyId: "company-1",
+          userId: "user-1",
+          onboardingMode: "coexistence",
+        }),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError &&
+        err.code === "ES_META_CONFIG_ID_MISSING" &&
+        err.message.includes(META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV) &&
+        !err.message.includes("cloud-config-111"),
+    );
+  });
+
+  it("resolves coexistence phone_number_id from WABA and triggers smb_app_data sync", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    delete process.env.WHATSAPP_EMBEDDED_SIGNUP_AUTO_SUBSCRIBE;
+    delete process.env.WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE;
+    setMetaConfig();
+
+    const secret = "state-secret";
+    const state = __test.signState(
+      { companyId: "company-1", userId: "user-1", nonce: "n-coex", exp: Date.now() + 60_000 },
+      secret,
+    );
+
+    const client = {
+      rpc: async (name: string) => {
+        if (name === "get_company_whatsapp_settings") {
+          return {
+            data: {
+              phone_number_id: "",
+              business_account_id: "",
+              has_access_token: false,
+              has_webhook_verify_token: false,
+              api_version: "v21.0",
+              default_language: "en",
+              max_retry_count: 3,
+              webhook_callback_url: "https://webhook.example.test/api/webhooks/whatsapp",
+            },
+            error: null,
+          };
+        }
+        if (name === "upsert_company_whatsapp_settings") {
+          return { data: {}, error: null };
+        }
+        if (name === "sync_whatsapp_channel_references") {
+          return { data: null, error: null };
+        }
+        return { data: null, error: null };
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            neq: () => ({
+              limit: async () => ({ data: [], error: null }),
+            }),
+          }),
+        }),
+        upsert: async () => ({ error: null }),
+      }),
+    };
+
+    const graphCalls: string[] = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      graphCalls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url.includes("oauth/access_token")) {
+        return new Response(JSON.stringify({ access_token: "EAAB-coex" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.includes("/phone_numbers")) {
+        return new Response(
+          JSON.stringify({ data: [{ id: "phone-coex-1", display_phone_number: "+15550001111" }] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.includes("/smb_app_data")) {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { sync_type?: string };
+        return new Response(
+          JSON.stringify({ messaging_product: "whatsapp", request_id: `req-${body.sync_type}` }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.includes("phone-coex-1")) {
+        return new Response(
+          JSON.stringify({
+            id: "phone-coex-1",
+            display_phone_number: "+15550001111",
+            is_on_biz_app: true,
+            platform_type: "CLOUD_API",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("{}", { status: 404 });
+    };
+
+    const result = await completeWhatsAppEmbeddedSignup(
+      {
+        companyId: "company-1",
+        userId: "user-1",
+        code: "auth-code",
+        state,
+        phoneNumberId: "",
+        businessAccountId: "waba-coex-1",
+        coexistenceEligible: true,
+      },
+      { client: client as never, stateSecret: secret, fetchImpl },
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.phoneNumberId, "phone-coex-1");
+    assert.equal(result.coexistenceSync?.contacts.ok, true);
+    assert.equal(result.coexistenceSync?.history.ok, true);
+    assert.ok(graphCalls.some((c) => c.includes("/smb_app_data")));
+    assert.ok(!graphCalls.some((c) => c.includes("/register")));
   });
 });

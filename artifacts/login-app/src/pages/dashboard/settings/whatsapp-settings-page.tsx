@@ -38,7 +38,6 @@ import {
   resolveChannelWebhookBaseUrl,
 } from "@/lib/channels/whatsapp-channel-utils";
 import { WhatsAppEmbeddedSignupPanel } from "@/components/channels/whatsapp-embedded-signup-panel";
-import { isWhatsAppEmbeddedSignupUiEnabled } from "@/lib/channels/whatsapp-embedded-signup-flags";
 
 const EMPTY_SETTINGS: WhatsAppSettingsDraft = {
   enabled: false,
@@ -344,15 +343,28 @@ export function SettingsWhatsAppPage() {
 
   return (
     <div className="space-y-6">
-      {isWhatsAppEmbeddedSignupUiEnabled() ? (
-        <WhatsAppEmbeddedSignupPanel
-          companyId={companyId}
-          onCompleted={() => {
-            void queryClient.invalidateQueries({ queryKey: whatsappSettingsKey(companyId) });
-            void refetchHealth();
-          }}
-        />
-      ) : null}
+      <WhatsAppEmbeddedSignupPanel
+        companyId={companyId}
+        hasExistingConnection={Boolean(
+          (settings?.phoneNumberId ?? "").trim() || settings?.hasAccessToken,
+        )}
+        onCompleted={() => {
+          void queryClient.invalidateQueries({ queryKey: whatsappSettingsKey(companyId) });
+          void refetchHealth();
+        }}
+        onDisconnect={async () => {
+          await updateSettings.mutateAsync({
+            ...draft,
+            enabled: false,
+            accessToken: "",
+            webhookVerifyToken: "",
+            appSecret: "",
+            webhookCallbackUrl,
+          });
+          setDraft((prev) => ({ ...prev, enabled: false }));
+          void refetchHealth();
+        }}
+      />
 
       <DashboardCard className="p-6 space-y-5">
         <div className="flex items-center gap-2">
@@ -360,11 +372,9 @@ export function SettingsWhatsAppPage() {
           <h3 className="font-semibold">{t("notifications.whatsapp.settings.title")}</h3>
         </div>
 
-        {isWhatsAppEmbeddedSignupUiEnabled() ? (
-          <p className="text-sm text-muted-foreground">
-            {t("notifications.whatsapp.settings.embeddedSignup.manualSectionLabel")}
-          </p>
-        ) : null}
+        <p className="text-sm text-muted-foreground">
+          {t("notifications.whatsapp.settings.embeddedSignup.manualSectionLabel")}
+        </p>
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

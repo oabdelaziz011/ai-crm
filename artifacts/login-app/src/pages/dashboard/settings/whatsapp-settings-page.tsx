@@ -44,6 +44,11 @@ import {
 import { WhatsAppEmbeddedSignupPanel } from "@/components/channels/whatsapp-embedded-signup-panel";
 import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-token-field";
 import { generateWhatsAppVerifyToken } from "@workspace/channel-registry";
+import { WhatsAppConnectionLifecyclePanel } from "@/components/channels/whatsapp-connection-lifecycle-panel";
+import {
+  disconnectWhatsAppConnection,
+  isWhatsAppLifecycleApiConfigured,
+} from "@/lib/channels/whatsapp-connection-lifecycle-client";
 
 const EMPTY_SETTINGS: WhatsAppSettingsDraft = {
   enabled: false,
@@ -95,7 +100,7 @@ export function SettingsWhatsAppPage() {
   const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { profile } = useAuth();
+  const { profile, company } = useAuth();
   const companyId = profile?.company_id ?? null;
 
   const { data: settings, isLoading } = useWhatsAppSettings(companyId);
@@ -361,15 +366,45 @@ export function SettingsWhatsAppPage() {
           void refetchHealth();
         }}
         onDisconnect={async () => {
-          await updateSettings.mutateAsync({
-            ...draft,
+          if (isWhatsAppLifecycleApiConfigured()) {
+            await disconnectWhatsAppConnection({
+              companyId,
+              confirmPhoneNumberId: (settings?.phoneNumberId ?? draft.phoneNumberId ?? "").trim() || null,
+              confirmText: "disconnect",
+            });
+          } else {
+            await updateSettings.mutateAsync({
+              ...draft,
+              enabled: false,
+              accessToken: "",
+              webhookVerifyToken: "",
+              appSecret: "",
+              webhookCallbackUrl,
+            });
+          }
+          setDraft((prev) => ({
+            ...prev,
             enabled: false,
+            phoneNumberId: "",
+            businessAccountId: "",
             accessToken: "",
             webhookVerifyToken: "",
             appSecret: "",
-            webhookCallbackUrl,
-          });
-          setDraft((prev) => ({ ...prev, enabled: false }));
+          }));
+          void queryClient.invalidateQueries({ queryKey: whatsappSettingsKey(companyId) });
+          void refetchHealth();
+        }}
+      />
+
+      <WhatsAppConnectionLifecyclePanel
+        companyId={companyId}
+        companyName={company?.name ?? null}
+        phoneNumberId={settings?.phoneNumberId ?? draft.phoneNumberId}
+        businessAccountId={settings?.businessAccountId ?? draft.businessAccountId}
+        enabled={Boolean(settings?.enabled ?? draft.enabled)}
+        hasAccessToken={Boolean(settings?.hasAccessToken)}
+        onChanged={() => {
+          void queryClient.invalidateQueries({ queryKey: whatsappSettingsKey(companyId) });
           void refetchHealth();
         }}
       />

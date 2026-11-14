@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isWhatsAppCoexistenceEnabled,
+  isWhatsAppEmbeddedSignupCompanyAllowed,
   isWhatsAppEmbeddedSignupEnabled,
   META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV,
   META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV,
@@ -10,6 +11,7 @@ import {
   type WhatsAppEmbeddedSignupOnboardingMode,
 } from "./whatsapp-embedded-signup-flags.js";
 import { maybeSubscribeWabaToWebhook } from "./whatsapp-embedded-signup-waba-subscribe.js";
+import { recordWhatsAppReconnectEvent } from "./whatsapp-connection-lifecycle.js";
 
 const STATE_TTL_MS = 15 * 60 * 1000;
 
@@ -216,6 +218,14 @@ export async function createWhatsAppEmbeddedSignupSession(
     );
   }
 
+  if (!isWhatsAppEmbeddedSignupCompanyAllowed(input.companyId)) {
+    throw new WhatsAppEmbeddedSignupError(
+      "WhatsApp Embedded Signup is not available for this company.",
+      "ES_COMPANY_NOT_ALLOWED",
+      403,
+    );
+  }
+
   const meta = readMetaEmbeddedSignupEnvConfig();
   if (!meta) {
     throw new WhatsAppEmbeddedSignupError(
@@ -292,6 +302,14 @@ export async function completeWhatsAppEmbeddedSignup(
   }
 
   const companyId = input.companyId.trim();
+  if (!isWhatsAppEmbeddedSignupCompanyAllowed(companyId)) {
+    throw new WhatsAppEmbeddedSignupError(
+      "WhatsApp Embedded Signup is not available for this company.",
+      "ES_COMPANY_NOT_ALLOWED",
+      403,
+    );
+  }
+
   const code = input.code.trim();
   const state = input.state.trim();
   let phoneNumberId = input.phoneNumberId.trim();
@@ -445,6 +463,21 @@ export async function completeWhatsAppEmbeddedSignup(
       lastError: upsertError.message,
     });
     throw new WhatsAppEmbeddedSignupError(upsertError.message, "ES_CREDENTIAL_PERSIST_FAILED", 500);
+  }
+
+  try {
+    await recordWhatsAppReconnectEvent(
+      {
+        companyId,
+        source: "embedded_signup",
+        phoneNumberId,
+        businessAccountId,
+        actorUserId: input.userId,
+      },
+      client,
+    );
+  } catch {
+    // Audit must not block a successful credential persist.
   }
 
   const { error: syncError } = await client.rpc("sync_whatsapp_channel_references", {

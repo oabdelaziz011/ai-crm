@@ -5,7 +5,10 @@ import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase
 import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
-import { isWhatsAppEmbeddedSignupEnabled } from "../services/whatsapp-embedded-signup-flags.js";
+import {
+  isWhatsAppEmbeddedSignupCompanyAllowed,
+  isWhatsAppEmbeddedSignupEnabled,
+} from "../services/whatsapp-embedded-signup-flags.js";
 import {
   WhatsAppEmbeddedSignupError,
   completeWhatsAppEmbeddedSignup,
@@ -43,6 +46,17 @@ function assertFeatureEnabled(): void {
   }
 }
 
+/** Route-level allowlist gate — applied to session, complete, and status. */
+function assertCompanyAllowedForEmbeddedSignup(companyId: string): void {
+  if (!isWhatsAppEmbeddedSignupCompanyAllowed(companyId)) {
+    throw new HttpError(
+      403,
+      "WhatsApp Embedded Signup is not available for this company.",
+      "ES_COMPANY_NOT_ALLOWED",
+    );
+  }
+}
+
 router.post("/whatsapp/embedded-signup/session", async (req, res, next) => {
   try {
     assertFeatureEnabled();
@@ -51,6 +65,7 @@ router.post("/whatsapp/embedded-signup/session", async (req, res, next) => {
       throw new HttpError(400, "companyId required", "bad_request");
     }
     await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    assertCompanyAllowedForEmbeddedSignup(companyId);
 
     const modeRaw = String(req.body?.onboardingMode ?? "").trim();
     const onboardingMode =
@@ -79,6 +94,7 @@ router.post("/whatsapp/embedded-signup/complete", async (req, res, next) => {
       throw new HttpError(400, "companyId required", "bad_request");
     }
     await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    assertCompanyAllowedForEmbeddedSignup(companyId);
 
     const client = getServiceClient();
     const result = await completeWhatsAppEmbeddedSignup(
@@ -120,6 +136,7 @@ router.post("/whatsapp/embedded-signup/status", async (req, res, next) => {
       throw new HttpError(400, "companyId required", "bad_request");
     }
     await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    assertCompanyAllowedForEmbeddedSignup(companyId);
 
     const client = getServiceClient();
     const { data, error } = await client
@@ -139,7 +156,11 @@ router.post("/whatsapp/embedded-signup/status", async (req, res, next) => {
       row: data ?? null,
     });
   } catch (error) {
-    next(error);
+    try {
+      mapEsError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
   }
 });
 

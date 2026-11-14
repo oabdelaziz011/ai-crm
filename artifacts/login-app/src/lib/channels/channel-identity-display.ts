@@ -55,9 +55,12 @@ export function channelDuplicateKey(channel: CompanyChannelRecord): string | nul
 }
 
 /**
- * "Working" must match live send/receive, not only company_channels.health_status.
- * WhatsApp often stays "unknown" because credentials live in company_whatsapp_settings
- * while the channel row only stores a credentialsSource / phoneNumberId pointer.
+ * "Working" must not overstate readiness from config pointers alone.
+ * Prefer company_channels.health_status when connected/warning.
+ * WhatsApp may stay "unknown" while credentials live in company_whatsapp_settings —
+ * only treat that as working when the settings query confirms a ready connection
+ * (`whatsappSettingsReady`), never from phoneNumberId presence alone.
+ * Messenger / Instagram / Email require health_status — pageId/fromEmail alone is not Connected.
  */
 export function isChannelWorking(
   channel: CompanyChannelRecord,
@@ -72,22 +75,11 @@ export function isChannelWorking(
   }
 
   const key = channelTypeKey(channel);
-  const configuration = channel.configuration ?? {};
   if (key === "web_chat") return true;
   if (key === "whatsapp") {
-    if (options?.whatsappSettingsReady === true) return true;
-    const phoneNumberId = readConfigString(configuration, "phoneNumberId");
-    const credentialsSource = readConfigString(configuration, "credentialsSource");
-    return Boolean(phoneNumberId || credentialsSource === "company_whatsapp_settings");
+    return options?.whatsappSettingsReady === true;
   }
-  if (key === "messenger" || key === "instagram") {
-    return Boolean(
-      readConfigString(configuration, "pageId") || (channel.external_account_id ?? "").trim(),
-    );
-  }
-  if (key === "email") {
-    return Boolean(readConfigString(configuration, "fromEmail"));
-  }
+  // messenger / instagram / email / sms: unknown health + config fields ≠ Working
   return false;
 }
 

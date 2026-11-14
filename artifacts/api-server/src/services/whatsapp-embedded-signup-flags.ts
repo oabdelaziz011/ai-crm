@@ -19,6 +19,18 @@ export const WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS_ENV =
 export const WHATSAPP_EMBEDDED_SIGNUP_REVIEWER_DEMO_COMPANY_ID =
   "d0000010-0001-4001-8001-000000000002";
 
+/** Meta Embedded Signup protocol version implemented by ValueOR launch extras. */
+export const WHATSAPP_EMBEDDED_SIGNUP_PROTOCOL_VERSION = "v4" as const;
+
+export const META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV =
+  "META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID";
+export const META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV =
+  "META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID";
+
+/** Optional 6-digit PIN used only when WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE=true. */
+export const WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN_ENV =
+  "WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN";
+
 const COMPANY_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -67,7 +79,10 @@ export function isWhatsAppEmbeddedSignupEnabled(): boolean {
   return envFlagTrue("WHATSAPP_EMBEDDED_SIGNUP_ENABLED");
 }
 
-/** Coexistence featureType plumbing only. Default: false. Never force for all tenants. */
+/**
+ * Coexistence featureType plumbing only. Default: false.
+ * Phase 1 keeps Coexistence closed until a dedicated CONFIG_ID and history/smb ingest ship.
+ */
 export function isWhatsAppCoexistenceEnabled(): boolean {
   return envFlagTrue("WHATSAPP_COEXISTENCE_ENABLED");
 }
@@ -95,6 +110,11 @@ export function isWhatsAppEmbeddedSignupAllowProductionSubscribe(): boolean {
   return envFlagTrue("WHATSAPP_EMBEDDED_SIGNUP_ALLOW_PRODUCTION_SUBSCRIBE");
 }
 
+/** Optional Cloud API /register after Embedded Signup. Default: false. */
+export function isWhatsAppEmbeddedSignupRegisterPhoneEnabled(): boolean {
+  return envFlagTrue("WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE");
+}
+
 export type WhatsAppEmbeddedSignupOnboardingMode = "cloud_api_new" | "coexistence";
 
 /** App credentials required for code exchange. Path-specific config IDs are resolved separately. */
@@ -103,11 +123,6 @@ export type MetaEmbeddedSignupEnvConfig = {
   appSecret: string;
   graphApiVersion: string;
 };
-
-export const META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV =
-  "META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID";
-export const META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV =
-  "META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID";
 
 export function readMetaEmbeddedSignupEnvConfig(): MetaEmbeddedSignupEnvConfig | null {
   const appId = String(process.env.META_EMBEDDED_SIGNUP_APP_ID ?? "").trim();
@@ -124,7 +139,8 @@ export function readMetaEmbeddedSignupEnvConfig(): MetaEmbeddedSignupEnvConfig |
 
 /**
  * Resolve the Meta Login for Business configuration ID for one onboarding path.
- * Never falls back to the other path's ID. Returns null when the required env is unset.
+ * Never falls back to the other path's ID. Never uses legacy META_EMBEDDED_SIGNUP_CONFIG_ID.
+ * Returns null when the required env is unset — callers must close the feature clearly.
  */
 export function readMetaEmbeddedSignupConfigIdForMode(
   mode: WhatsAppEmbeddedSignupOnboardingMode,
@@ -135,4 +151,42 @@ export function readMetaEmbeddedSignupConfigIdForMode(
       : META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV;
   const configId = String(process.env[envName] ?? "").trim();
   return configId || null;
+}
+
+export type WhatsAppEmbeddedSignupLaunchExtras = {
+  setup: Record<string, never>;
+  featureType?: "whatsapp_business_app_onboarding";
+};
+
+/**
+ * Build FB.login extras for Meta Embedded Signup v4.
+ *
+ * v4: products/permissions come from the Facebook Login for Business configuration.
+ * Do NOT send sessionInfoVersion, version, or legacy feature overrides.
+ * Coexistence still requires featureType=whatsapp_business_app_onboarding when that path is enabled.
+ */
+export function buildWhatsAppEmbeddedSignupV4LaunchExtras(input: {
+  onboardingMode: WhatsAppEmbeddedSignupOnboardingMode;
+  featureType: "whatsapp_business_app_onboarding" | null;
+}): WhatsAppEmbeddedSignupLaunchExtras {
+  const extras: WhatsAppEmbeddedSignupLaunchExtras = {
+    setup: {},
+  };
+  if (
+    input.onboardingMode === "coexistence" &&
+    input.featureType === "whatsapp_business_app_onboarding"
+  ) {
+    extras.featureType = "whatsapp_business_app_onboarding";
+  }
+  return extras;
+}
+
+/**
+ * Resolve the 6-digit Cloud API registration PIN when register-phone is enabled.
+ * Never defaults to "000000".
+ */
+export function readWhatsAppEmbeddedSignupRegistrationPin(): string | null {
+  const pin = String(process.env[WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN_ENV] ?? "").trim();
+  if (!/^\d{6}$/.test(pin)) return null;
+  return pin;
 }

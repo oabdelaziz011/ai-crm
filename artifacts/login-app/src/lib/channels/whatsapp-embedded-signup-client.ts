@@ -52,6 +52,13 @@ export type WhatsAppEmbeddedSignupSessionResponse = {
   coexistenceEnabled: boolean;
   featureType: "whatsapp_business_app_onboarding" | null;
   onboardingMode: WhatsAppEmbeddedSignupOnboardingMode;
+  /** Meta Embedded Signup protocol — v4. */
+  embeddedSignupVersion: "v4";
+  /** Exact FB.login extras from the server (no client-side v2/v3 knobs). */
+  launchExtras: {
+    setup: Record<string, never>;
+    featureType?: "whatsapp_business_app_onboarding";
+  };
 };
 
 export type WhatsAppEmbeddedSignupCompleteResponse = {

@@ -14,10 +14,12 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   assertNoServerSecretsInViteEnv,
+  isLocalSupabaseUrl,
   isProductionSupabaseUrl,
   isProductionWebhookUrl,
   resolveValueorEnv,
   VALUEOR_ENV_LOCAL,
+  VALUEOR_ENV_PRODUCTION,
 } from "../../../scripts/lib/env-mode.mjs";
 import {
   readLocalIntegrationEnv,
@@ -91,6 +93,21 @@ if (mode === VALUEOR_ENV_LOCAL) {
   if (webhookBaseUrl && isProductionWebhookUrl(webhookBaseUrl)) {
     console.error("LOCAL ENVIRONMENT SAFETY CHECK FAILED");
     console.error("  - VITE_WEBHOOK_BASE_URL (https://webhook.valueor.org)");
+    process.exit(1);
+  }
+}
+
+if (mode === VALUEOR_ENV_PRODUCTION) {
+  // Never bake local Supabase into a production SPA — causes browser "network error" on login.
+  if (isLocalSupabaseUrl(supabaseUrl) || /127\.0\.0\.1|localhost/i.test(supabaseUrl)) {
+    console.error("PRODUCTION ENVIRONMENT SAFETY CHECK FAILED");
+    console.error("  - VITE_SUPABASE_URL must be the hosted Supabase project URL (*.supabase.co)");
+    console.error("  - Refusing to sync localhost/127.0.0.1 into login-app/.env.local for production builds");
+    process.exit(1);
+  }
+  if (!isProductionSupabaseUrl(supabaseUrl)) {
+    console.error("PRODUCTION ENVIRONMENT SAFETY CHECK FAILED");
+    console.error("  - VITE_SUPABASE_URL is not a supabase.co host");
     process.exit(1);
   }
 }

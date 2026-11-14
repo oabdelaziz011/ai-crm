@@ -16,6 +16,7 @@ import {
   type WhatsAppEmbeddedSignupOnboardingMode,
   type WhatsAppEmbeddedSignupSessionResponse,
 } from "@/lib/channels/whatsapp-embedded-signup-client";
+import { resolveEmbeddedSignupErrorPresentation } from "@/lib/channels/whatsapp-embedded-signup-errors";
 import {
   asFacebookLoginCallback,
   type FacebookLoginAuthResponse,
@@ -42,9 +43,13 @@ type SessionInfoPayload = {
   business_id?: string;
   current_step?: string;
   event?: string;
+  error_code?: number | string;
+  error_message?: string;
   data?: {
     phone_number_id?: string;
     waba_id?: string;
+    error_code?: number | string;
+    error_message?: string;
   };
 };
 
@@ -118,9 +123,30 @@ export function WhatsAppEmbeddedSignupPanel({
     businessAccountId?: string;
     businessPortfolioId?: string;
   }>({});
+  const pendingMetaErrorRef = useRef<{
+    code?: string;
+    message?: string;
+    metaErrorCode?: number;
+  } | null>(null);
 
   const uiEnabled = isWhatsAppEmbeddedSignupUiEnabled();
   const coexistenceUi = isWhatsAppCoexistenceUiEnabled();
+
+  const toastEmbeddedSignupError = (input: {
+    code?: string | null;
+    message?: string | null;
+    metaErrorCode?: number | null;
+  }) => {
+    const presentation = resolveEmbeddedSignupErrorPresentation(input);
+    const description = presentation.descriptionKey
+      ? t(`notifications.whatsapp.settings.embeddedSignup.${presentation.descriptionKey}`)
+      : presentation.fallbackDescription;
+    toast({
+      title: t(`notifications.whatsapp.settings.embeddedSignup.${presentation.titleKey}`),
+      description,
+      variant: "destructive",
+    });
+  };
 
   const refreshStatus = async () => {
     if (!isWhatsAppEmbeddedSignupApiConfigured() || !uiEnabled) return;
@@ -165,6 +191,26 @@ export function WhatsAppEmbeddedSignupPanel({
             businessPortfolioId: businessId ?? pendingPhoneRef.current.businessPortfolioId,
           };
         }
+        const errorCode = data.error_code ?? data.data?.error_code;
+        const errorMessage = data.error_message ?? data.data?.error_message;
+        if (errorCode != null || errorMessage) {
+          const numeric =
+            typeof errorCode === "number"
+              ? errorCode
+              : typeof errorCode === "string" && /^\d+$/.test(errorCode.trim())
+                ? Number(errorCode.trim())
+                : undefined;
+          pendingMetaErrorRef.current = {
+            code:
+              numeric === 2655122
+                ? "ES_META_NUMBER_ALREADY_CLOUD_API"
+                : numeric === 2655093
+                  ? "ES_META_ALREADY_SHARED_WITH_PARTNER"
+                  : "ES_META_GRAPH_ERROR",
+            message: typeof errorMessage === "string" ? errorMessage : undefined,
+            metaErrorCode: numeric,
+          };
+        }
       } catch {
         // Ignore non-JSON postMessages from the iframe.
       }
@@ -202,25 +248,30 @@ export function WhatsAppEmbeddedSignupPanel({
 
     setBusyMode(mode);
     pendingPhoneRef.current = {};
+    pendingMetaErrorRef.current = null;
     try {
       const session = await createWhatsAppEmbeddedSignupSession(companyId, mode);
       sessionRef.current = session;
       const fb = await loadFacebookSdk(session.appId, session.graphApiVersion);
 
+      // Meta Embedded Signup v4: use server-provided launchExtras only.
+      // Products/permissions come from the FLB configuration — do not send sessionInfoVersion.
       const extras: Record<string, unknown> = {
-        setup: {},
-        sessionInfoVersion: "3",
+        ...(session.launchExtras ?? { setup: {} }),
       };
-      // Only Coexistence path requests Meta's official featureType (Meta may show QR).
-      if (mode === "coexistence" && session.featureType) {
-        extras.featureType = session.featureType;
-      }
+      // Defense in depth: never reintroduce v2/v3 knobs from a stale client.
+      delete extras.sessionInfoVersion;
+      delete extras.version;
 
       // Meta FB.login rejects AsyncFunction callbacks — keep this wrapper synchronous.
       const handleLoginResponse = async (response: FacebookLoginAuthResponse) => {
         try {
           const code = response.authResponse?.code?.trim();
           if (!code) {
+            if (pendingMetaErrorRef.current) {
+              toastEmbeddedSignupError(pendingMetaErrorRef.current);
+              return;
+            }
             toast({
               title: t("notifications.whatsapp.settings.embeddedSignup.cancelled"),
               variant: "destructive",
@@ -232,6 +283,10 @@ export function WhatsAppEmbeddedSignupPanel({
           const businessAccountId = pendingPhoneRef.current.businessAccountId?.trim() ?? "";
           // Coexistence FINISH may return only waba_id; server resolves phone_number_id via Graph.
           if (!businessAccountId || (mode === "cloud_api_new" && !phoneNumberId)) {
+            if (pendingMetaErrorRef.current) {
+              toastEmbeddedSignupError(pendingMetaErrorRef.current);
+              return;
+            }
             toast({
               title: t("notifications.whatsapp.settings.embeddedSignup.missingSessionInfo"),
               variant: "destructive",
@@ -262,14 +317,7 @@ export function WhatsAppEmbeddedSignupPanel({
         } catch (error) {
           const errCode = (error as Error & { code?: string }).code;
           const message = error instanceof Error ? error.message : String(error);
-          toast({
-            title:
-              errCode === "ES_CONNECTION_EXISTS"
-                ? t("notifications.whatsapp.settings.embeddedSignup.existingConnection")
-                : t("notifications.whatsapp.settings.embeddedSignup.failed"),
-            description: message,
-            variant: "destructive",
-          });
+          toastEmbeddedSignupError({ code: errCode, message });
         } finally {
           setBusyMode(null);
         }
@@ -284,18 +332,8 @@ export function WhatsAppEmbeddedSignupPanel({
     } catch (error) {
       setBusyMode(null);
       const code = (error as Error & { code?: string }).code;
-      toast({
-        title: t("notifications.whatsapp.settings.embeddedSignup.failed"),
-        description:
-          code === "ES_META_CONFIG_MISSING"
-            ? t("notifications.whatsapp.settings.embeddedSignup.metaConfigMissing")
-            : code === "ES_DISABLED"
-              ? t("notifications.whatsapp.settings.embeddedSignup.serverDisabled")
-              : error instanceof Error
-                ? error.message
-                : String(error),
-        variant: "destructive",
-      });
+      const message = error instanceof Error ? error.message : String(error);
+      toastEmbeddedSignupError({ code, message });
     }
   };
 

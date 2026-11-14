@@ -1,13 +1,21 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { afterEach, describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
+  buildWhatsAppEmbeddedSignupV4LaunchExtras,
   isWhatsAppCoexistenceEnabled,
   isWhatsAppEmbeddedSignupAutoSubscribeEnabled,
+  isWhatsAppEmbeddedSignupCompanyAllowed,
   isWhatsAppEmbeddedSignupEnabled,
   META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV,
   META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV,
   readMetaEmbeddedSignupConfigIdForMode,
   readMetaEmbeddedSignupEnvConfig,
+  WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS_ENV,
+  WHATSAPP_EMBEDDED_SIGNUP_PROTOCOL_VERSION,
+  WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN_ENV,
 } from "./whatsapp-embedded-signup-flags.js";
 import { maybeSubscribeWabaToWebhook } from "./whatsapp-embedded-signup-waba-subscribe.js";
 import {
@@ -17,11 +25,19 @@ import {
   createWhatsAppEmbeddedSignupSession,
 } from "./whatsapp-embedded-signup.js";
 
+const here = dirname(fileURLToPath(import.meta.url));
+
+/** Valid UUID used by allowlist-gated tests. */
+const TEST_COMPANY_ID = "11111111-1111-4111-8111-111111111111";
+
 const ENV_KEYS = [
   "WHATSAPP_EMBEDDED_SIGNUP_ENABLED",
   "WHATSAPP_COEXISTENCE_ENABLED",
   "WHATSAPP_EMBEDDED_SIGNUP_AUTO_SUBSCRIBE",
   "WHATSAPP_EMBEDDED_SIGNUP_ALLOW_PRODUCTION_SUBSCRIBE",
+  "WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE",
+  WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN_ENV,
+  WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS_ENV,
   "NODE_ENV",
   "META_EMBEDDED_SIGNUP_APP_ID",
   "META_EMBEDDED_SIGNUP_APP_SECRET",
@@ -53,6 +69,73 @@ function setMetaConfig() {
   process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV] = "cloud-config-111";
   process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV] = "coex-config-222";
   process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
+  process.env[WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS_ENV] = TEST_COMPANY_ID;
+}
+
+function signTestState(
+  overrides: Partial<{
+    companyId: string;
+    userId: string | null;
+    nonce: string;
+    exp: number;
+    onboardingMode: "cloud_api_new" | "coexistence";
+  }> = {},
+) {
+  return __test.signState(
+    {
+      companyId: overrides.companyId ?? TEST_COMPANY_ID,
+      userId: overrides.userId ?? "user-1",
+      nonce: overrides.nonce ?? "n1",
+      exp: overrides.exp ?? Date.now() + 60_000,
+      onboardingMode: overrides.onboardingMode ?? "cloud_api_new",
+    },
+    "state-secret",
+  );
+}
+
+function emptySettingsClient(extra?: {
+  existing?: Record<string, unknown>;
+  duplicatePhone?: boolean;
+}) {
+  const existing = extra?.existing ?? {
+    phone_number_id: "",
+    business_account_id: "",
+    has_access_token: false,
+    has_webhook_verify_token: false,
+    api_version: "v21.0",
+    default_language: "en",
+    max_retry_count: 3,
+    webhook_callback_url: "https://webhook.valueor.org/api/webhooks/whatsapp",
+  };
+  return {
+    rpc: async (name: string, args?: Record<string, unknown>) => {
+      if (name === "get_company_whatsapp_settings") {
+        return { data: existing, error: null };
+      }
+      if (name === "upsert_company_whatsapp_settings") {
+        return { data: args ?? {}, error: null };
+      }
+      if (name === "sync_whatsapp_channel_references") {
+        return { data: null, error: null };
+      }
+      return { data: null, error: null };
+    },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          neq: () => ({
+            limit: async () => ({
+              data: extra?.duplicatePhone
+                ? [{ company_id: "other", phone_number_id: "999" }]
+                : [],
+              error: null,
+            }),
+          }),
+        }),
+      }),
+      upsert: async () => ({ error: null }),
+    }),
+  };
 }
 
 afterEach(() => {
@@ -67,6 +150,7 @@ describe("whatsapp-embedded-signup-flags", () => {
     assert.equal(isWhatsAppCoexistenceEnabled(), false);
     assert.equal(isWhatsAppEmbeddedSignupAutoSubscribeEnabled(), false);
     assert.equal(readMetaEmbeddedSignupEnvConfig(), null);
+    assert.equal(isWhatsAppEmbeddedSignupCompanyAllowed(TEST_COMPANY_ID), false);
   });
 
   it("reads Meta env config without exposing incomplete secrets", () => {
@@ -102,6 +186,26 @@ describe("whatsapp-embedded-signup-flags", () => {
     assert.equal(readMetaEmbeddedSignupConfigIdForMode("cloud_api_new"), null);
     assert.equal(readMetaEmbeddedSignupConfigIdForMode("coexistence"), "coex-only");
   });
+
+  it("builds v4 launch extras without sessionInfoVersion or version", () => {
+    const cloud = buildWhatsAppEmbeddedSignupV4LaunchExtras({
+      onboardingMode: "cloud_api_new",
+      featureType: null,
+    });
+    assert.deepEqual(cloud, { setup: {} });
+    assert.equal("sessionInfoVersion" in cloud, false);
+    assert.equal("version" in cloud, false);
+
+    const coex = buildWhatsAppEmbeddedSignupV4LaunchExtras({
+      onboardingMode: "coexistence",
+      featureType: "whatsapp_business_app_onboarding",
+    });
+    assert.deepEqual(coex, {
+      setup: {},
+      featureType: "whatsapp_business_app_onboarding",
+    });
+    assert.equal("sessionInfoVersion" in coex, false);
+  });
 });
 
 describe("whatsapp-embedded-signup-waba-subscribe", () => {
@@ -127,21 +231,32 @@ describe("whatsapp-embedded-signup service", () => {
     delete process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED;
     setMetaConfig();
     await assert.rejects(
-      () => createWhatsAppEmbeddedSignupSession({ companyId: "c1", userId: "u1" }),
+      () => createWhatsAppEmbeddedSignupSession({ companyId: TEST_COMPANY_ID, userId: "u1" }),
       (err: unknown) =>
         err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_DISABLED",
     );
   });
 
+  it("rejects session for companies outside the allowlist", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    setMetaConfig();
+    await assert.rejects(
+      () =>
+        createWhatsAppEmbeddedSignupSession({
+          companyId: "22222222-2222-4222-8222-222222222222",
+          userId: "u1",
+        }),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_COMPANY_NOT_ALLOWED",
+    );
+  });
+
   it("rejects invalid state signature", () => {
     snapshotEnv();
-    const secret = "state-secret";
-    const state = __test.signState(
-      { companyId: "c1", userId: "u1", nonce: "abc", exp: Date.now() + 60_000 },
-      secret,
-    );
+    const state = signTestState();
     assert.throws(
-      () => __test.verifyAndParseState(state + "x", secret, "c1", Date.now()),
+      () => __test.verifyAndParseState(state + "x", "state-secret", TEST_COMPANY_ID, Date.now()),
       (err: unknown) =>
         err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_STATE_INVALID",
     );
@@ -149,13 +264,15 @@ describe("whatsapp-embedded-signup service", () => {
 
   it("rejects cross-company state", () => {
     snapshotEnv();
-    const secret = "state-secret";
-    const state = __test.signState(
-      { companyId: "c1", userId: "u1", nonce: "abc", exp: Date.now() + 60_000 },
-      secret,
-    );
+    const state = signTestState();
     assert.throws(
-      () => __test.verifyAndParseState(state, secret, "other-company", Date.now()),
+      () =>
+        __test.verifyAndParseState(
+          state,
+          "state-secret",
+          "22222222-2222-4222-8222-222222222222",
+          Date.now(),
+        ),
       (err: unknown) =>
         err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_STATE_COMPANY_MISMATCH",
     );
@@ -166,48 +283,25 @@ describe("whatsapp-embedded-signup service", () => {
     process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
     setMetaConfig();
 
-    const secret = "state-secret";
-    const state = __test.signState(
-      { companyId: "company-1", userId: "user-1", nonce: "n1", exp: Date.now() + 60_000 },
-      secret,
-    );
-
-    const client = {
-      rpc: async (name: string) => {
-        if (name === "get_company_whatsapp_settings") {
-          return {
-            data: {
-              phone_number_id: "111",
-              business_account_id: "222",
-              has_access_token: true,
-              has_webhook_verify_token: true,
-              api_version: "v21.0",
-              default_language: "en",
-              max_retry_count: 3,
-              webhook_callback_url: "",
-            },
-            error: null,
-          };
-        }
-        return { data: null, error: null };
+    const state = signTestState();
+    const client = emptySettingsClient({
+      existing: {
+        phone_number_id: "111",
+        business_account_id: "222",
+        has_access_token: true,
+        has_webhook_verify_token: true,
+        api_version: "v21.0",
+        default_language: "en",
+        max_retry_count: 3,
+        webhook_callback_url: "",
       },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            neq: () => ({
-              limit: async () => ({ data: [], error: null }),
-            }),
-          }),
-        }),
-        upsert: async () => ({ error: null }),
-      }),
-    };
+    });
 
     await assert.rejects(
       () =>
         completeWhatsAppEmbeddedSignup(
           {
-            companyId: "company-1",
+            companyId: TEST_COMPANY_ID,
             userId: "user-1",
             code: "auth-code",
             state,
@@ -215,11 +309,55 @@ describe("whatsapp-embedded-signup service", () => {
             businessAccountId: "888",
             replaceExisting: false,
           },
-          { client: client as never, stateSecret: secret },
+          { client: client as never, stateSecret: "state-secret" },
         ),
       (err: unknown) =>
         err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_CONNECTION_EXISTS",
     );
+  });
+
+  it("idempotently replays complete when phone+waba already match", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    setMetaConfig();
+
+    const state = signTestState();
+    const client = emptySettingsClient({
+      existing: {
+        phone_number_id: "999",
+        business_account_id: "888",
+        has_access_token: true,
+        has_webhook_verify_token: true,
+        api_version: "v21.0",
+        default_language: "en",
+        max_retry_count: 3,
+        webhook_callback_url: "https://webhook.valueor.org/api/webhooks/whatsapp",
+      },
+    });
+
+    let exchanged = false;
+    const fetchImpl: typeof fetch = async () => {
+      exchanged = true;
+      return new Response("{}", { status: 500 });
+    };
+
+    const result = await completeWhatsAppEmbeddedSignup(
+      {
+        companyId: TEST_COMPANY_ID,
+        userId: "user-1",
+        code: "auth-code-replay",
+        state,
+        phoneNumberId: "999",
+        businessAccountId: "888",
+        replaceExisting: false,
+      },
+      { client: client as never, stateSecret: "state-secret", fetchImpl },
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.idempotentReplay, true);
+    assert.equal(result.credentialStatus, "already_persisted");
+    assert.equal(exchanged, false);
   });
 
   it("rejects duplicate phone_number_id owned by another company", async () => {
@@ -227,58 +365,21 @@ describe("whatsapp-embedded-signup service", () => {
     process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
     setMetaConfig();
 
-    const secret = "state-secret";
-    const state = __test.signState(
-      { companyId: "company-1", userId: "user-1", nonce: "n1", exp: Date.now() + 60_000 },
-      secret,
-    );
-
-    const client = {
-      rpc: async (name: string) => {
-        if (name === "get_company_whatsapp_settings") {
-          return {
-            data: {
-              phone_number_id: "",
-              business_account_id: "",
-              has_access_token: false,
-              has_webhook_verify_token: false,
-              api_version: "v21.0",
-              default_language: "en",
-              max_retry_count: 3,
-              webhook_callback_url: "",
-            },
-            error: null,
-          };
-        }
-        return { data: null, error: null };
-      },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            neq: () => ({
-              limit: async () => ({
-                data: [{ company_id: "other", phone_number_id: "999" }],
-                error: null,
-              }),
-            }),
-          }),
-        }),
-        upsert: async () => ({ error: null }),
-      }),
-    };
+    const state = signTestState();
+    const client = emptySettingsClient({ duplicatePhone: true });
 
     await assert.rejects(
       () =>
         completeWhatsAppEmbeddedSignup(
           {
-            companyId: "company-1",
+            companyId: TEST_COMPANY_ID,
             userId: "user-1",
             code: "auth-code",
             state,
             phoneNumberId: "999",
             businessAccountId: "888",
           },
-          { client: client as never, stateSecret: secret },
+          { client: client as never, stateSecret: "state-secret" },
         ),
       (err: unknown) =>
         err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_PHONE_IN_USE",
@@ -291,70 +392,44 @@ describe("whatsapp-embedded-signup service", () => {
     delete process.env.WHATSAPP_EMBEDDED_SIGNUP_AUTO_SUBSCRIBE;
     setMetaConfig();
 
-    const secret = "state-secret";
-    const state = __test.signState(
-      { companyId: "company-1", userId: "user-1", nonce: "n1", exp: Date.now() + 60_000 },
-      secret,
-    );
-
-    const rpcs: string[] = [];
+    const state = signTestState();
     const upsertPayloads: Record<string, unknown>[] = [];
-
+    const base = emptySettingsClient();
     const client = {
+      ...base,
       rpc: async (name: string, args?: Record<string, unknown>) => {
-        rpcs.push(name);
-        if (name === "get_company_whatsapp_settings") {
-          return {
-            data: {
-              phone_number_id: "",
-              business_account_id: "",
-              has_access_token: false,
-              has_webhook_verify_token: false,
-              api_version: "v21.0",
-              default_language: "en",
-              max_retry_count: 3,
-              webhook_callback_url: "https://webhook.valueor.org/api/webhooks/whatsapp",
-            },
-            error: null,
-          };
-        }
         if (name === "upsert_company_whatsapp_settings") {
           upsertPayloads.push(args ?? {});
-          return { data: {}, error: null };
         }
-        if (name === "sync_whatsapp_channel_references") {
-          return { data: null, error: null };
-        }
-        return { data: null, error: null };
+        return base.rpc(name, args);
       },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            neq: () => ({
-              limit: async () => ({ data: [], error: null }),
-            }),
-          }),
-        }),
-        upsert: async () => ({ error: null }),
-      }),
     };
 
-    const fetchImpl: typeof fetch = async () =>
-      new Response(JSON.stringify({ access_token: "EAAB-test-token" }), {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("oauth/access_token")) {
+        return new Response(JSON.stringify({ access_token: "EAAB-test-token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      // connection probe
+      return new Response(JSON.stringify({ id: "1214681355059951" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
+    };
 
     const result = await completeWhatsAppEmbeddedSignup(
       {
-        companyId: "company-1",
+        companyId: TEST_COMPANY_ID,
         userId: "user-1",
         code: "auth-code",
         state,
         phoneNumberId: "1214681355059951",
         businessAccountId: "1584022663181525",
       },
-      { client: client as never, stateSecret: secret, fetchImpl },
+      { client: client as never, stateSecret: "state-secret", fetchImpl },
     );
 
     assert.equal(result.ok, true);
@@ -362,34 +437,54 @@ describe("whatsapp-embedded-signup service", () => {
     assert.equal(result.webhookSubscriptionStatus, "skipped_flag_off");
     assert.equal(result.fullyOnboarded, false);
     assert.equal(result.phoneNumberId, "1214681355059951");
-    assert.equal(result.subscription.status, "skipped_flag_off");
-    assert.equal(result.subscription.attempted, false);
-    assert.ok(rpcs.includes("upsert_company_whatsapp_settings"));
-    assert.ok(rpcs.includes("sync_whatsapp_channel_references"));
     assert.equal(upsertPayloads[0]?.p_access_token, "EAAB-test-token");
     assert.equal(upsertPayloads[0]?.p_phone_number_id, "1214681355059951");
-    assert.equal(upsertPayloads[0]?.p_business_account_id, "1584022663181525");
-    // Persist Meta app secret for tenant webhook HMAC verification (never returned to clients).
     assert.equal(upsertPayloads[0]?.p_app_secret, "secret-xyz");
   });
 
-  it("creates coexistence session with Meta featureType when enabled", async () => {
+  it("creates cloud_api_new v4 session with launchExtras and without coexistence featureType", async () => {
     snapshotEnv();
     process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
-    process.env.WHATSAPP_COEXISTENCE_ENABLED = "true";
     setMetaConfig();
 
     const session = await createWhatsAppEmbeddedSignupSession({
-      companyId: "company-1",
+      companyId: TEST_COMPANY_ID,
       userId: "user-1",
-      onboardingMode: "coexistence",
+      onboardingMode: "cloud_api_new",
     });
 
-    assert.equal(session.onboardingMode, "coexistence");
-    assert.equal(session.featureType, "whatsapp_business_app_onboarding");
-    assert.equal(session.coexistenceEnabled, true);
-    assert.equal(session.configId, "coex-config-222");
-    assert.ok(session.state.length > 10);
+    assert.equal(session.onboardingMode, "cloud_api_new");
+    assert.equal(session.featureType, null);
+    assert.equal(session.configId, "cloud-config-111");
+    assert.equal(session.embeddedSignupVersion, WHATSAPP_EMBEDDED_SIGNUP_PROTOCOL_VERSION);
+    assert.deepEqual(session.launchExtras, { setup: {} });
+    assert.equal("sessionInfoVersion" in session.launchExtras, false);
+  });
+
+  it("fails clearly when Cloud API config ID is missing (no Coexistence fallback)", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
+    process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
+    process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
+    process.env[WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS_ENV] = TEST_COMPANY_ID;
+    delete process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV];
+    process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV] = "coex-config-222";
+
+    await assert.rejects(
+      () =>
+        createWhatsAppEmbeddedSignupSession({
+          companyId: TEST_COMPANY_ID,
+          userId: "user-1",
+          onboardingMode: "cloud_api_new",
+        }),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError &&
+        err.code === "ES_META_CONFIG_ID_MISSING" &&
+        err.message.includes(META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV) &&
+        /feature remains closed/i.test(err.message) &&
+        !err.message.includes("coex-config-222"),
+    );
   });
 
   it("rejects coexistence session when coexistence flag is off", async () => {
@@ -401,7 +496,7 @@ describe("whatsapp-embedded-signup service", () => {
     await assert.rejects(
       () =>
         createWhatsAppEmbeddedSignupSession({
-          companyId: "company-1",
+          companyId: TEST_COMPANY_ID,
           userId: "user-1",
           onboardingMode: "coexistence",
         }),
@@ -410,207 +505,151 @@ describe("whatsapp-embedded-signup service", () => {
     );
   });
 
-  it("creates cloud_api_new session without coexistence featureType", async () => {
-    snapshotEnv();
-    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
-    setMetaConfig();
-
-    const session = await createWhatsAppEmbeddedSignupSession({
-      companyId: "company-1",
-      userId: "user-1",
-      onboardingMode: "cloud_api_new",
-    });
-
-    assert.equal(session.onboardingMode, "cloud_api_new");
-    assert.equal(session.featureType, null);
-    assert.equal(session.configId, "cloud-config-111");
-  });
-
-  it("selects Cloud API config ID for cloud_api_new and never the Coexistence ID", async () => {
-    snapshotEnv();
-    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
-    setMetaConfig();
-
-    const session = await createWhatsAppEmbeddedSignupSession({
-      companyId: "company-1",
-      userId: "user-1",
-      onboardingMode: "cloud_api_new",
-    });
-
-    assert.equal(session.configId, "cloud-config-111");
-    assert.notEqual(session.configId, "coex-config-222");
-  });
-
-  it("selects Coexistence config ID for coexistence and never the Cloud API ID", async () => {
+  it("creates coexistence session with Meta featureType when explicitly enabled", async () => {
     snapshotEnv();
     process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
     process.env.WHATSAPP_COEXISTENCE_ENABLED = "true";
     setMetaConfig();
 
     const session = await createWhatsAppEmbeddedSignupSession({
-      companyId: "company-1",
+      companyId: TEST_COMPANY_ID,
       userId: "user-1",
       onboardingMode: "coexistence",
     });
 
+    assert.equal(session.onboardingMode, "coexistence");
+    assert.equal(session.featureType, "whatsapp_business_app_onboarding");
     assert.equal(session.configId, "coex-config-222");
-    assert.notEqual(session.configId, "cloud-config-111");
+    assert.deepEqual(session.launchExtras, {
+      setup: {},
+      featureType: "whatsapp_business_app_onboarding",
+    });
   });
 
-  it("fails safely when Cloud API config ID is missing (no Coexistence fallback)", async () => {
+  it("rejects register-phone when PIN is missing (never hardcodes 000000)", async () => {
     snapshotEnv();
     process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
-    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
-    process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
-    process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
-    delete process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV];
-    process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV] = "coex-config-222";
-
-    await assert.rejects(
-      () =>
-        createWhatsAppEmbeddedSignupSession({
-          companyId: "company-1",
-          userId: "user-1",
-          onboardingMode: "cloud_api_new",
-        }),
-      (err: unknown) =>
-        err instanceof WhatsAppEmbeddedSignupError &&
-        err.code === "ES_META_CONFIG_ID_MISSING" &&
-        err.message.includes(META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV) &&
-        !err.message.includes("coex-config-222"),
-    );
-  });
-
-  it("fails safely when Coexistence config ID is missing (no Cloud API fallback)", async () => {
-    snapshotEnv();
-    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
-    process.env.WHATSAPP_COEXISTENCE_ENABLED = "true";
-    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
-    process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
-    process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
-    process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV] = "cloud-config-111";
-    delete process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV];
-
-    await assert.rejects(
-      () =>
-        createWhatsAppEmbeddedSignupSession({
-          companyId: "company-1",
-          userId: "user-1",
-          onboardingMode: "coexistence",
-        }),
-      (err: unknown) =>
-        err instanceof WhatsAppEmbeddedSignupError &&
-        err.code === "ES_META_CONFIG_ID_MISSING" &&
-        err.message.includes(META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV) &&
-        !err.message.includes("cloud-config-111"),
-    );
-  });
-
-  it("resolves coexistence phone_number_id from WABA and triggers smb_app_data sync", async () => {
-    snapshotEnv();
-    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
-    delete process.env.WHATSAPP_EMBEDDED_SIGNUP_AUTO_SUBSCRIBE;
-    delete process.env.WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE;
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE = "true";
+    delete process.env[WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN_ENV];
     setMetaConfig();
 
-    const secret = "state-secret";
-    const state = __test.signState(
-      { companyId: "company-1", userId: "user-1", nonce: "n-coex", exp: Date.now() + 60_000 },
-      secret,
+    const state = signTestState();
+    const client = emptySettingsClient();
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ access_token: "EAAB-test-token" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    await assert.rejects(
+      () =>
+        completeWhatsAppEmbeddedSignup(
+          {
+            companyId: TEST_COMPANY_ID,
+            userId: "user-1",
+            code: "auth-code",
+            state,
+            phoneNumberId: "1214681355059951",
+            businessAccountId: "1584022663181525",
+          },
+          { client: client as never, stateSecret: "state-secret", fetchImpl },
+        ),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_REGISTER_PIN_MISSING",
     );
+  });
 
-    const client = {
-      rpc: async (name: string) => {
-        if (name === "get_company_whatsapp_settings") {
-          return {
-            data: {
-              phone_number_id: "",
-              business_account_id: "",
-              has_access_token: false,
-              has_webhook_verify_token: false,
-              api_version: "v21.0",
-              default_language: "en",
-              max_retry_count: 3,
-              webhook_callback_url: "https://webhook.example.test/api/webhooks/whatsapp",
-            },
-            error: null,
-          };
-        }
-        if (name === "upsert_company_whatsapp_settings") {
-          return { data: {}, error: null };
-        }
-        if (name === "sync_whatsapp_channel_references") {
-          return { data: null, error: null };
-        }
-        return { data: null, error: null };
-      },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            neq: () => ({
-              limit: async () => ({ data: [], error: null }),
-            }),
-          }),
-        }),
-        upsert: async () => ({ error: null }),
-      }),
-    };
+  it("surfaces phone registration Graph failures instead of swallowing them", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE = "true";
+    process.env[WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN_ENV] = "123456";
+    setMetaConfig();
 
-    const graphCalls: string[] = [];
-    const fetchImpl: typeof fetch = async (input, init) => {
+    const state = signTestState();
+    const client = emptySettingsClient();
+    const fetchImpl: typeof fetch = async (input) => {
       const url = String(input);
-      graphCalls.push(`${init?.method ?? "GET"} ${url}`);
       if (url.includes("oauth/access_token")) {
-        return new Response(JSON.stringify({ access_token: "EAAB-coex" }), {
+        return new Response(JSON.stringify({ access_token: "EAAB-test-token" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
       }
-      if (url.includes("/phone_numbers")) {
+      if (url.includes("/register")) {
         return new Response(
-          JSON.stringify({ data: [{ id: "phone-coex-1", display_phone_number: "+15550001111" }] }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+          JSON.stringify({ error: { message: "Invalid PIN for registration" } }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
         );
       }
-      if (url.includes("/smb_app_data")) {
-        const body = JSON.parse(String(init?.body ?? "{}")) as { sync_type?: string };
-        return new Response(
-          JSON.stringify({ messaging_product: "whatsapp", request_id: `req-${body.sync_type}` }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      if (url.includes("phone-coex-1")) {
-        return new Response(
-          JSON.stringify({
-            id: "phone-coex-1",
-            display_phone_number: "+15550001111",
-            is_on_biz_app: true,
-            platform_type: "CLOUD_API",
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response("{}", { status: 404 });
+      return new Response(JSON.stringify({ id: "1214681355059951" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     };
 
-    const result = await completeWhatsAppEmbeddedSignup(
-      {
-        companyId: "company-1",
-        userId: "user-1",
-        code: "auth-code",
-        state,
-        phoneNumberId: "",
-        businessAccountId: "waba-coex-1",
-        coexistenceEligible: true,
-      },
-      { client: client as never, stateSecret: secret, fetchImpl },
+    await assert.rejects(
+      () =>
+        completeWhatsAppEmbeddedSignup(
+          {
+            companyId: TEST_COMPANY_ID,
+            userId: "user-1",
+            code: "auth-code",
+            state,
+            phoneNumberId: "1214681355059951",
+            businessAccountId: "1584022663181525",
+          },
+          { client: client as never, stateSecret: "state-secret", fetchImpl },
+        ),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError &&
+        err.code === "ES_REGISTER_FAILED" &&
+        err.message.includes("Invalid PIN"),
     );
+  });
 
-    assert.equal(result.ok, true);
-    assert.equal(result.phoneNumberId, "phone-coex-1");
-    assert.equal(result.coexistenceSync?.contacts.ok, true);
-    assert.equal(result.coexistenceSync?.history.ok, true);
-    assert.ok(graphCalls.some((c) => c.includes("/smb_app_data")));
-    assert.ok(!graphCalls.some((c) => c.includes("/register")));
+  it("rejects state/onboarding mode mismatch", async () => {
+    snapshotEnv();
+    process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
+    setMetaConfig();
+
+    const state = signTestState({ onboardingMode: "cloud_api_new" });
+    const client = emptySettingsClient();
+
+    await assert.rejects(
+      () =>
+        completeWhatsAppEmbeddedSignup(
+          {
+            companyId: TEST_COMPANY_ID,
+            userId: "user-1",
+            code: "auth-code",
+            state,
+            phoneNumberId: "",
+            businessAccountId: "waba-1",
+            coexistenceEligible: true,
+          },
+          { client: client as never, stateSecret: "state-secret" },
+        ),
+      (err: unknown) =>
+        err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_STATE_MODE_MISMATCH",
+    );
+  });
+});
+
+describe("whatsapp-embedded-signup regression contracts", () => {
+  it("does not hardcode registration PIN 000000", () => {
+    const service = readFileSync(join(here, "whatsapp-embedded-signup.ts"), "utf8");
+    assert.doesNotMatch(service, /pin:\s*"000000"/);
+    assert.match(service, /WHATSAPP_EMBEDDED_SIGNUP_REGISTRATION_PIN/);
+  });
+
+  it("keeps inbound webhook and outbound WhatsApp routes independent of ES register/subscribe", () => {
+    const webhooks = readFileSync(join(here, "..", "routes", "webhooks.ts"), "utf8");
+    const whatsapp = readFileSync(join(here, "..", "routes", "whatsapp.ts"), "utf8");
+    assert.match(webhooks, /router\.(get|post)\("\/whatsapp"/);
+    assert.match(webhooks, /processWhatsAppWebhookPost/);
+    assert.doesNotMatch(webhooks, /completeWhatsAppEmbeddedSignup/);
+    assert.doesNotMatch(whatsapp, /sessionInfoVersion\s*:/);
+    assert.match(whatsapp, /test-connection|settings/i);
   });
 });

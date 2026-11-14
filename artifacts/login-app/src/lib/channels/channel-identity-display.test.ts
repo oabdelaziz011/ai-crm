@@ -152,19 +152,56 @@ describe("channel identity display", () => {
     );
   });
 
-  it("treats WhatsApp with settings credentials as working even when health is unknown", () => {
+  it("treats WhatsApp as working only when settings are ready or health is connected", () => {
     const wa = channel({
       id: "wa-live",
       key: "whatsapp",
       health_status: "unknown",
       configuration: { credentialsSource: "company_whatsapp_settings", phoneNumberId: "999" },
     });
-    assert.equal(isChannelWorking(wa), true);
+    // Config pointer alone must not show Working.
+    assert.equal(isChannelWorking(wa), false);
     assert.equal(isChannelWorking(wa, { whatsappSettingsReady: true }), true);
     assert.equal(
       isChannelWorking(
         channel({ id: "wa-off", key: "whatsapp", is_enabled: false, health_status: "unknown" }),
         { whatsappSettingsReady: true },
+      ),
+      false,
+    );
+  });
+
+  it("does not treat Messenger/Instagram/Email config presence as Working when health is unknown", () => {
+    assert.equal(
+      isChannelWorking(
+        channel({
+          id: "msg",
+          key: "messenger",
+          health_status: "unknown",
+          configuration: { pageId: "page-1" },
+        }),
+      ),
+      false,
+    );
+    assert.equal(
+      isChannelWorking(
+        channel({
+          id: "ig",
+          key: "instagram",
+          health_status: "unknown",
+          configuration: { pageId: "ig-1" },
+        }),
+      ),
+      false,
+    );
+    assert.equal(
+      isChannelWorking(
+        channel({
+          id: "em",
+          key: "email",
+          health_status: "unknown",
+          configuration: { fromEmail: "a@b.com" },
+        }),
       ),
       false,
     );

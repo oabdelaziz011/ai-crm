@@ -45,8 +45,11 @@ describe("WhatsApp Embedded Signup UI contracts", () => {
     assert.match(panel, /whatsapp-onboarding-cloud-api/);
     assert.match(panel, /onConnect\("coexistence"\)/);
     assert.match(panel, /onConnect\("cloud_api_new"\)/);
-    // Meta featureType is applied from the server session when Coexistence is selected.
-    assert.match(panel, /extras\.featureType = session\.featureType/);
+    // Meta Embedded Signup v4: FB.login extras come from the server session only.
+    assert.match(panel, /session\.launchExtras/);
+    // Must not set v2/v3 sessionInfoVersion; deleting a stale key for defense-in-depth is OK.
+    assert.doesNotMatch(panel, /sessionInfoVersion\s*:\s*["']/);
+    assert.match(panel, /delete extras\.sessionInfoVersion/);
   });
 
   it("passes onboardingMode to the session API", () => {
@@ -81,6 +84,21 @@ describe("WhatsApp Embedded Signup UI contracts", () => {
     assert.match(en, /"optionBTitle"/);
     assert.match(ar, /"optionATitle"/);
     assert.match(ar, /"optionBTitle"/);
+  });
+
+  it("includes EN and AR copy for Meta 2655122 and allowlist denial", () => {
+    assert.match(en, /"metaNumberAlreadyCloudApi"/);
+    assert.match(en, /"companyNotAllowed"/);
+    assert.match(ar, /"metaNumberAlreadyCloudApi"/);
+    assert.match(ar, /"companyNotAllowed"/);
+    assert.match(en, /2655122/);
+    assert.match(ar, /2655122/);
+  });
+
+  it("routes API/Meta errors through the shared presentation helper", () => {
+    assert.match(panel, /resolveEmbeddedSignupErrorPresentation/);
+    assert.match(panel, /toastEmbeddedSignupError/);
+    assert.match(panel, /pendingMetaErrorRef/);
   });
 
   it("does not pass an AsyncFunction directly to fb.login", () => {
@@ -126,7 +144,8 @@ describe("Facebook login callback wrapper (FB.login AsyncFunction guard)", () =>
       config_id: "cloud-config",
       response_type: "code",
       override_default_response_type: true,
-      extras: { setup: {}, sessionInfoVersion: "3" },
+      // Meta Embedded Signup v4: empty extras.setup only — no sessionInfoVersion.
+      extras: { setup: {} },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 0));

@@ -18,16 +18,34 @@ import {
 } from "@workspace/channel-platform";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
+import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
+import { requireRequestCompanyPermission } from "../lib/request-company-permission.js";
+import {
+  WhatsAppConnectionLifecycleError,
+  disconnectCompanyWhatsAppConnection,
+  transferCompanyWhatsAppConnection,
+} from "../services/whatsapp-connection-lifecycle.js";
+
+/** Matches public.whatsapp_settings_can_manage (settings.edit). */
+const WHATSAPP_SETTINGS_MANAGE_PERMISSION = "settings.edit";
 
 const router: IRouter = Router();
+
+function mapLifecycleError(error: unknown): never {
+  if (error instanceof WhatsAppConnectionLifecycleError) {
+    throw new HttpError(error.statusCode, error.message, error.code);
+  }
+  throw error;
+}
 
 void i18next.init({
   lng: "en",
   resources: { en: { common: en } },
 });
 
+router.use(confineToPathPrefixes("/whatsapp"));
 router.use(providerOpsRateLimiter);
 router.use(requireSupabaseAuth);
 router.use(requireCompanyScope("companyId"));
@@ -246,6 +264,121 @@ router.post("/whatsapp/test-connection", async (req, res, next) => {
         phoneNumberId: credentials.phoneNumberId || null,
         checkedAt: new Date().toISOString(),
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Soft-disconnect WhatsApp for a company inside ValueOR only.
+ * Never calls Meta Graph DELETE / deregister / unsubscribe.
+ */
+router.post("/whatsapp/disconnect", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) {
+      throw new HttpError(400, "companyId required", "bad_request");
+    }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    // Service-role RPC bypasses SQL JWT checks — enforce manage permission here.
+    await requireRequestCompanyPermission(req, companyId, WHATSAPP_SETTINGS_MANAGE_PERMISSION);
+
+    const client = getServiceClient();
+    const result = await disconnectCompanyWhatsAppConnection(
+      {
+        companyId,
+        confirmPhoneNumberId:
+          req.body?.confirmPhoneNumberId == null
+            ? null
+            : String(req.body.confirmPhoneNumberId),
+        confirmText: String(req.body?.confirmText ?? ""),
+        actorUserId: req.supabaseUser?.id ?? null,
+      },
+      client,
+    );
+    console.info("[whatsapp.lifecycle.disconnect]", {
+      companyId: result.companyId ?? companyId,
+      phoneNumberId: result.phoneNumberId,
+      eventId: result.eventId,
+      actorUserId: req.supabaseUser?.id ?? null,
+      metaGraph: "none",
+    });
+    res.json(result);
+  } catch (error) {
+    try {
+      mapLifecycleError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
+  }
+});
+
+/**
+ * Transfer WhatsApp binding between companies inside ValueOR.
+ * Moves encrypted credentials server-side; never returns tokens to the client.
+ */
+router.post("/whatsapp/transfer", async (req, res, next) => {
+  try {
+    const fromCompanyId = String(req.body?.companyId ?? req.body?.fromCompanyId ?? "").trim();
+    const toCompanyId = String(req.body?.toCompanyId ?? "").trim();
+    if (!fromCompanyId || !toCompanyId) {
+      throw new HttpError(400, "companyId (source) and toCompanyId required", "bad_request");
+    }
+    // Transfer is Super Admin only at the API boundary (service_role RPC bypasses JWT checks).
+    if (!req.supabaseIsSuperAdmin) {
+      throw new HttpError(403, "Only a super admin can transfer WhatsApp between companies.", "forbidden");
+    }
+    await assertRouteCommercialFeature(fromCompanyId, "whatsapp_channel");
+    await assertRouteCommercialFeature(toCompanyId, "whatsapp_channel");
+
+    const client = getServiceClient();
+    const result = await transferCompanyWhatsAppConnection(
+      {
+        fromCompanyId,
+        toCompanyId,
+        confirmPhoneNumberId: String(req.body?.confirmPhoneNumberId ?? ""),
+        confirmText: String(req.body?.confirmText ?? ""),
+        actorUserId: req.supabaseUser?.id ?? null,
+      },
+      client,
+    );
+    console.info("[whatsapp.lifecycle.transfer]", {
+      fromCompanyId: result.fromCompanyId,
+      toCompanyId: result.toCompanyId,
+      phoneNumberId: result.phoneNumberId,
+      eventId: result.eventId,
+      actorUserId: req.supabaseUser?.id ?? null,
+      metaGraph: "none",
+    });
+    res.json(result);
+  } catch (error) {
+    try {
+      mapLifecycleError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
+  }
+});
+
+router.post("/whatsapp/lifecycle-events", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) {
+      throw new HttpError(400, "companyId required", "bad_request");
+    }
+    await requireRequestCompanyPermission(req, companyId, WHATSAPP_SETTINGS_MANAGE_PERMISSION);
+    const limit = Math.min(100, Math.max(1, Number(req.body?.limit ?? 20) || 20));
+    const client = getServiceClient();
+    const { data, error } = await client.rpc("list_whatsapp_connection_lifecycle_events", {
+      p_company_id: companyId,
+      p_limit: limit,
+    });
+    if (error) {
+      throw new HttpError(500, error.message, "rpc_failed");
+    }
+    res.json({
+      events: Array.isArray(data) ? data : [],
     });
   } catch (error) {
     next(error);

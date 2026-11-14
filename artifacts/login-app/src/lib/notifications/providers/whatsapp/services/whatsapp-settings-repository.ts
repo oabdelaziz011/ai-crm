@@ -120,6 +120,18 @@ export class WhatsAppSettingsRepository {
     const webhookVerifyToken = normalizeWhatsAppSecretForUpsert(settings.webhookVerifyToken);
     const appSecret = normalizeWhatsAppSecretForUpsert(settings.appSecret);
 
+    let prior: CompanyWhatsAppSettings | null = null;
+    try {
+      prior = await this.getPublic(companyId);
+    } catch {
+      prior = null;
+    }
+    const priorBound = Boolean(
+      (prior?.phoneNumberId ?? "").trim() || prior?.hasAccessToken,
+    );
+    const nextPhone = String(settings.phoneNumberId ?? "").trim();
+    const nextBound = Boolean(nextPhone || accessToken || prior?.hasAccessToken);
+
     // Safe diagnostics only — never log plaintext secrets.
     console.info("[whatsapp-settings.upsert]", {
       at: new Date().toISOString(),
@@ -132,7 +144,7 @@ export class WhatsAppSettingsRepository {
       webhookVerifyTokenWillReplace: Boolean(webhookVerifyToken),
       appSecret: whatsappSecretInputMeta(settings.appSecret),
       appSecretWillReplace: Boolean(appSecret),
-      phoneNumberId: settings.phoneNumberId?.trim() || null,
+      phoneNumberId: nextPhone || null,
       businessAccountId: settings.businessAccountId?.trim() || null,
     });
 
@@ -151,6 +163,23 @@ export class WhatsAppSettingsRepository {
       p_webhook_callback_url: settings.webhookCallbackUrl?.trim() ?? "",
     });
     if (error) throw new Error(error.message);
-    return mapPublicRecord(data as Record<string, unknown>);
+
+    const saved = mapPublicRecord(data as Record<string, unknown>);
+    // Reconnect audit when a previously unbound company gains a working binding.
+    if (!priorBound && nextBound && settings.enabled !== false) {
+      try {
+        await this.client.rpc("record_whatsapp_connection_lifecycle_event", {
+          p_action: "reconnect_manual",
+          p_company_id: companyId,
+          p_phone_number_id: saved.phoneNumberId || nextPhone || null,
+          p_business_account_id: saved.businessAccountId || null,
+          p_meta: { source: "manual" },
+          p_actor_user_id: null,
+        });
+      } catch {
+        // Audit must not block a successful settings save.
+      }
+    }
+    return saved;
   }
 }

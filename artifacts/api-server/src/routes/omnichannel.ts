@@ -9,6 +9,7 @@ import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { HttpError } from "../middleware/error-handler.js";
 
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
+import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 
 import {
   FeatureNotEntitledError,
@@ -22,6 +23,8 @@ import { resolveAgentDispatchContext } from "../platform/resolve-agent-dispatch-
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 
 import { dispatchOmnichannelOutboundMessage } from "../services/omnichannel-outbound-dispatch.js";
+
+import { assertOmnichannelReplyPermission } from "../lib/omnichannel-reply-permission.js";
 
 import {
   FeatureNotEntitledError,
@@ -48,6 +51,8 @@ import {
 const router: IRouter = Router();
 
 
+
+router.use(confineToPathPrefixes("/omnichannel"));
 
 router.use(providerOpsRateLimiter);
 
@@ -469,9 +474,7 @@ router.post("/omnichannel/outbound/dispatch", async (req, res, next) => {
 
     passOutboundValidation("resolveAgentDispatchContext");
 
-    if (!ctx.isSuperAdmin && !ctx.hasPermission("conversation.reply")) {
-      throw new HttpError(403, "conversation.reply permission is required.", "forbidden");
-    }
+    assertOmnichannelReplyPermission(ctx);
 
     const channelFeatureCode = resolveChannelCommercialFeatureCode(input.channelKey);
     if (!channelFeatureCode) {

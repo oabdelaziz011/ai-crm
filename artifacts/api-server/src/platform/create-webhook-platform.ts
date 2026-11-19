@@ -65,7 +65,11 @@ import { createWebhookWorkflowTransferPorts, buildWebhookWorkflowTransferService
 import { createWebhookPlatformFeatureResolver } from "./webhook-ai-workflow-bridge.js";
 import { createWebhookEmployeeRuntimePort } from "./webhook-employee-runtime-port.js";
 import { createWebhookChannelCustomerIdentityPort } from "./webhook-channel-customer-identity-port.js";
-import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
+import {
+  createScopedRuntimeToolPort,
+  createGuideToolGuard,
+  createGuideConversationResolver,
+} from "./employee-runtime-bridge.js";
 import { createPublicWebChatChannelResolver } from "../services/public-web-chat/public-web-chat-channel-resolver.js";
 import {
   createPublicWebChatToolGuard,
@@ -251,11 +255,16 @@ export function getWebhookPlatform(): WebhookPlatform {
     retrieveKnowledge,
   });
   const publicWebChatChannels = createPublicWebChatChannelResolver(client);
-  const tools = createPublicWebChatToolGuard(
-    createScopedRuntimeToolPort(baseTools, {
-      commercialEntitlement: createRpcCommercialEntitlementPort(client),
-    }),
-    publicWebChatChannels,
+  const guideConversations = createGuideConversationResolver(client);
+  // Guide guard is outermost: Guide conversations deny all tools before other policies.
+  const tools = createGuideToolGuard(
+    createPublicWebChatToolGuard(
+      createScopedRuntimeToolPort(baseTools, {
+        commercialEntitlement: createRpcCommercialEntitlementPort(client),
+      }),
+      publicWebChatChannels,
+    ),
+    guideConversations,
   );
   const execution = createAIExecutionServices(
     client,

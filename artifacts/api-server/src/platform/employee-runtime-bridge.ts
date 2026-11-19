@@ -9,3 +9,9 @@ export {
   runWithEmployeeToolScope,
 } from "@login-app/lib/ai-employees/utilities/tool-scope-context.js";
 export { createScopedRuntimeToolPort } from "@login-app/lib/ai-employees/utilities/scoped-runtime-tool-port.js";
+export {
+  createGuideToolGuard,
+  createGuideConversationResolver,
+  GUIDE_CONVERSATION_SOURCE,
+  AI_GUIDE_TOOL_DENIED_CODE,
+} from "@login-app/lib/floating-ai/guide/guide-security.js";

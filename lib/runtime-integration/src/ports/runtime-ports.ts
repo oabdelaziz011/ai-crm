@@ -83,8 +83,10 @@ export interface ExecutionReadPort {
       conversationId: string;
       promptBuildId: string;
       providerConnectionId?: string | null;
+      providerKey?: string;
+      model?: string | null;
       pageContext?: Record<string, unknown>;
-      policy?: { streaming?: boolean };
+      policy?: { streaming?: boolean; temperature?: number; maxTokens?: number; max_tokens?: number };
       onStreamChunk?: (chunk: string) => void;
       abortSignal?: AbortSignal | null;
     },

@@ -140,6 +140,10 @@ export type AgentRuntimeInfoSnapshot = {
 
 export type AgentRuntimeChannelBinding = {
   providerConnectionId: string;
+  /** Employee-configured provider registry key (must match connection definition). */
+  providerKey?: string | null;
+  /** Employee-configured model — must reach execute (not silently replaced by platform default). */
+  model?: string | null;
   knowledgeRetrieval: {
     embeddingConnectionId: string;
     vectorStoreConnectionId: string;

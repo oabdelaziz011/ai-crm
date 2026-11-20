@@ -32,6 +32,10 @@ export type OutboundChannelMessageDto = {
 
 export type ChannelRuntimeConfigDto = {
   providerConnectionId: string;
+  /** Employee-configured provider registry key */
+  providerKey?: string | null;
+  /** Employee-configured model — must reach AI execute */
+  model?: string | null;
   /** Current page/module context — passed to runtime separately from user message text */
   pageContext?: Record<string, unknown>;
   knowledgeRetrieval?: {

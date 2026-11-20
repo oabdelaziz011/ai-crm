@@ -675,6 +675,8 @@ export function createChannelRuntimePort(
             conversationId: input.conversationId,
             messageText: input.messageText,
             providerConnectionId: input.runtimeConfig.providerConnectionId,
+            providerKey: input.runtimeConfig.providerKey ?? null,
+            model: input.runtimeConfig.model ?? null,
             knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
             executionPolicy: input.runtimeConfig.executionPolicy,
             pageContext: input.runtimeConfig.pageContext,

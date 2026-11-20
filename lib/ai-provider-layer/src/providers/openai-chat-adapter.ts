@@ -84,6 +84,10 @@ type OpenAIChatCompletionResponse = {
 export type OpenAIChatAdapterOptions = {
   fetchFn?: typeof fetch;
   apiKeyEnvVar?: string;
+  /** Allows OpenAI-compatible providers (e.g. Mistral) to reuse this adapter. */
+  providerKey?: string;
+  defaultBaseUrl?: string;
+  defaultModel?: string;
 };
 
 export function createOpenAIChatAdapter(
@@ -94,12 +98,14 @@ export function createOpenAIChatAdapter(
 }
 
 export class OpenAIChatAdapter implements AIProvider {
-  readonly key = "openai";
+  readonly key: string;
 
   constructor(
     private readonly configuration: Record<string, unknown>,
     private readonly options?: OpenAIChatAdapterOptions,
-  ) {}
+  ) {
+    this.key = options?.providerKey?.trim() || "openai";
+  }
 
   validateConfiguration(configuration: Record<string, unknown>): ConfigurationValidationResult {
     return validateAgainstSchema(OPENAI_CONFIGURATION_SCHEMA, configuration);
@@ -112,15 +118,17 @@ export class OpenAIChatAdapter implements AIProvider {
     }
 
     const configuredModel = this.configuration.model;
+    const defaultModel = this.options?.defaultModel?.trim() || "gpt-4o-mini";
+    // Prefer explicit request model (employee attribution) over connection default.
     const model =
-      typeof configuredModel === "string" && configuredModel.trim()
-        ? configuredModel
-        : inputModel ?? "gpt-4o-mini";
+      (typeof inputModel === "string" && inputModel.trim() ? inputModel.trim() : null) ||
+      (typeof configuredModel === "string" && configuredModel.trim() ? configuredModel.trim() : null) ||
+      defaultModel;
 
     const baseUrl =
       typeof this.configuration.baseUrl === "string" && this.configuration.baseUrl.trim()
         ? this.configuration.baseUrl.replace(/\/$/, "")
-        : "https://api.openai.com/v1";
+        : this.options?.defaultBaseUrl?.replace(/\/$/, "") || "https://api.openai.com/v1";
 
     const apiKey = resolveProviderApiKey(this.configuration);
 

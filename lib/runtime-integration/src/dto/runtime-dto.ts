@@ -10,6 +10,8 @@ export type RuntimeExecutionRequest = {
   correlationId?: string;
   policyId?: string;
   providerConnectionId?: string | null;
+  providerKey?: string | null;
+  model?: string | null;
   knowledgeRetrieval?: {
     collectionId: string;
     embeddingConnectionId?: string;
@@ -23,6 +25,9 @@ export type RuntimeExecutionRequest = {
   };
   executionPolicy?: {
     streaming?: boolean;
+    temperature?: number;
+    maxTokens?: number;
+    max_tokens?: number;
   };
   onStreamChunk?: (chunk: string) => void;
   abortSignal?: AbortSignal | null;

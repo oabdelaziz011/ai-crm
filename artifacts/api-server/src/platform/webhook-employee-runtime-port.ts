@@ -184,6 +184,12 @@ export function createWebhookEmployeeRuntimePort(client: SupabaseClient): Channe
 
       const runtimeConfig: ChannelRuntimeConfigDto = {
         providerConnectionId: prepared.runtimeConfigOverrides.providerConnectionId,
+        ...(prepared.runtimeConfigOverrides.providerKey
+          ? { providerKey: prepared.runtimeConfigOverrides.providerKey }
+          : {}),
+        ...(prepared.runtimeConfigOverrides.model
+          ? { model: prepared.runtimeConfigOverrides.model }
+          : {}),
         pageContext: {
           ...pageContext,
           ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),

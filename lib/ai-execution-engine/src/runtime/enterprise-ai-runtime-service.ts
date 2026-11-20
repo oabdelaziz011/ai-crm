@@ -270,15 +270,34 @@ export class EnterpriseAIRuntimeService {
           })
         : {};
 
-    const mergedConnectionConfiguration = {
+    // Keep platform credentials (apiKey/baseUrl) but do not let platform default model
+    // silently override the AI Employee / explicit request model.
+    const { model: platformModel, ...platformRest } = platformConfiguration as Record<
+      string,
+      unknown
+    > & { model?: unknown };
+    const connectionModel =
+      typeof connection.configuration?.model === "string" && connection.configuration.model.trim()
+        ? connection.configuration.model.trim()
+        : null;
+    const explicitModel =
+      typeof input.model === "string" && input.model.trim() ? input.model.trim() : null;
+    const platformModelText =
+      typeof platformModel === "string" && platformModel.trim() ? platformModel.trim() : null;
+
+    const mergedConnectionConfiguration: Record<string, unknown> = {
       ...connection.configuration,
-      ...platformConfiguration,
-      ...(typeof platformConfiguration.model === "string" && platformConfiguration.model
-        ? { model: platformConfiguration.model }
-        : {}),
+      ...platformRest,
+      ...(explicitModel
+        ? { model: explicitModel }
+        : connectionModel
+          ? { model: connectionModel }
+          : platformModelText
+            ? { model: platformModelText }
+            : {}),
     };
 
-    const model = resolveModel(mergedConnectionConfiguration, input.model);
+    const model = resolveModel(mergedConnectionConfiguration, explicitModel);
     const providerKey = input.providerKey ?? connection.provider_key;
 
     logOpenAIRequest({

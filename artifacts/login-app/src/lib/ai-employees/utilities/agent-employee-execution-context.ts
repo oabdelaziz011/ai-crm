@@ -36,6 +36,8 @@ export type AgentEmployeeExecutionContext = {
 
 export type AgentEmployeeChannelRuntimeConfig = {
   providerConnectionId: string;
+  providerKey?: string | null;
+  model?: string | null;
   pageContext: Record<string, unknown>;
   knowledgeRetrieval?: {
     embeddingConnectionId: string;
@@ -47,6 +49,8 @@ export type AgentEmployeeChannelRuntimeConfig = {
   executionPolicy?: {
     streaming?: boolean;
     maxDurationMs?: number;
+    temperature?: number | null;
+    maxTokens?: number | null;
   };
 };
 
@@ -120,8 +124,11 @@ export function buildChannelRuntimeConfigFromExecutionContext(
 ): AgentEmployeeChannelRuntimeConfig {
   const knowledgeRetrieval = executionContext.knowledgeRetrieval;
 
+  const employeeRuntime = executionContext.employeeRuntime;
   return {
     providerConnectionId: executionContext.providerConnectionId,
+    ...(employeeRuntime.providerKey ? { providerKey: employeeRuntime.providerKey } : {}),
+    ...(employeeRuntime.model ? { model: employeeRuntime.model } : {}),
     pageContext,
     knowledgeRetrieval:
       knowledgeRetrieval?.embeddingConnectionId &&
@@ -138,6 +145,12 @@ export function buildChannelRuntimeConfigFromExecutionContext(
     executionPolicy: {
       streaming: executionContext.executionPolicy.streaming,
       maxDurationMs: executionContext.executionPolicy.maxDurationMs,
+      ...(executionContext.executionPolicy.temperature != null
+        ? { temperature: executionContext.executionPolicy.temperature }
+        : {}),
+      ...(executionContext.executionPolicy.maxTokens != null
+        ? { maxTokens: executionContext.executionPolicy.maxTokens }
+        : {}),
     },
   };
 }

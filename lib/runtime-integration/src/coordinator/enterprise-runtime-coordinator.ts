@@ -243,6 +243,8 @@ export class EnterpriseRuntimeCoordinator {
             conversationId: input.conversationId,
             promptBuildId: prompt!.buildId,
             providerConnectionId: input.providerConnectionId,
+            providerKey: input.providerKey ?? undefined,
+            model: input.model ?? undefined,
             pageContext: input.pageContext,
             policy: input.executionPolicy,
             onStreamChunk: input.onStreamChunk,

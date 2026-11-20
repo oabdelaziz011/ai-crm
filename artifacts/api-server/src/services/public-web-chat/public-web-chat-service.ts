@@ -374,8 +374,17 @@ export function createPublicWebChatService(deps: PublicWebChatServiceDeps) {
 
         const externalMessageId = `webchat:${session.sessionId}:${clientMessageId}`;
         const requestHuman = input.body.request_human === true;
+        // After escalate / queue / assign, stop AI for subsequent visitor turns.
+        // isHumanOwned treats waiting_unassigned_follow_up as human-owned so Public Web Chat
+        // does not keep running the LLM while a handoff request is pending.
+        const humanOwnedBefore =
+          !requestHuman &&
+          (await deps.inbound
+            .isHumanOwned({ companyId: session.companyId, conversationId: binding.conversationId })
+            .catch(() => false));
         const executeAi =
           !requestHuman &&
+          !humanOwnedBefore &&
           deps.executeAi &&
           session.config.aiEnabled !== false &&
           Boolean(session.aiEmployeeId);

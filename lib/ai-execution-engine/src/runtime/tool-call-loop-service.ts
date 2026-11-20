@@ -9431,8 +9431,35 @@ async function replyToHumanRequest(
       },
       triggeredBy: "agent",
     });
-    const output = routed.output ?? {};
-    if (routed.status === "failed" || output.success === false) {
+    const output =
+      routed.output && typeof routed.output === "object"
+        ? (routed.output as Record<string, unknown>)
+        : {};
+    const ownerType =
+      output.ownership && typeof output.ownership === "object"
+        ? (output.ownership as { ownerType?: unknown }).ownerType
+        : null;
+    const ownerLifecycle =
+      output.ownership && typeof output.ownership === "object"
+        ? (output.ownership as { lifecycleState?: unknown }).lifecycleState
+        : null;
+    const assigned = output.assigned === true || ownerType === "human_agent";
+    const queued =
+      output.queued === true ||
+      ownerType === "queue" ||
+      String(ownerLifecycle ?? "").toUpperCase() === "ESCALATED";
+    const hasRequestId =
+      (typeof output.requestId === "string" && output.requestId.trim().length > 0) ||
+      (typeof output.handoffRequestId === "string" && output.handoffRequestId.trim().length > 0);
+    const handoffEvidence =
+      output.success === true ||
+      assigned ||
+      queued ||
+      output.idempotent === true ||
+      hasRequestId ||
+      output.departmentMissing === true;
+    // Never claim a handoff succeeded unless ToolRouter succeeded and ownership/request evidence exists.
+    if (routed.status !== "succeeded" || output.success === false || !handoffEvidence) {
       const language = customerReplyLanguage(input.gatewayRequest.messages);
       const text =
         language === "en"
@@ -9450,11 +9477,6 @@ async function replyToHumanRequest(
         },
       ]);
     }
-    const ownerType =
-      output.ownership && typeof output.ownership === "object"
-        ? (output.ownership as { ownerType?: unknown }).ownerType
-        : null;
-    const assigned = output.assigned === true || ownerType === "human_agent";
     const departmentName =
       typeof output.departmentName === "string" && output.departmentName.trim()
         ? output.departmentName.trim()

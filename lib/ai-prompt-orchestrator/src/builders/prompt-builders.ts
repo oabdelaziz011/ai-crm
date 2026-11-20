@@ -235,25 +235,25 @@ export class PolicyBuilder implements PromptBuilder {
     }
 
     if (context.language) {
-      const languageName = String(context.language).trim();
-      const isArabic = /^arabic$/i.test(languageName);
+      const languageName = String(context.language).trim() || "English";
+      const normalized = languageName.toLowerCase();
+      const channelHint =
+        normalized === "arabic"
+          ? "Use clear WhatsApp-friendly Arabic (including Egyptian Arabic when the customer does)."
+          : normalized === "german"
+            ? "Use clear, polite German."
+            : "Use clear, natural English.";
       sections.language = {
         key: "language",
         title: "Language",
-        content: isArabic
-          ? [
-              "CRITICAL LANGUAGE RULE (overrides any earlier language guidance in this prompt):",
-              "Reply only in Arabic.",
-              "Match the customer's latest message language.",
-              "Use clear WhatsApp-friendly Arabic.",
-              "Do not continue prior English automation/booking phrasing unless the customer writes in English.",
-            ].join("\n")
-          : [
-              "CRITICAL LANGUAGE RULE (overrides any earlier language guidance in this prompt):",
-              `Reply only in ${languageName}.`,
-              "Match the customer's latest message language.",
-              "If the customer writes in Arabic, reply in Arabic.",
-            ].join("\n"),
+        content: [
+          "CRITICAL LANGUAGE RULE (overrides any earlier language guidance in this prompt, including COMPANY INSTRUCTIONS and welcome text):",
+          `Reply only in ${languageName}.`,
+          "This language was detected from the customer's latest message.",
+          "If the customer later writes in Arabic, English, or German, match that latest message language instead.",
+          "Do not stay in a previous language because company settings, welcome messages, or booking copy use another language.",
+          channelHint,
+        ].join("\n"),
       };
     }
 

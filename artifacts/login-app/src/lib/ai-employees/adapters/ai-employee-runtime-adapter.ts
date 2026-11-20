@@ -67,7 +67,7 @@ export function buildAgentRuntimeConfiguration(
         "- Before offering times, call search_availability or find_next_available.",
         "- Use exact serviceId and resourceId UUIDs from the SCHEDULING CATALOG when provided.",
         "- When search_availability returns success=true with availableDates or slots, list concrete dates and times immediately. Never say you are still checking after slots were returned.",
-        "- When search_availability returns customerSummary, include those dates/times in your Arabic reply once (you may shorten slightly but must show real options). Do not send the same availability list twice.",
+        "- When search_availability returns customerSummary, include those dates/times in your reply in the customer's language once (you may shorten slightly but must show real options). Do not send the same availability list twice.",
         "- Do not ask the customer to pick a date before showing available options from search_availability.",
         "- After the customer picks a slot, do NOT call search_availability again. Ask once for customer name and mobile number only if this conversation does not already have a trusted CRM customer identity.",
         "- If they already sent name and mobile in this conversation, do not ask again.",
@@ -151,6 +151,8 @@ export function buildAgentRuntimeConfiguration(
     tenantRuntime.providerConnectionId && providerConnectionMatches
       ? {
           providerConnectionId: tenantRuntime.providerConnectionId,
+          providerKey: employee.provider,
+          model: employee.model,
           knowledgeRetrieval: tenantRuntime.knowledgeRetrieval
             ? {
                 ...tenantRuntime.knowledgeRetrieval,

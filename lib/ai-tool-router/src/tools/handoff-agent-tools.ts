@@ -5,6 +5,7 @@ import type { HandoffAgentToolPorts } from "./handoff-agent-ports.js";
 import { validateAgainstSchema } from "../utils/tool-utils.js";
 
 const ACTIVE_STATES: ConversationState[] = [
+  "idle",
   "greeting",
   "collecting_information",
   "waiting_user",

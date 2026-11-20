@@ -599,6 +599,15 @@ describe("Public Web Chat service — messages", () => {
     assert.equal(h.handoffRequests.length, 1);
     assert.equal(h.handoffRequests[0]?.triggerCode, "customer_requested");
     assert.equal(h.fallbacks.length, 0);
+
+    // After Omnichannel ownership flips (same as successful escalate_to_human), AI stays stopped.
+    h.setHumanOwned(true);
+    const followUp = await h.send(session, {
+      client_message_id: "msg-00000010",
+      text: "Are you still the AI after handoff?",
+    });
+    assert.equal(followUp.ok && followUp.body.status, "handoff");
+    assert.equal(h.routeCalls[1]?.executeAi, false);
   });
 
   it("31 / 32. human handoff: no AI reply, safe visitor notice", async () => {
@@ -611,6 +620,7 @@ describe("Public Web Chat service — messages", () => {
       status: 200,
       body: { status: "handoff", clientMessageId: "msg-00000001", notice: PUBLIC_WEB_CHAT_VISITOR_TEXT.handoff },
     });
+    assert.equal(h.routeCalls[0]?.executeAi, false);
     assert.equal(h.fallbacks.length, 0);
   });
 

@@ -1365,10 +1365,15 @@ export class HandoffCommandService {
       const agentDepartment = this.deps.handoff.getProfileDepartmentId
         ? await this.deps.handoff.getProfileDepartmentId(companyId, userId)
         : null;
-      const pending = await this.deps.handoff.listPendingRequests({ companyId, limit: 25 });
+      // Scan enough pending rows that already-assigned / non-waiting orphans do not starve
+      // newer waiting-unassigned escalations (common after offline handoffs).
+      const pending = await this.deps.handoff.listPendingRequests({ companyId, limit: 50 });
       for (const request of pending) {
         const ownership = await this.deps.handoff.getOwnership(companyId, request.conversationId);
         if (!ownership || ownership.assignedUserId || ownership.ownerType === "human_agent") continue;
+        // Queue waits may be claimed here; non-queue rows must be waiting-unassigned
+        // (typically ESCALATED + AI owner) so stale non-waiting pendings do not block the scan.
+        if (ownership.ownerType !== "queue" && !this.isWaitingUnassigned(ownership)) continue;
         const waitingDepartment =
           typeof ownership.metadata.waitingDepartmentId === "string"
             ? ownership.metadata.waitingDepartmentId
@@ -1399,7 +1404,9 @@ export class HandoffCommandService {
           companyId,
           conversationId: request.conversationId,
           assigneeUserId: userId,
-          reason: "First online agent in the requested department",
+          reason: waitingDepartment
+            ? "First online agent in the requested department"
+            : "First online agent claimed waiting handoff",
           skipAssignmentGovernance: true,
           trustedSystemExecution: true,
         });

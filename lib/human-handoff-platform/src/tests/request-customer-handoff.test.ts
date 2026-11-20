@@ -551,6 +551,72 @@ describe("requestCustomerHandoff", () => {
     assert.equal(assignedUserId, "agent-free");
   });
 
+  it("claims a no-queue waiting escalation when the first agent comes online", async () => {
+    let assignedUserId: string | null = null;
+    let pendingRequest: { id: string; conversationId: string } | null = null;
+    const repo = createRepo({
+      listQueues: async () => [],
+      listEscalationRules: async () => [],
+      listPresence: async () => [],
+      createRequest: async (input) => {
+        pendingRequest = { id: "req-no-queue-wait", conversationId: input.conversationId };
+        return {
+          id: pendingRequest.id,
+          companyId: input.companyId,
+          conversationId: input.conversationId,
+          requestType: input.requestType,
+          status: "pending" as const,
+          fromOwnerType: input.fromOwnerType,
+          fromOwnerId: input.fromOwnerId,
+          toOwnerType: input.toOwnerType,
+          toOwnerId: input.toOwnerId,
+          toQueueId: input.toQueueId ?? null,
+          reason: input.reason,
+          escalationReasonCode: input.escalationReasonCode ?? null,
+          priority: input.priority ?? "normal",
+          contextSnapshotId: input.contextSnapshotId ?? null,
+          requestedByUserId: input.requestedByUserId ?? null,
+          requestedByAiAssistantId: input.requestedByAiAssistantId ?? null,
+          acceptedByUserId: null,
+          rejectedByUserId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          expiresAt: input.expiresAt ?? null,
+        };
+      },
+      listPendingRequests: async () => (pendingRequest ? [pendingRequest as never] : []),
+    });
+    const service = new HandoffCommandService({
+      handoff: repo,
+      conversations: {
+        ...conversations,
+        assignConversation: async (input) => {
+          assignedUserId = input.assignedUserId;
+        },
+      },
+      notifications: notifications.port,
+      ...noop,
+    });
+
+    const waiting = await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-offline",
+      reason: "Customer asked for a human",
+      trustedSystemExecution: true,
+    });
+    assert.equal(waiting.assigned, false);
+    assert.equal(waiting.queued, true);
+    const held = await repo.getOwnership("company-1", "conv-offline");
+    assert.equal(held?.lifecycleState, "ESCALATED");
+    assert.equal(held?.assignedUserId, null);
+
+    await service.updatePresence(
+      { ...ctx, userId: "agent-free" },
+      { companyId: "company-1", state: "online" },
+    );
+    assert.equal(assignedUserId, "agent-free");
+  });
+
   it("holds the chat until the first online agent in that department arrives", async () => {
     let assignedUserId: string | null = null;
     const repo = createRepo({

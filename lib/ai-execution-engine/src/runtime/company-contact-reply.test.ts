@@ -226,6 +226,47 @@ describe("company contact replies", () => {
     assert.match(failed.response.text, /was not registered/);
     assert.equal(failed.response.text.includes("تم تسجيل طلبك"), false);
 
+    const deniedLoop = new ToolCallLoopService({
+      gateway: {
+        async chatCompletion() {
+          throw new Error("a denied handoff must not reach the model");
+        },
+      },
+      tools: {
+        allowedToolKeys: () => ["escalate_to_human"],
+        async route() {
+          return {
+            executionId: "handoff-denied",
+            toolKey: "escalate_to_human",
+            status: "denied",
+            output: {
+              denied: true,
+              errorCode: "FEATURE_NOT_ENTITLED",
+            },
+            durationMs: 1,
+            errorCode: "FEATURE_NOT_ENTITLED",
+          };
+        },
+      },
+    });
+    const denied = await deniedLoop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-handoff-denied",
+      now: open,
+      gatewayRequest: {
+        messages: [
+          { role: "system", content: FACTS },
+          { role: "user", content: "Please escalate to a human agent now." },
+        ],
+        model: "mock",
+      },
+      tools: [],
+      allowedToolKeys: ["escalate_to_human"],
+    });
+    assert.match(denied.response.text, /was not registered/);
+    assert.equal(denied.response.text.includes("registered your request"), false);
+    assert.equal(denied.response.text.includes("تم تسجيل طلبك"), false);
+
     const closedLoop = new ToolCallLoopService({
       gateway: {
         async chatCompletion() {

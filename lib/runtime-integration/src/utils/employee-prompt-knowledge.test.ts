@@ -22,7 +22,7 @@ describe("webhook employee prompt knowledge", () => {
       companyInstructions: "Greet as Northwind.",
       retrieval: retrieval(companyAFact),
     });
-    assert.match(assembled.systemInstructions[0] ?? "", /2026-10-21.4/);
+    assert.match(assembled.systemInstructions[0] ?? "", /AI EMPLOYEE CORE v2026-/);
     assert.match(assembled.systemInstructions.join("\n"), /CURRENT DATE \(Africa\/Cairo\): \d{4}-\d{2}-\d{2}/);
     assert.equal(assembled.systemInstructions.some((part) => part.includes(companyAFact)), false);
     assert.match(assembled.knowledge?.contextText ?? "", /Aurora Buds battery is 6 hours/);

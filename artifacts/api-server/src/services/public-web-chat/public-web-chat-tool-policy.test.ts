@@ -53,7 +53,15 @@ function createBaseToolPort() {
     listLlmTools: () => [],
     async route(_ctx, input: RuntimeToolRouteInput) {
       routed.push(input.toolKey);
-      return { executionId: "x", toolKey: input.toolKey, status: "completed", output: {}, durationMs: 1 };
+      return {
+        executionId: "x",
+        toolKey: input.toolKey,
+        status: "completed",
+        output: {},
+        durationMs: 1,
+        errorCode: null,
+        errorMessage: null,
+      };
     },
   };
   return { port, routed };
@@ -97,7 +105,7 @@ describe("29. Public Web Chat tool policy", () => {
         conversationId: "public-1",
         toolKey,
         input: { query: "someone else" },
-        triggeredBy: "ai",
+        triggeredBy: "llm",
       } as RuntimeToolRouteInput);
       assert.equal(result.status, "failed", toolKey);
       assert.equal(result.errorCode, PUBLIC_WEB_CHAT_TOOL_DENIED_CODE);
@@ -107,7 +115,7 @@ describe("29. Public Web Chat tool policy", () => {
       conversationId: "public-1",
       toolKey: "knowledge_search",
       input: {},
-      triggeredBy: "ai",
+      triggeredBy: "llm",
     } as RuntimeToolRouteInput);
     assert.equal(allowed.status, "completed");
   });
@@ -119,7 +127,7 @@ describe("29. Public Web Chat tool policy", () => {
       conversationId: "whatsapp-1",
       toolKey: "search_customers",
       input: {},
-      triggeredBy: "ai",
+      triggeredBy: "llm",
     } as RuntimeToolRouteInput);
     assert.equal(result.status, "completed");
     assert.deepEqual(routed, ["search_customers"]);
@@ -132,7 +140,7 @@ describe("29. Public Web Chat tool policy", () => {
       conversationId: "broken",
       toolKey: "knowledge_search",
       input: {},
-      triggeredBy: "ai",
+      triggeredBy: "llm",
     } as RuntimeToolRouteInput);
     assert.equal(result.status, "failed");
     assert.deepEqual(routed, []);
@@ -199,7 +207,7 @@ describe("29. Public Web Chat tool policy", () => {
         conversationId: "public-lookup-failed",
         toolKey,
         input: {},
-        triggeredBy: "ai",
+        triggeredBy: "llm",
       } as RuntimeToolRouteInput);
       assert.equal(result.status, "failed", toolKey);
       assert.equal(result.errorCode, PUBLIC_WEB_CHAT_TOOL_DENIED_CODE);

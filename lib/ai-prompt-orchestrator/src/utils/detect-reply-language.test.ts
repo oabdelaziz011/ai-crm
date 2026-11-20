@@ -31,6 +31,23 @@ describe("detectReplyLanguage", () => {
   });
 });
 
+describe("detectReplyLanguage conversation switching", () => {
+  it("switches Arabic → English → German from the latest customer message", () => {
+    assert.equal(detectReplyLanguage("عايز أعرف الخدمات"), "Arabic");
+    assert.equal(
+      detectReplyLanguage("What services do you offer briefly?", ["عايز أعرف الخدمات"]),
+      "English",
+    );
+    assert.equal(
+      detectReplyLanguage("Welche Dienstleistungen bieten Sie an?", [
+        "عايز أعرف الخدمات",
+        "What services do you offer briefly?",
+      ]),
+      "German",
+    );
+  });
+});
+
 describe("applyTemplateSectionOverrides language", () => {
   it("keeps runtime language over tenant English template", () => {
     const version = {

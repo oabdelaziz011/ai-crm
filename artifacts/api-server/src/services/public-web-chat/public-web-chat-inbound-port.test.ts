@@ -30,7 +30,15 @@ describe("isPublicWebChatHumanOwned", () => {
 describe("createPublicWebChatInboundPort.isHumanOwned", () => {
   it("returns false when no automation gate is wired", async () => {
     const port = createPublicWebChatInboundPort({
-      router: { routeInbound: async () => ({ incomingMessageId: null, responseContent: null }) },
+      router: {
+        routeInbound: async () => ({
+          incomingMessageId: "msg-1",
+          responseContent: "",
+          inboundEventId: "evt-1",
+          conversationId: "v",
+          channelSessionId: "sess-1",
+        }),
+      },
       systemContext: { userId: null, companyId: null, isSuperAdmin: true, hasPermission: () => true },
       automationGate: null,
       handoffService: { requestCustomerHandoff: async () => ({ ownership: {} as never, assigned: false, queued: false }) },
@@ -40,7 +48,15 @@ describe("createPublicWebChatInboundPort.isHumanOwned", () => {
 
   it("maps waiting_unassigned_follow_up to human-owned", async () => {
     const port = createPublicWebChatInboundPort({
-      router: { routeInbound: async () => ({ incomingMessageId: null, responseContent: null }) },
+      router: {
+        routeInbound: async () => ({
+          incomingMessageId: "msg-1",
+          responseContent: "",
+          inboundEventId: "evt-1",
+          conversationId: "v",
+          channelSessionId: "sess-1",
+        }),
+      },
       systemContext: { userId: null, companyId: null, isSuperAdmin: true, hasPermission: () => true },
       automationGate: {
         evaluate: async () => ({

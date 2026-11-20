@@ -160,10 +160,15 @@ export function resolveCapabilityGroup(toolKey: string): AiEmployeeCapabilityGro
 
 const TICKET_TOOL_KEY_SET = new Set<string>(TICKET_TOOL_KEYS);
 
+/** Handoff tools stay listed under omnichannel for UI unlock; runtime needs only ai_employee once assigned. */
+const HANDOFF_RUNTIME_TOOL_KEYS = new Set<string>(FEATURE_TOOL_KEYS.omnichannel);
+
 /**
  * Reverse lookup: tool → required commercial feature codes (fail-closed when null).
  * Always includes `ai_employee` when the tool is mapped.
  * Ticket tools require both `ticketing` and `ai_ticketing` (preserves existing dual gate).
+ * Handoff tools require `ai_employee` only at route time so public/web assignment cannot
+ * offer escalate_to_human while commercial omnichannel denies execution.
  */
 export function resolveRequiredFeatureCodesForTool(
   toolKey: string,
@@ -173,6 +178,10 @@ export function resolveRequiredFeatureCodesForTool(
 
   if (TICKET_TOOL_KEY_SET.has(key)) {
     return ["ai_employee", "ticketing", "ai_ticketing"];
+  }
+
+  if (HANDOFF_RUNTIME_TOOL_KEYS.has(key)) {
+    return ["ai_employee"];
   }
 
   const domainCodes: AiEmployeeCapabilityFeatureCode[] = [];

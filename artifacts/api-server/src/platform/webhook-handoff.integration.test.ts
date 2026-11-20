@@ -47,6 +47,8 @@ function createRecordingHandoffPorts(): HandoffAgentToolPorts & {
       return {
         requestId: "req-escalate-1",
         ownership: { ownerType: "queue", ownerLabel: "Support" },
+        assigned: false,
+        queued: true,
       };
     },
     async queueForHuman(input) {
@@ -107,7 +109,7 @@ function createExecutionRepository(): ToolExecutionRepository {
         tool_definition_id: input.toolDefinitionId,
         tool_key: input.toolKey,
         input: input.input,
-        triggered_by: input.triggeredBy,
+        triggered_by: input.triggeredBy ?? "router",
         status: "running",
         output: null,
         error_code: null,
@@ -115,7 +117,7 @@ function createExecutionRepository(): ToolExecutionRepository {
         duration_ms: null,
         started_at: new Date().toISOString(),
         completed_at: null,
-        created_by: input.createdBy,
+        created_by: input.createdBy ?? null,
       };
     },
     async markRunning(executionId) {
@@ -155,6 +157,12 @@ function createExecutionRepository(): ToolExecutionRepository {
         completed_at: new Date().toISOString(),
         created_by: "actor-1",
       };
+    },
+    async findById() {
+      return null;
+    },
+    async list() {
+      return [];
     },
   };
 }
@@ -352,6 +360,8 @@ describe("Phase 5F webhook Human Handoff wiring", () => {
         return {
           requestId: "req-live-path",
           ownership: { ownerType: "queue", ownerLabel: "Tier-1" },
+          assigned: false,
+          queued: true,
         };
       },
       async queueForHuman() {

@@ -422,31 +422,33 @@ describe("Phase 2 runtime commercial authorization", () => {
     assert.equal(allowed.result.status, "succeeded");
   });
 
-  it("Phase 5F: escalate_to_human requires ai_employee + omnichannel", async () => {
-    assert.deepEqual(resolveRequiredFeatureCodesForTool("escalate_to_human"), [
-      "ai_employee",
-      "omnichannel",
-    ]);
-    const missing = entitledPort({
-      [COMPANY_A]: new Set(["ai_employee"]),
+  it("Phase 5F: escalate_to_human requires ai_employee at route time (omnichannel still gates UI unlock)", async () => {
+    assert.deepEqual(resolveRequiredFeatureCodesForTool("escalate_to_human"), ["ai_employee"]);
+    assert.deepEqual(resolveRequiredFeatureCodesForTool("queue_handoff"), ["ai_employee"]);
+    assert.deepEqual(resolveRequiredFeatureCodesForTool("return_to_ai"), ["ai_employee"]);
+
+    const missingAi = entitledPort({
+      [COMPANY_A]: new Set(["omnichannel"]),
     });
     const denied = await routeUnderScope({
       toolKey: "escalate_to_human",
       allowedToolKeys: ["escalate_to_human"],
       companyId: COMPANY_A,
-      isFeatureEnabled: missing.isFeatureEnabled,
+      isFeatureEnabled: missingAi.isFeatureEnabled,
     });
     assert.equal(denied.routerCalled, false);
     assert.equal(denied.result.errorCode, "FEATURE_NOT_ENTITLED");
 
-    const entitled = entitledPort({
-      [COMPANY_A]: new Set(["ai_employee", "omnichannel"]),
+    // Assigned escalate must execute when ai_employee is entitled even without omnichannel,
+    // so public web chat cannot offer the tool then fail commercial at route time.
+    const aiOnly = entitledPort({
+      [COMPANY_A]: new Set(["ai_employee"]),
     });
     const allowed = await routeUnderScope({
       toolKey: "escalate_to_human",
       allowedToolKeys: ["escalate_to_human"],
       companyId: COMPANY_A,
-      isFeatureEnabled: entitled.isFeatureEnabled,
+      isFeatureEnabled: aiOnly.isFeatureEnabled,
     });
     assert.equal(allowed.routerCalled, true);
     assert.equal(allowed.result.status, "succeeded");

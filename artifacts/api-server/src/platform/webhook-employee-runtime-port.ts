@@ -19,6 +19,7 @@ import {
   appendSchedulingCatalogPrompt,
   resolveSchedulingCatalogPromptForEmployee,
 } from "@login-app/lib/ai-employees/utilities/scheduling-catalog-prompt.js";
+import { createRpcCommercialEntitlementPort } from "@login-app/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate.js";
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -153,6 +154,8 @@ export function createWebhookEmployeeRuntimePort(client: SupabaseClient): Channe
         preferFreshBinding: true,
         bindingResolver: (companyId, aiEmployeeId) =>
           resolveEmployeeChannelRuntime(companyId, aiEmployeeId, client),
+        // Offer/scope ∩ commercial entitlements (handoff requires Omnichannel).
+        commercialEntitlement: createRpcCommercialEntitlementPort(client),
       });
 
       if (!prepared.executionContext || !prepared.runtimeConfigOverrides?.providerConnectionId) {

@@ -5,8 +5,10 @@ import {
   WEBHOOK_STUB_TOOL_KEYS,
   clearAvailableToolKeys,
   groupAvailableToolsByCapability,
+  intersectAllowedToolKeysWithEntitlements,
   intersectToolKeysWithAvailable,
   resolveAvailableEmployeeTools,
+  resolveEntitledAssignedToolKeys,
   resolveEntitledToolKeys,
   resolveRequiredFeatureCodesForTool,
   selectAllAvailableToolKeys,
@@ -44,6 +46,48 @@ const catalog = [
 ];
 
 describe("ai-employee-capability-catalog", () => {
+  it("handoff tools require ai_employee + omnichannel (offer and route codes match)", () => {
+    assert.deepEqual(resolveRequiredFeatureCodesForTool("escalate_to_human"), [
+      "ai_employee",
+      "omnichannel",
+    ]);
+    const entitledWithoutOmni = resolveEntitledToolKeys(["ai_employee", "bookings"]);
+    assert.equal(entitledWithoutOmni.has("escalate_to_human"), false);
+    const entitledWithOmni = resolveEntitledToolKeys(["ai_employee", "omnichannel"]);
+    assert.equal(entitledWithOmni.has("escalate_to_human"), true);
+  });
+
+  it("intersectAllowedToolKeysWithEntitlements drops escalate without Omnichannel", () => {
+    const assigned = ["knowledge_search", "escalate_to_human", "create_booking"];
+    assert.deepEqual(
+      intersectAllowedToolKeysWithEntitlements(assigned, ["ai_employee", "bookings"]),
+      ["knowledge_search", "create_booking"],
+    );
+    assert.deepEqual(
+      intersectAllowedToolKeysWithEntitlements(assigned, ["ai_employee", "bookings", "omnichannel"]),
+      assigned,
+    );
+  });
+
+  it("resolveEntitledAssignedToolKeys never offers escalate without Omnichannel", async () => {
+    const assigned = ["knowledge_search", "escalate_to_human"];
+    const withoutOmni = await resolveEntitledAssignedToolKeys({
+      companyId: "c1",
+      assignedToolKeys: assigned,
+      isFeatureEnabled: async (_companyId, code) => code === "ai_employee",
+    });
+    assert.deepEqual(withoutOmni, ["knowledge_search"]);
+    assert.equal(withoutOmni.includes("escalate_to_human"), false);
+
+    const withOmni = await resolveEntitledAssignedToolKeys({
+      companyId: "c1",
+      assignedToolKeys: assigned,
+      isFeatureEnabled: async (_companyId, code) =>
+        code === "ai_employee" || code === "omnichannel",
+    });
+    assert.deepEqual(withOmni, assigned);
+  });
+
   it("A. company with bookings: booking tools visible", () => {
     const tools = resolveAvailableEmployeeTools({
       enabledFeatureCodes: ["ai_employee", "bookings"],

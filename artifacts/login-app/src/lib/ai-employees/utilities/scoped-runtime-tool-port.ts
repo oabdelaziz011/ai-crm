@@ -15,6 +15,7 @@ import {
   stampToolScopeDecision,
 } from "./tool-scope-filter.js";
 import { resolveActiveToolScope } from "./tool-scope-context.js";
+import { resolveRequiredFeatureCodesForTool } from "./ai-employee-capability-catalog.js";
 
 function readLlmToolName(tool: unknown): string | null {
   if (!tool || typeof tool !== "object") return null;
@@ -28,19 +29,44 @@ export type ScopedRuntimeToolPortOptions = {
    * Commercial entitlement is independent of RBAC / isSuperAdmin.
    */
   commercialEntitlement: AiEmployeeCommercialEntitlementPort;
+  /**
+   * Optional sync snapshot of company feature codes for offer/scope filtering.
+   * When set, allowedToolKeys/listLlmTools drop tools whose required commercial
+   * codes are not all present (same rule as route-time evaluateCommercialToolAccess).
+   */
+  enabledFeatureCodes?: ReadonlySet<string> | readonly string[] | null;
 };
+
+function toolIsCommerciallyOfferable(
+  toolKey: string,
+  enabledFeatureCodes: ReadonlySet<string> | null,
+): boolean {
+  if (!enabledFeatureCodes) return true;
+  const required = resolveRequiredFeatureCodesForTool(toolKey);
+  if (!required) return false;
+  return required.every((code) => enabledFeatureCodes.has(code));
+}
 
 export function createScopedRuntimeToolPort(
   basePort: RuntimeToolPort,
   options: ScopedRuntimeToolPortOptions,
 ): RuntimeToolPort {
+  const enabledFeatureCodes = options.enabledFeatureCodes
+    ? options.enabledFeatureCodes instanceof Set
+      ? options.enabledFeatureCodes
+      : new Set([...options.enabledFeatureCodes].map((code) => code.trim()).filter(Boolean))
+    : null;
+
   return {
     allowedToolKeys() {
       const scope = resolveActiveToolScope();
       if (!scope) return basePort.allowedToolKeys();
 
       const globallyAllowed = new Set(basePort.allowedToolKeys());
-      return scope.allowedToolKeys.filter((toolKey) => globallyAllowed.has(toolKey));
+      return scope.allowedToolKeys.filter(
+        (toolKey) =>
+          globallyAllowed.has(toolKey) && toolIsCommerciallyOfferable(toolKey, enabledFeatureCodes),
+      );
     },
 
     listLlmTools() {

@@ -8,6 +8,7 @@ import { useAiEmployee } from "@/lib/ai-employees/hooks";
 import { readAiEmployeeIdFromPageContext } from "@/lib/ai-employees/utilities/merge-employee-page-context";
 import { resolveAiEmployeeWelcomeMessage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import { prepareEmployeeChatRuntime } from "@/lib/ai-employees/utilities/prepare-employee-chat-runtime";
+import { createRpcCommercialEntitlementPort } from "@/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate";
 import { rehydrateConversationExecutionContextFromMetadata } from "@/lib/ai-employees/utilities/conversation-employee-context-hydrator";
 import {
   appendSchedulingCatalogPrompt,
@@ -282,6 +283,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
           conversationId,
           basePageContext,
           conversationMetadata,
+          commercialEntitlement: createRpcCommercialEntitlementPort(supabase),
         });
 
         const enabledToolKeys = Array.isArray(employeeRuntime.pageContext?.allowedToolKeys)

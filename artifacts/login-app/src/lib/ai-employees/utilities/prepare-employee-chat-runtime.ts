@@ -17,6 +17,8 @@ import {
 } from "@/lib/ai-employees/utilities/employee-conversation-binding";
 import { mergeEmployeePageContext } from "@/lib/ai-employees/utilities/merge-employee-page-context";
 import { registerConversationToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
+import { resolveEntitledAssignedToolKeys } from "@/lib/ai-employees/utilities/ai-employee-capability-catalog";
+import type { AiEmployeeCommercialEntitlementPort } from "@/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate";
 
 export type PrepareEmployeeChatRuntimeInput = {
   companyId: string;
@@ -30,6 +32,12 @@ export type PrepareEmployeeChatRuntimeInput = {
    * Stale conversation snapshots can omit tools that were enabled later (e.g. search_ticket).
    */
   preferFreshBinding?: boolean;
+  /**
+   * Live commercial entitlement SoT. When provided, offer/scope intersects
+   * assigned tools with {@link resolveEntitledAssignedToolKeys} so handoff tools
+   * are never offered without Omnichannel.
+   */
+  commercialEntitlement?: AiEmployeeCommercialEntitlementPort;
 };
 
 export type PrepareEmployeeChatRuntimeResult = {
@@ -61,6 +69,46 @@ function buildResult(input: {
     reusedExistingContext: input.reusedExistingContext,
     hydrationSource: input.hydrationSource,
   };
+}
+
+async function applyCommercialOfferScope(
+  companyId: string,
+  executionContext: AgentEmployeeExecutionContext,
+  commercialEntitlement?: AiEmployeeCommercialEntitlementPort,
+): Promise<AgentEmployeeExecutionContext> {
+  if (!commercialEntitlement) return executionContext;
+
+  const filteredKeys = await resolveEntitledAssignedToolKeys({
+    companyId,
+    assignedToolKeys: executionContext.allowedToolKeys,
+    isFeatureEnabled: commercialEntitlement.isFeatureEnabled,
+  });
+
+  if (
+    filteredKeys.length === executionContext.allowedToolKeys.length &&
+    filteredKeys.every((key, index) => key === executionContext.allowedToolKeys[index])
+  ) {
+    return executionContext;
+  }
+
+  const pageContext = Object.freeze({
+    ...executionContext.pageContext,
+    allowedToolKeys: filteredKeys,
+  });
+  const employeeRuntimePage = Object.freeze({
+    ...executionContext.employeeRuntime.pageContext,
+    allowedToolKeys: filteredKeys,
+  });
+
+  return Object.freeze({
+    ...executionContext,
+    allowedToolKeys: Object.freeze([...filteredKeys]),
+    pageContext,
+    employeeRuntime: Object.freeze({
+      ...executionContext.employeeRuntime,
+      pageContext: employeeRuntimePage,
+    }),
+  });
 }
 
 function isReusableChannelBinding(
@@ -105,19 +153,30 @@ export async function prepareEmployeeChatRuntime(
   if (canReuse && hydrated.executionContext) {
     // Preserve systemPrompt / allowedToolKeys / transferableFlowId from the frozen
     // employee pageContext. basePageContext alone is channel routing metadata only.
+    // Re-apply commercial offer intersect so Omnichannel loss drops handoff tools.
+    const executionContext = await applyCommercialOfferScope(
+      input.companyId,
+      hydrated.executionContext,
+      input.commercialEntitlement,
+    );
     const pageContext = attachAgentEmployeeExecutionContext(
       {
-        ...hydrated.executionContext.pageContext,
+        ...executionContext.pageContext,
         ...input.basePageContext,
       },
-      hydrated.executionContext,
+      executionContext,
     );
+    registerConversationToolScope(input.conversationId, {
+      allowedToolKeys: executionContext.allowedToolKeys,
+      employeeId: executionContext.aiEmployeeId,
+      showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
+    });
     return buildResult({
       pageContext,
-      executionContext: hydrated.executionContext,
+      executionContext,
       metadataPatch: buildEmployeeConversationMetadataPatch(
         input.conversationMetadata ?? {},
-        hydrated.executionContext,
+        executionContext,
         {
           publishedVersionId:
             typeof input.conversationMetadata?.aiEmployeeVersionId === "string"
@@ -126,7 +185,7 @@ export async function prepareEmployeeChatRuntime(
           displayName:
             typeof input.conversationMetadata?.aiEmployeeDisplayName === "string"
               ? input.conversationMetadata.aiEmployeeDisplayName
-              : hydrated.executionContext.employeeRuntime.pageContext.aiEmployeeName,
+              : executionContext.employeeRuntime.pageContext.aiEmployeeName,
         },
       ),
       resolveCount: 0,
@@ -165,8 +224,20 @@ export async function prepareEmployeeChatRuntime(
   }
 
   const mergedPageContext = mergeEmployeePageContext(input.basePageContext, channelRuntime);
-  const executionContext = createAgentEmployeeExecutionContext(channelRuntime, mergedPageContext);
-  const pageContext = attachAgentEmployeeExecutionContext(mergedPageContext, executionContext);
+  const rawExecutionContext = createAgentEmployeeExecutionContext(channelRuntime, mergedPageContext);
+  const executionContext = await applyCommercialOfferScope(
+    input.companyId,
+    rawExecutionContext,
+    input.commercialEntitlement,
+  );
+  const pageContext = attachAgentEmployeeExecutionContext(
+    {
+      ...mergedPageContext,
+      ...executionContext.pageContext,
+      allowedToolKeys: [...executionContext.allowedToolKeys],
+    },
+    executionContext,
+  );
 
   registerConversationToolScope(input.conversationId, {
     allowedToolKeys: executionContext.allowedToolKeys,

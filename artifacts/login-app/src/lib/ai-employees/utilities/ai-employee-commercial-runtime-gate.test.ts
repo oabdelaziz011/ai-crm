@@ -12,7 +12,10 @@ import {
   AI_EMPLOYEE_TOOL_SAFE_DENIAL_MESSAGE,
   evaluateCommercialToolAccess,
 } from "./ai-employee-commercial-runtime-gate.js";
-import { applyToolScopeBeforeRoute } from "./scoped-runtime-tool-port.js";
+import {
+  applyToolScopeBeforeRoute,
+  createScopedRuntimeToolPort,
+} from "./scoped-runtime-tool-port.js";
 import { TOOL_NOT_ASSIGNED_CODE } from "./tool-scope-filter.js";
 import { runWithEmployeeToolScope } from "./tool-scope-context.js";
 
@@ -422,36 +425,97 @@ describe("Phase 2 runtime commercial authorization", () => {
     assert.equal(allowed.result.status, "succeeded");
   });
 
-  it("Phase 5F: escalate_to_human requires ai_employee at route time (omnichannel still gates UI unlock)", async () => {
-    assert.deepEqual(resolveRequiredFeatureCodesForTool("escalate_to_human"), ["ai_employee"]);
-    assert.deepEqual(resolveRequiredFeatureCodesForTool("queue_handoff"), ["ai_employee"]);
-    assert.deepEqual(resolveRequiredFeatureCodesForTool("return_to_ai"), ["ai_employee"]);
+  it("Phase 5F: escalate_to_human requires ai_employee + omnichannel at route time", async () => {
+    assert.deepEqual(resolveRequiredFeatureCodesForTool("escalate_to_human"), [
+      "ai_employee",
+      "omnichannel",
+    ]);
+    assert.deepEqual(resolveRequiredFeatureCodesForTool("queue_handoff"), [
+      "ai_employee",
+      "omnichannel",
+    ]);
+    assert.deepEqual(resolveRequiredFeatureCodesForTool("return_to_ai"), [
+      "ai_employee",
+      "omnichannel",
+    ]);
+
+    const missingOmni = entitledPort({
+      [COMPANY_A]: new Set(["ai_employee"]),
+    });
+    const deniedOmni = await routeUnderScope({
+      toolKey: "escalate_to_human",
+      allowedToolKeys: ["escalate_to_human"],
+      companyId: COMPANY_A,
+      isFeatureEnabled: missingOmni.isFeatureEnabled,
+    });
+    assert.equal(deniedOmni.routerCalled, false);
+    assert.equal(deniedOmni.result.errorCode, "FEATURE_NOT_ENTITLED");
 
     const missingAi = entitledPort({
       [COMPANY_A]: new Set(["omnichannel"]),
     });
-    const denied = await routeUnderScope({
+    const deniedAi = await routeUnderScope({
       toolKey: "escalate_to_human",
       allowedToolKeys: ["escalate_to_human"],
       companyId: COMPANY_A,
       isFeatureEnabled: missingAi.isFeatureEnabled,
     });
-    assert.equal(denied.routerCalled, false);
-    assert.equal(denied.result.errorCode, "FEATURE_NOT_ENTITLED");
+    assert.equal(deniedAi.routerCalled, false);
+    assert.equal(deniedAi.result.errorCode, "FEATURE_NOT_ENTITLED");
 
-    // Assigned escalate must execute when ai_employee is entitled even without omnichannel,
-    // so public web chat cannot offer the tool then fail commercial at route time.
-    const aiOnly = entitledPort({
-      [COMPANY_A]: new Set(["ai_employee"]),
+    const both = entitledPort({
+      [COMPANY_A]: new Set(["ai_employee", "omnichannel"]),
     });
     const allowed = await routeUnderScope({
       toolKey: "escalate_to_human",
       allowedToolKeys: ["escalate_to_human"],
       companyId: COMPANY_A,
-      isFeatureEnabled: aiOnly.isFeatureEnabled,
+      isFeatureEnabled: both.isFeatureEnabled,
     });
     assert.equal(allowed.routerCalled, true);
     assert.equal(allowed.result.status, "succeeded");
+  });
+
+  it("Phase 5F: offer-time scope excludes escalate without Omnichannel (matches route)", async () => {
+    const base = {
+      allowedToolKeys: () => ["knowledge_search", "escalate_to_human"],
+      listLlmTools: () => [
+        { type: "function", function: { name: "knowledge_search" } },
+        { type: "function", function: { name: "escalate_to_human" } },
+      ],
+      route: async () => {
+        throw new Error("must not route in offer test");
+      },
+    };
+
+    await runWithEmployeeToolScope(
+      {
+        allowedToolKeys: ["knowledge_search", "escalate_to_human"],
+        employeeId: EMPLOYEE_ID,
+      },
+      () => {
+        const withoutOmni = createScopedRuntimeToolPort(base, {
+          commercialEntitlement: entitledPort({ [COMPANY_A]: new Set(["ai_employee"]) }),
+          enabledFeatureCodes: ["ai_employee"],
+        });
+        assert.deepEqual(withoutOmni.allowedToolKeys(), ["knowledge_search"]);
+        assert.deepEqual(
+          withoutOmni.listLlmTools().map((tool) => (tool as { function: { name: string } }).function.name),
+          ["knowledge_search"],
+        );
+
+        const withOmni = createScopedRuntimeToolPort(base, {
+          commercialEntitlement: entitledPort({
+            [COMPANY_A]: new Set(["ai_employee", "omnichannel"]),
+          }),
+          enabledFeatureCodes: ["ai_employee", "omnichannel"],
+        });
+        assert.deepEqual(withOmni.allowedToolKeys().sort(), [
+          "escalate_to_human",
+          "knowledge_search",
+        ]);
+      },
+    );
   });
 
   it("Phase 5F: handoff tools deny when unassigned; super-admin does not bypass", async () => {

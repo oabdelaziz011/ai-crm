@@ -160,15 +160,12 @@ export function resolveCapabilityGroup(toolKey: string): AiEmployeeCapabilityGro
 
 const TICKET_TOOL_KEY_SET = new Set<string>(TICKET_TOOL_KEYS);
 
-/** Handoff tools stay listed under omnichannel for UI unlock; runtime needs only ai_employee once assigned. */
-const HANDOFF_RUNTIME_TOOL_KEYS = new Set<string>(FEATURE_TOOL_KEYS.omnichannel);
-
 /**
  * Reverse lookup: tool → required commercial feature codes (fail-closed when null).
  * Always includes `ai_employee` when the tool is mapped.
  * Ticket tools require both `ticketing` and `ai_ticketing` (preserves existing dual gate).
- * Handoff tools require `ai_employee` only at route time so public/web assignment cannot
- * offer escalate_to_human while commercial omnichannel denies execution.
+ * Handoff tools (omnichannel catalog) require `ai_employee` + `omnichannel` at route time —
+ * same codes used by {@link resolveEntitledToolKeys} for offer/scope unlock.
  */
 export function resolveRequiredFeatureCodesForTool(
   toolKey: string,
@@ -178,10 +175,6 @@ export function resolveRequiredFeatureCodesForTool(
 
   if (TICKET_TOOL_KEY_SET.has(key)) {
     return ["ai_employee", "ticketing", "ai_ticketing"];
-  }
-
-  if (HANDOFF_RUNTIME_TOOL_KEYS.has(key)) {
-    return ["ai_employee"];
   }
 
   const domainCodes: AiEmployeeCapabilityFeatureCode[] = [];
@@ -201,6 +194,51 @@ export function resolveRequiredFeatureCodesForTool(
   if (!listedAnywhere) return null;
   if (domainCodes.length === 0) return ["ai_employee"];
   return ["ai_employee", ...domainCodes];
+}
+
+/**
+ * Offer/scope consistency: assigned employee tools ∩ commercially entitled tools.
+ * Ensures escalate_to_human is never offered when Omnichannel is not entitled.
+ */
+export function intersectAllowedToolKeysWithEntitlements(
+  allowedToolKeys: readonly string[],
+  enabledFeatureCodes: Iterable<string>,
+): string[] {
+  const entitled = resolveEntitledToolKeys(enabledFeatureCodes);
+  return allowedToolKeys.filter((key) => entitled.has(key));
+}
+
+/**
+ * Resolve which assigned tools remain offerable after live commercial entitlement checks.
+ * Fail-closed: feature lookup errors treat the feature as disabled.
+ */
+export async function resolveEntitledAssignedToolKeys(input: {
+  companyId: string;
+  assignedToolKeys: readonly string[];
+  isFeatureEnabled: (companyId: string, featureCode: string) => Promise<boolean>;
+}): Promise<string[]> {
+  const companyId = input.companyId.trim();
+  if (!companyId) return [];
+
+  const codesNeeded = new Set<string>();
+  for (const toolKey of input.assignedToolKeys) {
+    const required = resolveRequiredFeatureCodesForTool(toolKey);
+    if (!required) continue;
+    for (const code of required) codesNeeded.add(code);
+  }
+
+  const enabled: string[] = [];
+  for (const featureCode of codesNeeded) {
+    let ok = false;
+    try {
+      ok = await input.isFeatureEnabled(companyId, featureCode);
+    } catch {
+      ok = false;
+    }
+    if (ok) enabled.push(featureCode);
+  }
+
+  return intersectAllowedToolKeysWithEntitlements(input.assignedToolKeys, enabled);
 }
 
 /** True when the tool appears in the canonical Phase 1 feature → tool mapping. */

@@ -54,6 +54,9 @@ Thumbs.db
 artifacts/login-app/.env.local
 artifacts/api-server/.dev-watch.lock
 deploy/vps/production.env
+# Local sidecars from env repairs / installs (keep out of worktree status)
+deploy/vps/production.env.bak*
+.env.bak*
 deploy/vps/certs/*
 !deploy/vps/certs/.gitkeep
 

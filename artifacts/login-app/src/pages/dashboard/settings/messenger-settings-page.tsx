@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { Loader2, MessageSquare, RefreshCw, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { generateMessengerVerifyToken } from "@workspace/channel-registry";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   useMessengerCompanyChannel,
   useMessengerConnectionTest,
   useMessengerOutboundHealth,
+  messengerSettingsKey,
   useMessengerSettings,
   useUpdateMessengerSettings,
 } from "@/hooks/channels/use-messenger-settings";
@@ -23,6 +24,16 @@ import {
   resolveChannelWebhookBaseUrl,
 } from "@/lib/channels/whatsapp-channel-utils";
 import { isMessengerApiConfigured, type MessengerSettingsDraft } from "@/lib/channels/messenger-settings";
+import {
+  draftWebhookVerifyTokenFromSettings,
+  isCopyableWebhookVerifyToken,
+} from "@/lib/channels/webhook-verify-token-field";
+import { MetaPagesOauthPanel } from "@/components/channels/meta-pages-oauth-panel";
+import { MessengerLoginOauthPanel } from "@/components/channels/messenger-login-oauth-panel";
+import { MetaChannelConnectionStrip } from "@/components/channels/meta-channel-connection-strip";
+import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-token-field";
+import { disconnectMetaMessengerLogin } from "@/lib/channels/meta-messenger-login-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const EMPTY_SETTINGS: MessengerSettingsDraft = {
   enabled: false,
@@ -39,6 +50,7 @@ export function SettingsMessengerPage() {
   const { toast } = useToast();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
+  const queryClient = useQueryClient();
 
   const { data: settings, isLoading } = useMessengerSettings(companyId);
   const messengerChannel = useMessengerCompanyChannel(companyId);
@@ -52,6 +64,36 @@ export function SettingsMessengerPage() {
   const connectionTest = useMessengerConnectionTest(companyId, companyChannelId);
 
   const [draft, setDraft] = useState(EMPTY_SETTINGS);
+  const [disconnectBusy, setDisconnectBusy] = useState(false);
+
+  const refreshAfterOauth = () => {
+    void queryClient.invalidateQueries({ queryKey: messengerSettingsKey(companyId) });
+    void refetchHealth();
+  };
+
+  const onSoftDisconnect = async () => {
+    if (!companyId) return;
+    setDisconnectBusy(true);
+    try {
+      await disconnectMetaMessengerLogin(companyId);
+      toast({
+        title: t("notifications.messengerLogin.disconnected", {
+          defaultValue: "Messenger soft-disconnected",
+        }),
+      });
+      refreshAfterOauth();
+    } catch (error) {
+      toast({
+        title: t("notifications.messengerLogin.disconnectFailed", {
+          defaultValue: "Disconnect failed",
+        }),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setDisconnectBusy(false);
+    }
+  };
 
   const webhookBaseUrl = resolveChannelWebhookBaseUrl();
   const globalWebhookUrl = useMemo(() => buildMessengerWebhookUrl(webhookBaseUrl), [webhookBaseUrl]);
@@ -62,15 +104,18 @@ export function SettingsMessengerPage() {
 
   useEffect(() => {
     if (settings) {
-      setDraft({
+      setDraft((prev) => ({
         enabled: settings.enabled,
         provider: settings.provider,
         pageId: settings.pageId,
         accessToken: settings.accessToken,
-        webhookVerifyToken: settings.webhookVerifyToken,
+        // Keep an in-session generated/typed plaintext so Copy matches the token just saved.
+        webhookVerifyToken: isCopyableWebhookVerifyToken(prev.webhookVerifyToken)
+          ? prev.webhookVerifyToken
+          : draftWebhookVerifyTokenFromSettings(settings.webhookVerifyToken),
         apiVersion: settings.apiVersion,
         appSecret: settings.appSecret,
-      });
+      }));
     }
   }, [settings]);
 
@@ -137,6 +182,45 @@ export function SettingsMessengerPage() {
           </div>
         ) : (
           <>
+            <MetaChannelConnectionStrip
+              channelLabel={t("notifications.messenger.settings.title")}
+              connected={Boolean(
+                settings?.enabled && settings.pageId && settings.hasAccessToken && health?.ok,
+              )}
+              enabled={Boolean(settings?.enabled)}
+              assetLabel={t("notifications.messenger.settings.pageId")}
+              assetValue={settings?.pageId}
+              hasAccessToken={Boolean(settings?.hasAccessToken)}
+              hasWebhookVerifyToken={Boolean(settings?.hasWebhookVerifyToken)}
+              healthOk={health?.ok ?? null}
+              healthError={health?.error ?? null}
+              onDisconnect={() => void onSoftDisconnect()}
+              disconnectBusy={disconnectBusy}
+            />
+            {companyId ? (
+              <MessengerLoginOauthPanel
+                companyId={companyId}
+                onConnected={refreshAfterOauth}
+                onDisconnected={refreshAfterOauth}
+              />
+            ) : null}
+            {companyId ? (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">
+                  {t("notifications.messengerLogin.legacySdk", {
+                    defaultValue: "Legacy: Meta Login via Facebook JS SDK",
+                  })}
+                </summary>
+                <div className="mt-2">
+                  <MetaPagesOauthPanel
+                    companyId={companyId}
+                    channel="messenger"
+                    onConnected={refreshAfterOauth}
+                    onDisconnected={refreshAfterOauth}
+                  />
+                </div>
+              </details>
+            ) : null}
             <div className="flex items-center justify-between">
               <Label htmlFor="messenger-enabled">{t("notifications.messenger.settings.enabled")}</Label>
               <Switch
@@ -183,26 +267,15 @@ export function SettingsMessengerPage() {
                   {t("notifications.messenger.settings.appSecretHint")}
                 </p>
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label>{t("notifications.messenger.settings.webhookVerifyToken")}</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={onGenerateVerifyToken}>
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    {t("notifications.messenger.settings.generateVerifyToken")}
-                  </Button>
-                </div>
-                <Input
-                  type="password"
-                  value={draft.webhookVerifyToken}
-                  placeholder={settings?.hasWebhookVerifyToken ? "********" : ""}
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, webhookVerifyToken: event.target.value }))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("notifications.messenger.settings.webhookVerifyHint")}
-                </p>
-              </div>
+              <WebhookVerifyTokenField
+                id="messenger-webhook-verify-token"
+                label={t("notifications.messenger.settings.webhookVerifyToken")}
+                value={draft.webhookVerifyToken}
+                hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
+                onChange={(webhookVerifyToken) => setDraft((prev) => ({ ...prev, webhookVerifyToken }))}
+                onGenerate={onGenerateVerifyToken}
+                hint={t("notifications.messenger.settings.webhookVerifyHint")}
+              />
             </div>
 
             <div className="space-y-3 rounded-lg border border-white/5 bg-white/[0.02] p-4">

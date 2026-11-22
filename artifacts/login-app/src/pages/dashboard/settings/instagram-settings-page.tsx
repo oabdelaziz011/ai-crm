@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Instagram, Loader2, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { Instagram, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { generateInstagramVerifyToken } from "@workspace/channel-registry";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { DashboardCard } from "@/components/dashboard/ui";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
+  instagramSettingsKey,
   useInstagramCompanyChannel,
   useInstagramConnectionTest,
   useInstagramOutboundHealth,
@@ -23,6 +24,16 @@ import {
   resolveChannelWebhookBaseUrl,
 } from "@/lib/channels/whatsapp-channel-utils";
 import { isInstagramApiConfigured, type InstagramSettingsDraft } from "@/lib/channels/instagram-settings";
+import {
+  draftWebhookVerifyTokenFromSettings,
+  isCopyableWebhookVerifyToken,
+} from "@/lib/channels/webhook-verify-token-field";
+import { MetaPagesOauthPanel } from "@/components/channels/meta-pages-oauth-panel";
+import { InstagramLoginOauthPanel } from "@/components/channels/instagram-login-oauth-panel";
+import { MetaChannelConnectionStrip } from "@/components/channels/meta-channel-connection-strip";
+import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-token-field";
+import { disconnectMetaInstagramLogin } from "@/lib/channels/meta-instagram-login-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const EMPTY_SETTINGS: InstagramSettingsDraft = {
   enabled: false,
@@ -40,6 +51,7 @@ export function SettingsInstagramPage() {
   const { toast } = useToast();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
+  const queryClient = useQueryClient();
 
   const { data: settings, isLoading } = useInstagramSettings(companyId);
   const instagramChannel = useInstagramCompanyChannel(companyId);
@@ -53,6 +65,36 @@ export function SettingsInstagramPage() {
   const connectionTest = useInstagramConnectionTest(companyId, companyChannelId);
 
   const [draft, setDraft] = useState(EMPTY_SETTINGS);
+  const [disconnectBusy, setDisconnectBusy] = useState(false);
+
+  const refreshAfterOauth = () => {
+    void queryClient.invalidateQueries({ queryKey: instagramSettingsKey(companyId) });
+    void refetchHealth();
+  };
+
+  const onSoftDisconnect = async () => {
+    if (!companyId) return;
+    setDisconnectBusy(true);
+    try {
+      await disconnectMetaInstagramLogin(companyId);
+      toast({
+        title: t("notifications.instagramLogin.disconnected", {
+          defaultValue: "Instagram soft-disconnected",
+        }),
+      });
+      refreshAfterOauth();
+    } catch (error) {
+      toast({
+        title: t("notifications.instagramLogin.disconnectFailed", {
+          defaultValue: "Disconnect failed",
+        }),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setDisconnectBusy(false);
+    }
+  };
 
   const webhookBaseUrl = resolveChannelWebhookBaseUrl();
   const globalWebhookUrl = useMemo(() => buildInstagramWebhookUrl(webhookBaseUrl), [webhookBaseUrl]);
@@ -63,16 +105,19 @@ export function SettingsInstagramPage() {
 
   useEffect(() => {
     if (settings) {
-      setDraft({
+      setDraft((prev) => ({
         enabled: settings.enabled,
         provider: settings.provider,
         pageId: settings.pageId,
         instagramBusinessAccountId: settings.instagramBusinessAccountId,
         accessToken: settings.accessToken,
-        webhookVerifyToken: settings.webhookVerifyToken,
+        // Keep an in-session generated/typed plaintext so Copy matches the token just saved.
+        webhookVerifyToken: isCopyableWebhookVerifyToken(prev.webhookVerifyToken)
+          ? prev.webhookVerifyToken
+          : draftWebhookVerifyTokenFromSettings(settings.webhookVerifyToken),
         apiVersion: settings.apiVersion,
         appSecret: settings.appSecret,
-      });
+      }));
     }
   }, [settings]);
 
@@ -144,6 +189,51 @@ export function SettingsInstagramPage() {
           </div>
         ) : (
           <>
+            <MetaChannelConnectionStrip
+              channelLabel={t("notifications.instagram.settings.title")}
+              connected={Boolean(
+                settings?.enabled
+                  && settings.instagramBusinessAccountId
+                  && settings.hasAccessToken
+                  && health?.ok,
+              )}
+              enabled={Boolean(settings?.enabled)}
+              assetLabel={t("notifications.instagram.settings.instagramBusinessAccountId", {
+                defaultValue: "Instagram Business Account ID",
+              })}
+              assetValue={settings?.instagramBusinessAccountId}
+              hasAccessToken={Boolean(settings?.hasAccessToken)}
+              hasWebhookVerifyToken={Boolean(settings?.hasWebhookVerifyToken)}
+              healthOk={health?.ok ?? null}
+              healthError={health?.error ?? null}
+              lastVerifiedLabel={verifiedAccountLabel}
+              onDisconnect={() => void onSoftDisconnect()}
+              disconnectBusy={disconnectBusy}
+            />
+            {companyId ? (
+              <InstagramLoginOauthPanel
+                companyId={companyId}
+                onConnected={refreshAfterOauth}
+                onDisconnected={refreshAfterOauth}
+              />
+            ) : null}
+            {companyId ? (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">
+                  {t("notifications.instagramLogin.legacyPageLinked", {
+                    defaultValue: "Legacy: connect via Facebook Page (Page-linked Instagram)",
+                  })}
+                </summary>
+                <div className="mt-2">
+                  <MetaPagesOauthPanel
+                    companyId={companyId}
+                    channel="instagram"
+                    onConnected={refreshAfterOauth}
+                    onDisconnected={refreshAfterOauth}
+                  />
+                </div>
+              </details>
+            ) : null}
             <div className="flex items-center justify-between">
               <Label htmlFor="instagram-enabled">{t("notifications.instagram.settings.enabled")}</Label>
               <Switch
@@ -199,26 +289,15 @@ export function SettingsInstagramPage() {
                   {t("notifications.instagram.settings.appSecretHint")}
                 </p>
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label>{t("notifications.instagram.settings.webhookVerifyToken")}</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={onGenerateVerifyToken}>
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    {t("notifications.instagram.settings.generateVerifyToken")}
-                  </Button>
-                </div>
-                <Input
-                  type="password"
-                  value={draft.webhookVerifyToken}
-                  placeholder={settings?.hasWebhookVerifyToken ? "********" : ""}
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, webhookVerifyToken: event.target.value }))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("notifications.instagram.settings.webhookVerifyHint")}
-                </p>
-              </div>
+              <WebhookVerifyTokenField
+                id="instagram-webhook-verify-token"
+                label={t("notifications.instagram.settings.webhookVerifyToken")}
+                value={draft.webhookVerifyToken}
+                hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
+                onChange={(webhookVerifyToken) => setDraft((prev) => ({ ...prev, webhookVerifyToken }))}
+                onGenerate={onGenerateVerifyToken}
+                hint={t("notifications.instagram.settings.webhookVerifyHint")}
+              />
             </div>
 
             <div className="space-y-3 rounded-lg border border-white/5 bg-white/[0.02] p-4">

@@ -51,6 +51,23 @@ export function parseEnvFile(text) {
   return env;
 }
 
+/** Structural dotenv checks only — never includes line contents or secret values. */
+export function envFileStructureProblems(text) {
+  const problems = [];
+  const orphanUri = /^(postgresql|postgres|mysql|mongodb|redis|rediss|http|https):\/\//i;
+  for (const [index, raw] of text.split(/\r?\n/).entries()) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    if (/^[A-Z0-9_]+=/.test(line)) continue;
+    if (orphanUri.test(line)) {
+      problems.push(
+        `deploy env line ${index + 1} is an orphan URI (missing KEY=). Refusing dotenv files that are not KEY=value assignments.`,
+      );
+    }
+  }
+  return problems;
+}
+
 function read(name) {
   return readFileSync(resolve(deployDir, name), "utf8");
 }
@@ -88,6 +105,14 @@ export function deploymentFileProblems() {
   }
   if (nginxFrontend.includes("app.valueor.org")) {
     problems.push("nginx/valueor-frontend.conf must not claim app.valueor.org while it remains on Vercel.");
+  }
+
+  const remoteDeploy = read("remote-deploy.sh");
+  if (/\bsource\s+deploy\/vps\/production\.env\b/.test(remoteDeploy) || /\.\s+deploy\/vps\/production\.env\b/.test(remoteDeploy)) {
+    problems.push("remote-deploy.sh must not Bash-source production.env; use dotenv parsing and compose --env-file.");
+  }
+  if (!remoteDeploy.includes("--env-file deploy/vps/production.env")) {
+    problems.push("remote-deploy.sh must pass --env-file deploy/vps/production.env for Compose interpolation.");
   }
 
   for (const service of ["caddy:", "frontend:", "api:", "platform-worker:"]) {
@@ -172,6 +197,11 @@ if (isMain) {
     console.error("--env requires a file path.");
     process.exit(2);
   }
-  const env = parseEnvFile(readFileSync(resolve(envPath), "utf8"));
+  const envText = readFileSync(resolve(envPath), "utf8");
+  const structureProblems = envFileStructureProblems(envText);
+  if (structureProblems.length) {
+    process.exit(printProblems(structureProblems));
+  }
+  const env = parseEnvFile(envText);
   process.exit(printProblems(serverEnvProblems(env)));
 }

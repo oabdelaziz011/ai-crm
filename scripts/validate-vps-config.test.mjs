@@ -4,13 +4,26 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { platformWorkerProblems } from "./check-production-worker.mjs";
-import { deploymentFileProblems, serverEnvProblems } from "./validate-vps-config.mjs";
+import { deploymentFileProblems, envFileStructureProblems, serverEnvProblems } from "./validate-vps-config.mjs";
 import { recordedProductionSupabaseOrigin } from "./lib/env-mode.mjs";
 import { VPS_PUBLIC_URLS } from "./lib/vps-runtime.mjs";
 
 describe("VPS deployment files", () => {
   it("accepts the checked-in compose, proxy, and env template", () => {
     assert.deepEqual(deploymentFileProblems(), []);
+  });
+
+  it("rejects orphan URI lines in dotenv files without echoing values", () => {
+    const problems = envFileStructureProblems(
+      ["DATABASE_URL=postgresql://example.invalid/db", "postgresql://orphan.example/db# --- Billing / payments (optional client-side) ---", ""].join(
+        "\n",
+      ),
+    );
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /line 2/);
+    assert.match(problems[0], /orphan URI/);
+    assert.ok(!problems[0].includes("postgresql://orphan"));
+    assert.deepEqual(envFileStructureProblems("DATABASE_URL=postgresql://example.invalid/db\n"), []);
   });
 
   it("rejects a server env that uses loopback or a placeholder secret", () => {

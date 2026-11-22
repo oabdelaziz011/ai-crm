@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import { platformWorkerProblems } from "../../scripts/check-production-worker.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+// ALERT_WEBHOOK_URL is optional: platformWorkerProblems does not require it.
+// Worker alerts still go through emitAlert() structured logging.
 const problems = platformWorkerProblems(process.env);
 if (problems.length) {
   console.error(["VPS worker configuration is not ready.", ...problems.map((problem) => `  - ${problem}`)].join("\n"));

@@ -37,7 +37,13 @@ import {
   buildWhatsAppWebhookUrl,
   resolveChannelWebhookBaseUrl,
 } from "@/lib/channels/whatsapp-channel-utils";
+import {
+  draftWebhookVerifyTokenFromSettings,
+  isCopyableWebhookVerifyToken,
+} from "@/lib/channels/webhook-verify-token-field";
 import { WhatsAppEmbeddedSignupPanel } from "@/components/channels/whatsapp-embedded-signup-panel";
+import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-token-field";
+import { generateWhatsAppVerifyToken } from "@workspace/channel-registry";
 
 const EMPTY_SETTINGS: WhatsAppSettingsDraft = {
   enabled: false,
@@ -124,7 +130,9 @@ export function SettingsWhatsAppPage() {
       accessToken: prev.accessToken,
       phoneNumberId: settings.phoneNumberId,
       businessAccountId: settings.businessAccountId,
-      webhookVerifyToken: prev.webhookVerifyToken,
+      webhookVerifyToken: isCopyableWebhookVerifyToken(prev.webhookVerifyToken)
+        ? prev.webhookVerifyToken
+        : draftWebhookVerifyTokenFromSettings(settings.webhookVerifyToken ?? ""),
       apiVersion: settings.apiVersion,
       appSecret: prev.appSecret,
       webhookCallbackUrl: callbackUrl,
@@ -502,28 +510,17 @@ export function SettingsWhatsAppPage() {
                   {t("notifications.whatsapp.settings.secretLeaveBlankHint")}
                 </p>
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.whatsapp.settings.webhookVerifyToken")}</Label>
-                <Input
-                  type="password"
-                  value={draft.webhookVerifyToken}
-                  autoComplete="new-password"
-                  placeholder={
-                    settings?.hasWebhookVerifyToken
-                      ? t("notifications.whatsapp.settings.secretKeepPlaceholder")
-                      : ""
-                  }
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, webhookVerifyToken: event.target.value }))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("notifications.whatsapp.settings.webhookVerifyHint")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("notifications.whatsapp.settings.secretLeaveBlankHint")}
-                </p>
-              </div>
+              <WebhookVerifyTokenField
+                id="whatsapp-webhook-verify-token"
+                label={t("notifications.whatsapp.settings.webhookVerifyToken")}
+                value={draft.webhookVerifyToken}
+                hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
+                onChange={(webhookVerifyToken) => setDraft((prev) => ({ ...prev, webhookVerifyToken }))}
+                onGenerate={() =>
+                  setDraft((prev) => ({ ...prev, webhookVerifyToken: generateWhatsAppVerifyToken() }))
+                }
+                hint={t("notifications.whatsapp.settings.webhookVerifyHint")}
+              />
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="whatsapp-webhook-callback-url">
                   {t("notifications.whatsapp.settings.webhookCallbackUrl")}

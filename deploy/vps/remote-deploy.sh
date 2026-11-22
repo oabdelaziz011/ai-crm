@@ -30,11 +30,9 @@ if [[ ! -f deploy/vps/production.env ]]; then
   exit 2
 fi
 
-set -a
-# shellcheck disable=SC1091
-source deploy/vps/production.env
-set +a
-
+# production.env is dotenv format (Compose/systemd), not a Bash script. Never `source` it —
+# unquoted values and orphan URI lines break Bash (e.g. unexpected token '(').
+# validate-vps-config.mjs parses it with a dotenv reader; Compose --env-file does interpolation.
 node scripts/validate-vps-config.mjs --env deploy/vps/production.env
 
 stamp_previous() {
@@ -47,11 +45,11 @@ stamp_previous() {
 stamp_previous valueor-app
 stamp_previous valueor-frontend
 
-docker compose -f "$COMPOSE_FILE" build
-docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
+docker compose --env-file deploy/vps/production.env -f "$COMPOSE_FILE" build
+docker compose --env-file deploy/vps/production.env -f "$COMPOSE_FILE" up -d --remove-orphans
 
 for _ in $(seq 1 30); do
-  if docker compose -f "$COMPOSE_FILE" exec -T api node -e "fetch('http://127.0.0.1:3000/api/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+  if docker compose --env-file deploy/vps/production.env -f "$COMPOSE_FILE" exec -T api node -e "fetch('http://127.0.0.1:3000/api/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
     echo "API liveness check passed for ${SHA}."
     exit 0
   fi

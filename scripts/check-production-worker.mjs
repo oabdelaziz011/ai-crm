@@ -22,9 +22,8 @@ export function platformWorkerProblems(env) {
   if (env.EMBEDDING_WORKER_ENABLED === "false") {
     problems.push("EMBEDDING_WORKER_ENABLED is false.");
   }
-  if (!env.ALERT_WEBHOOK_URL?.trim()) {
-    problems.push("ALERT_WEBHOOK_URL is unset. Worker failures will only reach local logs.");
-  }
+  // ALERT_WEBHOOK_URL is optional. emitAlert() always structured-logs; no webhook
+  // integration is wired from this env var today.
   return problems;
 }
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);

@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { platformWorkerProblems } from "./check-production-worker.mjs";
-import { deploymentFileProblems, envFileStructureProblems, serverEnvProblems } from "./validate-vps-config.mjs";
+import {
+  caddyUsesLetsEncryptEmail,
+  deploymentFileProblems,
+  envFileStructureProblems,
+  serverEnvProblems,
+} from "./validate-vps-config.mjs";
 import { recordedProductionSupabaseOrigin } from "./lib/env-mode.mjs";
 import { VPS_PUBLIC_URLS } from "./lib/vps-runtime.mjs";
 
@@ -106,5 +111,59 @@ describe("VPS deployment files", () => {
     const file = join(directory, "production.env");
     writeFileSync(file, Object.entries(env).map(([key, value]) => `${key}=${value}`).join("\n"));
     assert.equal(file.includes("production.env"), true);
+  });
+
+  it("treats ALERT_WEBHOOK_URL as optional for server and worker checks", () => {
+    const env = {
+      ...VPS_PUBLIC_URLS,
+      VALUEOR_ENV: "production",
+      NODE_ENV: "production",
+      SESSION_SECRET: "synthetic-session-value",
+      INTERNAL_API_KEY: "synthetic-internal-value",
+      SUPABASE_URL: recordedProductionSupabaseOrigin(),
+      VITE_SUPABASE_URL: recordedProductionSupabaseOrigin(),
+      VITE_SUPABASE_PUBLISHABLE_KEY: "publishable-test",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
+      SUPABASE_DB_PASSWORD: "db-password-test",
+      ACME_EMAIL: "ops@example.com",
+      EMBEDDING_WORKER_ENABLED: "true",
+    };
+    assert.deepEqual(serverEnvProblems(env), []);
+    assert.deepEqual(serverEnvProblems({ ...env, ALERT_WEBHOOK_URL: "" }), []);
+    assert.deepEqual(platformWorkerProblems(env).filter((p) => p.includes("ALERT_WEBHOOK")), []);
+    assert.deepEqual(platformWorkerProblems({ ...env, ALERT_WEBHOOK_URL: "" }).filter((p) => p.includes("ALERT_WEBHOOK")), []);
+  });
+
+  it("requires ACME_EMAIL only for the Let's Encrypt Caddyfile path", () => {
+    assert.equal(caddyUsesLetsEncryptEmail({}), true);
+    assert.equal(caddyUsesLetsEncryptEmail({ CADDYFILE: "./Caddyfile" }), true);
+    assert.equal(caddyUsesLetsEncryptEmail({ CADDYFILE: "./Caddyfile.cloudflare" }), false);
+    assert.equal(caddyUsesLetsEncryptEmail({ CADDYFILE: "deploy/vps/Caddyfile.cloudflare" }), false);
+
+    const base = {
+      ...VPS_PUBLIC_URLS,
+      VALUEOR_ENV: "production",
+      NODE_ENV: "production",
+      SESSION_SECRET: "synthetic-session-value",
+      INTERNAL_API_KEY: "synthetic-internal-value",
+      SUPABASE_URL: recordedProductionSupabaseOrigin(),
+      VITE_SUPABASE_URL: recordedProductionSupabaseOrigin(),
+      VITE_SUPABASE_PUBLISHABLE_KEY: "publishable-test",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
+      SUPABASE_DB_PASSWORD: "db-password-test",
+      EMBEDDING_WORKER_ENABLED: "true",
+    };
+
+    const letsEncryptMissing = serverEnvProblems(base);
+    assert.ok(letsEncryptMissing.some((problem) => problem.includes("ACME_EMAIL")));
+
+    assert.deepEqual(
+      serverEnvProblems({ ...base, CADDYFILE: "./Caddyfile.cloudflare" }),
+      [],
+    );
+    assert.deepEqual(
+      serverEnvProblems({ ...base, ACME_EMAIL: "ops@example.com" }),
+      [],
+    );
   });
 });

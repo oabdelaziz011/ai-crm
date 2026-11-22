@@ -151,6 +151,12 @@ export function deploymentFileProblems() {
   if (example.WEBHOOK_BASE_URL !== "https://webhook.valueor.org") {
     problems.push("production.env.example must set WEBHOOK_BASE_URL to https://webhook.valueor.org.");
   }
+  if (example.PUBLIC_WEBHOOK_BASE_URL !== "https://webhook.valueor.org") {
+    problems.push("production.env.example must set PUBLIC_WEBHOOK_BASE_URL to https://webhook.valueor.org.");
+  }
+  if (example.VITE_SITE_URL !== "https://www.valueor.org") {
+    problems.push("production.env.example must set VITE_SITE_URL to https://www.valueor.org.");
+  }
   if (example.VITE_APP_ORIGIN !== "https://app.valueor.org") {
     problems.push("production.env.example must set VITE_APP_ORIGIN to https://app.valueor.org.");
   }
@@ -163,6 +169,19 @@ export function deploymentFileProblems() {
     if (example[key]) problems.push(`${key} must stay empty in production.env.example.`);
   }
   return problems;
+}
+
+/**
+ * Compose mounts `${CADDYFILE:-./Caddyfile}`. The default Caddyfile uses
+ * `email {$ACME_EMAIL}` for Let's Encrypt. Caddyfile.cloudflare uses origin certs
+ * and does not need ACME_EMAIL.
+ *
+ * @param {NodeJS.ProcessEnv | Record<string, string | undefined>} env
+ */
+export function caddyUsesLetsEncryptEmail(env) {
+  const caddyfile = String(env.CADDYFILE ?? "./Caddyfile").replace(/\\/g, "/");
+  const base = caddyfile.split("/").pop() || caddyfile;
+  return base !== "Caddyfile.cloudflare";
 }
 
 export function serverEnvProblems(env) {
@@ -180,8 +199,10 @@ export function serverEnvProblems(env) {
   if (!String(env.SUPABASE_DB_PASSWORD ?? "").trim() && !String(env.DATABASE_URL ?? "").trim()) {
     problems.push("SUPABASE_DB_PASSWORD or DATABASE_URL must be set on the server.");
   }
-  if (!String(env.ACME_EMAIL ?? "").includes("@")) problems.push("ACME_EMAIL must be set.");
-  if (!String(env.ALERT_WEBHOOK_URL ?? "").trim()) problems.push("ALERT_WEBHOOK_URL must be set before the worker starts.");
+  // ALERT_WEBHOOK_URL is optional (structured logs via emitAlert; no webhook sink wired).
+  if (caddyUsesLetsEncryptEmail(env) && !String(env.ACME_EMAIL ?? "").includes("@")) {
+    problems.push("ACME_EMAIL must be set when CADDYFILE uses Let's Encrypt (default Caddyfile).");
+  }
   for (const [key, value] of Object.entries(env)) {
     if (/localhost|127\.0\.0\.1/i.test(String(value))) problems.push(`${key} contains a loopback address.`);
   }

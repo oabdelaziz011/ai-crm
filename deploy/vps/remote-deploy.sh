@@ -19,8 +19,43 @@ fi
 
 cd "$APP_DIR"
 git fetch --prune origin
+
+# Env backups created during repairs must not block deploy. Preserve them outside the
+# git worktree (never delete; never overwrite an existing backup name; never touch
+# production.env / .env themselves). Prefer /var/backups when writable; else home.
+preserve_env_backup_sidecars() {
+  local dest=""
+  if mkdir -p /var/backups/valueor/env 2>/dev/null && [[ -w /var/backups/valueor/env ]]; then
+    dest=/var/backups/valueor/env
+  else
+    dest="${HOME:-/home/valueor}/backups/env"
+    mkdir -p "$dest"
+  fi
+  local moved=0
+  local f base target
+  shopt -s nullglob
+  for f in deploy/vps/production.env.bak* .env.bak*; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    target="${dest}/${base}"
+    if [[ -e "$target" ]]; then
+      target="${dest}/${base}.$(date -u +%Y%m%dT%H%M%SZ)"
+    fi
+    mv -n "$f" "$target"
+    echo "Preserved env backup sidecar at ${target}"
+    moved=1
+  done
+  shopt -u nullglob
+  if [[ "$moved" -eq 1 ]]; then
+    echo "Env backup sidecars were moved under ${dest}; production.env/.env were not modified."
+  fi
+}
+preserve_env_backup_sidecars
+
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Server worktree is dirty. Refusing to deploy."
+  # Names only — never dump file contents (may include secrets).
+  git status --short
   exit 2
 fi
 git checkout --detach "$SHA"

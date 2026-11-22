@@ -26,6 +26,14 @@ describe("VPS deployment files", () => {
     assert.deepEqual(envFileStructureProblems("DATABASE_URL=postgresql://example.invalid/db\n"), []);
   });
 
+  it("requires remote-deploy to preserve env bak sidecars and ignore them in git", () => {
+    const problems = deploymentFileProblems();
+    assert.deepEqual(
+      problems.filter((problem) => /production\.env\.bak|preserve_env_backup|git status --short|\.gitignore/.test(problem)),
+      [],
+    );
+  });
+
   it("rejects a server env that uses loopback or a placeholder secret", () => {
     const problems = serverEnvProblems({
       ...VPS_PUBLIC_URLS,

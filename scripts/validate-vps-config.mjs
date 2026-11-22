@@ -114,6 +114,17 @@ export function deploymentFileProblems() {
   if (!remoteDeploy.includes("--env-file deploy/vps/production.env")) {
     problems.push("remote-deploy.sh must pass --env-file deploy/vps/production.env for Compose interpolation.");
   }
+  if (!remoteDeploy.includes("preserve_env_backup_sidecars") || !remoteDeploy.includes("production.env.bak*")) {
+    problems.push("remote-deploy.sh must preserve production.env.bak* sidecars outside the worktree before the dirty check.");
+  }
+  if (!remoteDeploy.includes("git status --short")) {
+    problems.push("remote-deploy.sh must print git status --short (names only) when refusing a dirty worktree.");
+  }
+
+  const gitignore = readFileSync(resolve(root, ".gitignore"), "utf8");
+  if (!gitignore.includes("deploy/vps/production.env.bak*") || !gitignore.includes(".env.bak*")) {
+    problems.push(".gitignore must ignore deploy/vps/production.env.bak* and .env.bak* sidecars.");
+  }
 
   for (const service of ["caddy:", "frontend:", "api:", "platform-worker:"]) {
     if (!compose.includes(service)) problems.push(`compose.yml is missing ${service}`);

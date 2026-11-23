@@ -165,5 +165,6 @@ describe("VPS deployment files", () => {
       serverEnvProblems({ ...base, ACME_EMAIL: "ops@example.com" }),
       [],
     );
+    assert.deepEqual(serverEnvProblems(base, { topology: "nginx-systemd" }), []);
   });
 });

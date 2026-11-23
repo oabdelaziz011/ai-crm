@@ -1,25 +1,22 @@
 #!/usr/bin/env bash
-# Narrow entrypoint for the self-hosted Actions runner.
-# Must be installed as root-owned /usr/local/sbin/valueor-prod-rollback.
+# Narrow root entrypoint for the Contabo self-hosted Actions runner.
+# Install as root-owned /usr/local/sbin/valueor-prod-rollback (mode 0750).
 # Invoked via: sudo -n /usr/local/sbin/valueor-prod-rollback
+#
+# Permanent production topology: Nginx + systemd + release directory rollback.
+# Does not call Compose remote-rollback.sh.
 set -euo pipefail
 
 APP_DIR=/opt/valueor
-APP_USER=valueor
 
 if [[ "$(id -u)" -ne 0 ]]; then
-  echo "This wrapper must run as root (via sudo from gha-runner)."
+  echo "This wrapper must run as root (via sudo -n from gha-runner)."
   exit 2
 fi
 
-if ! id -u "$APP_USER" >/dev/null 2>&1; then
-  echo "Missing application user: $APP_USER"
+if [[ ! -f "$APP_DIR/deploy/vps/systemd-release-rollback.sh" ]]; then
+  echo "Missing $APP_DIR/deploy/vps/systemd-release-rollback.sh"
   exit 2
 fi
 
-if [[ ! -f "$APP_DIR/deploy/vps/remote-rollback.sh" ]]; then
-  echo "Missing $APP_DIR/deploy/vps/remote-rollback.sh"
-  exit 2
-fi
-
-exec runuser -u "$APP_USER" -- /bin/bash "$APP_DIR/deploy/vps/remote-rollback.sh"
+exec /bin/bash "$APP_DIR/deploy/vps/systemd-release-rollback.sh"

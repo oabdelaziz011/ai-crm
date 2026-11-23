@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: deploy builds the selected main SHA; rollback restores the previous image tags
+        description: deploy installs the approved main SHA release; rollback restores the previous release symlinks
         type: choice
         options:
           - deploy
@@ -32,13 +32,117 @@ jobs:
     uses: ./.github/workflows/production-gate.yml
     secrets: inherit
 
-  deploy:
+  build:
     needs: [guard, gate]
-    if: always() && needs.guard.result == 'success' && (needs.gate.result == 'success' || needs.gate.result == 'skipped') && github.event.inputs.confirm == github.event.inputs.action
+    if: always() && needs.guard.result == 'success' && needs.gate.result == 'success' && github.event.inputs.action == 'deploy' && github.event.inputs.confirm == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate nginx/systemd deploy path
+        run: |
+          node scripts/validate-vps-config.mjs
+          node --test scripts/validate-vps-config.test.mjs scripts/systemd-release.test.mjs
+
+      - name: Build API bundle
+        run: pnpm --dir artifacts/api-server build
+
+      - name: Build frontend bundle
+        run: pnpm --dir artifacts/login-app build
+        env:
+          VITE_APP_ORIGIN: https://www.valueor.org
+          VITE_SITE_URL: https://www.valueor.org
+          VITE_API_SERVER_URL: https://api.valueor.org
+          VITE_WEBHOOK_BASE_URL: https://webhook.valueor.org
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
+      - name: Write frontend version.json
+        run: |
+          printf '{"service":"login-app","sha":"%s"}\n' "${GITHUB_SHA}" \
+            > artifacts/login-app/dist/public/version.json
+
+      - name: Verify frontend production hosts
+        run: node scripts/verify-frontend-production-bundle.mjs artifacts/login-app/dist/public
+
+      - name: Stage release artifact tree
+        run: |
+          set -euo pipefail
+          STAGE="${RUNNER_TEMP}/valueor-release-${GITHUB_SHA}"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/api/artifacts/api-server/dist"
+          mkdir -p "$STAGE/api/deploy/vps"
+          mkdir -p "$STAGE/api/scripts"
+          cp -a artifacts/api-server/dist/. "$STAGE/api/artifacts/api-server/dist/"
+          cp deploy/vps/start-api.mjs "$STAGE/api/deploy/vps/start-api.mjs"
+          cp -a scripts/lib "$STAGE/api/scripts/lib"
+          cp package.json "$STAGE/api/package.json"
+          mkdir -p "$STAGE/frontend"
+          cp -a artifacts/login-app/dist/public/. "$STAGE/frontend/"
+          test -f "$STAGE/api/artifacts/api-server/dist/main.mjs"
+          test -f "$STAGE/frontend/index.html"
+          test -f "$STAGE/frontend/version.json"
+          tar -C "$STAGE" -czf "${RUNNER_TEMP}/valueor-release-${GITHUB_SHA}.tgz" api frontend
+          echo "STAGE_TGZ=${RUNNER_TEMP}/valueor-release-${GITHUB_SHA}.tgz" >> "$GITHUB_ENV"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: valueor-production-release
+          path: ${{ env.STAGE_TGZ }}
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    needs: [guard, gate, build]
+    if: |
+      always()
+      && needs.guard.result == 'success'
+      && github.event.inputs.confirm == github.event.inputs.action
+      && (
+        (github.event.inputs.action == 'deploy' && needs.gate.result == 'success' && needs.build.result == 'success')
+        || (github.event.inputs.action == 'rollback' && needs.gate.result == 'skipped' && needs.build.result == 'skipped')
+      )
     # Contabo self-hosted runner only. Unique label prevents accidental pickup by other workflows.
     runs-on: [self-hosted, linux, x64, valueor-production]
     environment: production
+    timeout-minutes: 30
     steps:
+      - name: Download release artifact
+        if: github.event.inputs.action == 'deploy'
+        uses: actions/download-artifact@v4
+        with:
+          name: valueor-production-release
+          path: /tmp/valueor-gha-artifacts
+
+      - name: Stage incoming release for root deploy wrapper
+        if: github.event.inputs.action == 'deploy'
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TGZ="$(find /tmp/valueor-gha-artifacts -name '*.tgz' -type f | head -n 1)"
+          test -n "$TGZ"
+          INCOMING="/tmp/valueor-incoming-${GIT_SHA}"
+          rm -rf "$INCOMING"
+          mkdir -p "$INCOMING"
+          tar -xzf "$TGZ" -C "$INCOMING"
+          test -f "${INCOMING}/api/artifacts/api-server/dist/main.mjs"
+          test -f "${INCOMING}/frontend/index.html"
+          echo "Staged release under ${INCOMING} (artifact names only; secrets not logged)"
+
       - name: Run production deploy or rollback on this host
         env:
           ACTION: ${{ github.event.inputs.action }}
@@ -51,7 +155,7 @@ jobs:
                 echo "::error::Refusing a ref that is not a full git SHA."
                 exit 2
               fi
-              sudo -n /usr/local/sbin/valueor-prod-deploy "$GIT_SHA"
+              sudo -n /usr/local/sbin/valueor-prod-deploy "$GIT_SHA" "/tmp/valueor-incoming-${GIT_SHA}"
               ;;
             rollback)
               sudo -n /usr/local/sbin/valueor-prod-rollback

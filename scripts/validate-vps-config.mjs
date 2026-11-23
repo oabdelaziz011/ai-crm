@@ -4,12 +4,20 @@
  *
  *   node scripts/validate-vps-config.mjs
  *   node scripts/validate-vps-config.mjs --env deploy/vps/production.env
+ *   node scripts/validate-vps-config.mjs --env /opt/valueor/.env --topology nginx-systemd
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDevSecretPlaceholder } from "./lib/production-runtime.mjs";
 import { vpsProcessProblems } from "./lib/vps-runtime.mjs";
+import {
+  COMPOSE_TOPOLOGY,
+  PRODUCTION_TOPOLOGY,
+  githubWorkflowProductionEntryProblems,
+  productionScriptProblems,
+  workflowProductionPathProblems,
+} from "./lib/systemd-release.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const deployDir = resolve(root, "deploy/vps");
@@ -81,7 +89,29 @@ export function deploymentFileProblems() {
   const systemd = read("systemd/valueor-api.service");
   const nginxFrontend = read("nginx/valueor-frontend.conf");
   const nginxApi = read("nginx/valueor-api.conf");
+  const prodDeploy = read("valueor-prod-deploy.sh");
+  const prodRollback = read("valueor-prod-rollback.sh");
+  const systemdDeploy = read("systemd-release-deploy.sh");
+  const systemdRollback = read("systemd-release-rollback.sh");
+  const workflow = readFileSync(resolve(root, ".github/workflows/vps-deploy.yml"), "utf8");
+  const workflowDir = resolve(root, ".github/workflows");
+  const workflowFiles = readdirSync(workflowDir)
+    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
+    .map((name) => ({
+      name,
+      text: readFileSync(resolve(workflowDir, name), "utf8"),
+    }));
 
+  problems.push(...productionScriptProblems(prodDeploy, { role: "prod-deploy-wrapper" }));
+  problems.push(...productionScriptProblems(prodRollback, { role: "prod-rollback-wrapper" }));
+  problems.push(...productionScriptProblems(systemdDeploy, { role: "systemd-release-deploy.sh" }));
+  problems.push(...productionScriptProblems(systemdRollback, { role: "systemd-release-rollback.sh" }));
+  problems.push(...workflowProductionPathProblems(workflow));
+  problems.push(...githubWorkflowProductionEntryProblems(workflowFiles));
+
+  if (!systemdDeploy.includes("--topology nginx-systemd")) {
+    problems.push("systemd-release-deploy.sh must validate env with --topology nginx-systemd.");
+  }
   if (!systemd.includes("deploy/vps/start-api.mjs") || !systemd.includes("EnvironmentFile=/opt/valueor/.env")) {
     problems.push("systemd/valueor-api.service must start start-api.mjs with the server EnvironmentFile.");
   }
@@ -184,7 +214,12 @@ export function caddyUsesLetsEncryptEmail(env) {
   return base !== "Caddyfile.cloudflare";
 }
 
-export function serverEnvProblems(env) {
+/**
+ * @param {NodeJS.ProcessEnv | Record<string, string | undefined>} env
+ * @param {{ topology?: string }} [options]
+ */
+export function serverEnvProblems(env, options = {}) {
+  const topology = String(options.topology || COMPOSE_TOPOLOGY);
   const problems = vpsProcessProblems(env);
   for (const key of REQUIRED_RUNTIME_SECRETS) {
     if (!String(env[key] ?? "").trim()) problems.push(`${key} must be set on the server.`);
@@ -200,8 +235,11 @@ export function serverEnvProblems(env) {
     problems.push("SUPABASE_DB_PASSWORD or DATABASE_URL must be set on the server.");
   }
   // ALERT_WEBHOOK_URL is optional (structured logs via emitAlert; no webhook sink wired).
-  if (caddyUsesLetsEncryptEmail(env) && !String(env.ACME_EMAIL ?? "").includes("@")) {
-    problems.push("ACME_EMAIL must be set when CADDYFILE uses Let's Encrypt (default Caddyfile).");
+  // Contabo production uses Cloudflare Origin Certificates behind Nginx — never require ACME_EMAIL.
+  if (topology !== PRODUCTION_TOPOLOGY) {
+    if (caddyUsesLetsEncryptEmail(env) && !String(env.ACME_EMAIL ?? "").includes("@")) {
+      problems.push("ACME_EMAIL must be set when CADDYFILE uses Let's Encrypt (default Caddyfile).");
+    }
   }
   for (const [key, value] of Object.entries(env)) {
     if (/localhost|127\.0\.0\.1/i.test(String(value))) problems.push(`${key} contains a loopback address.`);
@@ -221,6 +259,13 @@ function printProblems(problems) {
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const envFlag = process.argv.indexOf("--env");
+  const topologyFlag = process.argv.indexOf("--topology");
+  const topology =
+    topologyFlag === -1 ? COMPOSE_TOPOLOGY : String(process.argv[topologyFlag + 1] || COMPOSE_TOPOLOGY);
+  if (topology !== COMPOSE_TOPOLOGY && topology !== PRODUCTION_TOPOLOGY) {
+    console.error(`Unsupported --topology ${topology}. Use nginx-systemd or compose.`);
+    process.exit(2);
+  }
   if (envFlag === -1) {
     process.exit(printProblems(deploymentFileProblems()));
   }
@@ -235,5 +280,5 @@ if (isMain) {
     process.exit(printProblems(structureProblems));
   }
   const env = parseEnvFile(envText);
-  process.exit(printProblems(serverEnvProblems(env)));
+  process.exit(printProblems(serverEnvProblems(env, { topology })));
 }

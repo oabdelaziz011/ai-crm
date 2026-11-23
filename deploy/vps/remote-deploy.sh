@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Deploy one git SHA on the VPS. Refuses a dirty server tree and a non-SHA argument.
+# NON-PRODUCTION / Compose-lab only.
+# Contabo production MUST use deploy/vps/systemd-release-deploy.sh via valueor-prod-deploy.
+# This script builds and runs Docker Compose + Caddy. It is retained for documented lab use only.
 set -euo pipefail
 
 APP_DIR=/opt/valueor
@@ -9,6 +11,20 @@ COMPOSE_FILE=deploy/vps/compose.yml
 
 if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
   echo "Refusing a ref that is not a full git SHA."
+  exit 2
+fi
+
+# Hard refuse on the live Contabo nginx/systemd topology.
+if systemctl is-active --quiet valueor-api.service 2>/dev/null; then
+  if [[ -L /opt/valueor-current ]] || [[ -d /opt/valueor-releases ]]; then
+    echo "Refusing Compose deploy: Contabo production uses Nginx + systemd release directories."
+    echo "Use: sudo -n /usr/local/sbin/valueor-prod-deploy <sha>"
+    exit 2
+  fi
+fi
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker is not installed. Contabo production does not use Compose."
+  echo "Use deploy/vps/systemd-release-deploy.sh instead."
   exit 2
 fi
 
@@ -68,7 +84,7 @@ fi
 # production.env is dotenv format (Compose/systemd), not a Bash script. Never `source` it —
 # unquoted values and orphan URI lines break Bash (e.g. unexpected token '(').
 # validate-vps-config.mjs parses it with a dotenv reader; Compose --env-file does interpolation.
-node scripts/validate-vps-config.mjs --env deploy/vps/production.env
+node scripts/validate-vps-config.mjs --env deploy/vps/production.env --topology compose
 
 stamp_previous() {
   local name="$1"

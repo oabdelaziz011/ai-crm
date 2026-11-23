@@ -338,6 +338,8 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
               className={cn(
                 "relative z-10 flex min-w-0 max-w-full items-center overflow-hidden transition-opacity hover:opacity-90",
                 sidebarCollapsed ? "justify-center" : "w-full justify-start",
+                // EN: green ribbon is on the left — keep ValueOR/VR entirely after it (never on top).
+                !sidebarCollapsed && !shellRtl && "ps-[5.5rem]",
               )}
               aria-label={t("navigation.home")}
             >
@@ -345,9 +347,15 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
                 tone={logoTone}
                 compact={sidebarCollapsed}
                 title="ValueOR"
+                // EN physical order: ValueOR then VR. AR: original VR then ValueOR.
+                markPlacement={shellRtl ? "beforeWordmark" : "afterWordmark"}
                 className={cn(
                   "bg-transparent",
-                  sidebarCollapsed ? "size-10" : "h-[42px] w-full max-w-full",
+                  sidebarCollapsed
+                    ? "size-10"
+                    : shellRtl
+                      ? "h-[42px] w-full max-w-full"
+                      : "h-[42px] w-auto max-w-full shrink-0",
                 )}
               />
             </button>

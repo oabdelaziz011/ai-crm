@@ -203,6 +203,47 @@ const PRODUCTION_PUBLISH_MARKERS = [
 ];
 
 const APPROVED_PRODUCTION_WORKFLOW = "vps-deploy.yml";
+const APPROVED_FRONTEND_REPLACE_WORKFLOW = "contabo-fe-replace.yml";
+
+/**
+ * Constraints for the approved frontend-only corrective workflow.
+ * It may invoke valueor-prod-deploy with a .replace-frontend-only marker,
+ * but must never SSH/SCP publish or call rollback.
+ *
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function frontendReplaceWorkflowProblems(text) {
+  const problems = [];
+  const body = String(text ?? "");
+  if (!body.includes("valueor-production")) {
+    problems.push(`${APPROVED_FRONTEND_REPLACE_WORKFLOW} must run on the valueor-production self-hosted runner.`);
+  }
+  if (!/\.replace-frontend-only\b/.test(body)) {
+    problems.push(`${APPROVED_FRONTEND_REPLACE_WORKFLOW} must stage .replace-frontend-only for FE-only installs.`);
+  }
+  if (!/confirm\s*==\s*'replace-frontend'/.test(body)) {
+    problems.push(`${APPROVED_FRONTEND_REPLACE_WORKFLOW} must require confirm == 'replace-frontend'.`);
+  }
+  const deployHits = [...body.matchAll(/\/usr\/local\/sbin\/valueor-prod-deploy\b/g)];
+  if (deployHits.length !== 1) {
+    problems.push(
+      `${APPROVED_FRONTEND_REPLACE_WORKFLOW} must contain exactly one /usr/local/sbin/valueor-prod-deploy invocation (found ${deployHits.length}).`,
+    );
+  }
+  if (/\bvalueor-prod-rollback\b/.test(body)) {
+    problems.push(`${APPROVED_FRONTEND_REPLACE_WORKFLOW} must not invoke valueor-prod-rollback.`);
+  }
+  for (const marker of PRODUCTION_PUBLISH_MARKERS) {
+    if (marker.source === "\\bvalueor-prod-deploy\\b") continue;
+    if (marker.test(body)) {
+      problems.push(
+        `${APPROVED_FRONTEND_REPLACE_WORKFLOW} must not contain production publish marker ${marker}.`,
+      );
+    }
+  }
+  return problems;
+}
 
 /**
  * Audit every GitHub Actions workflow so Contabo publishing cannot bypass
@@ -235,8 +276,13 @@ export function githubWorkflowProductionEntryProblems(workflows) {
     problems.push(`${APPROVED_PRODUCTION_WORKFLOW} must not publish over SSH/SCP from GitHub-hosted runners.`);
   }
 
+  if (byName.has(APPROVED_FRONTEND_REPLACE_WORKFLOW)) {
+    problems.push(...frontendReplaceWorkflowProblems(byName.get(APPROVED_FRONTEND_REPLACE_WORKFLOW)));
+  }
+
   for (const [name, text] of byName) {
     if (name === APPROVED_PRODUCTION_WORKFLOW) continue;
+    if (name === APPROVED_FRONTEND_REPLACE_WORKFLOW) continue;
     for (const marker of PRODUCTION_PUBLISH_MARKERS) {
       if (marker.test(text)) {
         problems.push(`${name} must not contain production publish marker ${marker}. Use ${APPROVED_PRODUCTION_WORKFLOW} only.`);

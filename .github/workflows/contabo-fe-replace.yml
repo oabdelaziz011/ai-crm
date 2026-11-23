@@ -1,0 +1,155 @@
+name: Contabo FE replace
+
+# Frontend-only corrective install via valueor-prod-deploy + .replace-frontend-only marker.
+# Does not restart API, does not migrate DB, does not change credentials/Meta/OAuth flags.
+on:
+  workflow_dispatch:
+    inputs:
+      tooling_sha:
+        description: Main SHA that contains replace-frontend tooling (checked out on Contabo)
+        required: true
+      frontend_sha:
+        description: Frontend release SHA to install (must match artifact version.json)
+        required: true
+        default: "12040da1d3bfbed06b77c11f32c8fe98602fe4ec"
+      artifact_run_id:
+        description: GitHub Actions run id that produced valueor-production-release
+        required: true
+        default: "45280105283"
+      confirm:
+        description: Type replace-frontend
+        required: true
+        type: string
+
+jobs:
+  replace:
+    if: github.event.inputs.confirm == 'replace-frontend'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Download verified production release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.inputs.artifact_run_id }}
+          FE_SHA: ${{ github.event.inputs.frontend_sha }}
+        run: |
+          set -euo pipefail
+          FE_SHA="$(printf '%s' "$FE_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$FE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid frontend_sha"
+            exit 2
+          fi
+          STAGE="/tmp/valueor-incoming-fe-replace-${FE_SHA}"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/download"
+          gh run download "$RUN_ID" -n valueor-production-release -D "$STAGE/download"
+          TGZ="$(find "$STAGE/download" -name '*.tgz' -type f | head -n 1)"
+          test -n "$TGZ"
+          echo "artifact_tgz=$TGZ"
+          sha256sum "$TGZ"
+          mkdir -p "$STAGE/extracted"
+          tar -xzf "$TGZ" -C "$STAGE/extracted"
+          test -f "$STAGE/extracted/frontend/index.html"
+          test -f "$STAGE/extracted/frontend/version.json"
+          test -f "$STAGE/extracted/api/artifacts/api-server/dist/main.mjs"
+          ACTUAL="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8"))["sha"].lower())' "$STAGE/extracted/frontend/version.json")"
+          echo "artifact_frontend_sha=$ACTUAL"
+          if [[ "$ACTUAL" != "$FE_SHA" ]]; then
+            echo "Artifact frontend sha mismatch"
+            exit 2
+          fi
+          grep -F "content=\"${FE_SHA}\"" "$STAGE/extracted/frontend/index.html"
+          for needle in assignedAiEmployeeId missingConfigKeys MSL_META_CONFIG_MISSING; do
+            if ! grep -RIl --include='*.js' -F "$needle" "$STAGE/extracted/frontend/assets" >/dev/null; then
+              echo "Missing marker in artifact: $needle"
+              exit 2
+            fi
+            echo "artifact_marker_ok=$needle"
+          done
+          # Stage layout expected by valueor-prod-deploy
+          INCOMING="/tmp/valueor-incoming-${FE_SHA}"
+          rm -rf "$INCOMING"
+          mkdir -p "$INCOMING"
+          cp -a "$STAGE/extracted/api" "$INCOMING/api"
+          cp -a "$STAGE/extracted/frontend" "$INCOMING/frontend"
+          printf '%s\n' "$FE_SHA" >"$INCOMING/.replace-frontend-only"
+          test -f "$INCOMING/.replace-frontend-only"
+          test -f "$INCOMING/frontend/version.json"
+          echo "INCOMING=$INCOMING" >>"$GITHUB_ENV"
+          echo "FE_SHA=$FE_SHA" >>"$GITHUB_ENV"
+          echo "Staged replace-frontend incoming under $INCOMING"
+
+      - name: Install frontend via approved production wrapper
+        env:
+          TOOLING_SHA: ${{ github.event.inputs.tooling_sha }}
+        run: |
+          set -euo pipefail
+          TOOLING_SHA="$(printf '%s' "$TOOLING_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$TOOLING_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid tooling_sha"
+            exit 2
+          fi
+          test -n "${INCOMING:-}"
+          test -f "${INCOMING}/.replace-frontend-only"
+          echo "Invoking valueor-prod-deploy tooling_sha=${TOOLING_SHA} incoming=${INCOMING}"
+          sudo -n /usr/local/sbin/valueor-prod-deploy "$TOOLING_SHA" "$INCOMING"
+
+      - name: Post-replace verification
+        env:
+          FE_SHA: ${{ github.event.inputs.frontend_sha }}
+        run: |
+          set -euo pipefail
+          FE_SHA="$(printf '%s' "$FE_SHA" | tr '[:upper:]' '[:lower:]')"
+          SHORT16="$(printf '%s' "$FE_SHA" | cut -c1-16)"
+          echo "=== symlink ==="
+          TARGET="$(readlink -f /var/www/valueor)"
+          echo "target=$TARGET"
+          test "$TARGET" = "/opt/valueor-frontend-releases/${SHORT16}"
+          echo "=== on-disk version.json ==="
+          cat /var/www/valueor/version.json
+          echo
+          python3 - <<PY
+          import json
+          j=json.load(open("/var/www/valueor/version.json",encoding="utf-8"))
+          assert j.get("sha","").lower()=="${FE_SHA}", j
+          print("on_disk_sha_ok")
+          PY
+          echo "=== html meta ==="
+          grep -o 'name="valueor-build" content="[^"]*"' /var/www/valueor/index.html
+          grep -F "content=\"${FE_SHA}\"" /var/www/valueor/index.html
+          echo "=== previous rollback symlink ==="
+          ls -la /var/www/valueor.previous
+          readlink -f /var/www/valueor.previous || true
+          echo "=== markers ==="
+          for needle in assignedAiEmployeeId missingConfigKeys MSL_META_CONFIG_MISSING; do
+            if ! grep -RIl --include='*.js' -F "$needle" /var/www/valueor/assets >/dev/null; then
+              echo "LIVE missing marker: $needle"
+              exit 2
+            fi
+            echo "live_marker_ok=$needle"
+          done
+          echo "=== origin TLS version.json ==="
+          curl -skS --max-time 10 --resolve valueor.org:443:127.0.0.1 \
+            https://valueor.org/version.json | tee /tmp/vo-fe-origin.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open("/tmp/vo-fe-origin.json",encoding="utf-8"))
+          import os
+          assert j.get("sha","").lower()==os.environ["FE_SHA"], j
+          print("origin_sha_ok")
+          PY
+          echo "=== public version.json ==="
+          curl -sS --max-time 15 https://valueor.org/version.json | tee /tmp/vo-fe-public.json
+          python3 - <<'PY'
+          import json,os
+          j=json.load(open("/tmp/vo-fe-public.json",encoding="utf-8"))
+          assert j.get("sha","").lower()==os.environ["FE_SHA"], j
+          print("public_sha_ok")
+          PY
+          echo "=== api health ==="
+          code="$(curl -sS -o /tmp/vo-api-health.json -w '%{http_code}' --max-time 10 https://api.valueor.org/api/healthz || true)"
+          echo "api_health_http=$code"
+          test "$code" = "200"
+          cat /tmp/vo-api-health.json; echo
+          echo "=== DONE FE replace verify ==="

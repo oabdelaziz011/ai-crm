@@ -147,10 +147,16 @@ describe("production path guards", () => {
 
     const deployWorkflows = workflows.filter((item) => /\bvalueor-prod-deploy\b/.test(item.text));
     const rollbackWorkflows = workflows.filter((item) => /\bvalueor-prod-rollback\b/.test(item.text));
-    assert.equal(deployWorkflows.length, 1);
-    assert.equal(deployWorkflows[0].name, "vps-deploy.yml");
+    assert.deepEqual(
+      deployWorkflows.map((item) => item.name).sort(),
+      ["contabo-fe-replace.yml", "vps-deploy.yml"],
+    );
     assert.equal(rollbackWorkflows.length, 1);
     assert.equal(rollbackWorkflows[0].name, "vps-deploy.yml");
+    const feReplace = workflows.find((item) => item.name === "contabo-fe-replace.yml");
+    assert.ok(feReplace, "contabo-fe-replace.yml must exist for FE-only corrective installs");
+    assert.ok(/\.replace-frontend-only\b/.test(feReplace.text));
+    assert.ok(/confirm\s*==\s*'replace-frontend'/.test(feReplace.text));
 
     const sshPublish = workflows.filter(
       (item) => /\bVPS_SSH_KEY\b/.test(item.text) || (/\bscp\b/.test(item.text) && /\bVPS_HOST\b/.test(item.text)),
@@ -348,6 +354,107 @@ describe("isolated release switch deploy + rollback", () => {
     assert.notEqual(missingState.status, 0);
     assert.match(missingState.stderr || missingState.stdout, /Missing deploy state|ERROR/);
 
+    rmSync(prefix, { recursive: true, force: true });
+  });
+
+  it("replace-frontend quarantines corrupt same-SHA dir without touching API", () => {
+    const prefix = mkdtempSync(join(tmpdir(), "vo-fe-replace-"));
+    mkdirSync(join(prefix, "opt/valueor-releases"), { recursive: true });
+    mkdirSync(join(prefix, "opt/valueor-frontend-releases"), { recursive: true });
+    mkdirSync(join(prefix, "opt"), { recursive: true });
+    mkdirSync(join(prefix, "var/www"), { recursive: true });
+    mkdirSync(join(prefix, "var/lib/valueor"), { recursive: true });
+    mkdirSync(join(prefix, "etc/valueor"), { recursive: true });
+    writeFileSync(
+      join(prefix, "etc/valueor/api-safe-start.sh"),
+      "#!/bin/bash\nset -eu\nexport VALUEOR_ENV=production\nexec /usr/bin/node /opt/valueor-releases/placeholder/deploy/vps/start-api.mjs\n",
+    );
+
+    const apiKeep = join(prefix, "opt/valueor-releases/aaaaaaaaaaaaaaaa");
+    mkdirSync(join(apiKeep, "deploy/vps"), { recursive: true });
+    writeFileSync(join(apiKeep, "deploy/vps/start-api.mjs"), "console.log('api')\n");
+    writeFileSync(join(apiKeep, "RELEASE_SHA"), `${SHA_A}\n`);
+    const linkType = process.platform === "win32" ? "junction" : undefined;
+    if (linkType) symlinkSync(apiKeep, join(prefix, "opt/valueor-current"), linkType);
+    else symlinkSync(apiKeep, join(prefix, "opt/valueor-current"));
+
+    const corruptFe = join(prefix, "opt/valueor-frontend-releases", SHA_A.slice(0, 16));
+    mkdirSync(join(corruptFe, "assets"), { recursive: true });
+    writeFileSync(join(corruptFe, "index.html"), `<meta name="valueor-build" content="${SHA_B}" />\n`);
+    writeFileSync(join(corruptFe, "version.json"), `${JSON.stringify({ service: "login-app", sha: SHA_B })}\n`);
+    writeFileSync(join(corruptFe, "assets/old.js"), "old-bundle\n");
+    const goodPrev = join(prefix, "opt/valueor-frontend-releases/prev-good");
+    mkdirSync(goodPrev, { recursive: true });
+    writeFileSync(join(goodPrev, "index.html"), "prev\n");
+    if (linkType) {
+      symlinkSync(corruptFe, join(prefix, "var/www/valueor"), linkType);
+      symlinkSync(goodPrev, join(prefix, "var/www/valueor.previous"), linkType);
+    } else {
+      symlinkSync(corruptFe, join(prefix, "var/www/valueor"));
+      symlinkSync(goodPrev, join(prefix, "var/www/valueor.previous"));
+    }
+
+    writeFileSync(
+      join(prefix, "var/lib/valueor/deploy-state.json"),
+      `${JSON.stringify(
+        {
+          topology: "nginx-systemd",
+          sha: SHA_A,
+          apiRelease: apiKeep.replace(/\\/g, "/"),
+          frontendRelease: corruptFe.replace(/\\/g, "/"),
+          previousApiRelease: null,
+          previousFrontendRelease: goodPrev.replace(/\\/g, "/"),
+          previousFrontendPrevious: null,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const feGood = mkdtempSync(join(tmpdir(), "vo-fe-good-"));
+    mkdirSync(join(feGood, "assets"), { recursive: true });
+    writeFileSync(
+      join(feGood, "index.html"),
+      `<html><head><meta name="valueor-build" content="${SHA_A}" /></head></html>\n`,
+    );
+    writeFileSync(join(feGood, "version.json"), `${JSON.stringify({ service: "login-app", sha: SHA_A })}\n`);
+    writeFileSync(
+      join(feGood, "assets/new.js"),
+      "assignedAiEmployeeId missingConfigKeys MSL_META_CONFIG_MISSING\n",
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        switchJs,
+        "replace-frontend",
+        "--sha",
+        SHA_A,
+        "--frontend-src",
+        feGood,
+        "--root",
+        prefix,
+      ],
+      { encoding: "utf8", env: process.env },
+    );
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout || `exit ${result.status}`);
+    }
+
+    const norm = (p) => String(p).replace(/\\/g, "/");
+    assert.equal(
+      norm(readlinkSync(join(prefix, "var/www/valueor"))),
+      norm(frontendReleaseDir({ frontendReleasesDir: `${norm(prefix)}/opt/valueor-frontend-releases` }, SHA_A)),
+    );
+    assert.equal(norm(readlinkSync(join(prefix, "var/www/valueor.previous"))), norm(goodPrev));
+    assert.equal(norm(readlinkSync(join(prefix, "opt/valueor-current"))), norm(apiKeep));
+    const version = JSON.parse(readFileSync(join(prefix, "var/www/valueor/version.json"), "utf8"));
+    assert.equal(version.sha, SHA_A);
+    assert.match(readFileSync(join(prefix, "var/www/valueor/assets/new.js"), "utf8"), /assignedAiEmployeeId/);
+    assert.match(result.stdout, /api_untouched=yes/);
+    assert.match(result.stdout, /quarantined/);
+
+    rmSync(feGood, { recursive: true, force: true });
     rmSync(prefix, { recursive: true, force: true });
   });
 });

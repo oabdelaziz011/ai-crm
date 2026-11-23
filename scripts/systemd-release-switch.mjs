@@ -3,6 +3,7 @@
  * Switch Contabo API/frontend release pointers (Nginx + systemd topology).
  *
  *   node scripts/systemd-release-switch.mjs deploy --sha <40> --api-src <dir> --frontend-src <dir> [--root <prefix>] [--dry-run]
+ *   node scripts/systemd-release-switch.mjs replace-frontend --sha <40> --frontend-src <dir> [--root <prefix>] [--dry-run]
  *   node scripts/systemd-release-switch.mjs rollback [--root <prefix>] [--dry-run]
  *
  * --root remaps absolute production paths under a test prefix (isolated dry-run).
@@ -15,6 +16,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   readlinkSync,
   renameSync,
   rmSync,
@@ -154,6 +156,58 @@ function requireFrontendArtifact(frontendSrc) {
   const version = join(frontendSrc, "version.json");
   if (!existsSync(index)) throw new Error("Frontend artifact missing index.html");
   if (!existsSync(version)) throw new Error("Frontend artifact missing version.json");
+}
+
+function readFrontendArtifactSha(frontendSrc) {
+  requireFrontendArtifact(frontendSrc);
+  const raw = JSON.parse(readFileSync(join(frontendSrc, "version.json"), "utf8"));
+  return assertFullGitSha(raw?.sha);
+}
+
+function assertFrontendArtifactMatchesSha(frontendSrc, sha) {
+  const artifactSha = readFrontendArtifactSha(frontendSrc);
+  const expected = assertFullGitSha(sha);
+  if (artifactSha !== expected) {
+    throw new Error(
+      `Frontend artifact version.json sha ${artifactSha} does not match expected ${expected}`,
+    );
+  }
+  const html = readFileSync(join(frontendSrc, "index.html"), "utf8");
+  if (!html.includes(`content="${expected}"`)) {
+    throw new Error("Frontend index.html valueor-build meta does not match expected sha");
+  }
+  return artifactSha;
+}
+
+const FRONTEND_MARKER_NEEDLES = [
+  "assignedAiEmployeeId",
+  "missingConfigKeys",
+  "MSL_META_CONFIG_MISSING",
+];
+
+function assertFrontendArtifactHasRolloutMarkers(frontendSrc) {
+  const assetsDir = join(frontendSrc, "assets");
+  if (!existsSync(assetsDir)) {
+    throw new Error("Frontend artifact missing assets/ directory");
+  }
+  const files = readdirSync(assetsDir)
+    .filter((name) => name.endsWith(".js"))
+    .map((name) => join(assetsDir, name));
+  const blob = files
+    .slice(0, 600)
+    .map((path) => {
+      try {
+        return readFileSync(path, "utf8");
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
+  for (const needle of FRONTEND_MARKER_NEEDLES) {
+    if (!blob.includes(needle)) {
+      throw new Error(`Frontend artifact missing required marker: ${needle}`);
+    }
+  }
 }
 
 function writeReleaseMetadata(releaseDir, sha, kind, extra = {}) {
@@ -405,6 +459,90 @@ function deploy(args) {
   log(`frontend_release=${feRelease}`);
 }
 
+/**
+ * Frontend-only corrective install.
+ * Quarantines a corrupt same-SHA frontend release directory if present, installs
+ * the verified artifact, flips /var/www/valueor, and never touches API/systemd.
+ */
+function replaceFrontend(args) {
+  const sha = assertFullGitSha(args.sha);
+  const frontendSrc = resolve(args.frontendSrc);
+  assertFrontendArtifactMatchesSha(frontendSrc, sha);
+  assertFrontendArtifactHasRolloutMarkers(frontendSrc);
+
+  const paths = pathsFor(args.root);
+  const dest = frontendReleaseDir(paths, sha, args.frontendLabel);
+  const previousFe = readLinkOrNull(paths.frontendCurrentLink);
+  const previousFePrev = readLinkOrNull(paths.frontendPreviousLink);
+
+  log(`replace-frontend sha=${sha}`);
+  log(`frontend_src=${frontendSrc}`);
+  log(`dest=${dest}`);
+  log(`previous_frontend=${previousFe || "(none)"}`);
+
+  if (existsSync(dest)) {
+    const quarantine = `${dest}.corrupt-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+    if (args.dryRun) {
+      log(`dry-run: would quarantine ${dest} -> ${quarantine}`);
+    } else {
+      renameSync(dest, quarantine);
+      log(`quarantined ${dest} -> ${quarantine}`);
+    }
+  }
+
+  const feRelease = args.dryRun
+    ? dest
+    : installFrontendRelease(paths, sha, frontendSrc, args.frontendLabel);
+
+  // Preserve rollback chain: keep prior good release as .previous when possible.
+  // Normalize paths so Windows junctions / slash differences do not treat the
+  // quarantined same-SHA dest as a valid previous pointer.
+  const samePath = (a, b) => {
+    if (!a || !b) return false;
+    return resolve(a).replace(/\\/g, "/").toLowerCase() === resolve(b).replace(/\\/g, "/").toLowerCase();
+  };
+  let nextPrevious = null;
+  if (previousFe && !samePath(previousFe, dest) && !samePath(previousFe, feRelease)) {
+    nextPrevious = previousFe;
+  } else if (previousFePrev && !samePath(previousFePrev, dest) && !samePath(previousFePrev, feRelease)) {
+    nextPrevious = previousFePrev;
+  }
+
+  if (!args.dryRun) {
+    if (nextPrevious && existsSync(nextPrevious)) {
+      atomicSymlink(paths.frontendPreviousLink, nextPrevious);
+    }
+    atomicSymlink(paths.frontendCurrentLink, feRelease);
+  } else {
+    log(`dry-run: would flip ${paths.frontendCurrentLink} -> ${feRelease}`);
+    if (nextPrevious) {
+      log(`dry-run: would set ${paths.frontendPreviousLink} -> ${nextPrevious}`);
+    }
+  }
+
+  // Update deploy-state frontend pointers only; keep API pointers untouched.
+  let state = null;
+  try {
+    state = readState(paths);
+  } catch {
+    state = null;
+  }
+  const nextState = buildDeployState({
+    sha: state?.sha && /^[0-9a-f]{40}$/i.test(state.sha) ? state.sha : sha,
+    apiRelease: state?.apiRelease || readLinkOrNull(paths.apiCurrentLink),
+    frontendRelease: feRelease,
+    previousApiRelease: state?.previousApiRelease || null,
+    previousFrontendRelease: nextPrevious || state?.previousFrontendRelease || null,
+    previousFrontendPrevious: state?.previousFrontendPrevious || null,
+  });
+  writeState(paths, nextState, args);
+
+  log(`replace-frontend complete sha=${sha}`);
+  log(`frontend_release=${feRelease}`);
+  log(`frontend_previous=${nextPrevious || "(unchanged)"}`);
+  log("api_untouched=yes restart_skipped=yes");
+}
+
 function rollback(args) {
   const paths = pathsFor(args.root);
   const state = args.forceState || readState(paths);
@@ -463,8 +601,8 @@ function rollback(args) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!["deploy", "rollback"].includes(args.action)) {
-    console.error("Usage: systemd-release-switch.mjs deploy|rollback [options]");
+  if (!["deploy", "replace-frontend", "rollback"].includes(args.action)) {
+    console.error("Usage: systemd-release-switch.mjs deploy|replace-frontend|rollback [options]");
     process.exit(2);
   }
   if (args.action === "deploy") {
@@ -473,6 +611,14 @@ function main() {
       process.exit(2);
     }
     deploy(args);
+    return;
+  }
+  if (args.action === "replace-frontend") {
+    if (!args.sha || !args.frontendSrc) {
+      console.error("replace-frontend requires --sha and --frontend-src");
+      process.exit(2);
+    }
+    replaceFrontend(args);
     return;
   }
   rollback(args);

@@ -186,6 +186,77 @@ export function workflowProductionPathProblems(workflowText) {
   return problems;
 }
 
+const PRODUCTION_PUBLISH_MARKERS = [
+  /\bVPS_SSH_KEY\b/,
+  /\bVPS_HOST\b/,
+  /\bVPS_USER\b/,
+  /\bVPS_KNOWN_HOSTS\b/,
+  /\bscp\b/,
+  /\bpublish-www\b/,
+  /\bpublish_www\b/,
+  /\bvalueor-prod-deploy\b/,
+  /\bvalueor-prod-rollback\b/,
+  /\bremote-deploy\.sh\b/,
+  /\bremote-rollback\.sh\b/,
+  /\bsystemd-release-deploy\.sh\b/,
+  /\bpublish-frontend-release\.sh\b/,
+];
+
+const APPROVED_PRODUCTION_WORKFLOW = "vps-deploy.yml";
+
+/**
+ * Audit every GitHub Actions workflow so Contabo publishing cannot bypass
+ * the single approved self-hosted production entry point.
+ *
+ * @param {Array<{ name: string, text: string }>} workflows
+ * @returns {string[]}
+ */
+export function githubWorkflowProductionEntryProblems(workflows) {
+  const problems = [];
+  const list = Array.isArray(workflows) ? workflows : [];
+  const byName = new Map(list.map((item) => [String(item.name), String(item.text ?? "")]));
+
+  if (!byName.has(APPROVED_PRODUCTION_WORKFLOW)) {
+    problems.push(`Missing required production workflow ${APPROVED_PRODUCTION_WORKFLOW}.`);
+    return problems;
+  }
+
+  problems.push(...workflowProductionPathProblems(byName.get(APPROVED_PRODUCTION_WORKFLOW)));
+
+  const deployHits = [...byName.get(APPROVED_PRODUCTION_WORKFLOW).matchAll(/\bvalueor-prod-deploy\b/g)];
+  const rollbackHits = [...byName.get(APPROVED_PRODUCTION_WORKFLOW).matchAll(/\bvalueor-prod-rollback\b/g)];
+  if (deployHits.length !== 1) {
+    problems.push(`${APPROVED_PRODUCTION_WORKFLOW} must contain exactly one valueor-prod-deploy invocation (found ${deployHits.length}).`);
+  }
+  if (rollbackHits.length !== 1) {
+    problems.push(`${APPROVED_PRODUCTION_WORKFLOW} must contain exactly one valueor-prod-rollback invocation (found ${rollbackHits.length}).`);
+  }
+  if (/\bVPS_SSH_KEY\b/.test(byName.get(APPROVED_PRODUCTION_WORKFLOW)) || /\bscp\b/.test(byName.get(APPROVED_PRODUCTION_WORKFLOW))) {
+    problems.push(`${APPROVED_PRODUCTION_WORKFLOW} must not publish over SSH/SCP from GitHub-hosted runners.`);
+  }
+
+  for (const [name, text] of byName) {
+    if (name === APPROVED_PRODUCTION_WORKFLOW) continue;
+    for (const marker of PRODUCTION_PUBLISH_MARKERS) {
+      if (marker.test(text)) {
+        problems.push(`${name} must not contain production publish marker ${marker}. Use ${APPROVED_PRODUCTION_WORKFLOW} only.`);
+      }
+    }
+    if (/environment:\s*production/.test(text) && (/\bssh\b/i.test(text) || /\bscp\b/i.test(text))) {
+      problems.push(`${name} must not use the production environment for SSH publishing.`);
+    }
+  }
+
+  const frontend = byName.get("frontend-production-artifact.yml");
+  if (frontend) {
+    if (/publish-www|publish_www|VPS_SSH_KEY|\bscp\b/.test(frontend)) {
+      problems.push("frontend-production-artifact.yml must remain build-only (no publish-www / SSH publish).");
+    }
+  }
+
+  return [...new Set(problems)];
+}
+
 export function healthcheckCommands({ apiPort = 3001 } = {}) {
   return {
     localHealthz: `curl -fsS --max-time 5 http://127.0.0.1:${apiPort}/api/healthz`,

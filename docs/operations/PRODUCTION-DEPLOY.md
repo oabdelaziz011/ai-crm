@@ -35,6 +35,15 @@ sudo install -m 0750 -o root -g root \
 3. Keep `gha-runner` sudoers limited to those two commands (`NOPASSWD`), no unrestricted sudo, no SSH `0.0.0.0/0`.
 4. Confirm Origin certificates and `/opt/valueor/.env` are untouched.
 
+## Single production entry points
+
+| Action | Only approved entry |
+|---|---|
+| Deploy (API + frontend) | `.github/workflows/vps-deploy.yml` → `sudo -n /usr/local/sbin/valueor-prod-deploy` |
+| Rollback | `.github/workflows/vps-deploy.yml` → `sudo -n /usr/local/sbin/valueor-prod-rollback` |
+
+`frontend-production-artifact.yml` is **build-only** (artifact upload). It must never SSH/SCP to Contabo or call publish helpers. There is no separate frontend publish workflow.
+
 ## Deploy (every release)
 
 1. Merge the release to `main`.

@@ -5,22 +5,23 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   readlinkSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import {
   PRODUCTION_TOPOLOGY,
   apiReleaseDir,
   assertFullGitSha,
   frontendReleaseDir,
+  githubWorkflowProductionEntryProblems,
   productionScriptProblems,
   rewriteApiSafeStartExec,
   unitReleaseDropInContents,
@@ -130,6 +131,58 @@ describe("production path guards", () => {
     assert.deepEqual(workflowProductionPathProblems(workflow), []);
     assert.ok(!workflow.includes("remote-deploy.sh"));
     assert.ok(!workflow.includes("remote-rollback.sh"));
+  });
+
+  it("allows only one production deploy and rollback entry across all workflows", () => {
+    const workflowDir = join(root, ".github/workflows");
+    const workflows = readdirSync(workflowDir)
+      .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
+      .map((name) => ({ name, text: readFileSync(join(workflowDir, name), "utf8") }));
+
+    assert.deepEqual(githubWorkflowProductionEntryProblems(workflows), []);
+
+    const frontend = workflows.find((item) => item.name === "frontend-production-artifact.yml");
+    assert.ok(frontend, "frontend-production-artifact.yml must exist as build-only CI");
+    assert.ok(!/publish-www|publish_www|VPS_SSH_KEY|\bscp\b/.test(frontend.text));
+
+    const deployWorkflows = workflows.filter((item) => /\bvalueor-prod-deploy\b/.test(item.text));
+    const rollbackWorkflows = workflows.filter((item) => /\bvalueor-prod-rollback\b/.test(item.text));
+    assert.equal(deployWorkflows.length, 1);
+    assert.equal(deployWorkflows[0].name, "vps-deploy.yml");
+    assert.equal(rollbackWorkflows.length, 1);
+    assert.equal(rollbackWorkflows[0].name, "vps-deploy.yml");
+
+    const sshPublish = workflows.filter(
+      (item) => /\bVPS_SSH_KEY\b/.test(item.text) || (/\bscp\b/.test(item.text) && /\bVPS_HOST\b/.test(item.text)),
+    );
+    assert.deepEqual(sshPublish.map((item) => item.name), []);
+  });
+
+  it("detects a bypass frontend SSH publish workflow", () => {
+    const problems = githubWorkflowProductionEntryProblems([
+      {
+        name: "vps-deploy.yml",
+        text: readFileSync(join(root, ".github/workflows/vps-deploy.yml"), "utf8"),
+      },
+      {
+        name: "frontend-production-artifact.yml",
+        text: [
+          "name: leak",
+          "jobs:",
+          "  publish-www:",
+          "    environment: production",
+          "    runs-on: ubuntu-latest",
+          "    steps:",
+          "      - run: scp file $VPS_USER@$VPS_HOST:/tmp/x",
+          "        env:",
+          "          VPS_SSH_KEY: secret",
+          "          VPS_HOST: example",
+          "          VPS_USER: valueor",
+        ].join("\n"),
+      },
+    ]);
+    assert.ok(problems.some((problem) => problem.includes("frontend-production-artifact.yml")));
+    assert.ok(problems.some((problem) => /VPS_SSH_KEY|scp|publish-www/.test(problem)));
   });
 
   it("does not require ACME_EMAIL for nginx-systemd topology", () => {

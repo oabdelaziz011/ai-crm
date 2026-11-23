@@ -6,7 +6,7 @@
  *   node scripts/validate-vps-config.mjs --env deploy/vps/production.env
  *   node scripts/validate-vps-config.mjs --env /opt/valueor/.env --topology nginx-systemd
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDevSecretPlaceholder } from "./lib/production-runtime.mjs";
@@ -14,6 +14,7 @@ import { vpsProcessProblems } from "./lib/vps-runtime.mjs";
 import {
   COMPOSE_TOPOLOGY,
   PRODUCTION_TOPOLOGY,
+  githubWorkflowProductionEntryProblems,
   productionScriptProblems,
   workflowProductionPathProblems,
 } from "./lib/systemd-release.mjs";
@@ -93,12 +94,20 @@ export function deploymentFileProblems() {
   const systemdDeploy = read("systemd-release-deploy.sh");
   const systemdRollback = read("systemd-release-rollback.sh");
   const workflow = readFileSync(resolve(root, ".github/workflows/vps-deploy.yml"), "utf8");
+  const workflowDir = resolve(root, ".github/workflows");
+  const workflowFiles = readdirSync(workflowDir)
+    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
+    .map((name) => ({
+      name,
+      text: readFileSync(resolve(workflowDir, name), "utf8"),
+    }));
 
   problems.push(...productionScriptProblems(prodDeploy, { role: "prod-deploy-wrapper" }));
   problems.push(...productionScriptProblems(prodRollback, { role: "prod-rollback-wrapper" }));
   problems.push(...productionScriptProblems(systemdDeploy, { role: "systemd-release-deploy.sh" }));
   problems.push(...productionScriptProblems(systemdRollback, { role: "systemd-release-rollback.sh" }));
   problems.push(...workflowProductionPathProblems(workflow));
+  problems.push(...githubWorkflowProductionEntryProblems(workflowFiles));
 
   if (!systemdDeploy.includes("--topology nginx-systemd")) {
     problems.push("systemd-release-deploy.sh must validate env with --topology nginx-systemd.");

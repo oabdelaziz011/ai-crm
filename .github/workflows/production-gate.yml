@@ -198,20 +198,6 @@ jobs:
             exit 1
           fi
 
-      - name: Stop isolated local Supabase after E2E
-        if: always()
-        run: |
-          set +e
-          supabase stop --no-backup > "${RUNNER_TEMP}/supabase-stop-after.log" 2>&1
-          code=$?
-          set -e
-          echo "supabase stop (after) exit=${code}"
-          # Best-effort: only this project's named containers.
-          mapfile -t leftover < <(docker ps -aq --filter "name=supabase_" --filter "name=_project" 2>/dev/null || true)
-          if [ "${#leftover[@]}" -gt 0 ]; then
-            docker rm -f "${leftover[@]}" || true
-          fi
-
       - name: Channel platform E2E
         run: |
           set -a
@@ -280,4 +266,18 @@ jobs:
               print(f"::error::{safe}")
           PY
             exit "$code"
+          fi
+
+      - name: Stop isolated local Supabase after E2E
+        if: always()
+        run: |
+          set +e
+          supabase stop --no-backup > "${RUNNER_TEMP}/supabase-stop-after.log" 2>&1
+          code=$?
+          set -e
+          echo "supabase stop (after) exit=${code}"
+          # Best-effort: only this project's named containers.
+          mapfile -t leftover < <(docker ps -aq --filter "name=supabase_" --filter "name=_project" 2>/dev/null || true)
+          if [ "${#leftover[@]}" -gt 0 ]; then
+            docker rm -f "${leftover[@]}" || true
           fi

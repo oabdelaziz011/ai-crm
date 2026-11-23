@@ -10,6 +10,11 @@ import { join, resolve } from "node:path";
 
 const root = resolve(process.argv[2] ?? "artifacts/login-app/dist/public");
 const required = ["https://api.valueor.org", "https://webhook.valueor.org"];
+/** Bake-time flag literals expected from vps-deploy.yml frontend build env. */
+const requiredFlagLiterals = [
+  'VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED:"true"',
+  'VITE_WHATSAPP_COEXISTENCE_ENABLED:"false"',
+];
 const forbidden = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -36,14 +41,17 @@ const bodies = [
 const blob = bodies.join("\n");
 
 const missing = required.filter((value) => !blob.includes(value));
+const missingFlags = requiredFlagLiterals.filter((value) => !blob.includes(value));
 const presentForbidden = forbidden.filter((value) => blob.includes(value));
 
-if (missing.length || presentForbidden.length) {
+if (missing.length || missingFlags.length || presentForbidden.length) {
   console.error("Frontend production bundle verification failed.");
   for (const value of missing) console.error(`  missing ${value}`);
+  for (const value of missingFlags) console.error(`  missing flag ${value}`);
   for (const value of presentForbidden) console.error(`  forbidden ${value}`);
   process.exit(1);
 }
 
 console.log("Frontend production bundle verification passed.");
 for (const value of required) console.log(`  present ${value}`);
+for (const value of requiredFlagLiterals) console.log(`  present ${value}`);

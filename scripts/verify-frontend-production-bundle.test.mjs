@@ -19,10 +19,24 @@ describe("frontend production bundle verification", () => {
     writeFileSync(join(ok, "index.html"), "<script src=\"/assets/app.js\"></script>");
     writeFileSync(
       join(ok, "assets", "app.js"),
-      'const api="https://api.valueor.org"; const hook="https://webhook.valueor.org";',
+      [
+        'const api="https://api.valueor.org";',
+        'const hook="https://webhook.valueor.org";',
+        'const env={VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED:"true",VITE_WHATSAPP_COEXISTENCE_ENABLED:"false"};',
+      ].join(" "),
     );
     const good = run(ok);
     assert.equal(good.status, 0, good.stderr || good.stdout);
+
+    const missingFlags = mkdtempSync(join(tmpdir(), "valueor-fe-flags-"));
+    mkdirSync(join(missingFlags, "assets"));
+    writeFileSync(join(missingFlags, "index.html"), "<script src=\"/assets/app.js\"></script>");
+    writeFileSync(
+      join(missingFlags, "assets", "app.js"),
+      'const api="https://api.valueor.org"; const hook="https://webhook.valueor.org";',
+    );
+    const flagsFailed = run(missingFlags);
+    assert.notEqual(flagsFailed.status, 0);
 
     const bad = mkdtempSync(join(tmpdir(), "valueor-fe-bad-"));
     mkdirSync(join(bad, "assets"));

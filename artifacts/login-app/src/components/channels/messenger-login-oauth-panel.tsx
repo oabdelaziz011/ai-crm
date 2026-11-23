@@ -40,6 +40,8 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
   const [pages, setPages] = useState<Array<{ pageId: string; name: string }>>([]);
   const [selectedPageId, setSelectedPageId] = useState("");
   const [pendingState, setPendingState] = useState<string | null>(null);
+  /** One-time reveal after OAuth complete — required for Meta Dashboard webhook verification. */
+  const [revealedVerifyToken, setRevealedVerifyToken] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -143,6 +145,9 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
       });
       setPendingState(null);
       setPages([]);
+      if (result.webhookVerifyToken) {
+        setRevealedVerifyToken(result.webhookVerifyToken);
+      }
       toast({
         title: result.connected
           ? t("notifications.messengerLogin.connected", { defaultValue: "Messenger connected" })
@@ -268,6 +273,28 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
           </Select>
           <Button type="button" size="sm" disabled={busy || !selectedPageId} onClick={() => void onComplete()}>
             {t("notifications.messengerLogin.finish", { defaultValue: "Save & verify connection" })}
+          </Button>
+        </div>
+      ) : null}
+      {revealedVerifyToken ? (
+        <div
+          className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 p-2"
+          data-testid="messenger-oauth-verify-token-once"
+        >
+          <p className="text-xs font-medium">
+            {t("notifications.messengerLogin.verifyTokenOnceTitle", {
+              defaultValue: "Webhook verify token (copy once into Meta App Dashboard)",
+            })}
+          </p>
+          <code className="block break-all text-xs">{revealedVerifyToken}</code>
+          <p className="text-[11px] text-muted-foreground">
+            {t("notifications.messengerLogin.verifyTokenOnceHint", {
+              defaultValue:
+                "Callback URL: https://webhook.valueor.org/api/webhooks/messenger — this plaintext is shown once after connect.",
+            })}
+          </p>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setRevealedVerifyToken(null)}>
+            {t("notifications.messengerLogin.verifyTokenDismiss", { defaultValue: "Hide token" })}
           </Button>
         </div>
       ) : null}

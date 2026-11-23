@@ -84,9 +84,21 @@ export function InstagramLoginOauthPanel({ companyId, onConnected, onDisconnecte
   }, [onConnected, refresh, t, toast]);
 
   const onConnect = async () => {
+    const replacing = Boolean(connection?.hasAccessToken);
+    if (replacing) {
+      const ok = window.confirm(
+        t("notifications.instagramLogin.confirmReplace", {
+          defaultValue:
+            "Instagram already has credentials. Reconnecting will replace the existing token. Continue?",
+        }),
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     try {
-      const session = await startMetaInstagramLogin(companyId);
+      const session = await startMetaInstagramLogin(companyId, {
+        confirmReplaceExisting: replacing,
+      });
       window.location.assign(session.authorizeUrl);
     } catch (error) {
       toast({
@@ -101,13 +113,45 @@ export function InstagramLoginOauthPanel({ companyId, onConnected, onDisconnecte
   };
 
   const onDisconnect = async () => {
+    const isManual = connection?.credentialSource !== "oauth";
+    let confirmClearCredentials = false;
+    if (isManual) {
+      const softOk = window.confirm(
+        t("notifications.instagramLogin.confirmDisableManual", {
+          defaultValue:
+            "Disable Instagram for this company? Manual credentials stay encrypted unless you also choose to clear them.",
+        }),
+      );
+      if (!softOk) return;
+      confirmClearCredentials = window.confirm(
+        t("notifications.instagramLogin.confirmClearManualSecrets", {
+          defaultValue:
+            "Also permanently clear manual access/verify tokens? Cancel keeps secrets and only disables the channel.",
+        }),
+      );
+    } else {
+      const ok = window.confirm(
+        t("notifications.instagramLogin.confirmClearOauth", {
+          defaultValue:
+            "Disconnect Instagram OAuth and clear stored credentials for this company?",
+        }),
+      );
+      if (!ok) return;
+      confirmClearCredentials = true;
+    }
     setBusy(true);
     try {
-      await disconnectMetaInstagramLogin(companyId);
+      const result = await disconnectMetaInstagramLogin(companyId, {
+        confirmClearCredentials,
+      });
       toast({
-        title: t("notifications.instagramLogin.disconnected", {
-          defaultValue: "Instagram soft-disconnected",
-        }),
+        title: result.softDisableOnly
+          ? t("notifications.instagramLogin.disabledKeptSecrets", {
+              defaultValue: "Instagram disabled — manual credentials preserved",
+            })
+          : t("notifications.instagramLogin.disconnected", {
+              defaultValue: "Instagram soft-disconnected",
+            }),
       });
       onDisconnected?.();
       void refresh();

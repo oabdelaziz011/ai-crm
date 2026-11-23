@@ -177,6 +177,13 @@ describe("meta-instagram-login-oauth", () => {
       if (url.includes("/subscribed_apps")) {
         return new Response(JSON.stringify({ success: true }), { status: 200 });
       }
+      // Health probe after subscribe: GET /{ig-user-id}?fields=id,username
+      if (url.includes("17841400000000000") && url.includes("fields=")) {
+        return new Response(
+          JSON.stringify({ id: "17841400000000000", username: "valueor_demo" }),
+          { status: 200 },
+        );
+      }
       return new Response(JSON.stringify({ error: { message: `unexpected ${url}` } }), {
         status: 500,
       });

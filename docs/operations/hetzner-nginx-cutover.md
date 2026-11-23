@@ -1,6 +1,9 @@
-# Hetzner Nginx cutover
+# Hetzner Nginx cutover (historical)
 
-Production API is already reachable at `https://api.valueor.org` on the Hetzner VPS `2.31.182.5`. This file is the remaining cutover plan for systemd, webhooks, frontend DNS, and Meta Test App verification. It does not change DNS, Meta, or production secrets by itself.
+**Superseded for Contabo production deploys by [PRODUCTION-DEPLOY.md](./PRODUCTION-DEPLOY.md).**  
+Contabo production is Nginx + Cloudflare Origin Certificates + systemd release directories — not Docker/Caddy.
+
+Production API is already reachable at `https://api.valueor.org`. This file remains historical cutover context for systemd, webhooks, frontend DNS, and Meta Test App verification. It does not change DNS, Meta, or production secrets by itself.
 
 ## Target architecture
 

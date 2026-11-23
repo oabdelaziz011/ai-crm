@@ -103,16 +103,11 @@ jobs:
           tar -xzf "$TAR" -C "$STAGE"
           test -f "$STAGE/index.html"
           test -f "$STAGE/version.json"
-          if [[ -f /opt/valueor/deploy/vps/deploy-production.sh ]]; then
-            sudo bash /opt/valueor/deploy/vps/deploy-production.sh publish-frontend --frontend-src "$STAGE"
+          if [[ -f /opt/valueor/deploy/vps/publish-frontend-release.sh ]]; then
+            sudo bash /opt/valueor/deploy/vps/publish-frontend-release.sh "$SHA" "$STAGE"
           else
-            mkdir -p /var/www
-            if [[ -d /var/www/valueor ]]; then
-              rm -rf /var/www/valueor.previous
-              mv /var/www/valueor /var/www/valueor.previous
-            fi
-            mkdir -p /var/www/valueor
-            cp -a "${STAGE}/." /var/www/valueor/
+            echo "Missing publish-frontend-release.sh — refusing ad-hoc directory replace."
+            exit 2
           fi
           if [[ -f /opt/valueor/scripts/verify-frontend-production-bundle.mjs ]]; then
             /usr/bin/node /opt/valueor/scripts/verify-frontend-production-bundle.mjs /var/www/valueor

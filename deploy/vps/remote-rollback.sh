@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
-# Point the running services back at the previous image tags. Does not change git, DNS, or Supabase.
+# NON-PRODUCTION / Compose-lab only.
+# Contabo production MUST use deploy/vps/systemd-release-rollback.sh via valueor-prod-rollback.
 set -euo pipefail
+
+if systemctl is-active --quiet valueor-api.service 2>/dev/null; then
+  if [[ -L /opt/valueor-current ]] || [[ -d /opt/valueor-releases ]]; then
+    echo "Refusing Compose rollback: Contabo production uses Nginx + systemd release directories."
+    echo "Use: sudo -n /usr/local/sbin/valueor-prod-rollback"
+    exit 2
+  fi
+fi
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker is not installed. Contabo production does not use Compose."
+  echo "Use deploy/vps/systemd-release-rollback.sh instead."
+  exit 2
+fi
 
 APP_DIR=/opt/valueor
 cd "$APP_DIR"

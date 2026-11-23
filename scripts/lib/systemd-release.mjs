@@ -1,0 +1,215 @@
+/**
+ * Contabo production release helpers (Nginx + systemd + release directories).
+ * Pure logic only — no secret values, no network, no systemd calls.
+ */
+import { createHash } from "node:crypto";
+
+export const PRODUCTION_TOPOLOGY = "nginx-systemd";
+export const COMPOSE_TOPOLOGY = "compose";
+
+export const DEFAULT_PATHS = Object.freeze({
+  appDir: "/opt/valueor",
+  envFile: "/opt/valueor/.env",
+  apiReleasesDir: "/opt/valueor-releases",
+  frontendReleasesDir: "/opt/valueor-frontend-releases",
+  apiCurrentLink: "/opt/valueor-current",
+  frontendCurrentLink: "/var/www/valueor",
+  frontendPreviousLink: "/var/www/valueor.previous",
+  apiSafeStart: "/etc/valueor/api-safe-start.sh",
+  unitDropInDir: "/etc/systemd/system/valueor-api.service.d",
+  unitDropInFile: "/etc/systemd/system/valueor-api.service.d/50-release.conf",
+  deployStateFile: "/var/lib/valueor/deploy-state.json",
+  backupRoot: "/var/backups/valueor/deploys",
+  runtimeNodeModules: "/opt/valueor-runtime/node_modules",
+  unitName: "valueor-api.service",
+  apiPort: 3001,
+});
+
+const FULL_SHA_RE = /^[0-9a-f]{40}$/;
+
+export function assertFullGitSha(sha) {
+  const value = String(sha ?? "").trim().toLowerCase();
+  if (!FULL_SHA_RE.test(value)) {
+    throw new Error("Refusing a ref that is not a full 40-char git SHA.");
+  }
+  return value;
+}
+
+export function shortReleaseId(sha) {
+  return assertFullGitSha(sha).slice(0, 16);
+}
+
+export function apiReleaseDir(paths, sha) {
+  return `${paths.apiReleasesDir}/${shortReleaseId(sha)}`;
+}
+
+export function frontendReleaseDir(paths, sha, label = "") {
+  const base = assertFullGitSha(sha).slice(0, 16);
+  const suffix = String(label || "").trim();
+  return suffix
+    ? `${paths.frontendReleasesDir}/${base}-${suffix}`
+    : `${paths.frontendReleasesDir}/${base}`;
+}
+
+/**
+ * Rewrite only the final `exec … start-api.mjs` line.
+ * Preserves every export / env assignment in the live safe-start script.
+ */
+export function rewriteApiSafeStartExec(scriptText, releaseRoot) {
+  const root = String(releaseRoot ?? "").replace(/[\\/]+$/, "").replace(/\\/g, "/");
+  if (!root.startsWith("/") && !/^[A-Za-z]:\//.test(root)) {
+    throw new Error("API release root must be an absolute path.");
+  }
+  const execLine = `exec /usr/bin/node ${root}/deploy/vps/start-api.mjs`;
+  const lines = String(scriptText).split(/\r?\n/);
+  let replaced = 0;
+  const next = lines.map((line) => {
+    if (/^\s*exec\s+\/usr\/bin\/node\s+\S+\/deploy\/vps\/start-api\.mjs\s*$/.test(line)) {
+      replaced += 1;
+      return execLine;
+    }
+    return line;
+  });
+  if (replaced !== 1) {
+    throw new Error(`Expected exactly one start-api.mjs exec line in api-safe-start.sh (found ${replaced}).`);
+  }
+  return next.join("\n");
+}
+
+export function unitReleaseDropInContents() {
+  return [
+    "# Managed by ValueOR systemd-release deploy. Do not replace the custom unit file.",
+    "# Overrides WorkingDirectory so /opt/valueor-current can flip between releases.",
+    "[Service]",
+    "WorkingDirectory=/opt/valueor-current",
+    "",
+  ].join("\n");
+}
+
+export function buildDeployState({
+  sha,
+  apiRelease,
+  frontendRelease,
+  previousApiRelease = null,
+  previousFrontendRelease = null,
+  previousFrontendPrevious = null,
+  deployedAt = new Date().toISOString(),
+}) {
+  return {
+    topology: PRODUCTION_TOPOLOGY,
+    sha: assertFullGitSha(sha),
+    deployedAt,
+    apiRelease,
+    frontendRelease,
+    previousApiRelease,
+    previousFrontendRelease,
+    previousFrontendPrevious,
+  };
+}
+
+export function planSymlinkSwitch({
+  apiCurrent,
+  frontendCurrent,
+  frontendPrevious,
+  nextApiRelease,
+  nextFrontendRelease,
+}) {
+  return {
+    apiCurrent: { link: apiCurrent, target: nextApiRelease },
+    frontendPrevious: {
+      link: frontendPrevious,
+      target: frontendCurrent ? resolveExistingTarget(frontendCurrent) : null,
+    },
+    frontendCurrent: { link: frontendCurrent, target: nextFrontendRelease },
+  };
+}
+
+function resolveExistingTarget(linkPath) {
+  return { fromLink: linkPath };
+}
+
+export function sha256Hex(bufferOrString) {
+  return createHash("sha256").update(bufferOrString).digest("hex");
+}
+
+function stripShellComments(scriptText) {
+  return String(scriptText)
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trim();
+      return trimmed && !trimmed.startsWith("#");
+    })
+    .join("\n");
+}
+
+export function productionScriptProblems(scriptText, { role }) {
+  const text = stripShellComments(scriptText);
+  const problems = [];
+  if (/\bdocker\b/i.test(text) || /\bcompose\.yml\b/.test(text)) {
+    problems.push(`${role} must not invoke Docker or Compose.`);
+  }
+  if (/\bcaddy\b/i.test(text) && role !== "docs") {
+    problems.push(`${role} must not invoke Caddy.`);
+  }
+  if (role === "prod-deploy-wrapper" || role === "prod-rollback-wrapper") {
+    if (!text.includes("systemd-release-deploy.sh") && role === "prod-deploy-wrapper") {
+      problems.push("valueor-prod-deploy.sh must call systemd-release-deploy.sh.");
+    }
+    if (!text.includes("systemd-release-rollback.sh") && role === "prod-rollback-wrapper") {
+      problems.push("valueor-prod-rollback.sh must call systemd-release-rollback.sh.");
+    }
+    if (/\bremote-deploy\.sh\b/.test(text) || /\bremote-rollback\.sh\b/.test(text)) {
+      problems.push(`${role} must not call Compose remote-deploy/rollback scripts.`);
+    }
+  }
+  return problems;
+}
+
+export function workflowProductionPathProblems(workflowText) {
+  const text = String(workflowText);
+  const problems = [];
+  if (!text.includes("valueor-production")) {
+    problems.push("vps-deploy.yml must run deploy on the valueor-production self-hosted runner.");
+  }
+  if (!text.includes("ubuntu-latest")) {
+    problems.push("vps-deploy.yml must keep gate/build on GitHub-hosted ubuntu-latest.");
+  }
+  if (text.includes("remote-deploy.sh") || text.includes("remote-rollback.sh")) {
+    problems.push("vps-deploy.yml must not call Compose remote-deploy/rollback scripts.");
+  }
+  if (!text.includes("valueor-prod-deploy") || !text.includes("valueor-prod-rollback")) {
+    problems.push("vps-deploy.yml must invoke the restricted valueor-prod-deploy/rollback wrappers.");
+  }
+  if (!/github\.ref\s*==\s*'refs\/heads\/main'/.test(text)) {
+    problems.push("vps-deploy.yml must restrict actions to main.");
+  }
+  return problems;
+}
+
+export function healthcheckCommands({ apiPort = 3001 } = {}) {
+  return {
+    localHealthz: `curl -fsS --max-time 5 http://127.0.0.1:${apiPort}/api/healthz`,
+    localReadyz: `curl -fsS --max-time 5 http://127.0.0.1:${apiPort}/api/readyz`,
+    apiViaNginx:
+      "curl -fsSk --max-time 5 --resolve api.valueor.org:443:127.0.0.1 https://api.valueor.org/api/healthz",
+    webhookViaNginx:
+      "curl -fsSk --max-time 5 --resolve webhook.valueor.org:443:127.0.0.1 https://webhook.valueor.org/api/healthz",
+    wwwViaNginx:
+      "curl -fsSk --max-time 5 --resolve www.valueor.org:443:127.0.0.1 -o /dev/null -w '%{http_code}' https://www.valueor.org/",
+  };
+}
+
+/**
+ * Atomic symlink replace: link -> target (directory must exist).
+ * Returns shell commands (no execution).
+ */
+export function symlinkReplaceCommands(linkPath, targetPath) {
+  const link = String(linkPath);
+  const target = String(targetPath);
+  const tmp = `${link}.new.$$`;
+  return [
+    `test -d "${target}"`,
+    `ln -sfn "${target}" "${tmp}"`,
+    `mv -Tf "${tmp}" "${link}"`,
+  ];
+}

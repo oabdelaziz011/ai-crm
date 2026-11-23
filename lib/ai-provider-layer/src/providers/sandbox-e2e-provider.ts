@@ -32,6 +32,8 @@ export type SandboxLlmInvocation = {
   finishReason: string;
   responseText: string;
   toolCallName: string | null;
+  /** Last tool-role message content (debug: denial vs real escalate result). */
+  lastToolContent: string | null;
 };
 
 const SCHEMA = {
@@ -176,7 +178,17 @@ class SandboxE2EProvider implements EnterpriseAIProvider {
         toolCalls: response.toolCalls,
       };
     } else if (wantsHuman) {
-      text = "I've connected you with a human teammate. They will continue this chat.";
+      const toolPayload = [...input.messages]
+        .reverse()
+        .find((message) => message.role === "tool");
+      const toolText = typeof toolPayload?.content === "string" ? toolPayload.content : "";
+      const escalateFailed =
+        /AI_GUIDE_TOOL_BLOCKED|PUBLIC_WEB_CHAT_TOOL_BLOCKED|"success"\s*:\s*false|"denied"\s*:\s*true/i.test(
+          toolText,
+        );
+      text = escalateFailed
+        ? "I could not transfer you to a teammate, and the request was not registered."
+        : "I've connected you with a human teammate. They will continue this chat.";
     } else {
       text = `I can help with that. You said: "${userMessage || "hello"}"`;
     }
@@ -189,6 +201,7 @@ class SandboxE2EProvider implements EnterpriseAIProvider {
       totalTokens: userMessage.length + text.length,
     };
 
+    const lastTool = [...input.messages].reverse().find((message) => message.role === "tool");
     invocations.push({
       at: new Date().toISOString(),
       companyId: context.companyId,
@@ -201,6 +214,8 @@ class SandboxE2EProvider implements EnterpriseAIProvider {
       finishReason,
       responseText: text,
       toolCallName,
+      lastToolContent:
+        lastTool && typeof lastTool.content === "string" ? lastTool.content.slice(0, 800) : null,
     });
 
     const forbidden = [

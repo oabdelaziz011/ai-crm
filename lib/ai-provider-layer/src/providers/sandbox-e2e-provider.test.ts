@@ -62,6 +62,30 @@ describe("sandbox E2E LLM provider", () => {
     assert.match(response.text, /human teammate/i);
   });
 
+  it("does not claim a human handoff when the escalate tool result was a denial", async () => {
+    const provider = createSandboxE2EProvider({});
+    const response = await provider.chatCompletion(
+      request({
+        messages: [
+          { role: "user", content: "Please transfer this conversation now." },
+          {
+            role: "tool",
+            content: JSON.stringify({
+              success: false,
+              errorCode: "AI_GUIDE_TOOL_BLOCKED",
+              reason: "Tool execution is blocked for AI Guide conversations.",
+            }),
+            toolCallId: "sandbox_escalate_1",
+          },
+        ],
+        tools: [{ type: "function", function: { name: "escalate_to_human" } }],
+      }),
+    );
+    assert.equal(response.finishReason, "stop");
+    assert.match(response.text, /could not transfer/i);
+    assert.doesNotMatch(response.text, /connected you/i);
+  });
+
   it("throws on forced failures so the existing runtime retry/failure path can run", async () => {
     setSandboxE2EForcedFailures(1);
     const provider = createSandboxE2EProvider({});

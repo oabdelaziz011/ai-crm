@@ -19,7 +19,7 @@ const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY;
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
-await page.goto("http://localhost:5173/login");
+await page.goto("http://localhost:5180/login");
 
 const res = await page.evaluate(
   async ({ url, key }) => {

@@ -23,7 +23,7 @@ const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
 const SUPER_EMAIL = "demo-platform@vaultos.local";
 const SUPER_PASSWORD = "DemoVault2026!";
-const BASE = process.env.LOGIN_APP_URL || "http://127.0.0.1:5173";
+const BASE = process.env.LOGIN_APP_URL || "http://127.0.0.1:5180";
 
 const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
 const stamp = Date.now();

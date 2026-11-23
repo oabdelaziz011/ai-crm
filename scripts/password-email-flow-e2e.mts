@@ -131,7 +131,7 @@ async function main() {
   const runStarted = new Date().toISOString();
 
   // Origins the app may use at runtime
-  const origins = ["http://localhost:5173", "http://192.168.1.10:5173"];
+  const origins = ["http://localhost:5180", "http://192.168.1.10:5173"];
   const resetRedirect = passwordSetupCallbackUrl(origins[0]);
 
   // Snapshot auth.users recovery state via anon cannot - use HTTP recover + SDK

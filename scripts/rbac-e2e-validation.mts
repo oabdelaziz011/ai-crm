@@ -257,7 +257,7 @@ async function verifyEdgeFunctionRejection() {
     companyId: "d0000010-0001-4001-8001-000000000002",
     roleId: "d0000030-0001-4001-8001-000000000004",
     isActive: true,
-    redirectTo: "http://localhost:5173/auth/callback?next=%2Freset-password",
+    redirectTo: "http://localhost:5180/auth/callback?next=%2Freset-password",
   };
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/provision-user`, {

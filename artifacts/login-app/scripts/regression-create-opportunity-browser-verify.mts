@@ -10,7 +10,7 @@ import { chromium, type Page } from "playwright";
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), "../.verification-screenshots");
 mkdirSync(outDir, { recursive: true });
 
-const baseUrl = process.env.APP_URL ?? "http://localhost:5173";
+const baseUrl = process.env.APP_URL ?? "http://localhost:5180";
 const startFrom = process.env.VERIFY_FROM ?? "table";
 const consoleErrors: string[] = [];
 

@@ -41,7 +41,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 
-await page.goto("http://localhost:5173/login", { waitUntil: "domcontentloaded" });
+await page.goto("http://localhost:5180/login", { waitUntil: "domcontentloaded" });
 await page.evaluate(
   async ({ url, key }) => {
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.110.2");
@@ -59,7 +59,7 @@ await page.waitForTimeout(4000);
 console.log("After reload URL:", page.url());
 
 if (!page.url().includes("/dashboard")) {
-  await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:5180/dashboard/omnichannel", { waitUntil: "networkidle" });
   await page.waitForTimeout(4000);
 }
 console.log("Dashboard URL:", page.url());

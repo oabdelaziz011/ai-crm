@@ -49,7 +49,7 @@ page.on("console", (msg) => {
 
 push(`=== OMNI REALTIME RUNTIME AUDIT started ${new Date().toISOString()} ===`);
 
-await page.goto("http://localhost:5173/login", { waitUntil: "domcontentloaded", timeout: 60_000 });
+await page.goto("http://localhost:5180/login", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.evaluate(async ({ url, pubKey }) => {
   const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.1");
   await createClient(url, pubKey).auth.signInWithPassword({
@@ -59,7 +59,7 @@ await page.evaluate(async ({ url, pubKey }) => {
 }, { url, pubKey });
 
 push("--- navigated to login, signing in ---");
-await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle", timeout: 120_000 });
+await page.goto("http://localhost:5180/dashboard/omnichannel", { waitUntil: "networkidle", timeout: 120_000 });
 push("--- omnichannel loaded, waiting for subscription mount ---");
 await page.waitForTimeout(8000);
 

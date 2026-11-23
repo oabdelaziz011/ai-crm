@@ -39,7 +39,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 
-await page.goto("http://localhost:5173/login", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5180/login", { waitUntil: "networkidle" });
 await page.evaluate(
   ({ storageKey, sessionJson }) => {
     localStorage.setItem(storageKey, sessionJson);
@@ -47,7 +47,7 @@ await page.evaluate(
   { storageKey, sessionJson },
 );
 
-await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5180/dashboard/omnichannel", { waitUntil: "networkidle" });
 await page.waitForTimeout(2000);
 
 const searchInput = page.locator('input[placeholder*="Search"], input[placeholder*="search"]').first();

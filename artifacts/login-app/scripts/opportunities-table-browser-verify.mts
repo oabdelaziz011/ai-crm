@@ -1,7 +1,7 @@
 /**
  * Local Playwright verification — Opportunities table-first UX.
  *
- * Prerequisites: login-app on APP_URL (default http://localhost:5173), local stack.
+ * Prerequisites: login-app on APP_URL (default http://localhost:5180), local stack.
  * Uses the same disposable demo login pattern as existing browser harnesses.
  * Does not send outbound messages. Screenshots land in .verification-screenshots/.
  *
@@ -16,7 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(here, "../.verification-screenshots");
 mkdirSync(outDir, { recursive: true });
 
-const baseUrl = process.env.APP_URL ?? process.env.LOGIN_APP_URL ?? "http://localhost:5173";
+const baseUrl = process.env.APP_URL ?? process.env.LOGIN_APP_URL ?? "http://localhost:5180";
 const email = process.env.VALUEOR_LOCAL_BROWSER_EMAIL ?? "demo-platform@vaultos.local";
 const password = process.env.VALUEOR_LOCAL_BROWSER_PASSWORD ?? "DemoVault2026!";
 

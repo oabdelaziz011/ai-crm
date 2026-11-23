@@ -30,7 +30,7 @@ await admin.from("profiles").update({ company_id: companyId }).eq("id", demoUser
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-await page.goto("http://localhost:5173/login", { waitUntil: "domcontentloaded" });
+await page.goto("http://localhost:5180/login", { waitUntil: "domcontentloaded" });
 await page.evaluate(async ({ url, key }) => {
   const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.110.2");
   await createClient(url, key).auth.signInWithPassword({
@@ -39,7 +39,7 @@ await page.evaluate(async ({ url, key }) => {
   });
 }, { url, key });
 
-await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5180/dashboard/omnichannel", { waitUntil: "networkidle" });
 await page.waitForTimeout(8000);
 
 const searchInput = page.locator("input.bg-transparent.text-sm").first();

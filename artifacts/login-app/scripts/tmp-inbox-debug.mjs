@@ -29,7 +29,7 @@ console.log("profile company before/after", before, after);
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
-await page.goto("http://localhost:5173/login");
+await page.goto("http://localhost:5180/login");
 await page.evaluate(async ({ url, key }) => {
   const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.110.2");
   await createClient(url, key).auth.signInWithPassword({
@@ -40,7 +40,7 @@ await page.evaluate(async ({ url, key }) => {
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(5000);
 console.log("url after reload", page.url());
-await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5180/dashboard/omnichannel", { waitUntil: "networkidle" });
 await page.waitForTimeout(5000);
 const text = await page.textContent("body");
 console.log("has CNV-000031", text?.includes("CNV-000031"));

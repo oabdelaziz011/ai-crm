@@ -32,12 +32,12 @@ function loadEnv() {
 }
 
 const URI_ALLOW_LIST = [
-  "http://localhost:5173/**",
-  "http://127.0.0.1:5173/**",
-  "http://localhost:5173/auth/callback",
-  "http://127.0.0.1:5173/auth/callback",
-  "http://localhost:5173/reset-password",
-  "http://127.0.0.1:5173/reset-password",
+  "http://localhost:5180/**",
+  "http://127.0.0.1:5180/**",
+  "http://localhost:5180/auth/callback",
+  "http://127.0.0.1:5180/auth/callback",
+  "http://localhost:5180/reset-password",
+  "http://127.0.0.1:5180/reset-password",
   "https://valueor.org/**",
   "https://app.valueor.org/**",
 ].join(",");
@@ -53,8 +53,8 @@ async function main() {
    SUPABASE_ACCESS_TOKEN=sbp_... node scripts/fix-auth-redirect-urls.mjs
 
 Or in the Dashboard → Authentication → URL Configuration set:
-  Site URL: http://localhost:5173
-  Redirect URLs: include http://localhost:5173/** and http://127.0.0.1:5173/**
+  Site URL: http://localhost:5180
+  Redirect URLs: include http://localhost:5180/** and http://127.0.0.1:5180/**
 `);
     process.exit(1);
   }
@@ -82,7 +82,7 @@ Or in the Dashboard → Authentication → URL Configuration set:
     method: "PATCH",
     headers,
     body: JSON.stringify({
-      site_url: "http://localhost:5173",
+      site_url: "http://localhost:5180",
       uri_allow_list: URI_ALLOW_LIST,
     }),
   });

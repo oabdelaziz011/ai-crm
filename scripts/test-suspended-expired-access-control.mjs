@@ -190,8 +190,8 @@ try {
   // ── E: Billing admin checkout allowed ───────────────────────────
   const checkout = await api(admin.token, "POST", "/api/billing/saas/checkout", {
     companyId: ALPHA,
-    returnUrl: "http://localhost:5173/dashboard?payment_return=1&sandbox=1",
-    cancelUrl: "http://localhost:5173/dashboard?payment_return=1&sandbox=1",
+    returnUrl: "http://localhost:5180/dashboard?payment_return=1&sandbox=1",
+    cancelUrl: "http://localhost:5180/dashboard?payment_return=1&sandbox=1",
     idempotencyKey: `sec-e-${Date.now()}`,
   });
   check("E.billing_admin_checkout_allowed", checkout.status === 200 && checkout.json?.ok === true, {
@@ -211,7 +211,7 @@ try {
     const emp = await login("demo-employee@vaultos.local");
     const empCheckout = await api(emp.token, "POST", "/api/billing/saas/checkout", {
       companyId: ALPHA,
-      returnUrl: "http://localhost:5173/dashboard?payment_return=1",
+      returnUrl: "http://localhost:5180/dashboard?payment_return=1",
       idempotencyKey: `sec-f-${Date.now()}`,
     });
     const denied =
@@ -231,7 +231,7 @@ try {
   // ── H: Cross-company denied ─────────────────────────────────────
   const cross = await api(admin.token, "POST", "/api/billing/saas/checkout", {
     companyId: BETA,
-    returnUrl: "http://localhost:5173/dashboard?payment_return=1",
+    returnUrl: "http://localhost:5180/dashboard?payment_return=1",
     idempotencyKey: `sec-h-${Date.now()}`,
   });
   check("H.cross_company_checkout_denied", cross.status === 403, {

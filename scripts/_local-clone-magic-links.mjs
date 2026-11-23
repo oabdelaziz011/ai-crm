@@ -16,7 +16,7 @@ for (const email of emails) {
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
-    options: { redirectTo: "http://localhost:5173/auth/callback" },
+    options: { redirectTo: "http://localhost:5180/auth/callback" },
   });
   if (error) {
     console.log(JSON.stringify({ email, error: error.message }));

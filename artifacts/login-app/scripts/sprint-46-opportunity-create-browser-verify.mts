@@ -9,7 +9,7 @@ import { chromium } from "playwright";
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), "../.verification-screenshots");
 mkdirSync(outDir, { recursive: true });
 
-const baseUrl = process.env.APP_URL ?? "http://localhost:5173";
+const baseUrl = process.env.APP_URL ?? "http://localhost:5180";
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });

@@ -270,9 +270,9 @@ try {
   assert.equal(health.status, 200);
   pass("api_server_local", `${API_SERVER}/api/health → 200`);
 
-  const login = await fetch("http://127.0.0.1:5173/");
+  const login = await fetch("http://127.0.0.1:5180/");
   assert.ok(login.status >= 200 && login.status < 500);
-  pass("login_app_local", `http://127.0.0.1:5173 → ${login.status}`);
+  pass("login_app_local", `http://127.0.0.1:5180 → ${login.status}`);
 
   assert.equal(process.env.VALUEOR_ENV, "local");
   const outboundPermitted = isLocalExternalOutboundPermitted();
@@ -621,7 +621,7 @@ try {
         database: "127.0.0.1:54322",
         supabase: supabaseUrl,
         apiServer: API_SERVER,
-        loginApp: "http://127.0.0.1:5173",
+        loginApp: "http://127.0.0.1:5180",
         outboundPermittedAtStart: isLocalExternalOutboundPermitted(),
         liveCustomerSend: false,
         deliveryMode:

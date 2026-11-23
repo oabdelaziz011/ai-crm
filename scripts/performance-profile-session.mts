@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = resolve(root, "artifacts/performance-profile");
 mkdirSync(outDir, { recursive: true });
 
-const BASE = process.env.PROFILE_BASE_URL ?? "http://localhost:5173";
+const BASE = process.env.PROFILE_BASE_URL ?? "http://localhost:5180";
 const EMAIL = process.env.PROFILE_EMAIL ?? "demo-beta-admin@vaultos.local";
 const PASSWORD = process.env.PROFILE_PASSWORD ?? "DemoVault2026!";
 

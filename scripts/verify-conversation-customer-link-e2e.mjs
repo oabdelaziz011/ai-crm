@@ -159,7 +159,7 @@ const report = {
     customerRow?.phone === TEST_PHONE &&
     customerRow?.age === 55 &&
     (customerRow?.gender === "female" || customerRow?.gender === "Female"),
-  teamInboxUrl: "http://localhost:5173/dashboard/conversations",
+  teamInboxUrl: "http://localhost:5180/dashboard/conversations",
   conversationNumber: convBeforeLinkCheck?.conversation_number,
 };
 

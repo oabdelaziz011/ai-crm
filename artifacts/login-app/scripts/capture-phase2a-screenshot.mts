@@ -14,12 +14,12 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 
 try {
-  await page.goto("http://localhost:5173/login", { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto("http://localhost:5180/login", { waitUntil: "networkidle", timeout: 60000 });
   await page.fill('input[placeholder="you@example.com"]', "demo-platform@vaultos.local");
   await page.fill('input[placeholder="••••••••"]', "DemoVault2026!");
   await page.click('button:has-text("Authenticate")');
   await page.waitForURL(/\/dashboard/, { timeout: 60000 });
-  await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto("http://localhost:5180/dashboard/omnichannel", { waitUntil: "networkidle", timeout: 60000 });
   await page.waitForTimeout(3000);
 
   const cnv = page.locator("button").filter({ hasText: "CNV-000010" }).first();

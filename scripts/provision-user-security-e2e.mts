@@ -37,7 +37,7 @@ const env = loadEnv();
 const SUPABASE_URL = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
 const SUPABASE_KEY = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY;
 const PASSWORD = "DemoVault2026!";
-const REDIRECT = "http://localhost:5173/auth/callback?next=%2Freset-password";
+const REDIRECT = "http://localhost:5180/auth/callback?next=%2Freset-password";
 
 type Result = { name: string; ok: boolean; detail: string };
 const results: Result[] = [];

@@ -59,7 +59,7 @@ async function main() {
   });
   const accessToken = signIn.data.session?.access_token;
   const inviteEmail = `oabdelaziz011+e2e${Date.now()}@gmail.com`;
-  const redirectLocalhost = "http://localhost:5173/auth/callback?next=%2Freset-password";
+  const redirectLocalhost = "http://localhost:5180/auth/callback?next=%2Freset-password";
   const redirectAllowed = "http://192.168.1.10:5173/auth/callback?next=%2Freset-password";
 
   const { data: companies } = await client.from("companies").select("id").limit(1);

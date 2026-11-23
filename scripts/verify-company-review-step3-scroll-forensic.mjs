@@ -21,7 +21,7 @@ const env = loadProjectEnv(root);
 const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
 const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
-const BASE = process.env.LOGIN_APP_URL || "http://127.0.0.1:5173";
+const BASE = process.env.LOGIN_APP_URL || "http://127.0.0.1:5180";
 const SUPER_EMAIL = "demo-platform@vaultos.local";
 const SUPER_PASSWORD = "DemoVault2026!";
 

@@ -39,7 +39,7 @@ const SUPABASE_KEY = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHAB
 const SERVICE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPER_EMAIL = env.PROVISION_VALIDATION_SUPER_EMAIL || "super.admin@vaultos.local";
 const SUPER_PASSWORD = env.PROVISION_VALIDATION_SUPER_PASSWORD || "DemoVault2026!";
-const REDIRECT = "http://localhost:5173/auth/callback?next=%2Freset-password";
+const REDIRECT = "http://localhost:5180/auth/callback?next=%2Freset-password";
 
 type Step = { step: string; ok: boolean; detail: string };
 const steps: Step[] = [];

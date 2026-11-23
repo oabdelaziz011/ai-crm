@@ -80,7 +80,7 @@ page.on("response", async (res) => {
   });
 });
 
-await page.goto("http://localhost:5173/login", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5180/login", { waitUntil: "networkidle" });
 
 report.injectedEnv = {
   url: env.VITE_SUPABASE_URL ?? null,

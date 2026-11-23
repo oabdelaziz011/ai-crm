@@ -180,7 +180,7 @@ async function ping(name, target) {
   }
 }
 await ping("supabase_auth_health", `${url}/auth/v1/health`);
-await ping("frontend", "http://localhost:5173/");
+await ping("frontend", "http://localhost:5180/");
 await ping("api", "http://localhost:3001/health");
 await ping("api_root", "http://localhost:3001/");
 

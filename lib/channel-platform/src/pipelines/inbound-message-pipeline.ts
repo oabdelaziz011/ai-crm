@@ -557,6 +557,17 @@ export class InboundMessagePipeline {
     try {
       let normalized = adapter.normalizeInbound({ companyChannel }, request.payload);
 
+      if (
+        (request.channelKey === "messenger" || request.channelKey === "instagram") &&
+        typeof adapter.enrichInboundSenderProfile === "function"
+      ) {
+        try {
+          normalized = await adapter.enrichInboundSenderProfile({ companyChannel }, normalized);
+        } catch {
+          // Best-effort profile enrichment — never block inbound.
+        }
+      }
+
       if (request.channelKey === "whatsapp") {
         logWhatsApp("Parsed message", {
           companyId: request.companyId,

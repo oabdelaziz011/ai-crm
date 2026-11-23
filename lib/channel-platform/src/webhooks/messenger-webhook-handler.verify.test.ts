@@ -35,6 +35,7 @@ describe("MessengerWebhookHandler verifyGetByVerifyToken", () => {
     });
     assert.equal(result.status, 403);
     assert.equal(result.body, "Forbidden");
+    assert.equal(result.failReason, "missing_verify_token");
   });
 
   it("returns 403 when settings exist but no messenger company_channels row matches (zero)", async () => {
@@ -44,6 +45,8 @@ describe("MessengerWebhookHandler verifyGetByVerifyToken", () => {
       "hub.challenge": "x",
     });
     assert.equal(result.status, 403);
+    assert.equal(result.failReason, "match_count_zero");
+    assert.equal(result.matchCount, 0);
   });
 
   it("returns 403 when multiple messenger channels match the same verify token", async () => {
@@ -56,6 +59,8 @@ describe("MessengerWebhookHandler verifyGetByVerifyToken", () => {
       "hub.challenge": "x",
     });
     assert.equal(result.status, 403);
+    assert.equal(result.failReason, "match_count_ambiguous");
+    assert.equal(result.matchCount, 2);
   });
 
   it("returns 403 for cross-company ambiguous matches (two companies, same token)", async () => {
@@ -77,5 +82,25 @@ describe("MessengerWebhookHandler verifyGetByVerifyToken", () => {
       "hub.challenge": "challenge-123",
     });
     assert.equal(result.status, 403);
+    assert.equal(result.failReason, "challenge_rejected");
+  });
+
+  it("scoped verify returns resolve_channel_failed when company channel credentials cannot resolve", async () => {
+    const handler = createMessengerWebhookHandler({
+      services: {} as never,
+      ports: { registry: {} } as never,
+      resolveSystemContext: () => ({}) as never,
+      resolveCompanyChannel: async () => {
+        throw new Error("Messenger webhook verify token is not configured.");
+      },
+    });
+    const result = await handler.verifyGet({
+      companyChannelId: "cc-pending",
+      "hub.mode": "subscribe",
+      "hub.verify_token": "tok",
+      "hub.challenge": "challenge-123",
+    });
+    assert.equal(result.status, 403);
+    assert.equal(result.failReason, "resolve_channel_failed");
   });
 });

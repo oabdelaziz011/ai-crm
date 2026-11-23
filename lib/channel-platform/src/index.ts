@@ -151,6 +151,7 @@ export * from "./adapters/meta/meta-graph-config.js";
 export * from "./adapters/meta/meta-graph-webhook.js";
 export * from "./adapters/meta/meta-messaging-webhook.js";
 export * from "./adapters/meta/meta-messaging-adapter.js";
+export * from "./adapters/meta/meta-sender-profile.js";
 export * from "./webhooks/webhook-channel-guards.js";
 export * from "./debug/webhook-adapter-classification.js";
 export * from "./debug/whatsapp-pipeline-perf.js";

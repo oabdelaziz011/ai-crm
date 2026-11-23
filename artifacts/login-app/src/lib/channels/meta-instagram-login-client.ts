@@ -15,6 +15,8 @@ export type MetaInstagramLoginReadiness = {
   ready: boolean;
   companyAllowed: boolean;
   reason: string | null;
+  /** Env var names still required (never secret values). */
+  missingConfigKeys?: string[];
   redirectUri?: string;
   scopes?: string[];
   graphApiVersion?: string;
@@ -89,9 +91,18 @@ export function startMetaInstagramLogin(companyId: string): Promise<{
 export function disconnectMetaInstagramLogin(companyId: string): Promise<{
   ok: true;
   softDisconnected: true;
-  metaRevoked: false;
+  metaRevoked: boolean;
 }> {
   return apiJson("POST", "/meta/instagram-login/disconnect", { companyId });
+}
+
+export function refreshMetaInstagramLoginToken(companyId: string): Promise<{
+  ok: boolean;
+  status: MetaConnectionStatus;
+  tokenExpiresAt: string | null;
+  message: string;
+}> {
+  return apiJson("POST", "/meta/instagram-login/refresh-token", { companyId });
 }
 
 export function isMetaInstagramLoginUiEnabled(): boolean {

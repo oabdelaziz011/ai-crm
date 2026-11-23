@@ -23,7 +23,11 @@ import {
   buildMessengerWebhookUrl,
   resolveChannelWebhookBaseUrl,
 } from "@/lib/channels/whatsapp-channel-utils";
-import { isMessengerApiConfigured, type MessengerSettingsDraft } from "@/lib/channels/messenger-settings";
+import {
+  isMessengerApiConfigured,
+  revealMessengerWebhookVerifyToken,
+  type MessengerSettingsDraft,
+} from "@/lib/channels/messenger-settings";
 import {
   draftWebhookVerifyTokenFromSettings,
   isCopyableWebhookVerifyToken,
@@ -31,8 +35,13 @@ import {
 import { MetaPagesOauthPanel } from "@/components/channels/meta-pages-oauth-panel";
 import { MessengerLoginOauthPanel } from "@/components/channels/messenger-login-oauth-panel";
 import { MetaChannelConnectionStrip } from "@/components/channels/meta-channel-connection-strip";
+import { ChannelAiEmployeeAssignment } from "@/components/channels/channel-ai-employee-assignment";
 import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-token-field";
-import { disconnectMetaMessengerLogin } from "@/lib/channels/meta-messenger-login-client";
+import {
+  disconnectMetaMessengerLogin,
+  fetchMetaMessengerLoginConnection,
+  type MetaMessengerLoginConnection,
+} from "@/lib/channels/meta-messenger-login-client";
 import { useQueryClient } from "@tanstack/react-query";
 
 const EMPTY_SETTINGS: MessengerSettingsDraft = {
@@ -65,11 +74,33 @@ export function SettingsMessengerPage() {
 
   const [draft, setDraft] = useState(EMPTY_SETTINGS);
   const [disconnectBusy, setDisconnectBusy] = useState(false);
+  const [oauthConnection, setOauthConnection] = useState<MetaMessengerLoginConnection | null>(null);
 
   const refreshAfterOauth = () => {
     void queryClient.invalidateQueries({ queryKey: messengerSettingsKey(companyId) });
     void refetchHealth();
+    if (companyId) {
+      void fetchMetaMessengerLoginConnection(companyId)
+        .then(setOauthConnection)
+        .catch(() => setOauthConnection(null));
+    }
   };
+
+  useEffect(() => {
+    if (!companyId) {
+      setOauthConnection(null);
+      return;
+    }
+    void fetchMetaMessengerLoginConnection(companyId)
+      .then(setOauthConnection)
+      .catch(() => setOauthConnection(null));
+  }, [companyId, settings?.updatedAt]);
+
+  const oauthConnected = Boolean(
+    oauthConnection?.hasAccessToken &&
+      oauthConnection.enabled &&
+      oauthConnection.status !== "not_connected",
+  );
 
   const onSoftDisconnect = async () => {
     if (!companyId) return;
@@ -188,8 +219,9 @@ export function SettingsMessengerPage() {
                 settings?.enabled && settings.pageId && settings.hasAccessToken && health?.ok,
               )}
               enabled={Boolean(settings?.enabled)}
+              connectionStatus={oauthConnection?.status ?? null}
               assetLabel={t("notifications.messenger.settings.pageId")}
-              assetValue={settings?.pageId}
+              assetValue={oauthConnection?.pageName || settings?.pageId}
               hasAccessToken={Boolean(settings?.hasAccessToken)}
               hasWebhookVerifyToken={Boolean(settings?.hasWebhookVerifyToken)}
               healthOk={health?.ok ?? null}
@@ -202,6 +234,13 @@ export function SettingsMessengerPage() {
                 companyId={companyId}
                 onConnected={refreshAfterOauth}
                 onDisconnected={refreshAfterOauth}
+              />
+            ) : null}
+            {companyId ? (
+              <ChannelAiEmployeeAssignment
+                companyId={companyId}
+                companyChannelId={companyChannelId}
+                channelLabel={t("notifications.messenger.settings.title")}
               />
             ) : null}
             {companyId ? (
@@ -230,67 +269,157 @@ export function SettingsMessengerPage() {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.messenger.settings.pageId")}</Label>
-                <Input
-                  value={draft.pageId}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, pageId: event.target.value }))}
+            {oauthConnected ? (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">
+                  {t("notifications.messengerLogin.advancedManual", {
+                    defaultValue: "Advanced: manual Page credentials",
+                  })}
+                </summary>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.messenger.settings.pageId")}</Label>
+                    <Input
+                      value={draft.pageId}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, pageId: event.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.messenger.settings.accessToken")}</Label>
+                    <Input
+                      type="password"
+                      value={draft.accessToken}
+                      placeholder={settings?.hasAccessToken ? "********" : ""}
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, accessToken: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("notifications.messenger.settings.apiVersion")}</Label>
+                    <Input
+                      value={draft.apiVersion}
+                      placeholder="v21.0"
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, apiVersion: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.messenger.settings.appSecret")}</Label>
+                    <Input
+                      type="password"
+                      value={draft.appSecret}
+                      placeholder={settings?.hasAppSecret ? "********" : ""}
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, appSecret: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <WebhookVerifyTokenField
+                    id="messenger-webhook-verify-token"
+                    label={t("notifications.messenger.settings.webhookVerifyToken")}
+                    value={draft.webhookVerifyToken}
+                    hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
+                    onChange={(webhookVerifyToken) =>
+                      setDraft((prev) => ({ ...prev, webhookVerifyToken }))
+                    }
+                    onGenerate={onGenerateVerifyToken}
+                    onRevealStored={
+                      companyId && isMessengerApiConfigured()
+                        ? async () => {
+                            const revealed = await revealMessengerWebhookVerifyToken(companyId);
+                            return revealed.webhookVerifyToken;
+                          }
+                        : undefined
+                    }
+                    hint={t("notifications.messenger.settings.webhookVerifyHint")}
+                  />
+                </div>
+              </details>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.messenger.settings.pageId")}</Label>
+                  <Input
+                    value={draft.pageId}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, pageId: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.messenger.settings.accessToken")}</Label>
+                  <Input
+                    type="password"
+                    value={draft.accessToken}
+                    placeholder={settings?.hasAccessToken ? "********" : ""}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, accessToken: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.messenger.settings.apiVersion")}</Label>
+                  <Input
+                    value={draft.apiVersion}
+                    placeholder="v21.0"
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, apiVersion: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.messenger.settings.appSecret")}</Label>
+                  <Input
+                    type="password"
+                    value={draft.appSecret}
+                    placeholder={settings?.hasAppSecret ? "********" : ""}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, appSecret: event.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("notifications.messenger.settings.appSecretHint")}
+                  </p>
+                </div>
+                <WebhookVerifyTokenField
+                  id="messenger-webhook-verify-token"
+                  label={t("notifications.messenger.settings.webhookVerifyToken")}
+                  value={draft.webhookVerifyToken}
+                  hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
+                  onChange={(webhookVerifyToken) =>
+                    setDraft((prev) => ({ ...prev, webhookVerifyToken }))
+                  }
+                  onGenerate={onGenerateVerifyToken}
+                  onRevealStored={
+                    companyId && isMessengerApiConfigured()
+                      ? async () => {
+                          const revealed = await revealMessengerWebhookVerifyToken(companyId);
+                          return revealed.webhookVerifyToken;
+                        }
+                      : undefined
+                  }
+                  hint={t("notifications.messenger.settings.webhookVerifyHint")}
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.messenger.settings.accessToken")}</Label>
-                <Input
-                  type="password"
-                  value={draft.accessToken}
-                  placeholder={settings?.hasAccessToken ? "********" : ""}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, accessToken: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("notifications.messenger.settings.apiVersion")}</Label>
-                <Input
-                  value={draft.apiVersion}
-                  placeholder="v21.0"
-                  onChange={(event) => setDraft((prev) => ({ ...prev, apiVersion: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.messenger.settings.appSecret")}</Label>
-                <Input
-                  type="password"
-                  value={draft.appSecret}
-                  placeholder={settings?.hasAppSecret ? "********" : ""}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, appSecret: event.target.value }))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("notifications.messenger.settings.appSecretHint")}
-                </p>
-              </div>
-              <WebhookVerifyTokenField
-                id="messenger-webhook-verify-token"
-                label={t("notifications.messenger.settings.webhookVerifyToken")}
-                value={draft.webhookVerifyToken}
-                hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
-                onChange={(webhookVerifyToken) => setDraft((prev) => ({ ...prev, webhookVerifyToken }))}
-                onGenerate={onGenerateVerifyToken}
-                hint={t("notifications.messenger.settings.webhookVerifyHint")}
-              />
-            </div>
+            )}
 
             <div className="space-y-3 rounded-lg border border-white/5 bg-white/[0.02] p-4">
               <Label>{t("notifications.messenger.settings.webhookUrl")}</Label>
               <div className="space-y-2">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">
-                    {t("notifications.messenger.settings.webhookUrlGlobal")}
+                    {t("notifications.messenger.settings.webhookUrlGlobal", {
+                      defaultValue: "Meta callback URL (recommended for Verify and save)",
+                    })}
                   </p>
                   <Input readOnly value={globalWebhookUrl} />
                 </div>
                 {channelWebhookUrl ? (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">
-                      {t("notifications.messenger.settings.webhookUrlChannel")}
+                      {t("notifications.messenger.settings.webhookUrlChannel", {
+                        defaultValue: "Channel-scoped URL (also valid after token reveal / pending setup)",
+                      })}
                     </p>
                     <Input readOnly value={channelWebhookUrl} />
                   </div>

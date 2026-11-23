@@ -754,6 +754,23 @@ router.get("/messenger", async (req: Request, res: Response) => {
   try {
     const platform = getWebhookPlatform();
     const result = await platform.messengerHandler.verifyGetByVerifyToken(req.query);
+    logger.info(
+      {
+        path: req.path,
+        status: result.status,
+        ok: result.status === 200,
+        failReason: result.failReason ?? null,
+        matchCount: result.matchCount ?? null,
+        hasVerifyToken: Boolean(req.query["hub.verify_token"]),
+        hasChallenge: Boolean(req.query["hub.challenge"]),
+        mode: typeof req.query["hub.mode"] === "string" ? req.query["hub.mode"] : null,
+      },
+      "Messenger production webhook verification",
+    );
+    if (result.status === 200) {
+      res.status(200).type("text/plain").send(result.body);
+      return;
+    }
     res.status(result.status).send(result.body);
   } catch (error) {
     logger.error({ err: error }, "Messenger production webhook verification failed");
@@ -768,6 +785,23 @@ router.get("/messenger/:companyChannelId", async (req: Request, res: Response) =
       companyChannelId: routeParam(req.params.companyChannelId),
       ...req.query,
     });
+    logger.info(
+      {
+        path: req.path,
+        companyChannelId: routeParam(req.params.companyChannelId),
+        status: result.status,
+        ok: result.status === 200,
+        failReason: result.failReason ?? null,
+        hasVerifyToken: Boolean(req.query["hub.verify_token"]),
+        hasChallenge: Boolean(req.query["hub.challenge"]),
+        mode: typeof req.query["hub.mode"] === "string" ? req.query["hub.mode"] : null,
+      },
+      "Messenger webhook verification",
+    );
+    if (result.status === 200) {
+      res.status(200).type("text/plain").send(result.body);
+      return;
+    }
     res.status(result.status).send(result.body);
   } catch (error) {
     logger.error({ err: error }, "Messenger webhook verification failed");

@@ -9,6 +9,7 @@ import messengerRouter from "./messenger.js";
 import metaPagesOauthRouter from "./meta-pages-oauth.js";
 import metaInstagramLoginOauthRouter from "./meta-instagram-login-oauth.js";
 import metaMessengerLoginOauthRouter from "./meta-messenger-login-oauth.js";
+import channelAiAssignmentRouter from "./channel-ai-assignment.js";
 import smsRouter from "./sms.js";
 import emailChannelRouter from "./email-channel.js";
 import emailMailboxProviderRouter from "./email-mailbox-provider.js";
@@ -34,6 +35,12 @@ import mobileRecordsRouter from "./mobile-records.js";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+// Meta Login OAuth callbacks are browser redirects from Instagram/Facebook with no
+// session cookie/Bearer. Mount them before any root-mounted router that registers
+// global requireSupabaseAuth / requireCompanyScope — those stacks otherwise run for
+// every unmatched path and return 401 before the public callback handlers.
+router.use(metaInstagramLoginOauthRouter);
+router.use(metaMessengerLoginOauthRouter);
 router.use(customerImportRouter);
 router.use(salesFollowUpStatusRouter);
 router.use(salesFollowUpApprovalRouter);
@@ -53,9 +60,8 @@ router.use(whatsappRouter);
 router.use(whatsappEmbeddedSignupRouter);
 router.use(instagramRouter);
 router.use(messengerRouter);
+router.use(channelAiAssignmentRouter);
 router.use(metaPagesOauthRouter);
-router.use(metaInstagramLoginOauthRouter);
-router.use(metaMessengerLoginOauthRouter);
 router.use(smsRouter);
 router.use(emailChannelRouter);
 router.use(emailMailboxProviderRouter);

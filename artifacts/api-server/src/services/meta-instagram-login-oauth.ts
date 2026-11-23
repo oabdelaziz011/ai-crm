@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isMetaInstagramLoginCompanyAllowed,
   isMetaInstagramLoginEnabled,
+  listMissingMetaInstagramLoginEnvKeys,
   META_INSTAGRAM_LOGIN_SCOPES,
   readMetaInstagramLoginEnvConfig,
 } from "./meta-instagram-login-flags.js";
@@ -82,20 +83,37 @@ function assertEnabledAndAllowed(companyId: string): void {
 
 export function buildMetaInstagramLoginReadiness(companyId: string) {
   if (!isMetaInstagramLoginEnabled()) {
-    return { ready: false, companyAllowed: false, reason: "IGL_DISABLED" as const };
+    return {
+      ready: false,
+      companyAllowed: false,
+      reason: "IGL_DISABLED" as const,
+      missingConfigKeys: [] as string[],
+    };
   }
   const companyAllowed = isMetaInstagramLoginCompanyAllowed(companyId);
   if (!companyAllowed) {
-    return { ready: false, companyAllowed: false, reason: "IGL_COMPANY_NOT_ALLOWED" as const };
+    return {
+      ready: false,
+      companyAllowed: false,
+      reason: "IGL_COMPANY_NOT_ALLOWED" as const,
+      missingConfigKeys: [] as string[],
+    };
   }
+  const missingConfigKeys = listMissingMetaInstagramLoginEnvKeys();
   const meta = readMetaInstagramLoginEnvConfig(resolvePublicApiBaseUrl());
-  if (!meta) {
-    return { ready: false, companyAllowed: true, reason: "IGL_META_CONFIG_MISSING" as const };
+  if (!meta || missingConfigKeys.length > 0) {
+    return {
+      ready: false,
+      companyAllowed: true,
+      reason: "IGL_META_CONFIG_MISSING" as const,
+      missingConfigKeys,
+    };
   }
   return {
     ready: true,
     companyAllowed: true,
     reason: null,
+    missingConfigKeys: [] as string[],
     redirectUri: meta.redirectUri,
     scopes: [...META_INSTAGRAM_LOGIN_SCOPES],
     graphApiVersion: sanitizeGraphVersion(meta.graphApiVersion),
@@ -347,6 +365,30 @@ async function subscribeInstagramMessagingWebhooks(input: {
   }
 }
 
+async function unsubscribeInstagramMessagingWebhooks(input: {
+  igUserId: string;
+  accessToken: string;
+  graphApiVersion: string;
+  fetchImpl: typeof fetch;
+}): Promise<{ ok: boolean }> {
+  const version = sanitizeGraphVersion(input.graphApiVersion);
+  const url = new URL(
+    `https://graph.instagram.com/${version}/${encodeURIComponent(input.igUserId)}/subscribed_apps`,
+  );
+  try {
+    const res = await input.fetchImpl(url.toString(), {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${input.accessToken}`,
+        Accept: "application/json",
+      },
+    });
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
+  }
+}
+
 async function persistInstagramConnection(input: {
   client: SupabaseClient;
   companyId: string;
@@ -359,7 +401,16 @@ async function persistInstagramConnection(input: {
   webhookOk: boolean;
   webhookError: string | null;
 }): Promise<{ verifyToken: string; connectionStatus: MetaConnectionStatus }> {
-  const verifyToken = `vo_ig_${randomBytes(12).toString("hex")}`;
+  // Preserve existing verify token on reconnect (empty → whatsapp_is_unchanged_secret).
+  const { data: existing } = await input.client
+    .from("company_instagram_settings")
+    .select("webhook_verify_token_encrypted")
+    .eq("company_id", input.companyId)
+    .maybeSingle();
+  const verifyToken = existing?.webhook_verify_token_encrypted
+    ? ""
+    : `vo_ig_${randomBytes(12).toString("hex")}`;
+
   const { error } = await input.client.rpc("upsert_company_instagram_settings", {
     p_company_id: input.companyId,
     p_enabled: true,
@@ -567,11 +618,43 @@ export async function getMetaInstagramLoginConnection(input: {
   };
 }
 
-/** Soft disconnect — clears local secrets; does not call Meta revoke. */
+/** Soft disconnect — clears local secrets; best-effort Meta unsubscribe. */
 export async function softDisconnectMetaInstagramLogin(input: {
   companyId: string;
-  deps: Pick<MetaInstagramLoginDeps, "client">;
-}): Promise<{ ok: true; softDisconnected: true; metaRevoked: false }> {
+  deps: MetaInstagramLoginDeps;
+}): Promise<{ ok: true; softDisconnected: true; metaRevoked: boolean }> {
+  const { data: row } = await input.deps.client
+    .from("company_instagram_settings")
+    .select("instagram_business_account_id,api_version")
+    .eq("company_id", input.companyId)
+    .maybeSingle();
+
+  let metaRevoked = false;
+  const igUserId = String(row?.instagram_business_account_id ?? "").trim();
+  if (igUserId) {
+    try {
+      const { data: decrypted } = await input.deps.client.rpc(
+        "get_company_instagram_settings_decrypted",
+        { p_company_id: input.companyId },
+      );
+      const accessToken = String(
+        (decrypted as { access_token?: string } | null)?.access_token ?? "",
+      ).trim();
+      if (accessToken) {
+        const fetchImpl = input.deps.fetchImpl ?? fetch;
+        const unsub = await unsubscribeInstagramMessagingWebhooks({
+          igUserId,
+          accessToken,
+          graphApiVersion: String(row?.api_version ?? "v21.0"),
+          fetchImpl,
+        });
+        metaRevoked = unsub.ok;
+      }
+    } catch {
+      metaRevoked = false;
+    }
+  }
+
   const { error } = await input.deps.client
     .from("company_instagram_settings")
     .update({
@@ -596,7 +679,97 @@ export async function softDisconnectMetaInstagramLogin(input: {
   if (error) {
     throw new MetaInstagramLoginError(error.message, "IGL_DISCONNECT_FAILED", 500);
   }
-  return { ok: true, softDisconnected: true, metaRevoked: false };
+  return { ok: true, softDisconnected: true, metaRevoked };
+}
+
+/**
+ * Refresh a stored long-lived Instagram Login token (local reconnect/health path).
+ * On failure, marks connection_expired / reauthorization_required without clearing secrets.
+ */
+export async function refreshStoredMetaInstagramLongLivedToken(input: {
+  companyId: string;
+  deps: MetaInstagramLoginDeps;
+}): Promise<{
+  ok: boolean;
+  status: MetaConnectionStatus;
+  tokenExpiresAt: string | null;
+  message: string;
+}> {
+  assertEnabledAndAllowed(input.companyId);
+  const { data: decrypted, error: decryptError } = await input.deps.client.rpc(
+    "get_company_instagram_settings_decrypted",
+    { p_company_id: input.companyId },
+  );
+  if (decryptError) {
+    throw new MetaInstagramLoginError(decryptError.message, "IGL_REFRESH_LOAD_FAILED", 500);
+  }
+  const accessToken = String(
+    (decrypted as { access_token?: string } | null)?.access_token ?? "",
+  ).trim();
+  if (!accessToken) {
+    return {
+      ok: false,
+      status: "not_connected",
+      tokenExpiresAt: null,
+      message: "No Instagram access token to refresh",
+    };
+  }
+
+  const fetchImpl = input.deps.fetchImpl ?? fetch;
+  try {
+    const refreshed = await refreshMetaInstagramLongLivedToken({ accessToken, fetchImpl });
+    const tokenExpiresAt = new Date(Date.now() + refreshed.expiresIn * 1000).toISOString();
+    const { error: upsertError } = await input.deps.client.rpc("upsert_company_instagram_settings", {
+      p_company_id: input.companyId,
+      p_enabled: true,
+      p_provider: "meta_instagram",
+      p_page_id: "",
+      p_instagram_business_account_id: String(
+        (decrypted as { instagram_business_account_id?: string } | null)
+          ?.instagram_business_account_id ?? "",
+      ),
+      p_access_token: refreshed.accessToken,
+      p_webhook_verify_token: "",
+      p_api_version: String(
+        (decrypted as { api_version?: string } | null)?.api_version ?? "v21.0",
+      ),
+      p_app_secret: "",
+    });
+    if (upsertError) {
+      throw new MetaInstagramLoginError(upsertError.message, "IGL_REFRESH_PERSIST_FAILED", 500);
+    }
+    await input.deps.client
+      .from("company_instagram_settings")
+      .update({
+        token_expires_at: tokenExpiresAt,
+        connection_status: "connected",
+        connection_last_error: "",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("company_id", input.companyId);
+    return {
+      ok: true,
+      status: "connected",
+      tokenExpiresAt,
+      message: "Instagram token refreshed",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Instagram token refresh failed";
+    await input.deps.client
+      .from("company_instagram_settings")
+      .update({
+        connection_status: "reauthorization_required",
+        connection_last_error: message.slice(0, 500),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("company_id", input.companyId);
+    return {
+      ok: false,
+      status: "reauthorization_required",
+      tokenExpiresAt: null,
+      message,
+    };
+  }
 }
 
 export const __metaInstagramLoginTest = {

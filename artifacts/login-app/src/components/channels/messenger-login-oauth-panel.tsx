@@ -23,6 +23,7 @@ import {
   type MetaMessengerLoginReadiness,
 } from "@/lib/channels/meta-messenger-login-client";
 import { META_CONNECTION_STATUS_LABELS } from "@/lib/channels/meta-connection-status";
+import { formatMetaOauthReadinessMessage } from "@/lib/channels/meta-oauth-readiness-message";
 
 type Props = {
   companyId: string;
@@ -210,6 +211,11 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
   const statusLabel = connection
     ? META_CONNECTION_STATUS_LABELS[connection.status]
     : META_CONNECTION_STATUS_LABELS.not_connected;
+  const connectDisabled = busy || readiness?.ready !== true;
+  const readinessMessage = formatMetaOauthReadinessMessage(readiness, "messenger");
+  const connectLabel = connection?.hasAccessToken
+    ? t("notifications.messengerLogin.reconnect", { defaultValue: "Reconnect Messenger" })
+    : t("notifications.messengerLogin.connect", { defaultValue: "Connect Facebook Messenger" });
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 p-3">
@@ -234,20 +240,46 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
         {statusLabel}
         {connection?.pageName ? ` · ${connection.pageName}` : ""}
       </p>
-      {readiness && !readiness.ready ? (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          {t("notifications.messengerLogin.notReady", {
-            reason: readiness.reason ?? "unknown",
-            defaultValue: `Self-service not ready (${readiness.reason ?? "unknown"}).`,
-          })}
-        </p>
+      {readinessMessage ? (
+        <div
+          className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-xs text-amber-700 dark:text-amber-300"
+          role="status"
+          data-oauth-ready="false"
+          data-oauth-reason={readiness?.reason ?? "unknown"}
+        >
+          <p className="font-medium">
+            {t("notifications.messengerLogin.connectDisabled", {
+              defaultValue: "Connect Facebook Messenger is disabled",
+            })}
+          </p>
+          <p>{readinessMessage}</p>
+          {readiness?.missingConfigKeys && readiness.missingConfigKeys.length > 0 ? (
+            <ul className="list-disc pl-4 font-mono text-[11px]">
+              {readiness.missingConfigKeys.map((key) => (
+                <li key={key}>{key}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" disabled={busy || readiness?.ready === false} onClick={() => void onConnect()}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={connectDisabled}
+          aria-disabled={connectDisabled}
+          title={
+            connectDisabled
+              ? readinessMessage ??
+                t("notifications.messengerLogin.connectDisabled", {
+                  defaultValue: "Connect Facebook Messenger is disabled",
+                })
+              : undefined
+          }
+          onClick={() => void onConnect()}
+        >
           {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-          {connection?.hasAccessToken
-            ? t("notifications.messengerLogin.reconnect", { defaultValue: "Reconnect Messenger" })
-            : t("notifications.messengerLogin.connect", { defaultValue: "Connect Facebook Messenger" })}
+          {connectLabel}
         </Button>
         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void onDisconnect()}>
           <Unplug className="mr-1.5 h-3.5 w-3.5" />

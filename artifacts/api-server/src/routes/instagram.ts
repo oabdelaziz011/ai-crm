@@ -7,6 +7,7 @@ import {
 } from "@workspace/channel-platform";
 import { logger } from "../lib/logger.js";
 import { HttpError } from "../middleware/error-handler.js";
+import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 
@@ -33,6 +34,9 @@ function isInstagramOutboundHealthPath(req: Request): boolean {
 }
 
 const router: IRouter = Router();
+
+// Do not run auth for unrelated paths (e.g. public /oauth/*/callback) that share the API root mount.
+router.use(confineToPathPrefixes("/instagram"));
 
 router.use((req: Request, res: Response, next: NextFunction) => {
   if (!isInstagramOutboundHealthPath(req) || req.method === "OPTIONS") {

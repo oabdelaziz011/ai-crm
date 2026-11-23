@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isMetaMessengerOauthCompanyAllowed,
   isMetaMessengerOauthEnabled,
+  listMissingMetaMessengerOauthEnvKeys,
   META_MESSENGER_LOGIN_SCOPES,
   readMetaMessengerOauthEnvConfig,
 } from "./meta-messenger-oauth-flags.js";
@@ -101,20 +102,37 @@ function assertEnabledAndAllowed(companyId: string): void {
 
 export function buildMetaMessengerLoginReadiness(companyId: string) {
   if (!isMetaMessengerOauthEnabled()) {
-    return { ready: false, companyAllowed: false, reason: "MSL_DISABLED" as const };
+    return {
+      ready: false,
+      companyAllowed: false,
+      reason: "MSL_DISABLED" as const,
+      missingConfigKeys: [] as string[],
+    };
   }
   const companyAllowed = isMetaMessengerOauthCompanyAllowed(companyId);
   if (!companyAllowed) {
-    return { ready: false, companyAllowed: false, reason: "MSL_COMPANY_NOT_ALLOWED" as const };
+    return {
+      ready: false,
+      companyAllowed: false,
+      reason: "MSL_COMPANY_NOT_ALLOWED" as const,
+      missingConfigKeys: [] as string[],
+    };
   }
+  const missingConfigKeys = listMissingMetaMessengerOauthEnvKeys();
   const meta = readMetaMessengerOauthEnvConfig(resolvePublicApiBaseUrl());
-  if (!meta) {
-    return { ready: false, companyAllowed: true, reason: "MSL_META_CONFIG_MISSING" as const };
+  if (!meta || missingConfigKeys.length > 0) {
+    return {
+      ready: false,
+      companyAllowed: true,
+      reason: "MSL_META_CONFIG_MISSING" as const,
+      missingConfigKeys,
+    };
   }
   return {
     ready: true,
     companyAllowed: true,
     reason: null,
+    missingConfigKeys: [] as string[],
     redirectUri: meta.redirectUri,
     scopes: [...META_MESSENGER_LOGIN_SCOPES],
     graphApiVersion: sanitizeGraphVersion(meta.graphApiVersion),
@@ -187,6 +205,31 @@ async function exchangeCodeForUserToken(
   return json.access_token;
 }
 
+/** Exchange short-lived user token for a long-lived user token before listing Pages. */
+async function exchangeForLongLivedUserToken(
+  shortLivedToken: string,
+  meta: NonNullable<ReturnType<typeof readMetaMessengerOauthEnvConfig>>,
+  fetchImpl: typeof fetch,
+): Promise<string> {
+  const url = new URL(
+    `https://graph.facebook.com/${sanitizeGraphVersion(meta.graphApiVersion)}/oauth/access_token`,
+  );
+  url.searchParams.set("grant_type", "fb_exchange_token");
+  url.searchParams.set("client_id", meta.appId);
+  url.searchParams.set("client_secret", meta.appSecret);
+  url.searchParams.set("fb_exchange_token", shortLivedToken);
+  const res = await fetchImpl(url.toString(), { headers: { Accept: "application/json" } });
+  const json = (await res.json()) as { access_token?: string; error?: { message?: string } };
+  if (!res.ok || !json.access_token) {
+    throw new MetaMessengerLoginError(
+      json.error?.message ?? "Failed to exchange for a long-lived Facebook user token.",
+      "MSL_LONG_LIVED_EXCHANGE_FAILED",
+      400,
+    );
+  }
+  return json.access_token;
+}
+
 async function listManagedPages(
   userToken: string,
   meta: NonNullable<ReturnType<typeof readMetaMessengerOauthEnvConfig>>,
@@ -218,6 +261,9 @@ async function listManagedPages(
     }));
 }
 
+const MESSENGER_SUBSCRIBED_FIELDS =
+  "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,messaging_referrals";
+
 async function subscribePageMessagingWebhooks(input: {
   pageId: string;
   pageAccessToken: string;
@@ -228,10 +274,7 @@ async function subscribePageMessagingWebhooks(input: {
   const url = new URL(
     `https://graph.facebook.com/${version}/${encodeURIComponent(input.pageId)}/subscribed_apps`,
   );
-  url.searchParams.set(
-    "subscribed_fields",
-    "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,messaging_referrals",
-  );
+  url.searchParams.set("subscribed_fields", MESSENGER_SUBSCRIBED_FIELDS);
   try {
     const res = await input.fetchImpl(url.toString(), {
       method: "POST",
@@ -256,6 +299,68 @@ async function subscribePageMessagingWebhooks(input: {
       ok: false,
       error: error instanceof Error ? error.message : "Messenger webhook subscription failed",
     };
+  }
+}
+
+/** Best-effort confirmation that `messages` is among subscribed_fields. */
+async function confirmPageMessagingSubscription(input: {
+  pageId: string;
+  pageAccessToken: string;
+  graphApiVersion: string;
+  fetchImpl: typeof fetch;
+}): Promise<{ ok: boolean; error: string | null }> {
+  const version = sanitizeGraphVersion(input.graphApiVersion);
+  const url = new URL(
+    `https://graph.facebook.com/${version}/${encodeURIComponent(input.pageId)}/subscribed_apps`,
+  );
+  url.searchParams.set("access_token", input.pageAccessToken);
+  try {
+    const res = await input.fetchImpl(url.toString(), { headers: { Accept: "application/json" } });
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: Array<{ subscribed_fields?: string[] }>;
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: json.error?.message ?? `GET subscribed_apps failed (HTTP ${res.status})`,
+      };
+    }
+    const hasMessages = (json.data ?? []).some(
+      (row) => Array.isArray(row.subscribed_fields) && row.subscribed_fields.includes("messages"),
+    );
+    return hasMessages
+      ? { ok: true, error: null }
+      : { ok: false, error: "Page is not subscribed to messages field" };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Messenger subscription confirm failed",
+    };
+  }
+}
+
+async function unsubscribePageMessagingWebhooks(input: {
+  pageId: string;
+  pageAccessToken: string;
+  graphApiVersion: string;
+  fetchImpl: typeof fetch;
+}): Promise<{ ok: boolean }> {
+  const version = sanitizeGraphVersion(input.graphApiVersion);
+  const url = new URL(
+    `https://graph.facebook.com/${version}/${encodeURIComponent(input.pageId)}/subscribed_apps`,
+  );
+  try {
+    const res = await input.fetchImpl(url.toString(), {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${input.pageAccessToken}`,
+        Accept: "application/json",
+      },
+    });
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
   }
 }
 
@@ -299,7 +404,8 @@ export async function handleMetaMessengerLoginCallback(input: {
   try {
     assertEnabledAndAllowed(payload.companyId);
     const fetchImpl = input.deps.fetchImpl ?? fetch;
-    const userToken = await exchangeCodeForUserToken(input.code, meta, fetchImpl);
+    const shortLived = await exchangeCodeForUserToken(input.code, meta, fetchImpl);
+    const userToken = await exchangeForLongLivedUserToken(shortLived, meta, fetchImpl);
     const pages = await listManagedPages(userToken, meta, fetchImpl);
     if (pages.length === 0) {
       return {
@@ -398,9 +504,22 @@ export async function completeMetaMessengerLogin(input: {
     );
   }
 
-  const verifyToken =
-    String(input.webhookVerifyToken ?? "").trim() ||
-    `vo_ms_${randomBytes(12).toString("hex")}`;
+  // Preserve existing verify token on reconnect unless the UI explicitly sends a new one.
+  const explicitVerify = String(input.webhookVerifyToken ?? "").trim();
+  let verifyToken = explicitVerify;
+  if (!verifyToken) {
+    const { data: existing } = await input.deps.client
+      .from("company_messenger_settings")
+      .select("webhook_verify_token_encrypted")
+      .eq("company_id", input.companyId)
+      .maybeSingle();
+    if (existing?.webhook_verify_token_encrypted) {
+      // Empty string → whatsapp_is_unchanged_secret keeps the stored encrypted verify token.
+      verifyToken = "";
+    } else {
+      verifyToken = `vo_ms_${randomBytes(12).toString("hex")}`;
+    }
+  }
 
   const { error } = await input.deps.client.rpc("upsert_company_messenger_settings", {
     p_company_id: input.companyId,
@@ -417,12 +536,23 @@ export async function completeMetaMessengerLogin(input: {
   }
 
   const fetchImpl = input.deps.fetchImpl ?? fetch;
-  const subscribe = await subscribePageMessagingWebhooks({
+  let subscribe = await subscribePageMessagingWebhooks({
     pageId: selected.pageId,
     pageAccessToken: selected.pageAccessToken,
     graphApiVersion: meta.graphApiVersion,
     fetchImpl,
   });
+  if (subscribe.ok) {
+    const confirmed = await confirmPageMessagingSubscription({
+      pageId: selected.pageId,
+      pageAccessToken: selected.pageAccessToken,
+      graphApiVersion: meta.graphApiVersion,
+      fetchImpl,
+    });
+    if (!confirmed.ok) {
+      subscribe = { ok: false, error: confirmed.error };
+    }
+  }
 
   // Health probe
   let healthOk = false;
@@ -533,8 +663,40 @@ export async function getMetaMessengerLoginConnection(input: {
 
 export async function softDisconnectMetaMessengerLogin(input: {
   companyId: string;
-  deps: Pick<MetaMessengerLoginDeps, "client">;
-}): Promise<{ ok: true; softDisconnected: true; metaRevoked: false }> {
+  deps: MetaMessengerLoginDeps;
+}): Promise<{ ok: true; softDisconnected: true; metaRevoked: boolean }> {
+  const { data: row } = await input.deps.client
+    .from("company_messenger_settings")
+    .select("page_id,api_version")
+    .eq("company_id", input.companyId)
+    .maybeSingle();
+
+  let metaRevoked = false;
+  const pageId = String(row?.page_id ?? "").trim();
+  if (pageId) {
+    try {
+      const { data: decrypted } = await input.deps.client.rpc(
+        "get_company_messenger_settings_decrypted",
+        { p_company_id: input.companyId },
+      );
+      const pageToken = String(
+        (decrypted as { access_token?: string } | null)?.access_token ?? "",
+      ).trim();
+      if (pageToken) {
+        const fetchImpl = input.deps.fetchImpl ?? fetch;
+        const unsub = await unsubscribePageMessagingWebhooks({
+          pageId,
+          pageAccessToken: pageToken,
+          graphApiVersion: String(row?.api_version ?? "v21.0"),
+          fetchImpl,
+        });
+        metaRevoked = unsub.ok;
+      }
+    } catch {
+      metaRevoked = false;
+    }
+  }
+
   const { error } = await input.deps.client
     .from("company_messenger_settings")
     .update({
@@ -558,12 +720,13 @@ export async function softDisconnectMetaMessengerLogin(input: {
   if (error) {
     throw new MetaMessengerLoginError(error.message, "MSL_DISCONNECT_FAILED", 500);
   }
-  return { ok: true, softDisconnected: true, metaRevoked: false };
+  return { ok: true, softDisconnected: true, metaRevoked };
 }
 
 export const __metaMessengerLoginTest = {
   cachePending,
   takePending,
   clearPending,
+  exchangeForLongLivedUserToken,
   META_MESSENGER_LOGIN_FLOW,
 };

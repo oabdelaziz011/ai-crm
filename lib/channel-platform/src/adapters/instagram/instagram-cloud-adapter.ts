@@ -24,6 +24,10 @@ import type {
   InstagramWebhookMessage,
 } from "./instagram-types.js";
 import { formatInstagramInteractiveOutbound } from "./instagram-quick-replies.js";
+import {
+  applyMetaSenderProfileToNormalized,
+  fetchMetaSenderProfile,
+} from "../meta/meta-sender-profile.js";
 
 function readTrimmedString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -117,10 +121,12 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
   private readonly apiClient: InstagramApiClient;
   private readonly attachmentEngine = new AttachmentEngine();
   private readonly credentialsLoader?: InstagramCredentialsLoader;
+  private readonly fetchFn?: typeof fetch;
   private readonly onOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
 
   constructor(options: InstagramCloudAdapterOptions = {}) {
     this.credentialsLoader = options.credentialsLoader;
+    this.fetchFn = options.fetchFn;
     this.onOutboundDiagnostic = options.onOutboundDiagnostic;
     this.apiClient = new InstagramApiClient({
       fetchFn: options.fetchFn,
@@ -210,6 +216,28 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
       attachments,
       metadata,
     };
+  }
+
+  async enrichInboundSenderProfile(
+    ctx: ChannelAdapterContext,
+    normalized: NormalizedInboundMessageDto,
+  ): Promise<NormalizedInboundMessageDto> {
+    const senderId = String(normalized.senderExternalId ?? "").trim();
+    if (!senderId || !this.credentialsLoader) return normalized;
+    try {
+      const credentials = await this.credentialsLoader.loadByCompanyId(ctx.companyChannel.companyId);
+      if (!credentials?.accessToken?.trim()) return normalized;
+      const profile = await fetchMetaSenderProfile({
+        channelKey: "instagram",
+        senderExternalId: senderId,
+        accessToken: credentials.accessToken,
+        apiVersion: credentials.apiVersion,
+        fetchImpl: this.fetchFn,
+      });
+      return applyMetaSenderProfileToNormalized(normalized, "instagram", profile);
+    } catch {
+      return normalized;
+    }
   }
 
   formatOutbound(_ctx: ChannelAdapterContext, message: OutboundChannelMessageDto): Record<string, unknown> {

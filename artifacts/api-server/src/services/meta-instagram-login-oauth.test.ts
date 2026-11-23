@@ -131,6 +131,11 @@ describe("meta-instagram-login-oauth", () => {
         return { error: null };
       },
       from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
         update: (row: Record<string, unknown>) => ({
           eq: async () => {
             updates.push(row);
@@ -221,6 +226,107 @@ describe("meta-instagram-login-oauth", () => {
       (err: unknown) =>
         err instanceof MetaInstagramLoginError && err.code === "IGL_PERSONAL_ACCOUNT_UNSUPPORTED",
     );
+  });
+
+  it("persists webhook_subscription_failed when subscribed_apps fails", async () => {
+    const prevEnabled = process.env.META_INSTAGRAM_LOGIN_ENABLED;
+    const prevAllow = process.env.META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS;
+    const prevApp = process.env.META_INSTAGRAM_LOGIN_APP_ID;
+    const prevSecret = process.env.META_INSTAGRAM_LOGIN_APP_SECRET;
+    const prevBase = process.env.META_OAUTH_PUBLIC_API_BASE_URL;
+    const prevState = process.env.META_INSTAGRAM_LOGIN_STATE_SECRET;
+    const prevLogin = process.env.LOGIN_APP_URL;
+    process.env.META_INSTAGRAM_LOGIN_ENABLED = "true";
+    process.env.META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS = DEMO;
+    process.env.META_INSTAGRAM_LOGIN_APP_ID = "ig-app-id";
+    process.env.META_INSTAGRAM_LOGIN_APP_SECRET = "ig-app-secret";
+    process.env.META_OAUTH_PUBLIC_API_BASE_URL = "http://127.0.0.1:3010";
+    process.env.META_INSTAGRAM_LOGIN_STATE_SECRET = "unit-state-secret";
+    process.env.LOGIN_APP_URL = "http://localhost:5180";
+
+    const secret = resolveMetaOauthStateSecret("unit-state-secret");
+    const state = createMetaOauthState({
+      companyId: DEMO,
+      userId: "u1",
+      flow: __metaInstagramLoginTest.META_INSTAGRAM_LOGIN_FLOW,
+      secret,
+    });
+
+    const updates: Array<Record<string, unknown>> = [];
+    const client = {
+      rpc: async () => ({ error: null }),
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
+        update: (row: Record<string, unknown>) => ({
+          eq: async () => {
+            updates.push(row);
+            return { error: null };
+          },
+        }),
+      }),
+    };
+
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("api.instagram.com/oauth/access_token")) {
+        return new Response(
+          JSON.stringify({
+            access_token: "short-token",
+            user_id: "17841400000000000",
+            permissions: "instagram_business_basic,instagram_business_manage_messages",
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("graph.instagram.com/access_token")) {
+        return new Response(
+          JSON.stringify({ access_token: "long-token", expires_in: 5184000 }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/me?")) {
+        return new Response(
+          JSON.stringify({
+            user_id: "17841400000000000",
+            username: "valueor_demo",
+            account_type: "BUSINESS",
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/subscribed_apps")) {
+        return new Response(JSON.stringify({ success: false, error: { message: "subscribe denied" } }), {
+          status: 400,
+        });
+      }
+      return new Response(JSON.stringify({ error: { message: `unexpected ${url}` } }), {
+        status: 500,
+      });
+    };
+
+    try {
+      const result = await handleMetaInstagramLoginCallback({
+        code: "auth-code-1",
+        state,
+        error: null,
+        errorReason: null,
+        deps: { client: client as never, fetchImpl },
+      });
+      assert.match(result.redirectUrl, /instagram_oauth=webhook_failed/);
+      assert.ok(updates.some((u) => u.connection_status === "webhook_subscription_failed"));
+    } finally {
+      process.env.META_INSTAGRAM_LOGIN_ENABLED = prevEnabled;
+      process.env.META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS = prevAllow;
+      process.env.META_INSTAGRAM_LOGIN_APP_ID = prevApp;
+      process.env.META_INSTAGRAM_LOGIN_APP_SECRET = prevSecret;
+      process.env.META_OAUTH_PUBLIC_API_BASE_URL = prevBase;
+      process.env.META_INSTAGRAM_LOGIN_STATE_SECRET = prevState;
+      process.env.LOGIN_APP_URL = prevLogin;
+    }
   });
 
   it("reports readiness without secrets", () => {

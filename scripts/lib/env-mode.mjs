@@ -377,6 +377,58 @@ export function assertLocalEnvironmentSafety(env) {
   }
 }
 
+/**
+ * Fail-fast guard for local Meta Messenger/Instagram OAuth tooling.
+ * Aborts when DATABASE_URL / SUPABASE_* look like recorded Production.
+ * Never prints secret values.
+ */
+export function assertLocalMetaOauthSafety(env = process.env) {
+  const mode = resolveValueorEnv(env.VALUEOR_ENV);
+  if (mode === VALUEOR_ENV_PRODUCTION) {
+    throw new Error(
+      "LOCAL META OAUTH SAFETY CHECK FAILED\nVALUEOR_ENV=production is not allowed for local Meta OAuth tooling.",
+    );
+  }
+
+  const offenders = [];
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  if (isRecordedProductionSupabaseUrl(supabaseUrl) || isRecordedProductionDatabaseUrl(env.DATABASE_URL)) {
+    offenders.push("SUPABASE_URL/DATABASE_URL (recorded Production project)");
+  }
+  if (String(env.SUPABASE_PROJECT_REF || "").includes(RECORDED_PRODUCTION_PROJECT_REF)) {
+    offenders.push("SUPABASE_PROJECT_REF (production project ref)");
+  }
+  if (
+    isProductionWebhookUrl(env.WEBHOOK_BASE_URL) ||
+    isProductionWebhookUrl(env.VITE_WEBHOOK_BASE_URL) ||
+    isProductionWebhookUrl(env.PUBLIC_WEBHOOK_BASE_URL) ||
+    isProductionWebhookUrl(env.META_MESSENGER_OAUTH_REDIRECT_URI) ||
+    isProductionWebhookUrl(env.META_INSTAGRAM_LOGIN_REDIRECT_URI)
+  ) {
+    offenders.push("webhook/OAuth URL (https://webhook.valueor.org)");
+  }
+  if (
+    isProductionPublicHost(env.META_OAUTH_PUBLIC_API_BASE_URL) ||
+    isProductionPublicHost(env.PUBLIC_API_BASE_URL) ||
+    isProductionPublicHost(env.VITE_API_SERVER_URL)
+  ) {
+    offenders.push("API/OAuth public base (production public host)");
+  }
+
+  if (offenders.length > 0) {
+    throw new Error(
+      [
+        "LOCAL META OAUTH SAFETY CHECK FAILED",
+        "Local Messenger/Instagram OAuth tooling cannot use Production Supabase, API, or webhook hosts.",
+        "Offending configuration:",
+        ...offenders.map((item) => `  - ${item}`),
+        `Do not point local Meta OAuth at ${RECORDED_PRODUCTION_PROJECT_REF} / api.valueor.org / webhook.valueor.org.`,
+        "See docs/operations/meta-messenger-instagram-local-oauth.md",
+      ].join("\n"),
+    );
+  }
+}
+
 export function assertNoServerSecretsInViteEnv(envMap) {
   const offenders = [];
   for (const key of VITE_FORBIDDEN_SERVER_KEYS) {

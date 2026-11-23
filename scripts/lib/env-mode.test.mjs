@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  assertLocalMetaOauthSafety,
   assertProductionEnvironmentSafety,
   assertStagingEnvironmentSafety,
   isRecordedProductionSupabaseUrl,
@@ -73,5 +74,33 @@ describe("environment isolation", () => {
       /not the recorded Production project/,
     );
     assert.doesNotThrow(() => assertProductionEnvironmentSafety({ VALUEOR_ENV: "local", SUPABASE_URL: "http://127.0.0.1:54321" }));
+  });
+
+  it("rejects local Meta OAuth tooling aimed at Production", () => {
+    assert.doesNotThrow(() =>
+      assertLocalMetaOauthSafety({
+        VALUEOR_ENV: "local",
+        SUPABASE_URL: "http://127.0.0.1:54321",
+        WEBHOOK_BASE_URL: "https://webhook-alice.example.test",
+        META_OAUTH_PUBLIC_API_BASE_URL: "https://webhook-alice.example.test",
+      }),
+    );
+    assert.throws(
+      () =>
+        assertLocalMetaOauthSafety({
+          VALUEOR_ENV: "local",
+          SUPABASE_URL: recordedProductionSupabaseOrigin(),
+        }),
+      /recorded Production project/,
+    );
+    assert.throws(
+      () =>
+        assertLocalMetaOauthSafety({
+          VALUEOR_ENV: "local",
+          SUPABASE_URL: "http://127.0.0.1:54321",
+          WEBHOOK_BASE_URL: "https://webhook.valueor.org",
+        }),
+      /webhook\.valueor\.org/,
+    );
   });
 });

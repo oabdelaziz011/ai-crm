@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
+import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { assertCompanyAccess } from "../middleware/assert-company-access.js";
 import { HttpError } from "../middleware/error-handler.js";
@@ -10,12 +11,17 @@ import {
   getMetaInstagramLoginConnection,
   handleMetaInstagramLoginCallback,
   MetaInstagramLoginError,
+  refreshStoredMetaInstagramLongLivedToken,
   softDisconnectMetaInstagramLogin,
   startMetaInstagramLogin,
 } from "../services/meta-instagram-login-oauth.js";
 import { isMetaInstagramLoginEnabled } from "../services/meta-instagram-login-flags.js";
 
 const router: IRouter = Router();
+
+// Public callback lives under /oauth/instagram; authenticated ops under /meta/instagram-login.
+// Confine so this root-mounted router does not rate-limit or own unrelated API paths.
+router.use(confineToPathPrefixes("/oauth/instagram", "/meta/instagram-login"));
 
 function getServiceClient() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -137,6 +143,30 @@ router.post(
         deps: { client: getServiceClient() },
       });
       res.json(result);
+    } catch (error) {
+      try {
+        mapError(error);
+      } catch (mapped) {
+        next(mapped);
+      }
+    }
+  },
+);
+
+router.post(
+  "/meta/instagram-login/refresh-token",
+  requireSupabaseAuth,
+  requireCompanyScope("companyId"),
+  async (req, res, next) => {
+    try {
+      const companyId = String(req.body?.companyId ?? "").trim();
+      if (!companyId) throw new HttpError(400, "companyId is required");
+      await assertRouteCommercialFeature(companyId, "instagram_channel");
+      const result = await refreshStoredMetaInstagramLongLivedToken({
+        companyId,
+        deps: { client: getServiceClient() },
+      });
+      res.status(result.ok ? 200 : 400).json(result);
     } catch (error) {
       try {
         mapError(error);

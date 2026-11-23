@@ -136,3 +136,36 @@ export function fetchMessengerOutboundHealth(
     companyChannelId,
   });
 }
+
+export type MessengerRevealVerifyTokenResponse = {
+  webhookVerifyToken: string;
+  length: number;
+};
+
+export type MessengerWebhookVerifySelfCheckResponse = {
+  ok: boolean;
+  reason: string;
+  matchCount: number;
+  companyMatchCount?: number;
+  hasVerifyToken: boolean;
+  verifyTokenLength?: number;
+  channel?: { id: string; isEnabled: boolean } | null;
+};
+
+/** Reveal stored verify token for Meta paste. Does not rotate. */
+export function revealMessengerWebhookVerifyToken(
+  companyId: string,
+): Promise<MessengerRevealVerifyTokenResponse> {
+  return postMessengerApi<MessengerRevealVerifyTokenResponse>("/messenger/reveal-webhook-verify-token", {
+    companyId,
+  });
+}
+
+/** In-process readiness check; never returns the token value. */
+export function selfCheckMessengerWebhookVerify(
+  companyId: string,
+): Promise<MessengerWebhookVerifySelfCheckResponse> {
+  return postMessengerApi<MessengerWebhookVerifySelfCheckResponse>("/messenger/webhook-verify-self-check", {
+    companyId,
+  });
+}

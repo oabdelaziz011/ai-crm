@@ -37,6 +37,15 @@ export type ChannelAdapterPort = {
     payload: Record<string, unknown>,
   ): NormalizedInboundMessageDto;
 
+  /**
+   * Optional post-normalize enrichment (e.g. Meta sender name/picture).
+   * Must be best-effort and never throw for permission/API failures.
+   */
+  enrichInboundSenderProfile?(
+    ctx: ChannelAdapterContext,
+    normalized: NormalizedInboundMessageDto,
+  ): Promise<NormalizedInboundMessageDto>;
+
   /** Format an outbound message for the provider transport layer. */
   formatOutbound(
     ctx: ChannelAdapterContext,

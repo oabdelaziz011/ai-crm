@@ -61,6 +61,37 @@ export type MetaMessengerOauthEnvConfig = {
   redirectUri: string;
 };
 
+function envPresent(...names: string[]): boolean {
+  return names.some((name) => String(process.env[name] ?? "").trim().length > 0);
+}
+
+/**
+ * Env var *names* still required for Messenger OAuth (never values).
+ * Primary names are listed; aliases are accepted by readMetaMessengerOauthEnvConfig.
+ */
+export function listMissingMetaMessengerOauthEnvKeys(): string[] {
+  const missing: string[] = [];
+  if (
+    !envPresent(
+      "META_MESSENGER_OAUTH_APP_ID",
+      "META_PAGES_OAUTH_APP_ID",
+      "META_EMBEDDED_SIGNUP_APP_ID",
+    )
+  ) {
+    missing.push("META_MESSENGER_OAUTH_APP_ID");
+  }
+  if (
+    !envPresent(
+      "META_MESSENGER_OAUTH_APP_SECRET",
+      "META_PAGES_OAUTH_APP_SECRET",
+      "META_EMBEDDED_SIGNUP_APP_SECRET",
+    )
+  ) {
+    missing.push("META_MESSENGER_OAUTH_APP_SECRET");
+  }
+  return missing;
+}
+
 export function readMetaMessengerOauthEnvConfig(
   publicApiBase: string,
 ): MetaMessengerOauthEnvConfig | null {

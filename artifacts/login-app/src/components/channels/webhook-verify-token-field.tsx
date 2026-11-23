@@ -14,6 +14,8 @@ type Props = {
   hasStoredToken: boolean;
   onChange: (value: string) => void;
   onGenerate: () => void;
+  /** Optional: load the currently stored token for Meta paste without rotating. */
+  onRevealStored?: () => Promise<string>;
   hint?: string;
 };
 
@@ -29,14 +31,48 @@ export function WebhookVerifyTokenField({
   hasStoredToken,
   onChange,
   onGenerate,
+  onRevealStored,
   hint,
 }: Props) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const [revealed, setRevealed] = useState(false);
   const [copyBusy, setCopyBusy] = useState(false);
+  const [revealBusy, setRevealBusy] = useState(false);
 
   const canCopy = isCopyableWebhookVerifyToken(value);
+  const canRevealStored = Boolean(onRevealStored) && hasStoredToken && !canCopy;
+
+  const onReveal = async () => {
+    if (!onRevealStored || revealBusy) return;
+    setRevealBusy(true);
+    try {
+      const plaintext = (await onRevealStored()).trim();
+      if (!isCopyableWebhookVerifyToken(plaintext)) {
+        throw new Error("revealed_token_invalid");
+      }
+      onChange(plaintext);
+      setRevealed(true);
+      toast({
+        title: t("notifications.webhookVerifyToken.revealed", {
+          defaultValue: "Stored verify token revealed",
+        }),
+        description: t("notifications.webhookVerifyToken.revealedHint", {
+          defaultValue:
+            "Copy this exact value into Meta Verify Token. Leave the field unchanged and Save only if you intentionally replace it.",
+        }),
+      });
+    } catch {
+      toast({
+        title: t("notifications.webhookVerifyToken.revealFailed", {
+          defaultValue: "Could not reveal stored verify token",
+        }),
+        variant: "destructive",
+      });
+    } finally {
+      setRevealBusy(false);
+    }
+  };
 
   const onCopy = async () => {
     if (!canCopy) {
@@ -45,8 +81,9 @@ export function WebhookVerifyTokenField({
           defaultValue: "Nothing to copy",
         }),
         description: t("notifications.webhookVerifyToken.copyUnavailableHint", {
-          defaultValue:
-            "Generate a new verify token first, copy it for Meta, then Save. Stored tokens stay masked and are not re-exposed.",
+          defaultValue: canRevealStored
+            ? "Click Reveal stored to load the current token for Meta, or Generate a new one (then Save)."
+            : "Generate a new verify token first, copy it for Meta, then Save. Stored tokens stay masked until revealed.",
         }),
         variant: "destructive",
       });
@@ -85,6 +122,25 @@ export function WebhookVerifyTokenField({
             <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             {t("notifications.webhookVerifyToken.generate", { defaultValue: "Generate" })}
           </Button>
+          {canRevealStored ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={revealBusy}
+              onClick={() => void onReveal()}
+              aria-label={t("notifications.webhookVerifyToken.revealAria", {
+                defaultValue: "Reveal stored verify token for Meta",
+              })}
+            >
+              {revealBusy ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Eye className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {t("notifications.webhookVerifyToken.reveal", { defaultValue: "Reveal stored" })}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -147,8 +203,9 @@ export function WebhookVerifyTokenField({
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       <p className="text-xs text-muted-foreground">
         {t("notifications.webhookVerifyToken.copyWorkflow", {
-          defaultValue:
-            "Generate → Copy (clipboard) → paste into Meta Verify Token → Save here. Leave blank when saving to keep the existing token.",
+          defaultValue: canRevealStored
+            ? "Reveal stored → Copy → paste into Meta Verify Token (do not Generate unless replacing). Or Generate → Copy → paste into Meta → Save here."
+            : "Generate → Copy (clipboard) → paste into Meta Verify Token → Save here. Leave blank when saving to keep the existing token.",
         })}
       </p>
     </div>

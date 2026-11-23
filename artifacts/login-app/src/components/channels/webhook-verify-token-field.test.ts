@@ -26,4 +26,14 @@ describe("WebhookVerifyTokenField copy/show contracts", () => {
     assert.equal(canReveal("vo_ms_11223344556677889900aabb"), true);
     assert.equal(canReveal("****************aabb"), false);
   });
+
+  it("offers reveal-stored when a token is saved but the draft is empty/masked", () => {
+    const canRevealStored = (hasStoredToken: boolean, value: string, hasRevealHandler: boolean) =>
+      hasRevealHandler && hasStoredToken && !isCopyableWebhookVerifyToken(value);
+    assert.equal(canRevealStored(true, "", true), true);
+    assert.equal(canRevealStored(true, "****************ab12", true), true);
+    assert.equal(canRevealStored(true, "messenger_verify_abc", true), false);
+    assert.equal(canRevealStored(false, "", true), false);
+    assert.equal(canRevealStored(true, "", false), false);
+  });
 });

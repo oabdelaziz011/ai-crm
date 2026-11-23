@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
+import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { assertCompanyAccess } from "../middleware/assert-company-access.js";
 import { HttpError } from "../middleware/error-handler.js";
@@ -18,6 +19,10 @@ import {
 import { isMetaMessengerOauthEnabled } from "../services/meta-messenger-oauth-flags.js";
 
 const router: IRouter = Router();
+
+// Public callback lives under /oauth/messenger; authenticated ops under /meta/messenger-oauth.
+// Confine so this root-mounted router does not rate-limit or own unrelated API paths.
+router.use(confineToPathPrefixes("/oauth/messenger", "/meta/messenger-oauth"));
 
 function getServiceClient() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;

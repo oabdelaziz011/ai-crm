@@ -31,8 +31,13 @@ import {
 import { MetaPagesOauthPanel } from "@/components/channels/meta-pages-oauth-panel";
 import { InstagramLoginOauthPanel } from "@/components/channels/instagram-login-oauth-panel";
 import { MetaChannelConnectionStrip } from "@/components/channels/meta-channel-connection-strip";
+import { ChannelAiEmployeeAssignment } from "@/components/channels/channel-ai-employee-assignment";
 import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-token-field";
-import { disconnectMetaInstagramLogin } from "@/lib/channels/meta-instagram-login-client";
+import {
+  disconnectMetaInstagramLogin,
+  fetchMetaInstagramLoginConnection,
+  type MetaInstagramLoginConnection,
+} from "@/lib/channels/meta-instagram-login-client";
 import { useQueryClient } from "@tanstack/react-query";
 
 const EMPTY_SETTINGS: InstagramSettingsDraft = {
@@ -66,11 +71,33 @@ export function SettingsInstagramPage() {
 
   const [draft, setDraft] = useState(EMPTY_SETTINGS);
   const [disconnectBusy, setDisconnectBusy] = useState(false);
+  const [oauthConnection, setOauthConnection] = useState<MetaInstagramLoginConnection | null>(null);
 
   const refreshAfterOauth = () => {
     void queryClient.invalidateQueries({ queryKey: instagramSettingsKey(companyId) });
     void refetchHealth();
+    if (companyId) {
+      void fetchMetaInstagramLoginConnection(companyId)
+        .then(setOauthConnection)
+        .catch(() => setOauthConnection(null));
+    }
   };
+
+  useEffect(() => {
+    if (!companyId) {
+      setOauthConnection(null);
+      return;
+    }
+    void fetchMetaInstagramLoginConnection(companyId)
+      .then(setOauthConnection)
+      .catch(() => setOauthConnection(null));
+  }, [companyId, settings?.updatedAt]);
+
+  const oauthConnected = Boolean(
+    oauthConnection?.hasAccessToken &&
+      oauthConnection.oauthMode === "instagram_login" &&
+      oauthConnection.status !== "not_connected",
+  );
 
   const onSoftDisconnect = async () => {
     if (!companyId) return;
@@ -198,10 +225,15 @@ export function SettingsInstagramPage() {
                   && health?.ok,
               )}
               enabled={Boolean(settings?.enabled)}
+              connectionStatus={oauthConnection?.status ?? null}
               assetLabel={t("notifications.instagram.settings.instagramBusinessAccountId", {
                 defaultValue: "Instagram Business Account ID",
               })}
-              assetValue={settings?.instagramBusinessAccountId}
+              assetValue={
+                oauthConnection?.username
+                  ? `@${oauthConnection.username}`
+                  : settings?.instagramBusinessAccountId
+              }
               hasAccessToken={Boolean(settings?.hasAccessToken)}
               hasWebhookVerifyToken={Boolean(settings?.hasWebhookVerifyToken)}
               healthOk={health?.ok ?? null}
@@ -215,6 +247,13 @@ export function SettingsInstagramPage() {
                 companyId={companyId}
                 onConnected={refreshAfterOauth}
                 onDisconnected={refreshAfterOauth}
+              />
+            ) : null}
+            {companyId ? (
+              <ChannelAiEmployeeAssignment
+                companyId={companyId}
+                companyChannelId={companyChannelId}
+                channelLabel={t("notifications.instagram.settings.title")}
               />
             ) : null}
             {companyId ? (
@@ -243,62 +282,140 @@ export function SettingsInstagramPage() {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.instagram.settings.instagramBusinessAccountId")}</Label>
-                <Input
-                  value={draft.instagramBusinessAccountId}
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, instagramBusinessAccountId: event.target.value }))
+            {oauthConnected ? (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">
+                  {t("notifications.instagramLogin.advancedManual", {
+                    defaultValue: "Advanced: manual Instagram credentials",
+                  })}
+                </summary>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.instagram.settings.instagramBusinessAccountId")}</Label>
+                    <Input
+                      value={draft.instagramBusinessAccountId}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          instagramBusinessAccountId: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.instagram.settings.accessToken")}</Label>
+                    <Input
+                      type="password"
+                      value={draft.accessToken}
+                      placeholder={settings?.hasAccessToken ? "********" : ""}
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, accessToken: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("notifications.instagram.settings.apiVersion")}</Label>
+                    <Input
+                      value={draft.apiVersion}
+                      placeholder="v21.0"
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, apiVersion: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.instagram.settings.appSecret")}</Label>
+                    <Input
+                      type="password"
+                      value={draft.appSecret}
+                      placeholder={settings?.hasAppSecret ? "********" : ""}
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, appSecret: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <WebhookVerifyTokenField
+                    id="instagram-webhook-verify-token"
+                    label={t("notifications.instagram.settings.webhookVerifyToken")}
+                    value={draft.webhookVerifyToken}
+                    hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
+                    onChange={(webhookVerifyToken) =>
+                      setDraft((prev) => ({ ...prev, webhookVerifyToken }))
+                    }
+                    onGenerate={onGenerateVerifyToken}
+                    hint={t("notifications.instagram.settings.webhookVerifyHint")}
+                  />
+                </div>
+              </details>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.instagram.settings.instagramBusinessAccountId")}</Label>
+                  <Input
+                    value={draft.instagramBusinessAccountId}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        instagramBusinessAccountId: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.instagram.settings.pageId")}</Label>
+                  <Input
+                    value={draft.pageId}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, pageId: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.instagram.settings.accessToken")}</Label>
+                  <Input
+                    type="password"
+                    value={draft.accessToken}
+                    placeholder={settings?.hasAccessToken ? "********" : ""}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, accessToken: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.instagram.settings.apiVersion")}</Label>
+                  <Input
+                    value={draft.apiVersion}
+                    placeholder="v21.0"
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, apiVersion: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.instagram.settings.appSecret")}</Label>
+                  <Input
+                    type="password"
+                    value={draft.appSecret}
+                    placeholder={settings?.hasAppSecret ? "********" : ""}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, appSecret: event.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("notifications.instagram.settings.appSecretHint")}
+                  </p>
+                </div>
+                <WebhookVerifyTokenField
+                  id="instagram-webhook-verify-token"
+                  label={t("notifications.instagram.settings.webhookVerifyToken")}
+                  value={draft.webhookVerifyToken}
+                  hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
+                  onChange={(webhookVerifyToken) =>
+                    setDraft((prev) => ({ ...prev, webhookVerifyToken }))
                   }
+                  onGenerate={onGenerateVerifyToken}
+                  hint={t("notifications.instagram.settings.webhookVerifyHint")}
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.instagram.settings.pageId")}</Label>
-                <Input
-                  value={draft.pageId}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, pageId: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.instagram.settings.accessToken")}</Label>
-                <Input
-                  type="password"
-                  value={draft.accessToken}
-                  placeholder={settings?.hasAccessToken ? "********" : ""}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, accessToken: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("notifications.instagram.settings.apiVersion")}</Label>
-                <Input
-                  value={draft.apiVersion}
-                  placeholder="v21.0"
-                  onChange={(event) => setDraft((prev) => ({ ...prev, apiVersion: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>{t("notifications.instagram.settings.appSecret")}</Label>
-                <Input
-                  type="password"
-                  value={draft.appSecret}
-                  placeholder={settings?.hasAppSecret ? "********" : ""}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, appSecret: event.target.value }))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("notifications.instagram.settings.appSecretHint")}
-                </p>
-              </div>
-              <WebhookVerifyTokenField
-                id="instagram-webhook-verify-token"
-                label={t("notifications.instagram.settings.webhookVerifyToken")}
-                value={draft.webhookVerifyToken}
-                hasStoredToken={Boolean(settings?.hasWebhookVerifyToken)}
-                onChange={(webhookVerifyToken) => setDraft((prev) => ({ ...prev, webhookVerifyToken }))}
-                onGenerate={onGenerateVerifyToken}
-                hint={t("notifications.instagram.settings.webhookVerifyHint")}
-              />
-            </div>
+            )}
 
             <div className="space-y-3 rounded-lg border border-white/5 bg-white/[0.02] p-4">
               <Label>{t("notifications.instagram.settings.webhookUrl")}</Label>

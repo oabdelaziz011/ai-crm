@@ -9,6 +9,8 @@ export type MetaMessengerLoginReadiness = {
   ready: boolean;
   companyAllowed: boolean;
   reason: string | null;
+  /** Env var names still required (never secret values). */
+  missingConfigKeys?: string[];
   redirectUri?: string;
   scopes?: string[];
   graphApiVersion?: string;
@@ -109,7 +111,7 @@ export function completeMetaMessengerLogin(input: {
 export function disconnectMetaMessengerLogin(companyId: string): Promise<{
   ok: true;
   softDisconnected: true;
-  metaRevoked: false;
+  metaRevoked: boolean;
 }> {
   return apiJson("POST", "/meta/messenger-oauth/disconnect", { companyId });
 }

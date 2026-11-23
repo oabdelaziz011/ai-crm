@@ -8,11 +8,13 @@ import {
   fetchMetaInstagramLoginConnection,
   fetchMetaInstagramLoginStatus,
   isMetaInstagramLoginUiEnabled,
+  refreshMetaInstagramLoginToken,
   startMetaInstagramLogin,
   type MetaInstagramLoginConnection,
   type MetaInstagramLoginReadiness,
 } from "@/lib/channels/meta-instagram-login-client";
 import { META_CONNECTION_STATUS_LABELS } from "@/lib/channels/meta-connection-status";
+import { formatMetaOauthReadinessMessage } from "@/lib/channels/meta-oauth-readiness-message";
 
 type Props = {
   companyId: string;
@@ -122,6 +124,37 @@ export function InstagramLoginOauthPanel({ companyId, onConnected, onDisconnecte
     }
   };
 
+  const onRefreshToken = async () => {
+    setBusy(true);
+    try {
+      const result = await refreshMetaInstagramLoginToken(companyId);
+      toast({
+        title: result.ok
+          ? t("notifications.instagramLogin.refreshed", { defaultValue: "Instagram token refreshed" })
+          : t("notifications.instagramLogin.refreshFailed", {
+              defaultValue: "Token refresh failed — reconnect",
+            }),
+        description: result.message,
+        variant: result.ok ? "default" : "destructive",
+      });
+      if (!result.ok) {
+        // Expired/revoked — fall through to full OAuth reconnect UX.
+      }
+      void refresh();
+      onConnected?.();
+    } catch (error) {
+      toast({
+        title: t("notifications.instagramLogin.refreshFailed", {
+          defaultValue: "Token refresh failed — reconnect",
+        }),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!uiEnabled) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -136,6 +169,14 @@ export function InstagramLoginOauthPanel({ companyId, onConnected, onDisconnecte
   const statusLabel = connection
     ? META_CONNECTION_STATUS_LABELS[connection.status]
     : META_CONNECTION_STATUS_LABELS.not_connected;
+  const connectDisabled = busy || readiness?.ready !== true;
+  const readinessMessage = formatMetaOauthReadinessMessage(readiness, "instagram");
+  const connectLabel =
+    connection?.status === "connection_expired" ||
+    connection?.status === "reauthorization_required" ||
+    connection?.hasAccessToken
+      ? t("notifications.instagramLogin.reconnect", { defaultValue: "Reconnect Instagram" })
+      : t("notifications.instagramLogin.connect", { defaultValue: "Connect Instagram" });
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 p-3">
@@ -160,21 +201,58 @@ export function InstagramLoginOauthPanel({ companyId, onConnected, onDisconnecte
         {statusLabel}
         {connection?.username ? ` · @${connection.username}` : ""}
       </p>
-      {readiness && !readiness.ready ? (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          {t("notifications.instagramLogin.notReady", {
-            reason: readiness.reason ?? "unknown",
-            defaultValue: `Self-service not ready (${readiness.reason ?? "unknown"}).`,
-          })}
-        </p>
+      {readinessMessage ? (
+        <div
+          className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-xs text-amber-700 dark:text-amber-300"
+          role="status"
+          data-oauth-ready="false"
+          data-oauth-reason={readiness?.reason ?? "unknown"}
+        >
+          <p className="font-medium">
+            {t("notifications.instagramLogin.connectDisabled", {
+              defaultValue: "Connect Instagram is disabled",
+            })}
+          </p>
+          <p>{readinessMessage}</p>
+          {readiness?.missingConfigKeys && readiness.missingConfigKeys.length > 0 ? (
+            <ul className="list-disc pl-4 font-mono text-[11px]">
+              {readiness.missingConfigKeys.map((key) => (
+                <li key={key}>{key}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" disabled={busy || readiness?.ready === false} onClick={() => void onConnect()}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={connectDisabled}
+          aria-disabled={connectDisabled}
+          title={
+            connectDisabled
+              ? readinessMessage ??
+                t("notifications.instagramLogin.connectDisabled", {
+                  defaultValue: "Connect Instagram is disabled",
+                })
+              : undefined
+          }
+          onClick={() => void onConnect()}
+        >
           {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-          {connection?.hasAccessToken
-            ? t("notifications.instagramLogin.reconnect", { defaultValue: "Reconnect Instagram" })
-            : t("notifications.instagramLogin.connect", { defaultValue: "Connect Instagram" })}
+          {connectLabel}
         </Button>
+        {connection?.hasAccessToken && connection.status === "connection_expired" ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={connectDisabled}
+            onClick={() => void onRefreshToken()}
+          >
+            {t("notifications.instagramLogin.refresh", { defaultValue: "Refresh token" })}
+          </Button>
+        ) : null}
         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void onDisconnect()}>
           <Unplug className="mr-1.5 h-3.5 w-3.5" />
           {t("notifications.instagramLogin.disconnect", { defaultValue: "Disconnect" })}

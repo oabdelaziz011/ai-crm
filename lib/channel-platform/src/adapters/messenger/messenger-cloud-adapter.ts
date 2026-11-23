@@ -13,6 +13,10 @@ import { AttachmentEngine } from "../../engines/attachment-engine.js";
 import { ValidationError } from "../../errors.js";
 import { mapMetaMessagingEventsToEnvelopes } from "../meta/meta-messaging-adapter.js";
 import { parseMetaMessagingWebhookEvents } from "../meta/meta-messaging-webhook.js";
+import {
+  applyMetaSenderProfileToNormalized,
+  fetchMetaSenderProfile,
+} from "../meta/meta-sender-profile.js";
 import { MessengerApiClient } from "./messenger-api-client.js";
 import { parseMessengerChannelReferences } from "./messenger-config.js";
 import { resolveMessengerRuntimeConfiguration } from "./messenger-canonical-credentials.js";
@@ -31,10 +35,12 @@ export class MessengerCloudAdapter implements ChannelAdapterPort {
   private readonly apiClient: MessengerApiClient;
   private readonly attachmentEngine = new AttachmentEngine();
   private readonly credentialsLoader?: MessengerCredentialsLoader;
+  private readonly fetchFn?: typeof fetch;
   private readonly onOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
 
   constructor(options: MessengerCloudAdapterOptions = {}) {
     this.credentialsLoader = options.credentialsLoader;
+    this.fetchFn = options.fetchFn;
     this.onOutboundDiagnostic = options.onOutboundDiagnostic;
     this.apiClient = new MessengerApiClient({
       fetchFn: options.fetchFn,
@@ -100,6 +106,28 @@ export class MessengerCloudAdapter implements ChannelAdapterPort {
         pageId: typeof payload.pageId === "string" ? payload.pageId : undefined,
       },
     };
+  }
+
+  async enrichInboundSenderProfile(
+    ctx: ChannelAdapterContext,
+    normalized: NormalizedInboundMessageDto,
+  ): Promise<NormalizedInboundMessageDto> {
+    const senderId = String(normalized.senderExternalId ?? "").trim();
+    if (!senderId || !this.credentialsLoader) return normalized;
+    try {
+      const credentials = await this.credentialsLoader.loadByCompanyId(ctx.companyChannel.companyId);
+      if (!credentials?.accessToken?.trim()) return normalized;
+      const profile = await fetchMetaSenderProfile({
+        channelKey: "messenger",
+        senderExternalId: senderId,
+        accessToken: credentials.accessToken,
+        apiVersion: credentials.apiVersion,
+        fetchImpl: this.fetchFn,
+      });
+      return applyMetaSenderProfileToNormalized(normalized, "messenger", profile);
+    } catch {
+      return normalized;
+    }
   }
 
   formatOutbound(_ctx: ChannelAdapterContext, message: OutboundChannelMessageDto): Record<string, unknown> {

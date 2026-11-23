@@ -53,7 +53,9 @@ export async function loadCompanyMessengerCredentialsDecrypted(
 
   if (!rpcError && rpcRecord) {
     const mapped = mapDecryptedSettings(rpcRecord);
-    if (mapped?.accessToken.trim()) {
+    // Verify-token-only rows (pending Meta webhook setup, no Page access token yet)
+    // must still resolve so scoped GET verification can succeed.
+    if (mapped?.accessToken.trim() || mapped?.verifyToken.trim()) {
       return mapped;
     }
   }

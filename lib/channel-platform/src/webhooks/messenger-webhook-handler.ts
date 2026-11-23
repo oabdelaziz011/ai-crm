@@ -34,11 +34,29 @@ function readHubChallenge(query: Record<string, unknown>): string | undefined {
   return typeof query["hub.challenge"] === "string" ? query["hub.challenge"] : undefined;
 }
 
+export type MessengerVerifyResult = {
+  status: number;
+  body: string;
+  /** Safe diagnostic code only — never includes token/challenge values. */
+  failReason?:
+    | "missing_verify_token"
+    | "match_count_zero"
+    | "match_count_ambiguous"
+    | "challenge_rejected"
+    | "resolve_channel_failed";
+  matchCount?: number;
+};
+
 export function createMessengerWebhookHandler(deps: MessengerWebhookHandlerDeps) {
   return {
-    async verifyGet(query: Record<string, unknown>): Promise<{ status: number; body: string }> {
+    async verifyGet(query: Record<string, unknown>): Promise<MessengerVerifyResult> {
       const companyChannelId = String(query.companyChannelId ?? "");
-      const channel = await deps.resolveCompanyChannel(companyChannelId);
+      let channel: { companyId: string; verifyToken: string };
+      try {
+        channel = await deps.resolveCompanyChannel(companyChannelId);
+      } catch {
+        return { status: 403, body: "Forbidden", failReason: "resolve_channel_failed" };
+      }
       const challenge = verifyMessengerWebhookChallenge({
         mode: readHubMode(query),
         verifyToken: readHubVerifyToken(query),
@@ -46,16 +64,28 @@ export function createMessengerWebhookHandler(deps: MessengerWebhookHandlerDeps)
         expectedVerifyToken: channel.verifyToken,
       });
 
-      if (!challenge) return { status: 403, body: "Forbidden" };
+      if (!challenge) return { status: 403, body: "Forbidden", failReason: "challenge_rejected" };
       return { status: 200, body: challenge };
     },
 
-    async verifyGetByVerifyToken(query: Record<string, unknown>): Promise<{ status: number; body: string }> {
+    async verifyGetByVerifyToken(query: Record<string, unknown>): Promise<MessengerVerifyResult> {
       const hubVerifyToken = readHubVerifyToken(query);
-      if (!hubVerifyToken) return { status: 403, body: "Forbidden" };
+      if (!hubVerifyToken) {
+        return { status: 403, body: "Forbidden", failReason: "missing_verify_token", matchCount: 0 };
+      }
 
       const matches = await deps.ports.registry.findCompanyChannelsByMessengerVerifyToken(hubVerifyToken);
-      if (matches.length !== 1) return { status: 403, body: "Forbidden" };
+      if (matches.length === 0) {
+        return { status: 403, body: "Forbidden", failReason: "match_count_zero", matchCount: 0 };
+      }
+      if (matches.length !== 1) {
+        return {
+          status: 403,
+          body: "Forbidden",
+          failReason: "match_count_ambiguous",
+          matchCount: matches.length,
+        };
+      }
 
       const challenge = verifyMessengerWebhookChallenge({
         mode: readHubMode(query),
@@ -64,8 +94,10 @@ export function createMessengerWebhookHandler(deps: MessengerWebhookHandlerDeps)
         expectedVerifyToken: hubVerifyToken,
       });
 
-      if (!challenge) return { status: 403, body: "Forbidden" };
-      return { status: 200, body: challenge };
+      if (!challenge) {
+        return { status: 403, body: "Forbidden", failReason: "challenge_rejected", matchCount: 1 };
+      }
+      return { status: 200, body: challenge, matchCount: 1 };
     },
 
     async handlePost(input: {

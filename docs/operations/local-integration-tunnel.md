@@ -42,7 +42,7 @@ Defaults:
 
 | Setting | Value |
 |---|---|
-| Frontend | `http://localhost:5173` |
+| Frontend | `http://localhost:5180` |
 | API | `http://localhost:3001` |
 | Supabase | `http://127.0.0.1:54321` |
 | Postgres | `127.0.0.1:54322` |

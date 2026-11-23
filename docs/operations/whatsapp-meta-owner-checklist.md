@@ -58,7 +58,7 @@ Meta’s Coexistence docs require you to already be a **Solution Partner or Tech
 
 ### 4. Domains / Valid OAuth redirect URIs
 
-1. Facebook Login for Business settings: allow Development frontend origin `http://localhost:5173` (and `http://127.0.0.1:5173` if Meta requires host-exact match).
+1. Facebook Login for Business settings: allow Development frontend origin `http://localhost:5180` (and `http://127.0.0.1:5180` if Meta requires host-exact match).
 2. Embedded Signup / JS SDK origins must include the local Vite origin used for DEMO testing.
 
 ### 5. WhatsApp webhook subscriptions (after Access Verification)

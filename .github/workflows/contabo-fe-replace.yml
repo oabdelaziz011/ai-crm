@@ -27,11 +27,21 @@ jobs:
     runs-on: [self-hosted, linux, x64, valueor-production]
     timeout-minutes: 20
     environment: production
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Download verified production release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: valueor-production-release
+          path: /tmp/valueor-gha-fe-replace-artifacts
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.inputs.artifact_run_id }}
+
+      - name: Verify artifact SHA/markers and stage replace-frontend incoming
         env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.inputs.artifact_run_id }}
           FE_SHA: ${{ github.event.inputs.frontend_sha }}
         run: |
           set -euo pipefail
@@ -40,14 +50,12 @@ jobs:
             echo "Invalid frontend_sha"
             exit 2
           fi
-          STAGE="/tmp/valueor-incoming-fe-replace-${FE_SHA}"
-          rm -rf "$STAGE"
-          mkdir -p "$STAGE/download"
-          gh run download "$RUN_ID" -n valueor-production-release -D "$STAGE/download"
-          TGZ="$(find "$STAGE/download" -name '*.tgz' -type f | head -n 1)"
+          TGZ="$(find /tmp/valueor-gha-fe-replace-artifacts -name '*.tgz' -type f | head -n 1)"
           test -n "$TGZ"
           echo "artifact_tgz=$TGZ"
           sha256sum "$TGZ"
+          STAGE="/tmp/valueor-incoming-fe-replace-${FE_SHA}"
+          rm -rf "$STAGE"
           mkdir -p "$STAGE/extracted"
           tar -xzf "$TGZ" -C "$STAGE/extracted"
           test -f "$STAGE/extracted/frontend/index.html"

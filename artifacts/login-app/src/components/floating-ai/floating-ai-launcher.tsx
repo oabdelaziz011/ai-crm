@@ -40,6 +40,7 @@ export const FloatingAiLauncher = memo(function FloatingAiLauncher({
     setPendingFocusOnOpen,
     consumePendingFocus,
     setPendingComposerDraft,
+    setSurface,
   } = useFloatingAi();
   const { openCommandPalette } = useAppShell();
   const [location] = useLocation();
@@ -58,6 +59,11 @@ export const FloatingAiLauncher = memo(function FloatingAiLauncher({
       if (!canViewAi) return;
       onActivate();
       preloadFloatingAiAssistant();
+      if (detail?.surface === "guide" || detail?.surface === "assist") {
+        setSurface(detail.surface);
+      } else {
+        setSurface("assist");
+      }
       if (detail?.draft) setPendingComposerDraft(detail.draft);
       setPendingFocusOnOpen(true);
       openPanel();
@@ -78,6 +84,7 @@ export const FloatingAiLauncher = memo(function FloatingAiLauncher({
     openPanel,
     setPendingComposerDraft,
     setPendingFocusOnOpen,
+    setSurface,
   ]);
 
   useEffect(() => {
@@ -102,6 +109,7 @@ export const FloatingAiLauncher = memo(function FloatingAiLauncher({
         if (isPanelVisible) {
           closePanel();
         } else {
+          setSurface("assist");
           setPendingFocusOnOpen(true);
           openPanel();
           requestAnimationFrame(() => consumePendingFocus());
@@ -124,6 +132,7 @@ export const FloatingAiLauncher = memo(function FloatingAiLauncher({
     openCommandPalette,
     openPanel,
     setPendingFocusOnOpen,
+    setSurface,
   ]);
 
   return null;

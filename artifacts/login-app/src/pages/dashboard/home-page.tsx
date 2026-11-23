@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
 import { format } from "date-fns";
-import { ar, enUS } from "date-fns/locale";
+import { resolveDateFnsLocale } from "@/lib/i18n/date-fns-locale";
 import { useLocation } from "wouter";
 import {
   AlertCircle,
@@ -30,8 +30,8 @@ import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useCurrentUserBranches } from "@/lib/company/branches/hooks";
-import { useAppShell } from "@/context/app-shell-context";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
+import { requestOpenFloatingAi } from "@/lib/floating-ai/open-assistant";
 import { CustomerModal } from "@/components/dashboard/customer-modal";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { InvoiceModal } from "@/components/dashboard/invoice-modal";
@@ -98,9 +98,8 @@ export function DashboardHomePage() {
   const { displayName, company, profile } = useAuth();
   const { identity } = useCompanyIdentity(Boolean(company?.id ?? profile?.company_id));
   const { hasPermission, isSuperAdmin } = useAuthUser();
-  const { setCopilotOpen } = useAppShell();
   const companyId = profile?.company_id ?? null;
-  const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
+  const dateLocale = resolveDateFnsLocale(i18n.language);
   const access = useMemo(
     () => ({ isSuperAdmin, hasPermission }),
     [isSuperAdmin, hasPermission],
@@ -724,7 +723,7 @@ export function DashboardHomePage() {
               <QuickActionButton
                 icon={Sparkles}
                 label={t("appShell.commandPalette.askAi")}
-                onClick={() => setCopilotOpen(true)}
+                onClick={() => requestOpenFloatingAi({ surface: "guide" })}
               />
             </div>
           </section>

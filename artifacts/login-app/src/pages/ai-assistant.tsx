@@ -365,6 +365,7 @@ export function AiAssistantPage() {
         { value: "system" as const, label: t("aiAssistant.general.responseLanguages.system") },
         { value: "en" as const, label: t("languages.english") },
         { value: "ar" as const, label: t("languages.arabic") },
+        { value: "de" as const, label: t("languages.german") },
       ],
     [t],
   );
@@ -585,6 +586,7 @@ export function AiAssistantPage() {
                 >
                   <option value="en">{t("languages.english")}</option>
                   <option value="ar">{t("languages.arabic")}</option>
+                  <option value="de">{t("languages.german")}</option>
                 </select>
               </div>
               <div className="space-y-2">

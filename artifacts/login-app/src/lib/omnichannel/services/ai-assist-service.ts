@@ -31,19 +31,19 @@ const CONFUSED_HINTS = ["confused", "don't understand", "unclear", "what do you 
 
 function inferIntent(lastCustomerMessage: string, language: ResolvedConversationLanguage): string {
   const text = lastCustomerMessage.toLowerCase();
-  if (/invoice|payment|bill|facture|فاتورة|دفع/i.test(text)) {
-    return language === "ar" ? "استفسار فواتير" : "Billing";
+  if (/invoice|payment|bill|facture|rechnung|فاتورة|دفع/i.test(text)) {
+    return language === "ar" ? "استفسار فواتير" : language === "de" ? "Rechnungsanfrage" : "Billing";
   }
-  if (/booking|appointment|schedule|réservation|موعد|حجز/i.test(text)) {
-    return language === "ar" ? "جدولة" : "Scheduling";
+  if (/booking|appointment|schedule|réservation|termin|موعد|حجز/i.test(text)) {
+    return language === "ar" ? "جدولة" : language === "de" ? "Terminplanung" : "Scheduling";
   }
-  if (/cancel|refund|complaint|استرجاع|إلغاء|شكوى/i.test(text)) {
-    return language === "ar" ? "تصعيد دعم" : "Support escalation";
+  if (/cancel|refund|complaint|erstattung|storno|استرجاع|إلغاء|شكوى/i.test(text)) {
+    return language === "ar" ? "تصعيد دعم" : language === "de" ? "Support-Eskalation" : "Support escalation";
   }
-  if (/price|quote|offer|سعر|عرض/i.test(text)) {
-    return language === "ar" ? "استفسار مبيعات" : "Sales inquiry";
+  if (/price|quote|offer|preis|angebot|سعر|عرض/i.test(text)) {
+    return language === "ar" ? "استفسار مبيعات" : language === "de" ? "Verkaufsanfrage" : "Sales inquiry";
   }
-  return language === "ar" ? "استفسار عام" : "General inquiry";
+  return language === "ar" ? "استفسار عام" : language === "de" ? "Allgemeine Anfrage" : "General inquiry";
 }
 
 function inferCustomerTone(corpus: string): CustomerTone {
@@ -74,7 +74,11 @@ function buildConversationSummary(
   language: ResolvedConversationLanguage,
 ): string {
   if (messages.length === 0) {
-    return language === "ar" ? "لا توجد رسائل بعد." : "No messages yet.";
+    return language === "ar"
+      ? "لا توجد رسائل بعد."
+      : language === "de"
+        ? "Noch keine Nachrichten."
+        : "No messages yet.";
   }
 
   const customerMessages = messages.filter((message) => message.message_type === "incoming");
@@ -89,6 +93,16 @@ function buildConversationSummary(
       `ملخص المحادثة: ${messages.length} رسالة.`,
       customerMessages.length > 0 ? `آخر رسالة من العميل: ${lastCustomer || "—"}` : null,
       agentMessages.length > 0 ? `آخر رد من الفريق: ${lastAgent || "—"}` : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  if (language === "de") {
+    return [
+      `Gesprächszusammenfassung: ${messages.length} Nachrichten.`,
+      customerMessages.length > 0 ? `Letzte Kundennachricht: ${lastCustomer || "—"}` : null,
+      agentMessages.length > 0 ? `Letzte Teamantwort: ${lastAgent || "—"}` : null,
     ]
       .filter(Boolean)
       .join(" ");
@@ -168,7 +182,9 @@ export function buildAiAssistModel(
   const translationNote =
     labelLocale === "ar"
       ? `ستتبع ردود الذكاء الاصطناعي لغة ${languageDisplayLabel(detected, "ar")}.`
-      : `AI replies will follow ${languageDisplayLabel(detected, "en")}.`;
+      : labelLocale === "de"
+        ? `KI-Antworten folgen der Sprache ${languageDisplayLabel(detected, "de")}.`
+        : `AI replies will follow ${languageDisplayLabel(detected, "en")}.`;
 
   return {
     suggestedReplies,

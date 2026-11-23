@@ -8,7 +8,6 @@ import { useAiEmployee } from "@/lib/ai-employees/hooks";
 import { readAiEmployeeIdFromPageContext } from "@/lib/ai-employees/utilities/merge-employee-page-context";
 import { resolveAiEmployeeWelcomeMessage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import { prepareEmployeeChatRuntime } from "@/lib/ai-employees/utilities/prepare-employee-chat-runtime";
-import { createRpcCommercialEntitlementPort } from "@/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate";
 import { rehydrateConversationExecutionContextFromMetadata } from "@/lib/ai-employees/utilities/conversation-employee-context-hydrator";
 import {
   appendSchedulingCatalogPrompt,
@@ -21,12 +20,23 @@ import { shouldClearStreamingBeforeRefresh, buildDisplayMessages, hasPersistedOu
 import { resolveFloatingTurnIdempotencyKey } from "./floating-turn-idempotency";
 import { toCustomerFacingSendError } from "./customer-facing-send-error";
 import i18n from "@/i18n";
-
-const CONVERSATION_STORAGE_PREFIX = "vault-ai-chat-conversation";
+import {
+  applyGuidePageContextRestrictions,
+  conversationSourceForSurface,
+  conversationStorageKeyForSurface,
+  registerGuideToolScope,
+  resolveFloatingAiSurface,
+  type FloatingAiSurface,
+} from "@/lib/floating-ai/guide/guide-security";
 
 export type UseAiChatWorkspaceOptions = {
   /** floating panel shares conversation across navigation */
   source?: "floating" | "workspace";
+  /**
+   * Assist (default) vs Guide surface.
+   * Guide is infrastructure-only in Phase 0B — no user-facing Guide Mode toggle.
+   */
+  surface?: FloatingAiSurface;
   /** Live page context resolver — passed to runtime as structured metadata */
   getPageContext?: () => Record<string, unknown>;
 };
@@ -42,18 +52,28 @@ export type ChatMessage = {
   externalMessageId?: string;
 };
 
-function conversationStorageKey(companyId: string) {
-  return `${CONVERSATION_STORAGE_PREFIX}:${companyId}`;
+function resolveWorkspaceSurface(
+  options: UseAiChatWorkspaceOptions,
+  conversationMetadata?: Record<string, unknown> | null,
+): FloatingAiSurface {
+  return resolveFloatingAiSurface({
+    explicitSurface: options.surface,
+    pageContext: options.getPageContext?.() ?? null,
+    conversationMetadata,
+  });
 }
 
 function buildConversationMetadata(
   source: UseAiChatWorkspaceOptions["source"],
+  surface: FloatingAiSurface,
   pageContext?: Record<string, unknown>,
   extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
-  const aiEmployeeId = readAiEmployeeIdFromPageContext(pageContext);
+  const aiEmployeeId =
+    surface === "guide" ? null : readAiEmployeeIdFromPageContext(pageContext);
   return {
-    source: source === "floating" ? "floating_ai_assistant" : "ai_chat_workspace",
+    source: conversationSourceForSurface(surface, source === "workspace" ? "workspace" : "floating"),
+    assistantSurface: surface,
     ...(aiEmployeeId ? { aiEmployeeId } : {}),
     ...extra,
   };
@@ -85,7 +105,7 @@ export function aiChatMessagesQueryKey(conversationId: string | null) {
 }
 
 export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
-  const { source = "workspace", getPageContext } = options;
+  const { source = "workspace", getPageContext, surface: explicitSurface } = options;
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const queryClient = useQueryClient();
@@ -114,7 +134,12 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
   const assistantName =
     assistantSettings?.assistant_name?.trim() ||
     i18n.t("dashboard.ai.name", { ns: "common" });
-  const pageContextEmployeeId = readAiEmployeeIdFromPageContext(getPageContext?.());
+  const surface = resolveWorkspaceSurface(
+    { source, surface: explicitSurface, getPageContext },
+    conversationMetadata,
+  );
+  const pageContextEmployeeId =
+    surface === "guide" ? null : readAiEmployeeIdFromPageContext(getPageContext?.());
   const { data: boundEmployee } = useAiEmployee(companyId, pageContextEmployeeId);
   const welcomeMessage = pageContextEmployeeId
     ? resolveAiEmployeeWelcomeMessage(boundEmployee?.welcomeMessage)
@@ -124,11 +149,16 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
     if (!companyId || !assistantSettings?.id) return;
 
     let cancelled = false;
+    const activeSurface = resolveWorkspaceSurface(
+      { source, surface: explicitSurface, getPageContext },
+      null,
+    );
+    const storageKey = conversationStorageKeyForSurface(companyId, activeSurface);
 
     async function ensureConversation() {
       setConversationError(null);
 
-      const storedId = sessionStorage.getItem(conversationStorageKey(companyId!));
+      const storedId = sessionStorage.getItem(storageKey);
 
       if (storedId) {
         try {
@@ -147,7 +177,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
           }
           return;
         } catch {
-          sessionStorage.removeItem(conversationStorageKey(companyId!));
+          sessionStorage.removeItem(storageKey);
         }
       }
 
@@ -157,9 +187,9 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
           aiAssistantId: assistantSettings!.id,
           channelType: "web_chat",
           companyChannelId: webChatChannel?.id,
-          metadata: buildConversationMetadata(source, getPageContext?.()),
+          metadata: buildConversationMetadata(source, activeSurface, getPageContext?.()),
         });
-        sessionStorage.setItem(conversationStorageKey(companyId!), created.id);
+        sessionStorage.setItem(storageKey, created.id);
         if (!cancelled) {
           setConversationId(created.id);
           setConversationMetadata(created.metadata ?? {});
@@ -182,6 +212,8 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
     conversationContext,
     conversationServices.conversations,
     webChatChannel?.id,
+    explicitSurface,
+    source,
   ]);
 
   const messagesQuery = useQuery({
@@ -226,15 +258,19 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
     setConversationError(null);
     abortRef.current?.abort();
 
+    const activeSurface = resolveWorkspaceSurface(
+      { source, surface: explicitSurface, getPageContext },
+      conversationMetadata,
+    );
     const created = await conversationServices.conversations.createConversation(conversationContext, {
       companyId,
       aiAssistantId: assistantSettings.id,
       channelType: "web_chat",
       companyChannelId: webChatChannel?.id,
-      metadata: buildConversationMetadata(source, getPageContext?.(), { restarted: true }),
+      metadata: buildConversationMetadata(source, activeSurface, getPageContext?.(), { restarted: true }),
     });
 
-    sessionStorage.setItem(conversationStorageKey(companyId), created.id);
+    sessionStorage.setItem(conversationStorageKeyForSurface(companyId, activeSurface), created.id);
     setConversationId(created.id);
     setConversationMetadata(created.metadata ?? {});
     setStreamingContent("");
@@ -250,6 +286,9 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
     queryClient,
     webChatChannel?.id,
     source,
+    explicitSurface,
+    getPageContext,
+    conversationMetadata,
   ]);
 
   const sendMessage = useCallback(
@@ -277,61 +316,90 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
       abortRef.current = controller;
 
       try {
-        const basePageContext = getPageContext?.() ?? {};
-        const employeeRuntime = await prepareEmployeeChatRuntime({
-          companyId,
-          conversationId,
-          basePageContext,
+        const activeSurface = resolveWorkspaceSurface(
+          { source, surface: explicitSurface, getPageContext },
           conversationMetadata,
-          commercialEntitlement: createRpcCommercialEntitlementPort(supabase),
-        });
-
-        const enabledToolKeys = Array.isArray(employeeRuntime.pageContext?.allowedToolKeys)
-          ? employeeRuntime.pageContext.allowedToolKeys.filter(
-              (key): key is string => typeof key === "string" && key.trim().length > 0,
-            )
-          : [];
-        const schedulingCatalogPrompt = await resolveSchedulingCatalogPromptForEmployee(
-          supabase,
-          companyId,
-          enabledToolKeys,
         );
+        const isGuide = activeSurface === "guide";
+        const rawPageContext = getPageContext?.() ?? {};
 
-        if (employeeRuntime.metadataPatch && employeeRuntime.executionContext) {
-          const updated = await conversationServices.conversations.updateMetadata(conversationContext, {
+        let providerConnectionId = runtimeConfig.providerConnectionId;
+        let knowledgeRetrieval:
+          | {
+              embeddingConnectionId: string;
+              vectorStoreConnectionId: string;
+              collectionId: string;
+            }
+          | undefined;
+        let pageContext: Record<string, unknown>;
+        let executionPolicy = { streaming: true } as Record<string, unknown>;
+
+        if (isGuide) {
+          // Phase 0B/1: Guide never binds AI Employee tools or company RAG.
+          // Phase 1 injects product-knowledge + permission snapshot via systemPrompt
+          // when the floating host enriches pageContext (enrichGuidePageContext).
+          registerGuideToolScope(conversationId);
+          pageContext = applyGuidePageContextRestrictions(rawPageContext);
+          knowledgeRetrieval = undefined;
+          executionPolicy = { streaming: true, toolsDisabled: true };
+        } else {
+          const employeeRuntime = await prepareEmployeeChatRuntime({
+            companyId,
             conversationId,
-            metadata: employeeRuntime.metadataPatch,
+            basePageContext: rawPageContext,
+            conversationMetadata,
           });
-          setConversationMetadata(updated.metadata ?? employeeRuntime.metadataPatch);
+
+          const enabledToolKeys = Array.isArray(employeeRuntime.pageContext?.allowedToolKeys)
+            ? employeeRuntime.pageContext.allowedToolKeys.filter(
+                (key): key is string => typeof key === "string" && key.trim().length > 0,
+              )
+            : [];
+          const schedulingCatalogPrompt = await resolveSchedulingCatalogPromptForEmployee(
+            supabase,
+            companyId,
+            enabledToolKeys,
+          );
+
+          if (employeeRuntime.metadataPatch && employeeRuntime.executionContext) {
+            const updated = await conversationServices.conversations.updateMetadata(conversationContext, {
+              conversationId,
+              metadata: employeeRuntime.metadataPatch,
+            });
+            setConversationMetadata(updated.metadata ?? employeeRuntime.metadataPatch);
+          }
+
+          const runtimeOverrides = employeeRuntime.runtimeConfigOverrides;
+          providerConnectionId =
+            runtimeOverrides?.providerConnectionId ?? runtimeConfig.providerConnectionId;
+          knowledgeRetrieval =
+            runtimeOverrides?.knowledgeRetrieval ??
+            (runtimeConfig.knowledgeRetrieval?.embeddingConnectionId &&
+            runtimeConfig.knowledgeRetrieval?.vectorStoreConnectionId &&
+            runtimeConfig.knowledgeRetrieval?.collectionId
+              ? {
+                  embeddingConnectionId: runtimeConfig.knowledgeRetrieval.embeddingConnectionId,
+                  vectorStoreConnectionId: runtimeConfig.knowledgeRetrieval.vectorStoreConnectionId,
+                  collectionId: runtimeConfig.knowledgeRetrieval.collectionId,
+                }
+              : undefined);
+          executionPolicy = (runtimeOverrides?.executionPolicy ?? { streaming: true }) as Record<
+            string,
+            unknown
+          >;
+          pageContext = appendSchedulingCatalogPrompt({
+            ...employeeRuntime.pageContext,
+            ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
+            // Sales employees on the official assistant: the model selects tools.
+            // Support and clinic chats keep their deterministic turns.
+            deferDeterministicSales: enabledToolKeys.some((key) =>
+              key === "create_draft_quote" ||
+              key === "qualify_lead" ||
+              key === "list_demo_types" ||
+              key === "create_demo_booking",
+            ),
+          });
         }
-
-        const runtimeOverrides = employeeRuntime.runtimeConfigOverrides;
-        const providerConnectionId =
-          runtimeOverrides?.providerConnectionId ?? runtimeConfig.providerConnectionId;
-        const knowledgeRetrieval =
-          runtimeOverrides?.knowledgeRetrieval ??
-          (runtimeConfig.knowledgeRetrieval?.embeddingConnectionId &&
-          runtimeConfig.knowledgeRetrieval?.vectorStoreConnectionId &&
-          runtimeConfig.knowledgeRetrieval?.collectionId
-            ? {
-                embeddingConnectionId: runtimeConfig.knowledgeRetrieval.embeddingConnectionId,
-                vectorStoreConnectionId: runtimeConfig.knowledgeRetrieval.vectorStoreConnectionId,
-                collectionId: runtimeConfig.knowledgeRetrieval.collectionId,
-              }
-            : undefined);
-
-        const pageContext = appendSchedulingCatalogPrompt({
-          ...employeeRuntime.pageContext,
-          ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
-          // Sales employees on the official assistant: the model selects tools.
-          // Support and clinic chats keep their deterministic turns.
-          deferDeterministicSales: enabledToolKeys.some((key) =>
-            key === "create_draft_quote" ||
-            key === "qualify_lead" ||
-            key === "list_demo_types" ||
-            key === "create_demo_booking",
-          ),
-        });
 
         const previousFailedTurn = failedTurnKeyRef.current;
         const turnIdempotencyKey = resolveFloatingTurnIdempotencyKey({
@@ -356,7 +424,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
             providerConnectionId,
             pageContext,
             knowledgeRetrieval,
-            executionPolicy: runtimeOverrides?.executionPolicy ?? { streaming: true },
+            executionPolicy,
           },
           onStreamChunk: (chunk) => {
             streamingRef.current += chunk;

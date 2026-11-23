@@ -18,6 +18,7 @@ import {
   getDashboardRouteByNestedPath,
 } from "@/config/dashboard-route-registry";
 import type { FloatingAiPageContext } from "@/lib/floating-ai/types";
+import type { FloatingAiSurface } from "@/lib/floating-ai/guide/guide-security";
 import {
   applyFloatingAiPatch,
   clearPageSpecificFields,
@@ -45,6 +46,9 @@ type FloatingAiUiContextValue = {
   pendingComposerDraft: string | null;
   setPendingComposerDraft: (value: string | null) => void;
   consumePendingComposerDraft: () => string | null;
+  /** Assist (default) vs Guide — separate conversation histories. */
+  surface: FloatingAiSurface;
+  setSurface: (surface: FloatingAiSurface) => void;
 };
 
 export type FloatingAiContextValue = FloatingAiPageContextValue & FloatingAiUiContextValue;
@@ -94,6 +98,7 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
   const [pendingComposerDraft, setPendingComposerDraftState] = useState<string | null>(null);
   const pendingComposerDraftRef = useRef<string | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [surface, setSurface] = useState<FloatingAiSurface>("assist");
   const prevPageRef = useRef<string>("");
 
   const resolveModuleLabel = useCallback(
@@ -243,6 +248,8 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
       pendingComposerDraft,
       setPendingComposerDraft,
       consumePendingComposerDraft,
+      surface,
+      setSurface,
     }),
     [
       notificationCount,
@@ -253,6 +260,7 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
       pendingComposerDraft,
       setPendingComposerDraft,
       consumePendingComposerDraft,
+      surface,
     ],
   );
 
@@ -293,6 +301,8 @@ const NOOP_FLOATING_AI_UI: FloatingAiUiContextValue = {
   pendingComposerDraft: null,
   setPendingComposerDraft: () => {},
   consumePendingComposerDraft: () => null,
+  surface: "assist",
+  setSurface: () => {},
 };
 
 export function useFloatingAiPageContext(): FloatingAiPageContextValue {

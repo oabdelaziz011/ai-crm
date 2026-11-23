@@ -39,7 +39,7 @@ export function AppHeader({ companyId, onSignOut, onActivateAi }: AppHeaderProps
     canViewAiPermission
     && (isSuperAdmin || (aiAssistantEntitled && !aiChatFlagLoading && aiChatFlagEnabled));
   const { isPanelVisible, openPanel, closePanel } = useAiPanel();
-  const { setPendingFocusOnOpen, consumePendingFocus } = useFloatingAi();
+  const { setPendingFocusOnOpen, consumePendingFocus, setSurface } = useFloatingAi();
 
   const handleToggleAi = () => {
     onActivateAi?.();
@@ -48,6 +48,7 @@ export function AppHeader({ companyId, onSignOut, onActivateAi }: AppHeaderProps
       closePanel();
       return;
     }
+    setSurface("assist");
     setPendingFocusOnOpen(true);
     openPanel();
     requestAnimationFrame(() => consumePendingFocus());

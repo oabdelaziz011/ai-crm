@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -23,9 +24,33 @@ type AiTaskContextValue = {
 
 const AiTaskContext = createContext<AiTaskContextValue | null>(null);
 
+/** Keep finished chips briefly, then remove so the chat is not pushed off-screen. */
+const TASK_AUTO_DISMISS_MS = 1600;
+
 export function AiTaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<FloatingAiTask[]>([]);
   const completeListeners = useRef<Set<(task: FloatingAiTask) => void>>(new Set());
+  const autoDismissTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const clearAutoDismiss = useCallback((taskId: string) => {
+    const timer = autoDismissTimers.current.get(taskId);
+    if (timer) {
+      clearTimeout(timer);
+      autoDismissTimers.current.delete(taskId);
+    }
+  }, []);
+
+  const scheduleAutoDismiss = useCallback(
+    (taskId: string) => {
+      clearAutoDismiss(taskId);
+      const timer = setTimeout(() => {
+        autoDismissTimers.current.delete(taskId);
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      }, TASK_AUTO_DISMISS_MS);
+      autoDismissTimers.current.set(taskId, timer);
+    },
+    [clearAutoDismiss],
+  );
 
   const notifyComplete = useCallback((task: FloatingAiTask) => {
     for (const listener of completeListeners.current) {
@@ -86,8 +111,9 @@ export function AiTaskProvider({ children }: { children: ReactNode }) {
             : t,
         );
       });
+      scheduleAutoDismiss(taskId);
     },
-    [notifyComplete],
+    [notifyComplete, scheduleAutoDismiss],
   );
 
   const failTask = useCallback(
@@ -104,28 +130,46 @@ export function AiTaskProvider({ children }: { children: ReactNode }) {
             : t,
         ),
       );
+      scheduleAutoDismiss(taskId);
     },
-    [],
+    [scheduleAutoDismiss],
   );
 
-  const cancelTask = useCallback((taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? { ...t, status: "cancelled" as FloatingAiTaskStatus, completedAt: new Date().toISOString() }
-          : t,
-      ),
-    );
-  }, []);
+  const cancelTask = useCallback(
+    (taskId: string) => {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? { ...t, status: "cancelled" as FloatingAiTaskStatus, completedAt: new Date().toISOString() }
+            : t,
+        ),
+      );
+      scheduleAutoDismiss(taskId);
+    },
+    [scheduleAutoDismiss],
+  );
 
-  const dismissTask = useCallback((taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-  }, []);
+  const dismissTask = useCallback(
+    (taskId: string) => {
+      clearAutoDismiss(taskId);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    },
+    [clearAutoDismiss],
+  );
 
   const onTaskComplete = useCallback((callback: (task: FloatingAiTask) => void) => {
     completeListeners.current.add(callback);
     return () => {
       completeListeners.current.delete(callback);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of autoDismissTimers.current.values()) {
+        clearTimeout(timer);
+      }
+      autoDismissTimers.current.clear();
     };
   }, []);
 

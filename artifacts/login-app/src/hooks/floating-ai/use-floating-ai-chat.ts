@@ -1,8 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAiChatWorkspace } from "@/hooks/ai-chat/use-ai-chat-workspace";
 import { useFloatingAiRuntimeOverride } from "@/hooks/floating-ai/floating-ai-runtime-override";
+import { useAuthActions, useUser } from "@/context/auth-context";
 import { useFloatingAi } from "@/context/floating-ai-context";
 import { useAiTasks } from "@/context/ai-task-context";
+import { useAuthUser, usePermissions } from "@/hooks/use-rbac";
+import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
+import { usePlatformFeatureEnabledLookup } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { buildRuntimePageContext } from "@/lib/floating-ai/global-context";
 import {
   buildConfirmationPrompt,
@@ -11,20 +16,74 @@ import {
   type PendingConfirmation,
 } from "@/lib/floating-ai/action-confirmation";
 import { parseSlashCommand } from "@/lib/floating-ai/slash-commands";
+import {
+  enrichGuidePageContext,
+  type GuideLanguage,
+} from "@/lib/floating-ai/guide/guide-prompt";
+import type { GuideEffectiveAuth } from "@/lib/floating-ai/guide/guide-auth";
+
+function resolveGuideLanguage(lng: string | undefined): GuideLanguage {
+  const base = (lng ?? "en").split("-")[0]?.toLowerCase();
+  if (base === "ar" || base === "de") return base;
+  return "en";
+}
 
 export function useFloatingAiChat() {
   const runtimeOverride = useFloatingAiRuntimeOverride();
-  const { pageContext, incrementNotifications } = useFloatingAi();
+  const { pageContext, incrementNotifications, surface } = useFloatingAi();
   const { startTask, updateTaskProgress, completeTask, failTask } = useAiTasks();
+  const { refreshAuthContext } = useAuthActions();
+  const { profile, company } = useUser();
+  const { permissionCodes, isSuperAdmin, isLoading: authUserLoading } = useAuthUser();
+  const { isLoading: permissionsLoading, isRefreshing } = usePermissions();
+  const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
+  const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
+  const { i18n, t } = useTranslation("common");
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
 
+  const buildGuideAuth = useCallback((): GuideEffectiveAuth => {
+    return {
+      userId: profile?.id ?? null,
+      companyId: profile?.company_id ?? company?.id ?? null,
+      isSuperAdmin,
+      permissionCodes,
+      permissionsAvailable: !authUserLoading && !permissionsLoading,
+      isRefreshing,
+      platformFeatureEnabled,
+      commercialFeatureEnabled,
+    };
+  }, [
+    authUserLoading,
+    commercialFeatureEnabled,
+    company?.id,
+    isRefreshing,
+    isSuperAdmin,
+    permissionCodes,
+    permissionsLoading,
+    platformFeatureEnabled,
+    profile?.company_id,
+    profile?.id,
+  ]);
+
   const getPageContext = useCallback(() => {
-    return buildRuntimePageContext(pageContext) as unknown as Record<string, unknown>;
-  }, [pageContext]);
+    const base = buildRuntimePageContext(pageContext) as unknown as Record<string, unknown>;
+    if (surface !== "guide") return base;
+
+    const language = resolveGuideLanguage(i18n.language);
+    return enrichGuidePageContext({
+      base,
+      auth: buildGuideAuth(),
+      language,
+      activeTab:
+        typeof pageContext.activeTab === "string" ? pageContext.activeTab : null,
+      t: (key) => t(key),
+    });
+  }, [buildGuideAuth, i18n.language, pageContext, surface, t]);
 
   const workspace = useAiChatWorkspace({
     source: "floating",
     getPageContext,
+    surface,
   });
 
   const resolveInput = useCallback((text: string): { prompt: string; needsConfirmation: boolean; confirmation: PendingConfirmation | null } => {
@@ -37,6 +96,11 @@ export function useFloatingAiChat() {
         : slash.command.prompt;
     }
 
+    // Guide is read-only — never route destructive Assist slash flows.
+    if (surface === "guide") {
+      return { prompt: base, needsConfirmation: false, confirmation: null };
+    }
+
     if (slash?.command.destructive || isDestructiveAction(base)) {
       const confirmation = createPendingConfirmation(text, base);
       return {
@@ -47,7 +111,7 @@ export function useFloatingAiChat() {
     }
 
     return { prompt: base, needsConfirmation: false, confirmation: null };
-  }, []);
+  }, [surface]);
 
   const sendMessage = useCallback(
     async (text: string, skipConfirmation = false) => {
@@ -62,11 +126,15 @@ export function useFloatingAiChat() {
 
       setPendingConfirmation(null);
       const taskId = startTask(
-        text.startsWith("/") ? text.split("\n")[0] : "AI request",
+        text.startsWith("/") ? text.split("\n")[0] : surface === "guide" ? "Guide request" : "AI request",
         { background: true },
       );
 
       try {
+        if (surface === "guide") {
+          // Refresh effective permissions so guidance is not stuck on a stale snapshot.
+          await refreshAuthContext();
+        }
         updateTaskProgress(taskId, 10, "Sending…");
         await workspace.sendMessage(prompt);
         updateTaskProgress(taskId, 100);
@@ -77,7 +145,16 @@ export function useFloatingAiChat() {
         return { needsConfirmation: false as const };
       }
     },
-    [resolveInput, workspace, startTask, updateTaskProgress, completeTask, failTask],
+    [
+      completeTask,
+      failTask,
+      refreshAuthContext,
+      resolveInput,
+      startTask,
+      surface,
+      updateTaskProgress,
+      workspace,
+    ],
   );
 
   const confirmPendingAction = useCallback(async () => {
@@ -105,7 +182,8 @@ export function useFloatingAiChat() {
     runtimeMetadata,
     pendingConfirmation,
     incrementNotifications,
+    surface,
   };
   if (!runtimeOverride) return chat;
-  return { ...chat, ...runtimeOverride };
+  return { ...chat, ...runtimeOverride, surface };
 }

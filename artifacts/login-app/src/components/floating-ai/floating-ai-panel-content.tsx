@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   Bot,
@@ -18,8 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
-import { useAuthUser, useHasPermission } from "@/hooks/use-rbac";
-import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { useAuthUser, useHasPermission, usePermissions } from "@/hooks/use-rbac";
+import { useAgentsFeatureEnabled, usePlatformFeatureEnabledLookup } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
 import { shouldShowAgentsNavigation } from "@/lib/platform-ai/agents-access";
 import { useAiPanel } from "@/hooks/floating-ai/use-ai-panel";
 import { useFloatingAiChat } from "@/hooks/floating-ai/use-floating-ai-chat";
@@ -29,6 +30,9 @@ import { FLOATING_AI_CAPABILITIES } from "@/lib/floating-ai/types";
 import { normalizeAgentGoal, isAgentGoal } from "@/lib/floating-ai/agent-goals";
 import { parseSlashCommand } from "@/lib/floating-ai/slash-commands";
 import { dashboardNestHref } from "@/lib/routing";
+import { stripGuideActionsFromMessage } from "@/lib/floating-ai/guide/guide-actions";
+import { authorizeGuideNavigation } from "@/lib/floating-ai/guide/guide-navigation";
+import type { GuideEffectiveAuth } from "@/lib/floating-ai/guide/guide-auth";
 import { ContextBar } from "./context-bar";
 import { QuickActions } from "./quick-actions";
 import { TaskProgressList } from "./task-progress-list";
@@ -49,7 +53,11 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
   const [, setLocation] = useLocation();
   const { company } = useAuth();
   const { identity } = useCompanyIdentity(Boolean(company?.id));
-  const { isSuperAdmin, hasPermission } = useAuthUser();
+  const { isSuperAdmin, hasPermission, permissionCodes, profile, isLoading: authUserLoading } =
+    useAuthUser();
+  const { isLoading: permissionsLoading, isRefreshing } = usePermissions();
+  const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
+  const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
   const canUseAi = useHasPermission("ai_chat.use");
   const canExecuteRuntime = useHasPermission("runtime.execute");
   const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
@@ -61,12 +69,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
   const { panelSize, cyclePanelSize, minimizePanel, closePanel } = useAiPanel();
   const [panelTab, setPanelTab] = useState<"chat" | "agent">("chat");
   const [pendingAgentGoal, setPendingAgentGoal] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (!showAgentTab && panelTab === "agent") {
-      setPanelTab("chat");
-    }
-  }, [showAgentTab, panelTab]);
+  const processedGuideActionMessageIds = useRef(new Set<string>());
 
   const {
     assistantName,
@@ -83,7 +86,81 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
     runtimeMetadata,
     pendingConfirmation,
     runtimeConfig,
+    surface = "assist",
   } = useFloatingAiChat();
+
+  const isGuideSurface = surface === "guide";
+  const guideAgentTabVisible = showAgentTab && !isGuideSurface;
+
+  const guideAuth = useMemo<GuideEffectiveAuth>(
+    () => ({
+      userId: profile?.id ?? null,
+      companyId: profile?.company_id ?? company?.id ?? null,
+      isSuperAdmin,
+      permissionCodes,
+      permissionsAvailable: !authUserLoading && !permissionsLoading,
+      isRefreshing,
+      platformFeatureEnabled,
+      commercialFeatureEnabled,
+    }),
+    [
+      authUserLoading,
+      commercialFeatureEnabled,
+      company?.id,
+      isRefreshing,
+      isSuperAdmin,
+      permissionCodes,
+      permissionsLoading,
+      platformFeatureEnabled,
+      profile?.company_id,
+      profile?.id,
+    ],
+  );
+
+  const guideSafeMessages = useMemo(() => {
+    if (!isGuideSurface) return displayMessages;
+    return displayMessages.map((message) => {
+      if (message.role !== "assistant") return message;
+      const { displayText } = stripGuideActionsFromMessage(message.content ?? "");
+      return { ...message, content: displayText };
+    });
+  }, [displayMessages, isGuideSurface]);
+
+  const guideSafeStreaming = useMemo(() => {
+    if (!isGuideSurface || !streamingContent) return streamingContent;
+    return stripGuideActionsFromMessage(streamingContent).displayText;
+  }, [isGuideSurface, streamingContent]);
+
+  useEffect(() => {
+    if (!guideAgentTabVisible && panelTab === "agent") {
+      setPanelTab("chat");
+    }
+  }, [guideAgentTabVisible, panelTab]);
+
+  useEffect(() => {
+    if (!isGuideSurface) return;
+    for (const message of displayMessages) {
+      if (message.role !== "assistant" || !message.id) continue;
+      if (processedGuideActionMessageIds.current.has(message.id)) continue;
+      const { actions } = stripGuideActionsFromMessage(message.content ?? "");
+      processedGuideActionMessageIds.current.add(message.id);
+      for (const action of actions) {
+        if (action.type === "navigate") {
+          const result = authorizeGuideNavigation(guideAuth, {
+            kind: "route",
+            routeId: action.routeId,
+          });
+          if (result.ok) setLocation(result.href);
+        } else if (action.type === "navigateTask") {
+          const result = authorizeGuideNavigation(guideAuth, {
+            kind: "task",
+            taskId: action.taskId,
+          });
+          if (result.ok) setLocation(result.href);
+        }
+      }
+    }
+  }, [displayMessages, guideAuth, isGuideSurface, setLocation]);
 
   const configBlocked = !runtimeConfig?.ready;
   const composerDisabled = !canUseAi || !canExecuteRuntime || configBlocked || isLoading;
@@ -133,27 +210,45 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         if (isSuperAdmin) openPlatformAiSettings();
         return;
       }
-      const slash = parseSlashCommand(text);
-      if (slash?.command.agentMode && FLOATING_AI_CAPABILITIES.agentMode && showAgentTab) {
-        const goal = slash.remainder || "Execute multi-step workflow for current page context";
-        routeToAgent(goal);
-        return;
-      }
+      if (!isGuideSurface) {
+        const slash = parseSlashCommand(text);
+        if (slash?.command.agentMode && FLOATING_AI_CAPABILITIES.agentMode && guideAgentTabVisible) {
+          const goal = slash.remainder || "Execute multi-step workflow for current page context";
+          routeToAgent(goal);
+          return;
+        }
 
-      if (FLOATING_AI_CAPABILITIES.agentMode && showAgentTab && isAgentGoal(text)) {
-        routeToAgent(text);
-        return;
+        if (FLOATING_AI_CAPABILITIES.agentMode && guideAgentTabVisible && isAgentGoal(text)) {
+          routeToAgent(text);
+          return;
+        }
       }
 
       const result = await sendMessage(text);
       if (result?.needsConfirmation) return;
     },
-    [configBlocked, isSuperAdmin, openPlatformAiSettings, sendMessage, routeToAgent, showAgentTab],
+    [
+      configBlocked,
+      guideAgentTabVisible,
+      isGuideSurface,
+      isSuperAdmin,
+      openPlatformAiSettings,
+      sendMessage,
+      routeToAgent,
+    ],
   );
 
   const handleQuickAction = useCallback(
     (action: FloatingAiQuickAction) => {
       if (action.navigateTo) {
+        if (isGuideSurface) {
+          const result = authorizeGuideNavigation(guideAuth, {
+            kind: "path",
+            nestedPath: action.navigateTo,
+          });
+          if (result.ok) setLocation(result.href);
+          return;
+        }
         setLocation(dashboardNestHref(action.navigateTo));
         return;
       }
@@ -161,7 +256,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         void handleSend(action.prompt);
       }
     },
-    [handleSend, setLocation],
+    [guideAuth, handleSend, isGuideSurface, setLocation],
   );
 
   const dimensions =
@@ -180,7 +275,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         className="flex h-full flex-col overflow-hidden bg-card"
         style={panelStyle}
         role="dialog"
-        aria-label={t("floatingAi.panel.label")}
+        aria-label={isGuideSurface ? t("floatingAi.guide.panelLabel") : t("floatingAi.panel.label")}
         aria-modal={layout !== "floating"}
       >
         <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-border px-3">
@@ -193,9 +288,13 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
               </span>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{assistantName}</p>
+              <p className="truncate text-sm font-semibold">
+                {isGuideSurface ? t("floatingAi.guide.title") : assistantName}
+              </p>
               <p className="truncate text-[10px] text-muted-foreground">
-                {identity?.name ?? runtimeMetadata.company.name} · {runtimeMetadata.moduleLabel ?? pageContext.page}
+                {isGuideSurface
+                  ? t("floatingAi.guide.subtitle")
+                  : `${identity?.name ?? runtimeMetadata.company.name} · ${runtimeMetadata.moduleLabel ?? pageContext.page}`}
               </p>
             </div>
           </div>
@@ -274,7 +373,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
               <Sparkles className="size-3" />
               {t("floatingAi.tabs.chat")}
             </TabsTrigger>
-            {FLOATING_AI_CAPABILITIES.agentMode && showAgentTab && (
+            {FLOATING_AI_CAPABILITIES.agentMode && guideAgentTabVisible && (
               <TabsTrigger value="agent" className="gap-1 text-xs">
                 <Bot className="size-3" />
                 {t("floatingAi.tabs.agent")}
@@ -309,22 +408,24 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
               </div>
             ) : (
               <AiChatMessageList
-                messages={displayMessages}
-                assistantName={assistantName}
-                streamingContent={streamingContent}
+                messages={guideSafeMessages}
+                assistantName={isGuideSurface ? t("floatingAi.guide.title") : assistantName}
+                streamingContent={guideSafeStreaming}
                 isSending={isSending}
               />
             )}
 
-            <QuickActions
-              page={pageContext.page}
-              onAction={handleQuickAction}
-              disabled={composerDisabled || isSending}
-            />
+            {!isGuideSurface && (
+              <QuickActions
+                page={pageContext.page}
+                onAction={handleQuickAction}
+                disabled={composerDisabled || isSending}
+              />
+            )}
             <FloatingAiComposer disabled={composerDisabled} isSending={isSending} onSend={handleSend} />
           </TabsContent>
 
-          {FLOATING_AI_CAPABILITIES.agentMode && showAgentTab && (
+          {FLOATING_AI_CAPABILITIES.agentMode && guideAgentTabVisible && (
             <TabsContent value="agent" className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
               {showPlatformAdminCta ? (
                 <div className="shrink-0 space-y-2 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">

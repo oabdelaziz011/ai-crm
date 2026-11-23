@@ -9,9 +9,14 @@ export const TaskProgressList = memo(function TaskProgressList() {
   const { t } = useTranslation("common");
   const { tasks, dismissTask, activeTaskCount } = useAiTasks();
 
-  const visibleTasks = tasks.filter(
-    (task) => task.status === "running" || task.status === "pending" || task.status === "completed" || task.status === "failed",
-  ).slice(0, 3);
+  // Prefer in-flight tasks; keep at most one finished chip so the chat is not pushed away.
+  const activeTasks = tasks.filter(
+    (task) => task.status === "running" || task.status === "pending",
+  );
+  const finishedTasks = tasks.filter(
+    (task) => task.status === "completed" || task.status === "failed",
+  );
+  const visibleTasks = [...activeTasks, ...finishedTasks.slice(0, 1)].slice(0, 2);
 
   if (visibleTasks.length === 0) return null;
 

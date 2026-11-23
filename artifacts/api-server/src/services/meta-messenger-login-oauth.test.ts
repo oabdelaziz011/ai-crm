@@ -181,10 +181,13 @@ describe("meta-messenger-login-oauth", () => {
       assert.equal(done.pageId, "page-1");
       assert.equal(done.pageName, "Demo Page");
       assert.equal(done.connected, true);
+      assert.equal(typeof done.webhookVerifyToken, "string");
+      assert.match(String(done.webhookVerifyToken), /^vo_ms_/);
       assert.equal(rpcCalls[0]?.name, "upsert_company_messenger_settings");
       assert.equal(rpcCalls[0]?.args.p_company_id, DEMO);
       assert.equal(rpcCalls[0]?.args.p_access_token, "page-token-1");
       assert.equal(rpcCalls[0]?.args.p_page_id, "page-1");
+      assert.equal(rpcCalls[0]?.args.p_webhook_verify_token, done.webhookVerifyToken);
     } finally {
       __metaMessengerLoginTest.clearPending(state);
       process.env.META_MESSENGER_OAUTH_ENABLED = prevEnabled;

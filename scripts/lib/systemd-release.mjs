@@ -254,6 +254,18 @@ export function githubWorkflowProductionEntryProblems(workflows) {
     }
   }
 
+  const deployText = byName.get(APPROVED_PRODUCTION_WORKFLOW) ?? "";
+  if (!/VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED:\s*"true"/.test(deployText)) {
+    problems.push(
+      `${APPROVED_PRODUCTION_WORKFLOW} must bake VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED: \"true\" into the frontend build.`,
+    );
+  }
+  if (!/VITE_WHATSAPP_COEXISTENCE_ENABLED:\s*"false"/.test(deployText)) {
+    problems.push(
+      `${APPROVED_PRODUCTION_WORKFLOW} must bake VITE_WHATSAPP_COEXISTENCE_ENABLED: \"false\" until Coexistence is approved.`,
+    );
+  }
+
   return [...new Set(problems)];
 }
 

@@ -92,6 +92,7 @@ export function completeMetaMessengerLogin(input: {
   companyId: string;
   state: string;
   pageId: string;
+  webhookVerifyToken?: string;
 }): Promise<{
   ok: true;
   pageId: string;
@@ -99,6 +100,8 @@ export function completeMetaMessengerLogin(input: {
   connected: boolean;
   connectionStatus: MetaConnectionStatus;
   message: string;
+  /** Present once after complete — paste into Meta App Dashboard webhook verify token. */
+  webhookVerifyToken?: string;
 }> {
   return apiJson("POST", "/meta/messenger-oauth/complete", input);
 }

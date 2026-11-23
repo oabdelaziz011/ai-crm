@@ -464,11 +464,14 @@ export async function completeMetaMessengerLogin(input: {
     pageName: selected.name,
     connected: connectionStatus === "connected",
     connectionStatus,
+    // One-time plaintext for Meta App Dashboard webhook verification.
+    // Stored encrypted server-side; never returned again by status/connection reads.
+    webhookVerifyToken: verifyToken,
     message:
       connectionStatus === "connected"
-        ? "Messenger Page connected and webhook subscription succeeded."
+        ? "Messenger Page connected and webhook subscription succeeded. Copy the verify token into Meta App Dashboard if callback verification is still pending."
         : connectionStatus === "webhook_subscription_failed"
-          ? "Page credentials saved, but webhook subscription failed. Fix App Dashboard webhook config and reconnect."
+          ? "Page credentials saved, but webhook subscription failed. Paste the returned verify token into Meta App Dashboard callback settings and reconnect."
           : "Page credentials saved, but health check failed. Reauthorization may be required.",
   };
 }

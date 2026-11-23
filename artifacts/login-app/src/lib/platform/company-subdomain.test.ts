@@ -48,7 +48,7 @@ describe("admin host handoff", () => {
         companyId: "company",
         companyName: "Gamma",
         subdomain: "demo-gamma",
-        returnOrigin: "http://127.0.0.1:5173",
+        returnOrigin: "http://127.0.0.1:5180",
       },
     });
     assert.deepEqual(decodeAdminHostHandoff(encoded)?.context?.subdomain, "demo-gamma");

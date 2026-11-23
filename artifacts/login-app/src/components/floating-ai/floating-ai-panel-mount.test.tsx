@@ -13,7 +13,7 @@ process.env.VITE_SUPABASE_PUBLISHABLE_KEY = "local-panel-mount";
 const fetches: string[] = [];
 
 function installDom() {
-  const win = new Window({ url: "http://127.0.0.1:5173/dashboard" });
+  const win = new Window({ url: "http://127.0.0.1:5180/dashboard" });
   const define = (key: string, value: unknown) => {
     Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
   };

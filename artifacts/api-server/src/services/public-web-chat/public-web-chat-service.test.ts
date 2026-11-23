@@ -53,7 +53,7 @@ function createHarness(options: { executeAi?: boolean; apiEnabled?: boolean } = 
       companyId: "company-a",
       companyChannelId: "channel-a",
       publicKey: KEY_A,
-      allowedOrigins: [ORIGIN, "http://localhost:5173"],
+      allowedOrigins: [ORIGIN, "http://localhost:5180"],
       aiEmployeeId: "employee-a",
       enabled: true,
       entitled: true,
@@ -367,7 +367,7 @@ describe("Public Web Chat service — sessions", () => {
 
   it("7. valid origin: exact match, case-normalized host, default port, localhost http", async () => {
     const h = createHarness();
-    for (const origin of [ORIGIN, "https://SHOP.example.com", "https://shop.example.com:443", "http://localhost:5173"]) {
+    for (const origin of [ORIGIN, "https://SHOP.example.com", "https://shop.example.com:443", "http://localhost:5180"]) {
       const result = await h.createSession(KEY_A, origin);
       assert.equal(result.ok, true, origin);
       h.tick(10_000);

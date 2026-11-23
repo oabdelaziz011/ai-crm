@@ -14,11 +14,11 @@ describe("auth-email-redirect", () => {
   it("forwards query to frontend auth callback with reset-password next", () => {
     const url = buildFrontendAuthCallbackUrl(
       { code: "14adae4d-0c11-4d20-a21e-2424dc8d1efa" },
-      "http://localhost:5173",
+      "http://localhost:5180",
     );
     assert.equal(
       url,
-      "http://localhost:5173/auth/callback?code=14adae4d-0c11-4d20-a21e-2424dc8d1efa&next=%2Freset-password",
+      "http://localhost:5180/auth/callback?code=14adae4d-0c11-4d20-a21e-2424dc8d1efa&next=%2Freset-password",
     );
   });
 
@@ -29,11 +29,11 @@ describe("auth-email-redirect", () => {
         error_code: "otp_expired",
         error_description: "Email link is invalid or has expired",
       },
-      "http://localhost:5173",
+      "http://localhost:5180",
     );
     assert.equal(
       url,
-      "http://localhost:5173/auth/callback?error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired",
+      "http://localhost:5180/auth/callback?error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired",
     );
   });
 });

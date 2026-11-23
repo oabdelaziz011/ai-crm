@@ -56,13 +56,13 @@ async function listen(app: Express): Promise<{ baseUrl: string; close: () => Pro
 describe("API CORS origin parsing", () => {
   it("strips trailing slashes and whitespace", () => {
     assert.equal(normalizeCorsOrigin(" https://app.valueor.org/ "), PRODUCTION_FRONTEND_ORIGIN);
-    assert.equal(normalizeCorsOrigin("http://localhost:5173///"), "http://localhost:5173");
+    assert.equal(normalizeCorsOrigin("http://localhost:5180///"), "http://localhost:5180");
   });
 
   it("splits comma-separated origin configuration", () => {
     assert.deepEqual(
-      parseCorsOriginList("https://app.valueor.org/, http://localhost:5173/ ,"),
-      [PRODUCTION_FRONTEND_ORIGIN, "http://localhost:5173"],
+      parseCorsOriginList("https://app.valueor.org/, http://localhost:5180/ ,"),
+      [PRODUCTION_FRONTEND_ORIGIN, "http://localhost:5180"],
     );
   });
 
@@ -70,8 +70,8 @@ describe("API CORS origin parsing", () => {
     const origins = resolveApiCorsAllowedOrigins({});
     assert.ok(origins.includes(PRODUCTION_FRONTEND_ORIGIN));
     assert.ok(origins.includes("https://www.valueor.org"));
-    assert.ok(origins.includes("http://localhost:5173"));
-    assert.ok(origins.includes("http://127.0.0.1:5173"));
+    assert.ok(origins.includes("http://localhost:5180"));
+    assert.ok(origins.includes("http://127.0.0.1:5180"));
   });
 
   it("merges FRONTEND_ORIGIN / CORS_ALLOWED_ORIGINS without duplicating slashes", () => {
@@ -133,14 +133,14 @@ describe("API CORS preflight and Instagram health route protection", () => {
     const response = await fetch(`${baseUrl}${HEALTH_PATH}`, {
       method: "OPTIONS",
       headers: {
-        Origin: "http://localhost:5173",
+        Origin: "http://localhost:5180",
         "Access-Control-Request-Method": "POST",
         "Access-Control-Request-Headers": "authorization,content-type",
       },
     });
 
     assert.equal(response.status, 204);
-    assert.equal(response.headers.get("access-control-allow-origin"), "http://localhost:5173");
+    assert.equal(response.headers.get("access-control-allow-origin"), "http://localhost:5180");
     assert.equal(response.headers.get("access-control-allow-credentials"), "true");
   });
 

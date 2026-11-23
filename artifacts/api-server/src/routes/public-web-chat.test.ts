@@ -88,7 +88,7 @@ describe("Public Web Chat HTTP router", () => {
   });
 
   it("37. preflight: disallowed origin gets a neutral 404 without ACAO (dashboard CORS not applied)", async () => {
-    for (const origin of ["https://evil.example.com", "http://localhost:5173", "https://app.valueor.org"]) {
+    for (const origin of ["https://evil.example.com", "http://localhost:5180", "https://app.valueor.org"]) {
       const res = await fetch(url(`/sessions/${SESSION_ID}/messages`), {
         method: "OPTIONS",
         headers: { origin, "access-control-request-method": "POST" },

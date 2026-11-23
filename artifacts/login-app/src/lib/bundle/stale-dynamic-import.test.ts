@@ -7,7 +7,7 @@ describe("stale dynamic import recovery", () => {
     assert.equal(
       isStaleDynamicImportError(
         new TypeError(
-          "Failed to fetch dynamically imported module: http://localhost:5173/src/pages/dashboard/home-page.tsx",
+          "Failed to fetch dynamically imported module: http://localhost:5180/src/pages/dashboard/home-page.tsx",
         ),
       ),
       true,

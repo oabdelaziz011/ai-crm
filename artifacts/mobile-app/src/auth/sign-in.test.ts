@@ -51,7 +51,7 @@ describe("instance URL", () => {
       hostname: "acme.valueor.org",
       origin: "https://acme.valueor.org",
     });
-    assert.equal(readInstanceTarget("http://demo.localhost:5173")?.hostname, "demo.localhost");
+    assert.equal(readInstanceTarget("http://demo.localhost:5180")?.hostname, "demo.localhost");
     assert.equal(readInstanceTarget("http://acme.valueor.org"), null);
     assert.equal(readInstanceTarget("https://user:pw@acme.valueor.org"), null);
     assert.equal(readInstanceTarget("d0000010-0001-4001-8001-000000000001"), null);

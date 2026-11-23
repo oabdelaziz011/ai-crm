@@ -22,7 +22,7 @@ describe("mobile instance hostname", () => {
     assert.equal(readInstanceHostname("https://acme.valueor.org"), "acme.valueor.org");
     assert.equal(readInstanceHostname("acme.valueor.org"), "acme.valueor.org");
     assert.equal(readInstanceHostname("https://app.valueor.org/dashboard"), "app.valueor.org");
-    assert.equal(readInstanceHostname("http://demo.localhost:5173/login"), "demo.localhost");
+    assert.equal(readInstanceHostname("http://demo.localhost:5180/login"), "demo.localhost");
     assert.equal(instanceSubdomain("acme.valueor.org"), "acme");
     assert.equal(instanceSubdomain("app.valueor.org"), null);
     assert.equal(instanceSubdomain("api.valueor.org"), null);

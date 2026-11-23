@@ -49,7 +49,7 @@ const base: WebsiteSaveInput = {
   aiEnabled: true,
   aiEmployeeId: "emp-1",
   publish: true,
-  origin: "http://localhost:5173",
+  origin: "http://localhost:5180",
   pageFeature: true,
   chatFeature: true,
   portalWasEnabled: false,
@@ -66,7 +66,7 @@ describe("website save plan", () => {
     assert.equal(result.plan.portal.slug, "dr-ahmed");
     assert.equal(reservedWebsiteHost(result.plan.portal.slug), "dr-ahmed.valueor.site");
     assert.deepEqual(result.plan.widget?.allowedOrigins, [
-      "http://localhost:5173",
+      "http://localhost:5180",
       "https://dr-ahmed.valueor.site",
     ]);
     assert.equal(result.plan.widget?.provision, true);
@@ -162,8 +162,8 @@ describe("website save plan", () => {
   });
 
   it("accepts localhost and rejects a LAN origin", () => {
-    assert.equal(canonicalWebsiteOrigin("http://localhost:5173/site/dr-ahmed"), null);
-    assert.equal(canonicalWebsiteOrigin("http://localhost:5173"), "http://localhost:5173");
+    assert.equal(canonicalWebsiteOrigin("http://localhost:5180/site/dr-ahmed"), null);
+    assert.equal(canonicalWebsiteOrigin("http://localhost:5180"), "http://localhost:5180");
     assert.equal(canonicalWebsiteOrigin("http://192.168.1.5:5173"), null);
     assert.equal(canonicalWebsiteOrigin("https://dr-ahmed.valueor.site"), "https://dr-ahmed.valueor.site");
   });
@@ -272,7 +272,7 @@ describe("website studio content", () => {
 
   it("builds the reserved host from the portal slug", () => {
     assert.equal(reservedWebsiteHost("dr-ahmed"), "dr-ahmed.valueor.site");
-    assert.equal(websiteVisitorUrl("http://localhost:5173", "dr-ahmed"), "http://localhost:5173/site/dr-ahmed");
+    assert.equal(websiteVisitorUrl("http://localhost:5180", "dr-ahmed"), "http://localhost:5180/site/dr-ahmed");
   });
 
   it("keeps a service photo, a header button, and a whatsapp number", () => {

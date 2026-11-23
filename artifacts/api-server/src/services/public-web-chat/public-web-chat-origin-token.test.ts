@@ -15,7 +15,7 @@ describe("Public Web Chat origin validation", () => {
   it("accepts HTTPS and local HTTP origins in canonical form", () => {
     assert.equal(normalizeWebChatOrigin("https://Shop.Example.com"), "https://shop.example.com");
     assert.equal(normalizeWebChatOrigin("https://shop.example.com:8443"), "https://shop.example.com:8443");
-    assert.equal(normalizeWebChatOrigin("http://localhost:5173"), "http://localhost:5173");
+    assert.equal(normalizeWebChatOrigin("http://localhost:5180"), "http://localhost:5180");
     assert.equal(normalizeWebChatOrigin("http://127.0.0.1:8080"), "http://127.0.0.1:8080");
   });
 

@@ -260,7 +260,7 @@ router.get("/email/microsoft/oauth/callback", async (req, res) => {
   const frontendBase =
     process.env.LOGIN_APP_URL?.replace(/\/$/, "") ||
     process.env.VITE_APP_ORIGIN?.replace(/\/$/, "") ||
-    "http://localhost:5173";
+    "http://localhost:5180";
   const redirectSettings = `${frontendBase}/dashboard/settings/email`;
 
   if (errorParam || !code || !stateRaw) {

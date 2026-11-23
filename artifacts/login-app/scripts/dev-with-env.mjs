@@ -65,8 +65,8 @@ const viteEnv = {
       : source.VITE_API_SERVER_URL || undefined,
   VITE_APP_ORIGIN:
     source.VITE_APP_ORIGIN ||
-    (mode === VALUEOR_ENV_LOCAL ? "http://localhost:5173" : source.FRONTEND_ORIGIN) ||
-    "http://localhost:5173",
+    (mode === VALUEOR_ENV_LOCAL ? "http://localhost:5180" : source.FRONTEND_ORIGIN) ||
+    "http://localhost:5180",
   // Optional local-only feature flags (never force-enable in production mode).
   ...(source.VITE_VALUEOR_PRODUCT_ALIAS_GENERATION
     ? { VITE_VALUEOR_PRODUCT_ALIAS_GENERATION: source.VITE_VALUEOR_PRODUCT_ALIAS_GENERATION }
@@ -112,7 +112,7 @@ delete childEnv.SUPABASE_SERVICE_ROLE_KEY;
 delete childEnv.DATABASE_URL;
 delete childEnv.SUPABASE_DB_PASSWORD;
 
-const viteArgs = ["vite", "--config", "vite.config.ts", "--host", "0.0.0.0", "--port", "5173"];
+const viteArgs = ["vite", "--config", "vite.config.ts", "--host", "0.0.0.0", "--port", "5180"];
 const child = spawn("pnpm", ["exec", ...viteArgs], {
   cwd: loginAppRoot,
   env: childEnv,

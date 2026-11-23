@@ -3,8 +3,8 @@ import { PUBLIC_WEB_CHAT_ROUTE_PREFIX } from "../services/public-web-chat/public
 
 /** Browser origins always permitted to call authenticated /api/* with credentials. */
 export const API_CORS_DEFAULT_ORIGINS = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
+  "http://localhost:5180",
+  "http://127.0.0.1:5180",
   "https://valueor.org",
   "https://www.valueor.org",
   "https://app.valueor.org",

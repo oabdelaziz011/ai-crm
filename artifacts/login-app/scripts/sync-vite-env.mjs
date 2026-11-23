@@ -67,7 +67,7 @@ const apiServerUrl =
   (mode === VALUEOR_ENV_LOCAL ? "http://localhost:3000" : undefined);
 const appOrigin =
   source.VITE_APP_ORIGIN ||
-  (mode === VALUEOR_ENV_LOCAL ? "http://localhost:5173" : source.FRONTEND_ORIGIN);
+  (mode === VALUEOR_ENV_LOCAL ? "http://localhost:5180" : source.FRONTEND_ORIGIN);
 const webhookBaseUrl =
   mode === VALUEOR_ENV_LOCAL
     ? resolveLocalPublicWebhookBase({ ...source, ...integrationEnv })
@@ -98,7 +98,7 @@ if (mode === VALUEOR_ENV_LOCAL) {
 const viteEnv = {
   VITE_SUPABASE_URL: supabaseUrl,
   VITE_SUPABASE_PUBLISHABLE_KEY: supabaseKey,
-  VITE_APP_ORIGIN: appOrigin || "http://localhost:5173",
+  VITE_APP_ORIGIN: appOrigin || "http://localhost:5180",
 };
 if (apiServerUrl) viteEnv.VITE_API_SERVER_URL = apiServerUrl;
 // Only write webhook when explicitly set and not production-in-local.

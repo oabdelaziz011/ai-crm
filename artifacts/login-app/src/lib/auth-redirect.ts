@@ -10,12 +10,12 @@ function resolveAuthOrigin(): string {
   if (typeof window !== "undefined" && window.location?.origin) {
     const { origin, port } = window.location;
     // Guard: if the SPA is somehow opened via the API host, still point emails at Vite.
-    if (port === "3000") {
-      return "http://localhost:5173";
+    if (port === "3000" || port === "3001") {
+      return "http://localhost:5180";
     }
     return origin;
   }
-  return "http://localhost:5173";
+  return "http://localhost:5180";
 }
 
 /** Build an absolute redirect URL for Supabase auth emails (works on mobile browsers). */

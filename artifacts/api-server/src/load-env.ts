@@ -84,9 +84,9 @@ function applyEnvAliases(): void {
       );
     }
     process.env.VITE_API_SERVER_URL ??= "http://localhost:3000";
-    process.env.VITE_APP_ORIGIN ??= "http://localhost:5173";
-    process.env.FRONTEND_ORIGIN ??= "http://localhost:5173";
-    process.env.LOGIN_APP_URL ??= "http://localhost:5173";
+    process.env.VITE_APP_ORIGIN ??= "http://localhost:5180";
+    process.env.FRONTEND_ORIGIN ??= "http://localhost:5180";
+    process.env.LOGIN_APP_URL ??= "http://localhost:5180";
     process.env.NODE_ENV ??= "development";
     process.env.PORT ??= "3000";
     for (const key of [

@@ -6,7 +6,8 @@ import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 import { resolveManualChunk } from './src/lib/bundle/manual-chunks';
 
-const port = Number(process.env.PORT ?? 5173);
+// Dedicated FE port — do not reuse API PORT (often 3001).
+const port = Number(process.env.VITE_DEV_PORT ?? process.env.FRONTEND_PORT ?? 5180);
 const basePath = process.env.BASE_PATH ?? '/';
 
 function resolveBuildSha(): string {

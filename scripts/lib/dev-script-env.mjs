@@ -53,7 +53,7 @@ export function resolveLoginAppBaseUrl(env) {
     env.VITE_DEV_SERVER_URL ??
     process.env.LOGIN_APP_URL ??
     process.env.VITE_DEV_SERVER_URL ??
-    "http://localhost:5173";
+    "http://localhost:5180";
   return base.replace(/\/$/, "");
 }
 

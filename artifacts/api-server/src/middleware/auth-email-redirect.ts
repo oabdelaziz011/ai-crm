@@ -16,7 +16,7 @@ export function resolveFrontendOrigin(): string {
   if (fromEnv) {
     return fromEnv.replace(/\/$/, "");
   }
-  return "http://localhost:5173";
+  return "http://localhost:5180";
 }
 
 function firstQueryValue(value: unknown): string | null {

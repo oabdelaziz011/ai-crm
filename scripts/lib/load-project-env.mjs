@@ -268,9 +268,9 @@ export function normalizeProjectEnv(env, options = {}) {
 
   if (mode === VALUEOR_ENV_LOCAL) {
     out.VITE_API_SERVER_URL ??= LOCAL_API_ORIGIN;
-    out.VITE_APP_ORIGIN ??= "http://localhost:5173";
-    out.FRONTEND_ORIGIN ??= "http://localhost:5173";
-    out.LOGIN_APP_URL ??= out.VITE_APP_ORIGIN || "http://localhost:5173";
+    out.VITE_APP_ORIGIN ??= "http://localhost:5180";
+    out.FRONTEND_ORIGIN ??= "http://localhost:5180";
+    out.LOGIN_APP_URL ??= out.VITE_APP_ORIGIN || "http://localhost:5180";
     out.NODE_ENV ??= "development";
     out.PORT ??= String(LOCAL_API_PORT);
     // Webhook bases must NOT default to production.

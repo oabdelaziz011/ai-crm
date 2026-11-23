@@ -85,16 +85,85 @@ jobs:
         with:
           version: 2.109.1
 
+      # Local Supabase host ports (54320–54329) sit inside Linux's default ephemeral
+      # source-port range (32768–60999). On GitHub-hosted runners an outbound TCP
+      # connection (Actions agent → GitHub, registry pulls, etc.) can hold e.g.
+      # :54322 as its *source* port; dockerd then fails with:
+      #   failed to bind host port 0.0.0.0:54322/tcp: address already in use
+      # This is not a leftover Supabase stack and not Production. Fix: reserve the
+      # port range, stop only this project's Supabase containers, and reclaim
+      # sockets that still hold those *local* ports before start. Always stop after.
       - name: Start isolated local Supabase for E2E
         env:
           SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
         run: |
+          set -euo pipefail
+
+          diagnose_ports() {
+            echo "::group::Supabase port / container diagnostics"
+            echo "ss (LISTEN+ESTAB) on 54320-54329:"
+            ss -tanH '( sport >= :54320 and sport <= :54329 )' || true
+            echo "docker containers matching supabase_*_project:"
+            docker ps -a --filter "name=supabase_" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+            echo "::endgroup::"
+          }
+
+          reclaim_supabase_host_ports() {
+            # Destroy only sockets whose *local* port is in the Supabase host range.
+            # Does not kill unrelated processes by PID; ss -K targets matching sockets.
+            for p in 54320 54321 54322 54323 54324 54325 54326 54327 54328 54329; do
+              if ss -tanH "sport = :$p" | grep -q .; then
+                echo "Reclaiming local sockets on :$p"
+                ss -tanp "sport = :$p" || true
+                sudo ss -K "sport = :$p" || true
+              fi
+            done
+          }
+
+          diagnose_ports
+
+          # Preventive: stop the kernel from assigning these as ephemeral source ports.
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
+
+          # Deterministic cleanup of *this* CLI project only (config project_id = "project").
           set +e
-          supabase start --exclude studio,imgproxy,vector,edge-runtime,analytics > "${RUNNER_TEMP}/supabase-start.log" 2>&1
-          start_code=$?
+          supabase stop --no-backup > "${RUNNER_TEMP}/supabase-stop-before.log" 2>&1
+          stop_before_code=$?
           set -e
+          echo "supabase stop (before) exit=${stop_before_code}"
+
+          # Only remove containers named for this local project id — never docker system prune.
+          mapfile -t stale_containers < <(docker ps -aq --filter "name=supabase_" --filter "name=_project" 2>/dev/null || true)
+          if [ "${#stale_containers[@]}" -gt 0 ]; then
+            echo "Removing leftover supabase_*_project containers: ${stale_containers[*]}"
+            docker rm -f "${stale_containers[@]}" || true
+          fi
+
+          reclaim_supabase_host_ports
+          diagnose_ports
+
+          start_supabase() {
+            set +e
+            supabase start --exclude studio,imgproxy,vector,edge-runtime,analytics > "${RUNNER_TEMP}/supabase-start.log" 2>&1
+            echo $?
+            set -e
+          }
+
+          start_code="$(start_supabase)"
+          if [ "$start_code" -ne 0 ] && grep -qiE 'address already in use|bind host port' "${RUNNER_TEMP}/supabase-start.log"; then
+            echo "::warning::supabase start hit host-port EADDRINUSE; reclaiming 54320-54329 and retrying once"
+            diagnose_ports
+            reclaim_supabase_host_ports
+            set +e
+            supabase stop --no-backup > "${RUNNER_TEMP}/supabase-stop-retry.log" 2>&1
+            set -e
+            sleep 2
+            start_code="$(start_supabase)"
+          fi
+
           if [ "$start_code" -ne 0 ]; then
             echo "::error::supabase start failed with exit ${start_code}"
+            diagnose_ports
             RUNNER_TEMP="${RUNNER_TEMP}" python3 - << 'PY'
           import os, re
           path = os.path.join(os.environ["RUNNER_TEMP"], "supabase-start.log")
@@ -104,7 +173,7 @@ jobs:
           lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
           interesting = [
               ln for ln in lines
-              if re.search(r"error|fatal|panic|denied|invalid", ln, re.I)
+              if re.search(r"error|fatal|panic|denied|invalid|already in use|bind", ln, re.I)
               and "Applying migration" not in ln
           ]
           chosen = (interesting or lines)[-12:]
@@ -114,6 +183,7 @@ jobs:
           PY
             exit "$start_code"
           fi
+
           set +e
           supabase status -o env > "${RUNNER_TEMP}/supabase-local.env" 2>"${RUNNER_TEMP}/supabase-status.err"
           status_code=$?
@@ -126,6 +196,20 @@ jobs:
           if [ ! -s "${RUNNER_TEMP}/supabase-local.clean.env" ]; then
             echo "::error::supabase status did not emit KEY=VALUE lines"
             exit 1
+          fi
+
+      - name: Stop isolated local Supabase after E2E
+        if: always()
+        run: |
+          set +e
+          supabase stop --no-backup > "${RUNNER_TEMP}/supabase-stop-after.log" 2>&1
+          code=$?
+          set -e
+          echo "supabase stop (after) exit=${code}"
+          # Best-effort: only this project's named containers.
+          mapfile -t leftover < <(docker ps -aq --filter "name=supabase_" --filter "name=_project" 2>/dev/null || true)
+          if [ "${#leftover[@]}" -gt 0 ]; then
+            docker rm -f "${leftover[@]}" || true
           fi
 
       - name: Channel platform E2E

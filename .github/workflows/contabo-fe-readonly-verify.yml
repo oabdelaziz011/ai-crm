@@ -1,0 +1,185 @@
+name: Contabo FE readonly verify
+
+# One-shot READ-ONLY Contabo frontend identity inspection.
+# Does not change symlinks, files, Nginx, Cloudflare, or services.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full expected release SHA
+        required: true
+        default: "12040da1d3bfbed06b77c11f32c8fe98602fe4ec"
+      confirm:
+        description: Type readonly-verify
+        required: true
+        type: string
+
+jobs:
+  inspect:
+    if: github.event.inputs.confirm == 'readonly-verify'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 10
+    steps:
+      - name: Read-only frontend identity inspection
+        env:
+          EXPECTED_SHA: ${{ github.event.inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          EXPECTED_SHA="$(printf '%s' "$EXPECTED_SHA" | tr '[:upper:]' '[:lower:]')"
+          SHORT16="$(printf '%s' "$EXPECTED_SHA" | cut -c1-16)"
+          echo "=== meta ==="
+          echo "host=$(hostname)"
+          echo "user=$(whoami)"
+          echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "expected_sha=$EXPECTED_SHA"
+          echo "short16=$SHORT16"
+
+          echo "=== 1) readlink -f /var/www/valueor ==="
+          readlink -f /var/www/valueor || true
+          echo "=== ls -la /var/www/valueor /var/www/valueor.previous ==="
+          ls -la /var/www/valueor /var/www/valueor.previous 2>&1 || true
+
+          echo "=== 2) release dir /opt/valueor-frontend-releases/${SHORT16} ==="
+          REL="/opt/valueor-frontend-releases/${SHORT16}"
+          if [[ -d "$REL" ]]; then
+            echo "release_dir_exists=yes"
+            ls -la "$REL" | head -n 40
+            echo "=== RELEASE_SHA / RELEASE_META ==="
+            cat "$REL/RELEASE_SHA" 2>&1 || true
+            cat "$REL/RELEASE_META" 2>&1 || true
+          else
+            echo "release_dir_exists=no"
+            echo "=== available frontend releases (names only) ==="
+            ls -1 /opt/valueor-frontend-releases 2>&1 | tail -n 30 || true
+          fi
+
+          echo "=== 3) on-disk version.json under symlink and release ==="
+          echo "--- /var/www/valueor/version.json ---"
+          if [[ -f /var/www/valueor/version.json ]]; then
+            cat /var/www/valueor/version.json
+            echo
+            stat -c 'mtime=%y size=%s path=%n' /var/www/valueor/version.json
+          else
+            echo "MISSING"
+          fi
+          echo "--- ${REL}/version.json ---"
+          if [[ -f "$REL/version.json" ]]; then
+            cat "$REL/version.json"
+            echo
+            stat -c 'mtime=%y size=%s path=%n' "$REL/version.json"
+          else
+            echo "MISSING"
+          fi
+
+          echo "=== 4) HTML build meta on disk ==="
+          if [[ -f /var/www/valueor/index.html ]]; then
+            grep -o 'name="valueor-build" content="[^"]*"' /var/www/valueor/index.html || echo "no_valueor_build_meta"
+            stat -c 'mtime=%y size=%s path=%n' /var/www/valueor/index.html
+          else
+            echo "index.html MISSING under /var/www/valueor"
+          fi
+          if [[ -f "$REL/index.html" ]]; then
+            echo "--- release index meta ---"
+            grep -o 'name="valueor-build" content="[^"]*"' "$REL/index.html" || echo "no_valueor_build_meta"
+          fi
+
+          echo "=== 5) Nginx site roots (config read-only) ==="
+          for f in /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*; do
+            [[ -e "$f" ]] || continue
+            echo "--- file=$f ---"
+            grep -nE 'server_name|root |alias |valueor|listen ' "$f" 2>/dev/null | head -n 80 || true
+          done
+          echo "=== nginx -T filtered (if permitted) ==="
+          if nginx -T 2>/dev/null | grep -nE 'server_name|root |alias |valueor' | head -n 120; then
+            :
+          else
+            echo "nginx -T not available to this user (expected without root)"
+            # try sudo -n non-destructive
+            if sudo -n nginx -T 2>/dev/null | grep -nE 'server_name|root |alias |valueor' | head -n 120; then
+              :
+            else
+              echo "sudo -n nginx -T also unavailable"
+            fi
+          fi
+
+          echo "=== 6) local origin vs public ==="
+          echo "--- curl file:// via local path ---"
+          python3 - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("/var/www/valueor/version.json")
+          print("local_file_exists", p.exists())
+          if p.exists():
+              print("local_file_body", p.read_text(encoding="utf-8", errors="replace").strip())
+          PY
+          echo "--- curl localhost Host valueor.org /version.json ---"
+          curl -sS --max-time 10 -D - -o /tmp/vo-ver-body.txt \
+            -H "Host: valueor.org" \
+            http://127.0.0.1/version.json 2>&1 | head -n 40 || true
+          echo "body:"
+          cat /tmp/vo-ver-body.txt 2>/dev/null || true
+          echo
+          echo "--- curl localhost Host www.valueor.org /version.json ---"
+          curl -sS --max-time 10 -D - -o /tmp/vo-ver-www.txt \
+            -H "Host: www.valueor.org" \
+            http://127.0.0.1/version.json 2>&1 | head -n 40 || true
+          echo "body:"
+          cat /tmp/vo-ver-www.txt 2>/dev/null || true
+          echo
+          echo "--- curl https via --resolve to 127.0.0.1 ---"
+          curl -skS --max-time 10 -D - -o /tmp/vo-ver-tls.txt \
+            --resolve valueor.org:443:127.0.0.1 \
+            https://valueor.org/version.json 2>&1 | head -n 40 || true
+          echo "body:"
+          cat /tmp/vo-ver-tls.txt 2>/dev/null || true
+          echo
+          echo "--- public https://valueor.org/version.json from this host ---"
+          curl -sS --max-time 15 -D - -o /tmp/vo-ver-public.txt \
+            https://valueor.org/version.json 2>&1 | head -n 40 || true
+          echo "body:"
+          cat /tmp/vo-ver-public.txt 2>/dev/null || true
+          echo
+
+          echo "=== 7) FE bundle markers (AI assignment / OAuth readiness) ==="
+          # Search hashed assets under the live symlink only (read-only grep).
+          LIVE="/var/www/valueor"
+          REL_DIR="$REL"
+          for DIR in "$LIVE" "$REL_DIR"; do
+            echo "--- search dir=$DIR ---"
+            if [[ ! -d "$DIR" ]]; then
+              echo "missing_dir"
+              continue
+            fi
+            # Prefer assets/*.js; fall back broadly. Do not print huge matches.
+            for needle in \
+              "assignedAiEmployeeId" \
+              "channel-ai-assignment" \
+              "missingConfigKeys" \
+              "MSL_META_CONFIG_MISSING" \
+              "Connect Facebook Messenger is disabled" \
+              "META_MESSENGER_OAUTH_APP_ID" \
+              "formatMetaOauthReadinessMessage" \
+              "data-oauth-ready"
+            do
+              hits=$(grep -RIl --include='*.js' --include='*.mjs' --include='*.html' -F "$needle" "$DIR" 2>/dev/null | head -n 5 || true)
+              if [[ -n "$hits" ]]; then
+                echo "FOUND needle=$needle"
+                echo "$hits" | sed 's/^/  /'
+              else
+                echo "MISSING needle=$needle"
+              fi
+            done
+          done
+
+          echo "=== 8) deploy state (read-only) ==="
+          if [[ -f /var/lib/valueor/deploy-state.json ]]; then
+            cat /var/lib/valueor/deploy-state.json
+            echo
+          elif [[ -f /opt/valueor/deploy-state.json ]]; then
+            cat /opt/valueor/deploy-state.json
+            echo
+          else
+            echo "deploy-state.json not found in common paths"
+            ls -la /var/lib/valueor 2>&1 | head -n 30 || true
+          fi
+
+          echo "=== DONE readonly verify ==="

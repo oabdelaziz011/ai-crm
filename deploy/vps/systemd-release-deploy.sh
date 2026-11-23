@@ -47,6 +47,13 @@ if [[ -z "$ROOT_PREFIX" ]]; then
     exit 2
   fi
   git -C "$APP_DIR" checkout --detach "$SHA"
+  # Re-exec so marker/replace-frontend logic from the tooling SHA is active.
+  # Without this, bash keeps running the pre-checkout script body and can
+  # fall through to a full API+frontend deploy when only FE replace was intended.
+  if [[ -z "${VALUEOR_DEPLOY_REEXEC:-}" ]]; then
+    export VALUEOR_DEPLOY_REEXEC=1
+    exec /bin/bash "${APP_DIR}/deploy/vps/systemd-release-deploy.sh" "$SHA"
+  fi
 fi
 
 # Validate env for the real production topology (no ACME_EMAIL required).

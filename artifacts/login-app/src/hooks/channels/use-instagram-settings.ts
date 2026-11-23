@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useHasPermission } from "@/hooks/use-rbac";
-import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-admin";
+import {
+  companyChannelsQueryKey,
+  useCompanyChannelsAdmin,
+} from "@/hooks/channels/use-company-channels-admin";
 import {
   fetchInstagramOutboundHealth,
   fetchInstagramSettings,
@@ -46,6 +49,8 @@ export function useUpdateInstagramSettings(companyId: string | null) {
     mutationFn: (input: InstagramSettingsDraft) => upsertInstagramSettings(companyId!, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: instagramSettingsKey(companyId) });
+      // Sync creates/updates company_channels — refresh channel admin + webhook card.
+      void qc.invalidateQueries({ queryKey: companyChannelsQueryKey(companyId) });
     },
   });
 }

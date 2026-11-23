@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useHasPermission } from "@/hooks/use-rbac";
-import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-admin";
+import {
+  companyChannelsQueryKey,
+  useCompanyChannelsAdmin,
+} from "@/hooks/channels/use-company-channels-admin";
 import {
   fetchMessengerOutboundHealth,
   fetchMessengerSettings,
@@ -46,6 +49,8 @@ export function useUpdateMessengerSettings(companyId: string | null) {
     mutationFn: (input: MessengerSettingsDraft) => upsertMessengerSettings(companyId!, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: messengerSettingsKey(companyId) });
+      // Sync creates/updates company_channels — refresh channel admin + webhook card.
+      void qc.invalidateQueries({ queryKey: companyChannelsQueryKey(companyId) });
     },
   });
 }

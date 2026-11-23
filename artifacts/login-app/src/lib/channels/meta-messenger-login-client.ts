@@ -24,6 +24,8 @@ export type MetaMessengerLoginConnection = {
   lastError: string | null;
   enabled: boolean;
   hasAccessToken: boolean;
+  credentialSource?: "manual" | "oauth";
+  tokenExpiresAt?: string | null;
 };
 
 async function buildAuthHeaders(): Promise<Record<string, string>> {
@@ -71,13 +73,19 @@ export function fetchMetaMessengerLoginConnection(
   );
 }
 
-export function startMetaMessengerLogin(companyId: string): Promise<{
+export function startMetaMessengerLogin(
+  companyId: string,
+  options?: { confirmReplaceExisting?: boolean },
+): Promise<{
   authorizeUrl: string;
   state: string;
   redirectUri: string;
   scopes: string[];
 }> {
-  return apiJson("POST", "/meta/messenger-oauth/start", { companyId });
+  return apiJson("POST", "/meta/messenger-oauth/start", {
+    companyId,
+    confirmReplaceExisting: Boolean(options?.confirmReplaceExisting),
+  });
 }
 
 export function fetchPendingMessengerPages(
@@ -95,6 +103,7 @@ export function completeMetaMessengerLogin(input: {
   state: string;
   pageId: string;
   webhookVerifyToken?: string;
+  confirmReplaceExisting?: boolean;
 }): Promise<{
   ok: true;
   pageId: string;
@@ -108,12 +117,20 @@ export function completeMetaMessengerLogin(input: {
   return apiJson("POST", "/meta/messenger-oauth/complete", input);
 }
 
-export function disconnectMetaMessengerLogin(companyId: string): Promise<{
+export function disconnectMetaMessengerLogin(
+  companyId: string,
+  options?: { confirmClearCredentials?: boolean },
+): Promise<{
   ok: true;
   softDisconnected: true;
   metaRevoked: boolean;
+  clearedCredentials?: boolean;
+  softDisableOnly?: boolean;
 }> {
-  return apiJson("POST", "/meta/messenger-oauth/disconnect", { companyId });
+  return apiJson("POST", "/meta/messenger-oauth/disconnect", {
+    companyId,
+    confirmClearCredentials: Boolean(options?.confirmClearCredentials),
+  });
 }
 
 export function isMetaMessengerLoginUiEnabled(): boolean {

@@ -32,6 +32,7 @@ export type MetaInstagramLoginConnection = {
   lastError: string | null;
   enabled: boolean;
   hasAccessToken: boolean;
+  credentialSource?: "manual" | "oauth";
 };
 
 async function buildAuthHeaders(): Promise<Record<string, string>> {
@@ -79,21 +80,35 @@ export function fetchMetaInstagramLoginConnection(
   );
 }
 
-export function startMetaInstagramLogin(companyId: string): Promise<{
+export function startMetaInstagramLogin(
+  companyId: string,
+  options?: { confirmReplaceExisting?: boolean },
+): Promise<{
   authorizeUrl: string;
   state: string;
   redirectUri: string;
   scopes: string[];
 }> {
-  return apiJson("POST", "/meta/instagram-login/start", { companyId });
+  return apiJson("POST", "/meta/instagram-login/start", {
+    companyId,
+    confirmReplaceExisting: Boolean(options?.confirmReplaceExisting),
+  });
 }
 
-export function disconnectMetaInstagramLogin(companyId: string): Promise<{
+export function disconnectMetaInstagramLogin(
+  companyId: string,
+  options?: { confirmClearCredentials?: boolean },
+): Promise<{
   ok: true;
   softDisconnected: true;
   metaRevoked: boolean;
+  clearedCredentials?: boolean;
+  softDisableOnly?: boolean;
 }> {
-  return apiJson("POST", "/meta/instagram-login/disconnect", { companyId });
+  return apiJson("POST", "/meta/instagram-login/disconnect", {
+    companyId,
+    confirmClearCredentials: Boolean(options?.confirmClearCredentials),
+  });
 }
 
 export function refreshMetaInstagramLoginToken(companyId: string): Promise<{

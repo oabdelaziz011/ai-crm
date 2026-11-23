@@ -19,6 +19,8 @@ export type MetaOauthStatePayload = {
   flow: string;
   nonce: string;
   exp: number;
+  /** Explicit reconnect: allows OAuth complete to replace an existing connection. */
+  confirmReplaceExisting?: boolean;
 };
 
 export function resolveMetaOauthStateSecret(explicit?: string): string {
@@ -103,6 +105,7 @@ export function createMetaOauthState(input: {
   flow: string;
   secret: string;
   nowMs?: number;
+  confirmReplaceExisting?: boolean;
 }): string {
   const nowMs = input.nowMs ?? Date.now();
   return signMetaOauthState(
@@ -112,6 +115,7 @@ export function createMetaOauthState(input: {
       flow: input.flow,
       nonce: randomBytes(16).toString("hex"),
       exp: nowMs + META_OAUTH_STATE_TTL_MS,
+      ...(input.confirmReplaceExisting ? { confirmReplaceExisting: true } : {}),
     },
     input.secret,
   );

@@ -117,6 +117,7 @@ router.post(
       const session = startMetaMessengerLogin({
         companyId,
         userId: req.supabaseUser?.id ?? null,
+        confirmReplaceExisting: Boolean(req.body?.confirmReplaceExisting),
       });
       res.json(session);
     } catch (error) {
@@ -139,7 +140,11 @@ router.get(
       assertCompanyAccess(req, companyId);
       if (!state) throw new HttpError(400, "state is required");
       await assertRouteCommercialFeature(companyId, "facebook_channel");
-      const result = listPendingMessengerPages({ companyId, state });
+      const result = await listPendingMessengerPages({
+        companyId,
+        state,
+        deps: { client: getServiceClient() },
+      });
       res.json(result);
     } catch (error) {
       try {
@@ -169,6 +174,7 @@ router.post(
         state,
         pageId,
         webhookVerifyToken: req.body?.webhookVerifyToken ?? null,
+        confirmReplaceExisting: Boolean(req.body?.confirmReplaceExisting),
         deps: { client: getServiceClient() },
       });
       res.json(result);
@@ -193,6 +199,7 @@ router.post(
       await assertRouteCommercialFeature(companyId, "facebook_channel");
       const result = await softDisconnectMetaMessengerLogin({
         companyId,
+        confirmClearCredentials: Boolean(req.body?.confirmClearCredentials),
         deps: { client: getServiceClient() },
       });
       res.json(result);

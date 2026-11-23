@@ -119,9 +119,21 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
   }, [companyId, t, toast]);
 
   const onConnect = async () => {
+    const replacing = Boolean(connection?.hasAccessToken);
+    if (replacing) {
+      const ok = window.confirm(
+        t("notifications.messengerLogin.confirmReplace", {
+          defaultValue:
+            "Messenger already has credentials. Reconnecting will replace the existing Page token. Continue?",
+        }),
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     try {
-      const session = await startMetaMessengerLogin(companyId);
+      const session = await startMetaMessengerLogin(companyId, {
+        confirmReplaceExisting: replacing,
+      });
       window.location.assign(session.authorizeUrl);
     } catch (error) {
       toast({
@@ -137,12 +149,14 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
 
   const onComplete = async () => {
     if (!pendingState || !selectedPageId) return;
+    const replacing = Boolean(connection?.hasAccessToken);
     setBusy(true);
     try {
       const result = await completeMetaMessengerLogin({
         companyId,
         state: pendingState,
         pageId: selectedPageId,
+        confirmReplaceExisting: replacing,
       });
       setPendingState(null);
       setPages([]);
@@ -174,13 +188,45 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
   };
 
   const onDisconnect = async () => {
+    const isManual = connection?.credentialSource !== "oauth";
+    let confirmClearCredentials = false;
+    if (isManual) {
+      const softOk = window.confirm(
+        t("notifications.messengerLogin.confirmDisableManual", {
+          defaultValue:
+            "Disable Messenger for this company? Manual credentials stay encrypted unless you also choose to clear them.",
+        }),
+      );
+      if (!softOk) return;
+      confirmClearCredentials = window.confirm(
+        t("notifications.messengerLogin.confirmClearManualSecrets", {
+          defaultValue:
+            "Also permanently clear manual access/verify tokens? Cancel keeps secrets and only disables the channel.",
+        }),
+      );
+    } else {
+      const ok = window.confirm(
+        t("notifications.messengerLogin.confirmClearOauth", {
+          defaultValue:
+            "Disconnect Messenger OAuth and clear stored Page credentials for this company?",
+        }),
+      );
+      if (!ok) return;
+      confirmClearCredentials = true;
+    }
     setBusy(true);
     try {
-      await disconnectMetaMessengerLogin(companyId);
+      const result = await disconnectMetaMessengerLogin(companyId, {
+        confirmClearCredentials,
+      });
       toast({
-        title: t("notifications.messengerLogin.disconnected", {
-          defaultValue: "Messenger soft-disconnected",
-        }),
+        title: result.softDisableOnly
+          ? t("notifications.messengerLogin.disabledKeptSecrets", {
+              defaultValue: "Messenger disabled — manual credentials preserved",
+            })
+          : t("notifications.messengerLogin.disconnected", {
+              defaultValue: "Messenger soft-disconnected",
+            }),
       });
       onDisconnected?.();
       void refresh();

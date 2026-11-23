@@ -1,6 +1,7 @@
 import { CheckCircle2, CircleAlert, Unplug } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { resolveMetaConnectionStatus } from "@/lib/channels/meta-connection-status";
 
 export type MetaChannelConnectionStatusUi =
   | "connected"
@@ -59,11 +60,12 @@ export function MetaChannelConnectionStrip({
   const { t } = useTranslation("common");
   const resolvedStatus: MetaChannelConnectionStatusUi =
     connectionStatus ??
-    (connected
-      ? "connected"
-      : enabled
-        ? "reauthorization_required"
-        : "not_connected");
+    resolveMetaConnectionStatus({
+      enabled,
+      hasAccessToken,
+      healthOk,
+      stored: connected ? "connected" : null,
+    });
   const statusLabel = t(`notifications.metaPagesOauth.status.${resolvedStatus}`, {
     defaultValue: STATUS_DEFAULTS[resolvedStatus],
   });

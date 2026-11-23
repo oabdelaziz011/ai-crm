@@ -61,4 +61,16 @@ describe("meta-connection-status", () => {
       "webhook_subscription_failed",
     );
   });
+
+  it("does not label health-not-run manual installs as Reauthorization Required", () => {
+    assert.equal(
+      resolveMetaConnectionStatus({
+        enabled: true,
+        hasAccessToken: true,
+        healthOk: null,
+        stored: "not_connected",
+      }),
+      "connected",
+    );
+  });
 });

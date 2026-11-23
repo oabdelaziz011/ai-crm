@@ -16,6 +16,13 @@ import {
   sanitizeGraphVersion,
   verifyMetaOauthState,
 } from "./meta-oauth-state.js";
+import {
+  assertCanClearMetaCredentials,
+  assertCanReplaceExistingMetaConnection,
+  readCredentialSource,
+  type ExistingMetaChannelConnection,
+  type MetaCredentialSource,
+} from "./meta-oauth-connection-guard.js";
 
 export const META_INSTAGRAM_LOGIN_FLOW = "instagram_login";
 
@@ -66,6 +73,42 @@ function mapStateError(error: unknown): never {
     throw new MetaInstagramLoginError(error.message, error.code, error.statusCode);
   }
   throw error;
+}
+
+function mapGuardError(error: unknown): never {
+  if (error && typeof error === "object" && "code" in error && "statusCode" in error) {
+    const err = error as { message: string; code: string; statusCode: number };
+    throw new MetaInstagramLoginError(err.message, err.code, err.statusCode);
+  }
+  throw error;
+}
+
+async function loadExistingInstagramConnection(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<ExistingMetaChannelConnection | null> {
+  const { data, error } = await client
+    .from("company_instagram_settings")
+    .select(
+      "enabled,instagram_business_account_id,access_token_encrypted,access_token,credential_source,oauth_mode",
+    )
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const source =
+    readCredentialSource(data.credential_source) === "oauth" ||
+    String(data.oauth_mode ?? "") === "instagram_login"
+      ? "oauth"
+      : "manual";
+  return {
+    enabled: Boolean(data.enabled),
+    pageOrAccountId: data.instagram_business_account_id
+      ? String(data.instagram_business_account_id)
+      : null,
+    hasAccessToken:
+      Boolean(data.access_token_encrypted) || Boolean(String(data.access_token ?? "").trim()),
+    credentialSource: source,
+  };
 }
 
 function assertEnabledAndAllowed(companyId: string): void {
@@ -123,6 +166,7 @@ export function buildMetaInstagramLoginReadiness(companyId: string) {
 export function startMetaInstagramLogin(input: {
   companyId: string;
   userId: string | null;
+  confirmReplaceExisting?: boolean;
   deps?: Pick<MetaInstagramLoginDeps, "nowMs" | "stateSecret">;
 }): { authorizeUrl: string; state: string; redirectUri: string; scopes: readonly string[] } {
   assertEnabledAndAllowed(input.companyId);
@@ -146,6 +190,7 @@ export function startMetaInstagramLogin(input: {
     flow: META_INSTAGRAM_LOGIN_FLOW,
     secret,
     nowMs: input.deps?.nowMs?.(),
+    confirmReplaceExisting: Boolean(input.confirmReplaceExisting),
   });
   const url = new URL("https://www.instagram.com/oauth/authorize");
   url.searchParams.set("client_id", meta.appId);
@@ -400,7 +445,20 @@ async function persistInstagramConnection(input: {
   graphApiVersion: string;
   webhookOk: boolean;
   webhookError: string | null;
+  confirmReplaceExisting: boolean;
+  healthOk: boolean;
 }): Promise<{ verifyToken: string; connectionStatus: MetaConnectionStatus }> {
+  const existingConnection = await loadExistingInstagramConnection(input.client, input.companyId);
+  try {
+    assertCanReplaceExistingMetaConnection({
+      existing: existingConnection,
+      confirmReplaceExisting: input.confirmReplaceExisting,
+      channel: "instagram",
+    });
+  } catch (error) {
+    mapGuardError(error);
+  }
+
   // Preserve existing verify token on reconnect (empty → whatsapp_is_unchanged_secret).
   const { data: existing } = await input.client
     .from("company_instagram_settings")
@@ -426,18 +484,22 @@ async function persistInstagramConnection(input: {
     throw new MetaInstagramLoginError(error.message, "IGL_PERSIST_FAILED", 500);
   }
 
-  const connectionStatus: MetaConnectionStatus = input.webhookOk
-    ? "connected"
-    : "webhook_subscription_failed";
+  const connectionStatus: MetaConnectionStatus = !input.webhookOk
+    ? "webhook_subscription_failed"
+    : input.healthOk
+      ? "connected"
+      : "reauthorization_required";
   const tokenExpiresAt = new Date(Date.now() + input.expiresIn * 1000).toISOString();
   await input.client
     .from("company_instagram_settings")
     .update({
       oauth_mode: "instagram_login",
+      credential_source: "oauth",
       instagram_username: input.username,
       token_expires_at: tokenExpiresAt,
       connection_status: connectionStatus,
-      connection_last_error: input.webhookError ?? "",
+      connection_last_error:
+        input.webhookError ?? (input.healthOk ? "" : "Instagram token health check failed"),
       webhook_subscription_status: input.webhookOk ? "subscribed" : "failed",
       webhook_subscription_error: input.webhookError ?? "",
       updated_at: new Date().toISOString(),
@@ -505,6 +567,18 @@ export async function handleMetaInstagramLoginCallback(input: {
       graphApiVersion: meta.graphApiVersion,
       fetchImpl,
     });
+    let healthOk = false;
+    try {
+      const probe = new URL(
+        `https://graph.instagram.com/${sanitizeGraphVersion(meta.graphApiVersion)}/${encodeURIComponent(profile.id)}`,
+      );
+      probe.searchParams.set("fields", "id,username");
+      probe.searchParams.set("access_token", longLived.accessToken);
+      const probeRes = await fetchImpl(probe.toString());
+      healthOk = probeRes.ok;
+    } catch {
+      healthOk = false;
+    }
     const persisted = await persistInstagramConnection({
       client: input.deps.client,
       companyId: payload.companyId,
@@ -516,9 +590,16 @@ export async function handleMetaInstagramLoginCallback(input: {
       graphApiVersion: meta.graphApiVersion,
       webhookOk: subscribe.ok,
       webhookError: subscribe.error,
+      confirmReplaceExisting: Boolean(payload.confirmReplaceExisting),
+      healthOk,
     });
     const qs = new URLSearchParams({
-      instagram_oauth: subscribe.ok ? "connected" : "webhook_failed",
+      instagram_oauth:
+        persisted.connectionStatus === "connected"
+          ? "connected"
+          : persisted.connectionStatus === "webhook_subscription_failed"
+            ? "webhook_failed"
+            : "health_failed",
       username: profile.username,
       ig_user_id: profile.id,
       connection_status: persisted.connectionStatus,
@@ -535,17 +616,20 @@ export async function handleMetaInstagramLoginCallback(input: {
       reason: code,
       message: message.slice(0, 180),
     });
-    try {
-      await input.deps.client
-        .from("company_instagram_settings")
-        .update({
-          connection_status: "reauthorization_required",
-          connection_last_error: message.slice(0, 500),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("company_id", payload.companyId);
-    } catch {
-      // best-effort status write
+    // Do not overwrite status on blocked_existing — preserve the live connection.
+    if (code !== "IGL_BLOCKED_EXISTING_CONNECTION") {
+      try {
+        await input.deps.client
+          .from("company_instagram_settings")
+          .update({
+            connection_status: "reauthorization_required",
+            connection_last_error: message.slice(0, 500),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("company_id", payload.companyId);
+      } catch {
+        // best-effort status write
+      }
     }
     return { redirectUrl: `${settingsPath}?${qs.toString()}` };
   }
@@ -564,12 +648,13 @@ export async function getMetaInstagramLoginConnection(input: {
   lastError: string | null;
   enabled: boolean;
   hasAccessToken: boolean;
+  credentialSource: MetaCredentialSource;
 }> {
   assertEnabledAndAllowed(input.companyId);
   const { data, error } = await input.deps.client
     .from("company_instagram_settings")
     .select(
-      "enabled,instagram_business_account_id,instagram_username,oauth_mode,token_expires_at,connection_status,connection_last_error,webhook_subscription_status,access_token_encrypted,access_token",
+      "enabled,instagram_business_account_id,instagram_username,oauth_mode,credential_source,token_expires_at,connection_status,connection_last_error,webhook_subscription_status,access_token_encrypted,access_token",
     )
     .eq("company_id", input.companyId)
     .maybeSingle();
@@ -587,12 +672,14 @@ export async function getMetaInstagramLoginConnection(input: {
       lastError: null,
       enabled: false,
       hasAccessToken: false,
+      credentialSource: "manual",
     };
   }
-  const hasAccessToken = Boolean(data.access_token_encrypted) || Boolean(String(data.access_token ?? "").trim());
+  const hasAccessToken =
+    Boolean(data.access_token_encrypted) || Boolean(String(data.access_token ?? "").trim());
   const nowMs = input.deps.nowMs?.() ?? Date.now();
   let status = (String(data.connection_status ?? "").trim() || null) as MetaConnectionStatus | null;
-  if (!status) {
+  if (!status || status === "not_connected") {
     status = data.enabled && hasAccessToken ? "connected" : "not_connected";
   }
   if (data.token_expires_at && new Date(String(data.token_expires_at)).getTime() < nowMs) {
@@ -601,6 +688,11 @@ export async function getMetaInstagramLoginConnection(input: {
   if (String(data.webhook_subscription_status ?? "") === "failed") {
     status = "webhook_subscription_failed";
   }
+  const credentialSource: MetaCredentialSource =
+    readCredentialSource(data.credential_source) === "oauth" ||
+    String(data.oauth_mode ?? "") === "instagram_login"
+      ? "oauth"
+      : "manual";
   return {
     status,
     username: data.instagram_username ? String(data.instagram_username) : null,
@@ -615,14 +707,34 @@ export async function getMetaInstagramLoginConnection(input: {
     lastError: data.connection_last_error ? String(data.connection_last_error) : null,
     enabled: Boolean(data.enabled),
     hasAccessToken,
+    credentialSource,
   };
 }
 
-/** Soft disconnect — clears local secrets; best-effort Meta unsubscribe. */
+/** Soft disconnect — manual credentials soft-disable only unless confirmClearCredentials. */
 export async function softDisconnectMetaInstagramLogin(input: {
   companyId: string;
+  confirmClearCredentials?: boolean;
   deps: MetaInstagramLoginDeps;
-}): Promise<{ ok: true; softDisconnected: true; metaRevoked: boolean }> {
+}): Promise<{
+  ok: true;
+  softDisconnected: true;
+  metaRevoked: boolean;
+  clearedCredentials: boolean;
+  softDisableOnly: boolean;
+}> {
+  const existing = await loadExistingInstagramConnection(input.deps.client, input.companyId);
+  let clearPlan: { clearSecrets: boolean; softDisableOnly: boolean };
+  try {
+    clearPlan = assertCanClearMetaCredentials({
+      existing,
+      confirmClearCredentials: Boolean(input.confirmClearCredentials),
+      channel: "instagram",
+    });
+  } catch (error) {
+    mapGuardError(error);
+  }
+
   const { data: row } = await input.deps.client
     .from("company_instagram_settings")
     .select("instagram_business_account_id,api_version")
@@ -631,7 +743,7 @@ export async function softDisconnectMetaInstagramLogin(input: {
 
   let metaRevoked = false;
   const igUserId = String(row?.instagram_business_account_id ?? "").trim();
-  if (igUserId) {
+  if (igUserId && clearPlan.clearSecrets) {
     try {
       const { data: decrypted } = await input.deps.client.rpc(
         "get_company_instagram_settings_decrypted",
@@ -655,10 +767,16 @@ export async function softDisconnectMetaInstagramLogin(input: {
     }
   }
 
-  const { error } = await input.deps.client
-    .from("company_instagram_settings")
-    .update({
-      enabled: false,
+  const patch: Record<string, unknown> = {
+    enabled: false,
+    connection_status: "not_connected",
+    connection_last_error: clearPlan.softDisableOnly
+      ? "Disabled without clearing manual credentials"
+      : "",
+    updated_at: new Date().toISOString(),
+  };
+  if (clearPlan.clearSecrets) {
+    Object.assign(patch, {
       access_token: "",
       access_token_encrypted: null,
       access_token_hint: "",
@@ -668,18 +786,27 @@ export async function softDisconnectMetaInstagramLogin(input: {
       webhook_verify_token_encrypted: null,
       webhook_verify_token_hint: "",
       webhook_verify_token_lookup_hash: "",
-      connection_status: "not_connected",
-      connection_last_error: "",
       webhook_subscription_status: "",
       webhook_subscription_error: "",
       token_expires_at: null,
-      updated_at: new Date().toISOString(),
-    })
+      credential_source: "manual",
+    });
+  }
+
+  const { error } = await input.deps.client
+    .from("company_instagram_settings")
+    .update(patch)
     .eq("company_id", input.companyId);
   if (error) {
     throw new MetaInstagramLoginError(error.message, "IGL_DISCONNECT_FAILED", 500);
   }
-  return { ok: true, softDisconnected: true, metaRevoked };
+  return {
+    ok: true,
+    softDisconnected: true,
+    metaRevoked,
+    clearedCredentials: clearPlan.clearSecrets,
+    softDisableOnly: clearPlan.softDisableOnly,
+  };
 }
 
 /**

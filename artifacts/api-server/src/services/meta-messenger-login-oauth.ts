@@ -10,13 +10,26 @@ import {
 import {
   createMetaOauthState,
   MetaOauthStateError,
-  META_OAUTH_STATE_TTL_MS,
   resolveLoginAppBaseUrl,
   resolveMetaOauthStateSecret,
   resolvePublicApiBaseUrl,
   sanitizeGraphVersion,
   verifyMetaOauthState,
 } from "./meta-oauth-state.js";
+import {
+  assertCanClearMetaCredentials,
+  assertCanReplaceExistingMetaConnection,
+  hasExistingMetaConnection,
+  readCredentialSource,
+  type ExistingMetaChannelConnection,
+  type MetaCredentialSource,
+} from "./meta-oauth-connection-guard.js";
+import {
+  clearMetaOauthPendingSession,
+  putMetaOauthPendingSession,
+  takeMetaOauthPendingSession,
+  __clearMetaOauthPendingMemoryForTests,
+} from "./meta-oauth-pending-store.js";
 import type { MetaConnectionStatus } from "./meta-instagram-login-oauth.js";
 
 export const META_MESSENGER_LOGIN_FLOW = "messenger_facebook_login";
@@ -45,46 +58,44 @@ type PageAsset = {
   pageAccessToken: string;
 };
 
-/** One-time post-callback cache: state → pages + user token until complete/expire. */
-const pendingByState = new Map<
-  string,
-  { companyId: string; pages: PageAsset[]; exp: number }
->();
-
-function cachePending(state: string, companyId: string, pages: PageAsset[], nowMs: number): void {
-  pendingByState.set(state, { companyId, pages, exp: nowMs + META_OAUTH_STATE_TTL_MS });
-}
-
-function takePending(
-  state: string,
-  companyId: string,
-  nowMs: number,
-): PageAsset[] | null {
-  const hit = pendingByState.get(state);
-  if (!hit) return null;
-  if (hit.exp < nowMs) {
-    pendingByState.delete(state);
-    return null;
-  }
-  if (hit.companyId.toLowerCase() !== companyId.toLowerCase()) {
-    throw new MetaMessengerLoginError(
-      "OAuth pending session company mismatch.",
-      "MSL_PENDING_COMPANY_MISMATCH",
-      403,
-    );
-  }
-  return hit.pages;
-}
-
-function clearPending(state: string): void {
-  pendingByState.delete(state);
-}
+type MessengerPendingPayload = {
+  pages: PageAsset[];
+  /** Soft expiry hint from long-lived user token exchange (seconds). */
+  userTokenExpiresIn?: number | null;
+};
 
 function mapStateError(error: unknown): never {
   if (error instanceof MetaOauthStateError) {
     throw new MetaMessengerLoginError(error.message, error.code, error.statusCode);
   }
   throw error;
+}
+
+function mapGuardError(error: unknown): never {
+  if (error && typeof error === "object" && "code" in error && "statusCode" in error) {
+    const err = error as { message: string; code: string; statusCode: number };
+    throw new MetaMessengerLoginError(err.message, err.code, err.statusCode);
+  }
+  throw error;
+}
+
+async function loadExistingMessengerConnection(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<ExistingMetaChannelConnection | null> {
+  const { data, error } = await client
+    .from("company_messenger_settings")
+    .select("enabled,page_id,access_token_encrypted,access_token,credential_source")
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    enabled: Boolean(data.enabled),
+    pageOrAccountId: data.page_id ? String(data.page_id) : null,
+    hasAccessToken:
+      Boolean(data.access_token_encrypted) || Boolean(String(data.access_token ?? "").trim()),
+    credentialSource: readCredentialSource(data.credential_source),
+  };
 }
 
 function assertEnabledAndAllowed(companyId: string): void {
@@ -142,6 +153,8 @@ export function buildMetaMessengerLoginReadiness(companyId: string) {
 export function startMetaMessengerLogin(input: {
   companyId: string;
   userId: string | null;
+  /** Required when an existing manual/OAuth connection must be replaced. */
+  confirmReplaceExisting?: boolean;
   deps?: Pick<MetaMessengerLoginDeps, "nowMs" | "stateSecret">;
 }): { authorizeUrl: string; state: string; redirectUri: string; scopes: readonly string[] } {
   assertEnabledAndAllowed(input.companyId);
@@ -165,6 +178,7 @@ export function startMetaMessengerLogin(input: {
     flow: META_MESSENGER_LOGIN_FLOW,
     secret,
     nowMs: input.deps?.nowMs?.(),
+    confirmReplaceExisting: Boolean(input.confirmReplaceExisting),
   });
   const version = sanitizeGraphVersion(meta.graphApiVersion);
   const url = new URL(`https://www.facebook.com/${version}/dialog/oauth`);
@@ -210,7 +224,7 @@ async function exchangeForLongLivedUserToken(
   shortLivedToken: string,
   meta: NonNullable<ReturnType<typeof readMetaMessengerOauthEnvConfig>>,
   fetchImpl: typeof fetch,
-): Promise<string> {
+): Promise<{ accessToken: string; expiresIn: number | null }> {
   const url = new URL(
     `https://graph.facebook.com/${sanitizeGraphVersion(meta.graphApiVersion)}/oauth/access_token`,
   );
@@ -219,7 +233,11 @@ async function exchangeForLongLivedUserToken(
   url.searchParams.set("client_secret", meta.appSecret);
   url.searchParams.set("fb_exchange_token", shortLivedToken);
   const res = await fetchImpl(url.toString(), { headers: { Accept: "application/json" } });
-  const json = (await res.json()) as { access_token?: string; error?: { message?: string } };
+  const json = (await res.json()) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: { message?: string };
+  };
   if (!res.ok || !json.access_token) {
     throw new MetaMessengerLoginError(
       json.error?.message ?? "Failed to exchange for a long-lived Facebook user token.",
@@ -227,7 +245,11 @@ async function exchangeForLongLivedUserToken(
       400,
     );
   }
-  return json.access_token;
+  const expiresIn =
+    typeof json.expires_in === "number" && Number.isFinite(json.expires_in) && json.expires_in > 0
+      ? Math.floor(json.expires_in)
+      : null;
+  return { accessToken: json.access_token, expiresIn };
 }
 
 async function listManagedPages(
@@ -405,14 +427,24 @@ export async function handleMetaMessengerLoginCallback(input: {
     assertEnabledAndAllowed(payload.companyId);
     const fetchImpl = input.deps.fetchImpl ?? fetch;
     const shortLived = await exchangeCodeForUserToken(input.code, meta, fetchImpl);
-    const userToken = await exchangeForLongLivedUserToken(shortLived, meta, fetchImpl);
-    const pages = await listManagedPages(userToken, meta, fetchImpl);
+    const longLived = await exchangeForLongLivedUserToken(shortLived, meta, fetchImpl);
+    const pages = await listManagedPages(longLived.accessToken, meta, fetchImpl);
     if (pages.length === 0) {
       return {
         redirectUrl: `${settingsPath}?messenger_oauth=error&reason=no_pages`,
       };
     }
-    cachePending(input.state, payload.companyId, pages, nowMs);
+    await putMetaOauthPendingSession({
+      client: input.deps.client,
+      state: input.state,
+      companyId: payload.companyId,
+      flow: META_MESSENGER_LOGIN_FLOW,
+      payload: {
+        pages,
+        userTokenExpiresIn: longLived.expiresIn,
+      } satisfies MessengerPendingPayload,
+      nowMs,
+    });
     const qs = new URLSearchParams({
       messenger_oauth: "select_page",
       state: input.state,
@@ -431,11 +463,11 @@ export async function handleMetaMessengerLoginCallback(input: {
   }
 }
 
-export function listPendingMessengerPages(input: {
+export async function listPendingMessengerPages(input: {
   companyId: string;
   state: string;
-  deps?: Pick<MetaMessengerLoginDeps, "nowMs" | "stateSecret">;
-}): { pages: Array<{ pageId: string; name: string }> } {
+  deps?: Pick<MetaMessengerLoginDeps, "client" | "nowMs" | "stateSecret">;
+}): Promise<{ pages: Array<{ pageId: string; name: string }> }> {
   assertEnabledAndAllowed(input.companyId);
   const nowMs = input.deps?.nowMs?.() ?? Date.now();
   try {
@@ -444,8 +476,20 @@ export function listPendingMessengerPages(input: {
   } catch (error) {
     mapStateError(error);
   }
-  const pages = takePending(input.state, input.companyId, nowMs);
-  if (!pages) {
+  let pending: MessengerPendingPayload | null = null;
+  try {
+    pending = await takeMetaOauthPendingSession<MessengerPendingPayload>({
+      client: input.deps?.client ?? null,
+      state: input.state,
+      companyId: input.companyId,
+      flow: META_MESSENGER_LOGIN_FLOW,
+      nowMs,
+      consume: false,
+    });
+  } catch (error) {
+    mapGuardError(error);
+  }
+  if (!pending?.pages?.length) {
     throw new MetaMessengerLoginError(
       "Messenger page selection session expired. Reconnect.",
       "MSL_PENDING_EXPIRED",
@@ -453,7 +497,7 @@ export function listPendingMessengerPages(input: {
     );
   }
   return {
-    pages: pages.map(({ pageId, name }) => ({ pageId, name })),
+    pages: pending.pages.map(({ pageId, name }) => ({ pageId, name })),
   };
 }
 
@@ -462,6 +506,8 @@ export async function completeMetaMessengerLogin(input: {
   state: string;
   pageId: string;
   webhookVerifyToken?: string | null;
+  /** Explicit reconnect confirmation — required when credentials already exist. */
+  confirmReplaceExisting?: boolean;
   deps: MetaMessengerLoginDeps;
 }): Promise<{
   ok: true;
@@ -470,6 +516,7 @@ export async function completeMetaMessengerLogin(input: {
   connected: boolean;
   connectionStatus: MetaConnectionStatus;
   message: string;
+  webhookVerifyToken?: string;
 }> {
   assertEnabledAndAllowed(input.companyId);
   const meta = readMetaMessengerOauthEnvConfig(resolvePublicApiBaseUrl());
@@ -481,21 +528,54 @@ export async function completeMetaMessengerLogin(input: {
     );
   }
   const nowMs = input.deps.nowMs?.() ?? Date.now();
+  let statePayload;
   try {
     const secret = resolveMetaOauthStateSecret(input.deps.stateSecret);
-    verifyMetaOauthState(input.state, secret, META_MESSENGER_LOGIN_FLOW, nowMs, input.companyId);
+    statePayload = verifyMetaOauthState(
+      input.state,
+      secret,
+      META_MESSENGER_LOGIN_FLOW,
+      nowMs,
+      input.companyId,
+    );
   } catch (error) {
     mapStateError(error);
   }
-  const pages = takePending(input.state, input.companyId, nowMs);
-  if (!pages) {
+
+  const existing = await loadExistingMessengerConnection(input.deps.client, input.companyId);
+  const confirmReplace =
+    Boolean(input.confirmReplaceExisting) || Boolean(statePayload.confirmReplaceExisting);
+  try {
+    assertCanReplaceExistingMetaConnection({
+      existing,
+      confirmReplaceExisting: confirmReplace,
+      channel: "messenger",
+    });
+  } catch (error) {
+    mapGuardError(error);
+  }
+
+  let pending: MessengerPendingPayload | null = null;
+  try {
+    pending = await takeMetaOauthPendingSession<MessengerPendingPayload>({
+      client: input.deps.client,
+      state: input.state,
+      companyId: input.companyId,
+      flow: META_MESSENGER_LOGIN_FLOW,
+      nowMs,
+      consume: true,
+    });
+  } catch (error) {
+    mapGuardError(error);
+  }
+  if (!pending?.pages?.length) {
     throw new MetaMessengerLoginError(
       "Messenger page selection session expired. Reconnect.",
       "MSL_PENDING_EXPIRED",
       400,
     );
   }
-  const selected = pages.find((p) => p.pageId === input.pageId);
+  const selected = pending.pages.find((p) => p.pageId === input.pageId);
   if (!selected) {
     throw new MetaMessengerLoginError(
       "Selected Facebook Page was not found for this authorization.",
@@ -508,12 +588,12 @@ export async function completeMetaMessengerLogin(input: {
   const explicitVerify = String(input.webhookVerifyToken ?? "").trim();
   let verifyToken = explicitVerify;
   if (!verifyToken) {
-    const { data: existing } = await input.deps.client
+    const { data: existingRow } = await input.deps.client
       .from("company_messenger_settings")
       .select("webhook_verify_token_encrypted")
       .eq("company_id", input.companyId)
       .maybeSingle();
-    if (existing?.webhook_verify_token_encrypted) {
+    if (existingRow?.webhook_verify_token_encrypted) {
       // Empty string → whatsapp_is_unchanged_secret keeps the stored encrypted verify token.
       verifyToken = "";
     } else {
@@ -554,7 +634,7 @@ export async function completeMetaMessengerLogin(input: {
     }
   }
 
-  // Health probe
+  // Health probe — Connected requires Page token health.
   let healthOk = false;
   try {
     const probe = new URL(
@@ -574,19 +654,26 @@ export async function completeMetaMessengerLogin(input: {
       ? "connected"
       : "reauthorization_required";
 
+  const tokenExpiresAt =
+    pending.userTokenExpiresIn && pending.userTokenExpiresIn > 0
+      ? new Date(nowMs + pending.userTokenExpiresIn * 1000).toISOString()
+      : null;
+
   await input.deps.client
     .from("company_messenger_settings")
     .update({
       page_name: selected.name,
+      credential_source: "oauth",
       connection_status: connectionStatus,
       connection_last_error: subscribe.error ?? (healthOk ? "" : "Page token health check failed"),
       webhook_subscription_status: subscribe.ok ? "subscribed" : "failed",
       webhook_subscription_error: subscribe.error ?? "",
+      ...(tokenExpiresAt ? { token_expires_at: tokenExpiresAt } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("company_id", input.companyId);
 
-  clearPending(input.state);
+  await clearMetaOauthPendingSession({ client: input.deps.client, state: input.state });
 
   return {
     ok: true,
@@ -596,7 +683,7 @@ export async function completeMetaMessengerLogin(input: {
     connectionStatus,
     // One-time plaintext for Meta App Dashboard webhook verification.
     // Stored encrypted server-side; never returned again by status/connection reads.
-    webhookVerifyToken: verifyToken,
+    webhookVerifyToken: verifyToken || undefined,
     message:
       connectionStatus === "connected"
         ? "Messenger Page connected and webhook subscription succeeded. Copy the verify token into Meta App Dashboard if callback verification is still pending."
@@ -608,7 +695,7 @@ export async function completeMetaMessengerLogin(input: {
 
 export async function getMetaMessengerLoginConnection(input: {
   companyId: string;
-  deps: Pick<MetaMessengerLoginDeps, "client">;
+  deps: Pick<MetaMessengerLoginDeps, "client" | "nowMs">;
 }): Promise<{
   status: MetaConnectionStatus;
   pageId: string | null;
@@ -617,12 +704,14 @@ export async function getMetaMessengerLoginConnection(input: {
   lastError: string | null;
   enabled: boolean;
   hasAccessToken: boolean;
+  credentialSource: MetaCredentialSource;
+  tokenExpiresAt: string | null;
 }> {
   assertEnabledAndAllowed(input.companyId);
   const { data, error } = await input.deps.client
     .from("company_messenger_settings")
     .select(
-      "enabled,page_id,page_name,connection_status,connection_last_error,webhook_subscription_status,access_token_encrypted,access_token",
+      "enabled,page_id,page_name,connection_status,connection_last_error,webhook_subscription_status,access_token_encrypted,access_token,credential_source,token_expires_at",
     )
     .eq("company_id", input.companyId)
     .maybeSingle();
@@ -638,12 +727,20 @@ export async function getMetaMessengerLoginConnection(input: {
       lastError: null,
       enabled: false,
       hasAccessToken: false,
+      credentialSource: "manual",
+      tokenExpiresAt: null,
     };
   }
-  const hasAccessToken = Boolean(data.access_token_encrypted) || Boolean(String(data.access_token ?? "").trim());
+  const hasAccessToken =
+    Boolean(data.access_token_encrypted) || Boolean(String(data.access_token ?? "").trim());
+  const nowMs = input.deps.nowMs?.() ?? Date.now();
   let status = (String(data.connection_status ?? "").trim() || null) as MetaConnectionStatus | null;
-  if (!status) {
+  if (!status || status === "not_connected") {
+    // Manual rows often keep default not_connected after migration 463 — infer from credentials.
     status = data.enabled && hasAccessToken ? "connected" : "not_connected";
+  }
+  if (data.token_expires_at && new Date(String(data.token_expires_at)).getTime() < nowMs) {
+    status = "connection_expired";
   }
   if (String(data.webhook_subscription_status ?? "") === "failed") {
     status = "webhook_subscription_failed";
@@ -658,13 +755,35 @@ export async function getMetaMessengerLoginConnection(input: {
     lastError: data.connection_last_error ? String(data.connection_last_error) : null,
     enabled: Boolean(data.enabled),
     hasAccessToken,
+    credentialSource: readCredentialSource(data.credential_source),
+    tokenExpiresAt: data.token_expires_at ? String(data.token_expires_at) : null,
   };
 }
 
 export async function softDisconnectMetaMessengerLogin(input: {
   companyId: string;
+  /** Required to clear OAuth secrets; manual connections soft-disable without this. */
+  confirmClearCredentials?: boolean;
   deps: MetaMessengerLoginDeps;
-}): Promise<{ ok: true; softDisconnected: true; metaRevoked: boolean }> {
+}): Promise<{
+  ok: true;
+  softDisconnected: true;
+  metaRevoked: boolean;
+  clearedCredentials: boolean;
+  softDisableOnly: boolean;
+}> {
+  const existing = await loadExistingMessengerConnection(input.deps.client, input.companyId);
+  let clearPlan: { clearSecrets: boolean; softDisableOnly: boolean };
+  try {
+    clearPlan = assertCanClearMetaCredentials({
+      existing,
+      confirmClearCredentials: Boolean(input.confirmClearCredentials),
+      channel: "messenger",
+    });
+  } catch (error) {
+    mapGuardError(error);
+  }
+
   const { data: row } = await input.deps.client
     .from("company_messenger_settings")
     .select("page_id,api_version")
@@ -673,7 +792,7 @@ export async function softDisconnectMetaMessengerLogin(input: {
 
   let metaRevoked = false;
   const pageId = String(row?.page_id ?? "").trim();
-  if (pageId) {
+  if (pageId && clearPlan.clearSecrets) {
     try {
       const { data: decrypted } = await input.deps.client.rpc(
         "get_company_messenger_settings_decrypted",
@@ -697,10 +816,16 @@ export async function softDisconnectMetaMessengerLogin(input: {
     }
   }
 
-  const { error } = await input.deps.client
-    .from("company_messenger_settings")
-    .update({
-      enabled: false,
+  const patch: Record<string, unknown> = {
+    enabled: false,
+    connection_status: "not_connected",
+    connection_last_error: clearPlan.softDisableOnly
+      ? "Disabled without clearing manual credentials"
+      : "",
+    updated_at: new Date().toISOString(),
+  };
+  if (clearPlan.clearSecrets) {
+    Object.assign(patch, {
       access_token: "",
       access_token_encrypted: null,
       access_token_hint: "",
@@ -710,23 +835,35 @@ export async function softDisconnectMetaMessengerLogin(input: {
       webhook_verify_token_encrypted: null,
       webhook_verify_token_hint: "",
       webhook_verify_token_lookup_hash: "",
-      connection_status: "not_connected",
-      connection_last_error: "",
       webhook_subscription_status: "",
       webhook_subscription_error: "",
-      updated_at: new Date().toISOString(),
-    })
+      token_expires_at: null,
+      credential_source: "manual",
+    });
+  }
+
+  const { error } = await input.deps.client
+    .from("company_messenger_settings")
+    .update(patch)
     .eq("company_id", input.companyId);
   if (error) {
     throw new MetaMessengerLoginError(error.message, "MSL_DISCONNECT_FAILED", 500);
   }
-  return { ok: true, softDisconnected: true, metaRevoked };
+  return {
+    ok: true,
+    softDisconnected: true,
+    metaRevoked,
+    clearedCredentials: clearPlan.clearSecrets,
+    softDisableOnly: clearPlan.softDisableOnly,
+  };
 }
 
 export const __metaMessengerLoginTest = {
-  cachePending,
-  takePending,
-  clearPending,
+  putPending: putMetaOauthPendingSession,
+  takePending: takeMetaOauthPendingSession,
+  clearPending: clearMetaOauthPendingSession,
+  clearMemory: __clearMetaOauthPendingMemoryForTests,
   exchangeForLongLivedUserToken,
+  hasExistingMetaConnection,
   META_MESSENGER_LOGIN_FLOW,
 };

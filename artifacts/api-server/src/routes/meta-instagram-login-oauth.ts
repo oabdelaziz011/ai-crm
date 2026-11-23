@@ -116,6 +116,7 @@ router.post(
       const session = startMetaInstagramLogin({
         companyId,
         userId: req.supabaseUser?.id ?? null,
+        confirmReplaceExisting: Boolean(req.body?.confirmReplaceExisting),
       });
       // Never return app secret. authorizeUrl + opaque state only.
       res.json(session);
@@ -140,6 +141,7 @@ router.post(
       await assertRouteCommercialFeature(companyId, "instagram_channel");
       const result = await softDisconnectMetaInstagramLogin({
         companyId,
+        confirmClearCredentials: Boolean(req.body?.confirmClearCredentials),
         deps: { client: getServiceClient() },
       });
       res.json(result);

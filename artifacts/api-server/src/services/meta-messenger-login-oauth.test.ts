@@ -129,6 +129,8 @@ describe("meta-messenger-login-oauth", () => {
       const client = {
         rpc: async () => ({ error: null }),
         from: () => ({
+          upsert: async () => ({ error: null }),
+          delete: () => ({ eq: async () => ({ error: null }) }),
           update: () => ({ eq: async () => ({ error: null }) }),
           select: () => ({
             eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
@@ -148,7 +150,8 @@ describe("meta-messenger-login-oauth", () => {
         assert.ok(urls.some((u) => u.includes("fb_exchange_token")));
         assert.ok(urls.some((u) => u.includes("/me/accounts") && u.includes("long-lived-user")));
       } finally {
-        __metaMessengerLoginTest.clearPending(state);
+        await __metaMessengerLoginTest.clearPending({ state });
+        __metaMessengerLoginTest.clearMemory();
       }
     });
   });
@@ -170,6 +173,8 @@ describe("meta-messenger-login-oauth", () => {
           return { error: null };
         },
         from: () => ({
+          upsert: async () => ({ error: null }),
+          delete: () => ({ eq: async () => ({ error: null }) }),
           update: () => ({
             eq: async () => ({ error: null }),
           }),
@@ -230,15 +235,25 @@ describe("meta-messenger-login-oauth", () => {
         assert.match(cb.redirectUrl, /messenger_oauth=select_page/);
         assert.match(cb.redirectUrl, /state=/);
 
-        const pending = listPendingMessengerPages({ companyId: DEMO, state });
+        const pending = await listPendingMessengerPages({
+          companyId: DEMO,
+          state,
+          deps: { client: client as never },
+        });
         assert.equal(pending.pages.length, 2);
         assert.ok(!JSON.stringify(pending).includes("page-token"));
 
-        assert.throws(
-          () => listPendingMessengerPages({ companyId: OTHER, state }),
+        await assert.rejects(
+          () =>
+            listPendingMessengerPages({
+              companyId: OTHER,
+              state,
+              deps: { client: client as never },
+            }),
           (err: unknown) =>
             err instanceof MetaMessengerLoginError &&
             (err.code === "MSL_PENDING_COMPANY_MISMATCH" ||
+              err.code === "META_OAUTH_PENDING_COMPANY_MISMATCH" ||
               err.code === "META_OAUTH_STATE_COMPANY_MISMATCH" ||
               err.code === "MSL_COMPANY_NOT_ALLOWED"),
         );
@@ -260,7 +275,8 @@ describe("meta-messenger-login-oauth", () => {
         // Empty string preserves existing encrypted verify token via whatsapp_is_unchanged_secret.
         assert.equal(rpcCalls[0]?.args.p_webhook_verify_token, "");
       } finally {
-        __metaMessengerLoginTest.clearPending(state);
+        await __metaMessengerLoginTest.clearPending({ state });
+        __metaMessengerLoginTest.clearMemory();
       }
     });
   });
@@ -283,7 +299,13 @@ describe("meta-messenger-login-oauth", () => {
           select: () => ({
             eq: () => ({
               maybeSingle: async () => ({
-                data: { page_id: "page-1", api_version: "v21.0" },
+                data: {
+                  page_id: "page-1",
+                  api_version: "v21.0",
+                  access_token_encrypted: "enc",
+                  credential_source: "oauth",
+                  enabled: true,
+                },
                 error: null,
               }),
             }),
@@ -296,11 +318,13 @@ describe("meta-messenger-login-oauth", () => {
 
       const result = await softDisconnectMetaMessengerLogin({
         companyId: DEMO,
+        confirmClearCredentials: true,
         deps: { client: client as never, fetchImpl },
       });
       assert.equal(result.ok, true);
       assert.equal(result.softDisconnected, true);
       assert.equal(result.metaRevoked, true);
+      assert.equal(result.clearedCredentials, true);
       assert.ok(methods.includes("DELETE"));
     });
   });

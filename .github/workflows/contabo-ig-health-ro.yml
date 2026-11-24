@@ -1,4 +1,4 @@
-﻿name: Contabo IG health RO3
+﻿name: Contabo IG health RO4
 
 on:
   workflow_dispatch:
@@ -14,77 +14,41 @@ jobs:
     runs-on: [self-hosted, linux, x64, valueor-production]
     timeout-minutes: 10
     steps:
-      - name: Deep RO Instagram health no-sudo
+      - name: Node fetch Graph from Contabo
         run: |
           set -euo pipefail
-          REL="$(readlink -f /opt/valueor-current)"
-          echo "REL=$REL"
-          ls -la "$REL" | head -n 50
-          echo "=== tree depth2 ==="
-          find "$REL" -maxdepth 4 -type f \( -name 'main.mjs' -o -name 'start-api.mjs' -o -name 'package.json' -o -name 'RELEASE*' \) 2>/dev/null | head -n 80
-          MAIN="$(find "$REL" -name 'main.mjs' 2>/dev/null | head -n 1 || true)"
-          echo "MAIN=$MAIN"
-          if [[ -n "${MAIN:-}" ]]; then
-            python3 - "$MAIN" <<'PY'
-          import re,sys
-          data=open(sys.argv[1],'rb').read().decode('utf-8','ignore')
-          for pat in ['INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS','instagram_health_timeout','instagramHealthDiag','channel-outbound-health','graph.instagram.com','20000','20_000']:
-            print(pat, data.count(pat))
-          for m in re.finditer(r'.{0,30}INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS.{0,30}', data):
-            print('snip', m.group(0).replace('\n',' ')[:160]); break
-          PY
-          fi
-          echo "=== start-api.mjs ==="
-          sed -n '1,80p' "$REL/deploy/vps/start-api.mjs" 2>/dev/null || sed -n '1,80p' /opt/valueor-current/deploy/vps/start-api.mjs
+          echo "=== node fetch graph.instagram.com 3x ==="
+          node <<'NODE'
+          async function one(i) {
+            const t = Date.now();
+            try {
+              const res = await fetch('https://graph.instagram.com/v21.0/me?fields=id', {
+                headers: { Authorization: 'Bearer INVALID' },
+              });
+              const text = await res.text();
+              console.log(JSON.stringify({ i, status: res.status, ms: Date.now() - t, bodyLen: text.length }));
+            } catch (e) {
+              console.log(JSON.stringify({ i, error: String(e), ms: Date.now() - t }));
+            }
+          }
+          await one(1); await one(2); await one(3);
+          NODE
 
-          echo "=== env key presence via systemd show Environment (names only) ==="
-          # Do not print values. systemd may expose Environment= in show if set in unit; EnvFile values are not shown.
-          systemctl show valueor-api.service -p Environment 2>/dev/null | tr ' ' '\n' | sed -n 's/=.*//p' | head -n 40 || true
+          echo "=== node fetch graph.facebook.com ==="
+          node <<'NODE'
+          const t = Date.now();
+          try {
+            const res = await fetch('https://graph.facebook.com/v21.0/me?fields=id', {
+              headers: { Authorization: 'Bearer INVALID' },
+            });
+            console.log(JSON.stringify({ status: res.status, ms: Date.now() - t, body: (await res.text()).slice(0,120) }));
+          } catch (e) {
+            console.log(JSON.stringify({ error: String(e), ms: Date.now() - t }));
+          }
+          NODE
 
-          echo "=== readable .env? ==="
-          if [[ -r /opt/valueor/.env ]]; then echo readable=yes; else echo readable=no; ls -la /opt/valueor/.env 2>&1 || true; fi
-
-          echo "=== localhost OPTIONS/POST ==="
-          python3 - <<'PY'
-          import json,time,urllib.request,urllib.error
-          url='http://127.0.0.1:3001/api/instagram/channel-outbound-health'
-          for method,data in [('OPTIONS',None),('POST',{'companyId':'2d27f7fb-c15e-4d60-84e9-1793f36f2172','companyChannelId':'4be76292-b32b-4a7c-a760-e2559bdc9af4'})]:
-            body=None if data is None else json.dumps(data).encode()
-            req=urllib.request.Request(url,data=body,method=method)
-            req.add_header('Origin','https://www.valueor.org')
-            if method=='OPTIONS':
-              req.add_header('Access-Control-Request-Method','POST')
-              req.add_header('Access-Control-Request-Headers','authorization,content-type')
-            if body is not None: req.add_header('Content-Type','application/json')
-            t=time.time()
-            try:
-              with urllib.request.urlopen(req,timeout=20) as res:
-                print(json.dumps({'method':method,'status':res.status,'ms':int((time.time()-t)*1000),'acao':res.headers.get('Access-Control-Allow-Origin'),'ct':res.headers.get('Content-Type'),'body':res.read(200).decode('utf-8','ignore')}))
-            except urllib.error.HTTPError as e:
-              print(json.dumps({'method':method,'status':e.code,'ms':int((time.time()-t)*1000),'acao':e.headers.get('Access-Control-Allow-Origin'),'ct':e.headers.get('Content-Type'),'body':e.read(200).decode('utf-8','ignore')}))
-          PY
-
-          echo "=== graph.instagram 3x ==="
-          python3 - <<'PY'
-          import json,time,urllib.request,urllib.error
-          def one():
-            req=urllib.request.Request('https://graph.instagram.com/v21.0/me?fields=id',headers={'Authorization':'Bearer INVALID'})
-            t=time.time()
-            try:
-              with urllib.request.urlopen(req,timeout=30) as res:
-                res.read(); return {'status':res.status,'ms':int((time.time()-t)*1000)}
-            except urllib.error.HTTPError as e:
-              e.read(); return {'status':e.code,'ms':int((time.time()-t)*1000)}
-            except Exception as e:
-              return {'error':str(e),'ms':int((time.time()-t)*1000)}
-          print(json.dumps({'calls':[one(),one(),one()],'sum_ms_est':'see calls'}))
-          PY
-
-          echo "=== nginx conf timeouts ==="
-          grep -n 'proxy_read_timeout\|proxy_send_timeout\|server_name\|add_header' /etc/nginx/sites-enabled/valueor-api | head -n 40 || true
-
-          echo "=== try valueor-prod-deploy sudoers wrappers for journal ==="
-          # Only list allowed sudo -n commands; do not change anything
-          sudo -n -l 2>&1 | head -n 80 || true
+          echo "=== dns ==="
+          getent hosts graph.instagram.com || true
+          getent hosts graph.facebook.com || true
 
           echo "=== done ==="

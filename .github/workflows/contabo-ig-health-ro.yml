@@ -1,7 +1,5 @@
-name: Contabo IG health RO
+﻿name: Contabo IG health RO2
 
-# Read-only Contabo inspection for Instagram channel-outbound-health.
-# Does not change env, DB, credentials, services, Nginx, or Cloudflare.
 on:
   workflow_dispatch:
     inputs:
@@ -16,221 +14,112 @@ jobs:
     runs-on: [self-hosted, linux, x64, valueor-production]
     timeout-minutes: 10
     steps:
-      - name: Read-only Instagram health diagnostics
+      - name: Deep RO Instagram health
         run: |
           set -euo pipefail
-          echo "=== meta ==="
-          hostname
-          date -u +%Y-%m-%dT%H:%M:%SZ
-          whoami
-
-          echo "=== 1) API unit / release identity ==="
-          systemctl is-active valueor-api.service || true
-          systemctl show valueor-api.service -p MainPID -p ActiveState -p FragmentPath -p EnvironmentFiles -p WorkingDirectory -p ExecStart 2>/dev/null || true
-          echo "--- ls /opt/valueor ---"
-          ls -la /opt/valueor 2>/dev/null | head -n 40 || true
-          echo "--- find main.mjs ---"
-          MAIN_FILES="$(find /opt/valueor /var/lib/valueor /home -name 'main.mjs' 2>/dev/null | head -n 20 || true)"
-          echo "$MAIN_FILES"
-          while IFS= read -r f; do
-            [[ -n "$f" && -f "$f" ]] || continue
-            echo "--- scan $f ---"
-            python3 - "$f" <<'PY'
+          echo "=== unit / cwd / start script ==="
+          systemctl show valueor-api.service -p WorkingDirectory -p ExecStart -p MainPID -p FragmentPath
+          echo "--- /etc/valueor/api-safe-start.sh ---"
+          sudo -n sed -n '1,120p' /etc/valueor/api-safe-start.sh 2>/dev/null || sed -n '1,120p' /etc/valueor/api-safe-start.sh 2>/dev/null || true
+          echo "--- /opt/valueor-current ---"
+          ls -la /opt/valueor-current 2>/dev/null | head -n 40 || true
+          readlink -f /opt/valueor-current 2>/dev/null || true
+          echo "--- find bundle ---"
+          sudo -n find /opt/valueor-current /opt/valueor -type f \( -name 'main.mjs' -o -name 'index.js' -o -name 'server.mjs' \) 2>/dev/null | head -n 40 || true
+          MAIN="$(sudo -n find /opt/valueor-current /opt/valueor -name 'main.mjs' 2>/dev/null | head -n 1 || true)"
+          echo "MAIN=$MAIN"
+          if [[ -n "${MAIN:-}" ]]; then
+            python3 - "$MAIN" <<'PY'
           import re,sys
           data=open(sys.argv[1],'rb').read().decode('utf-8','ignore')
-          for pat in [
-            'INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS',
-            'instagram_health_timeout',
-            'instagramHealthDiag',
-            'channel-outbound-health',
-            'graph.instagram.com',
-          ]:
-            print(f'{pat}: {data.count(pat)}')
-          m=re.search(r'.{0,60}INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS.{0,40}', data)
-          if m: print('timeout_snip:', m.group(0).replace('\n',' ')[:180])
+          for pat in ['INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS','instagram_health_timeout','instagramHealthDiag','channel-outbound-health','graph.instagram.com','withTimeout']:
+            print(pat, data.count(pat))
+          m=re.search(r'INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS[=:][^,\n;]{0,20}', data)
+          print('timeout_assign', m.group(0) if m else None)
           PY
-          done <<< "$MAIN_FILES"
+          fi
 
-          echo "=== 2) nginx proxy_read_timeout (api site) ==="
-          for conf in /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*; do
-            [[ -e "$conf" ]] || continue
-            if grep -q 'api.valueor.org\|proxy_read_timeout' "$conf" 2>/dev/null; then
-              echo "--- $conf ---"
-              grep -n 'server_name\|proxy_read_timeout\|proxy_send_timeout\|location\|add_header' "$conf" | head -n 60 || true
-            fi
-          done
+          echo "=== pino / log files ==="
+          sudo -n ls -la /var/log/valueor /opt/valueor/logs /opt/valueor-current/logs 2>/dev/null || true
+          sudo -n find /var/log /opt/valueor /opt/valueor-current -name '*valueor*' -o -name '*api*.log' 2>/dev/null | head -n 40 || true
 
-          echo "=== 3) journal instagram health (sudo, last 12h) ==="
-          sudo -n journalctl -u valueor-api.service --since '12 hours ago' --no-pager 2>/dev/null \
-            | grep -E 'instagram\.(channel-outbound-health|Health)|instagramHealthDiag|instagram_health_timeout|channel-outbound-health|graph\.instagram|/api/instagram' \
-            | tail -n 100 \
-            || echo 'no_matching_journal_lines'
-          echo "=== 3b) journalctl permission probe ==="
-          journalctl -u valueor-api.service -n 3 --no-pager 2>&1 | head -n 10 || true
-          sudo -n journalctl -u valueor-api.service -n 3 --no-pager 2>&1 | head -n 10 || true
+          echo "=== sudo journal last 30 lines ==="
+          sudo -n journalctl -u valueor-api.service -n 30 --no-pager 2>&1 | head -n 40 || true
 
-          echo "=== 4) recent API lines mentioning instagram (sudo, last 6h) ==="
-          sudo -n journalctl -u valueor-api.service --since '6 hours ago' --no-pager 2>/dev/null \
-            | grep -iE 'instagram|instagram_health|Unhandled request error' \
-            | grep -viE 'access_token|app_secret|authorization|Bearer |verify_token|password' \
-            | tail -n 80 \
-            || echo 'no_recent_lines'
+          echo "=== sudo journal grep instagram last 48h ==="
+          sudo -n journalctl -u valueor-api.service --since '48 hours ago' --no-pager 2>&1 \
+            | grep -i instagram | grep -viE 'access_token|app_secret|Bearer |password' | tail -n 50 || echo none
 
-          echo "=== 4b) nginx access for channel-outbound-health ==="
-          for log in /var/log/nginx/access.log /var/log/nginx/api.access.log /var/log/nginx/valueor*access*; do
-            [[ -f "$log" ]] || continue
-            echo "--- $log ---"
-            sudo -n grep -E 'channel-outbound-health|/api/instagram' "$log" 2>/dev/null | tail -n 30 || true
-          done
+          echo "=== nginx access logs list + greps ==="
+          sudo -n ls -la /var/log/nginx 2>/dev/null | head -n 40 || true
+          sudo -n sh -c 'grep -RIl "channel-outbound-health" /var/log/nginx 2>/dev/null | head -n 10' || true
+          sudo -n sh -c 'zgrep -h "channel-outbound-health" /var/log/nginx/* 2>/dev/null | tail -n 40' || true
 
-          echo "=== 5) localhost unauth OPTIONS+POST timing ==="
-          python3 - <<'PY'
-          import json, time, urllib.request, urllib.error
-          url = "http://127.0.0.1:3001/api/instagram/channel-outbound-health"
-
-          def call(method, data=None, origin="https://www.valueor.org"):
-              body = None if data is None else json.dumps(data).encode()
-              req = urllib.request.Request(url, data=body, method=method)
-              req.add_header("Origin", origin)
-              if method == "OPTIONS":
-                  req.add_header("Access-Control-Request-Method", "POST")
-                  req.add_header("Access-Control-Request-Headers", "authorization,content-type")
-              if body is not None:
-                  req.add_header("Content-Type", "application/json")
-              t = time.time()
-              try:
-                  with urllib.request.urlopen(req, timeout=25) as res:
-                      raw = res.read(500)
-                      headers = {
-                          k.lower(): v
-                          for k, v in res.headers.items()
-                          if k.lower().startswith("access-control") or k.lower() == "content-type"
-                      }
-                      print(
-                          json.dumps(
-                              {
-                                  "method": method,
-                                  "status": res.status,
-                                  "ms": int((time.time() - t) * 1000),
-                                  "headers": headers,
-                                  "body": raw.decode("utf-8", "ignore")[:300],
-                              }
-                          )
-                      )
-              except urllib.error.HTTPError as e:
-                  raw = e.read(500)
-                  headers = {
-                      k.lower(): v
-                      for k, v in e.headers.items()
-                      if k.lower().startswith("access-control") or k.lower() == "content-type"
-                  }
-                  print(
-                      json.dumps(
-                          {
-                              "method": method,
-                              "status": e.code,
-                              "ms": int((time.time() - t) * 1000),
-                              "headers": headers,
-                              "body": raw.decode("utf-8", "ignore")[:300],
-                          }
-                      )
-                  )
-              except Exception as e:
-                  print(json.dumps({"method": method, "error": str(e), "ms": int((time.time() - t) * 1000)}))
-
-          call("OPTIONS")
-          call(
-              "POST",
-              {
-                  "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
-                  "companyChannelId": "4be76292-b32b-4a7c-a760-e2559bdc9af4",
-              },
-          )
+          echo "=== INTERNAL_API_KEY presence only ==="
+          if sudo -n test -f /opt/valueor/.env; then
+            sudo -n python3 - <<'PY'
+          import pathlib
+          text=pathlib.Path('/opt/valueor/.env').read_text(encoding='utf-8', errors='ignore')
+          for line in text.splitlines():
+            if line.startswith('INTERNAL_API_KEY='):
+              val=line.split('=',1)[1].strip().strip('"').strip("'")
+              print('INTERNAL_API_KEY_present', bool(val), 'len', len(val))
+              break
+          else:
+            print('INTERNAL_API_KEY_present', False)
           PY
+          fi
 
-          echo "=== 6) Contabo -> graph.instagram.com latency ==="
-          python3 - <<'PY'
-          import json, time, urllib.request, urllib.error
-          url = "https://graph.instagram.com/v21.0/me?fields=id"
-          req = urllib.request.Request(url, headers={"Authorization": "Bearer INVALID"})
-          t = time.time()
+          echo "=== authenticated health via INTERNAL_API_KEY (localhost) ==="
+          sudo -n python3 - <<'PY'
+          import json, time, urllib.request, urllib.error, pathlib
+          key=None
+          for line in pathlib.Path('/opt/valueor/.env').read_text(encoding='utf-8', errors='ignore').splitlines():
+            if line.startswith('INTERNAL_API_KEY='):
+              key=line.split('=',1)[1].strip().strip('"').strip("'")
+              break
+          if not key:
+            print(json.dumps({'error':'no_internal_key'})); raise SystemExit(0)
+          url='http://127.0.0.1:3001/api/instagram/channel-outbound-health'
+          body=json.dumps({
+            'companyId':'2d27f7fb-c15e-4d60-84e9-1793f36f2172',
+            'companyChannelId':'4be76292-b32b-4a7c-a760-e2559bdc9af4',
+          }).encode()
+          req=urllib.request.Request(url, data=body, method='POST')
+          req.add_header('Origin','https://www.valueor.org')
+          req.add_header('Content-Type','application/json')
+          req.add_header('Authorization', f'Bearer {key}')
+          # some deployments use x-internal-api-key
+          req.add_header('X-Internal-Api-Key', key)
+          t=time.time()
           try:
-              with urllib.request.urlopen(req, timeout=20) as res:
-                  print(
-                      json.dumps(
-                          {
-                              "status": res.status,
-                              "ms": int((time.time() - t) * 1000),
-                              "body": res.read(180).decode("utf-8", "ignore"),
-                          }
-                      )
-                  )
+            with urllib.request.urlopen(req, timeout=45) as res:
+              raw=res.read(1200)
+              headers={k.lower():v for k,v in res.headers.items() if k.lower().startswith('access-control') or k.lower() in ('content-type','x-request-id')}
+              print(json.dumps({'status':res.status,'ms':int((time.time()-t)*1000),'headers':headers,'body':raw.decode('utf-8','ignore')[:1000]}))
           except urllib.error.HTTPError as e:
-              print(
-                  json.dumps(
-                      {
-                          "status": e.code,
-                          "ms": int((time.time() - t) * 1000),
-                          "body": e.read(180).decode("utf-8", "ignore"),
-                      }
-                  )
-              )
+            raw=e.read(1200)
+            headers={k.lower():v for k,v in e.headers.items() if k.lower().startswith('access-control') or k.lower() in ('content-type','x-request-id')}
+            print(json.dumps({'status':e.code,'ms':int((time.time()-t)*1000),'headers':headers,'body':raw.decode('utf-8','ignore')[:1000]}))
           except Exception as e:
-              print(json.dumps({"error": str(e), "ms": int((time.time() - t) * 1000)}))
+            print(json.dumps({'error':str(e),'ms':int((time.time()-t)*1000)}))
           PY
 
-          echo "=== 7) CF/edge probe via public URL timing (unauth) ==="
+          echo "=== sequential graph timing from Contabo ==="
           python3 - <<'PY'
           import json, time, urllib.request, urllib.error
-          url = "https://api.valueor.org/api/instagram/channel-outbound-health"
-          req = urllib.request.Request(
-              url,
-              data=json.dumps(
-                  {
-                      "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
-                      "companyChannelId": "4be76292-b32b-4a7c-a760-e2559bdc9af4",
-                  }
-              ).encode(),
-              method="POST",
-          )
-          req.add_header("Origin", "https://www.valueor.org")
-          req.add_header("Content-Type", "application/json")
-          t = time.time()
-          try:
+          def one():
+            req=urllib.request.Request('https://graph.instagram.com/v21.0/me?fields=id', headers={'Authorization':'Bearer INVALID'})
+            t=time.time()
+            try:
               with urllib.request.urlopen(req, timeout=30) as res:
-                  headers = {
-                      k.lower(): v
-                      for k, v in res.headers.items()
-                      if "access-control" in k.lower() or k.lower() in ("content-type", "cf-ray", "server")
-                  }
-                  print(
-                      json.dumps(
-                          {
-                              "status": res.status,
-                              "ms": int((time.time() - t) * 1000),
-                              "headers": headers,
-                              "body": res.read(300).decode("utf-8", "ignore"),
-                          }
-                      )
-                  )
-          except urllib.error.HTTPError as e:
-              headers = {
-                  k.lower(): v
-                  for k, v in e.headers.items()
-                  if "access-control" in k.lower() or k.lower() in ("content-type", "cf-ray", "server")
-              }
-              print(
-                  json.dumps(
-                      {
-                          "status": e.code,
-                          "ms": int((time.time() - t) * 1000),
-                          "headers": headers,
-                          "body": e.read(300).decode("utf-8", "ignore"),
-                      }
-                  )
-              )
-          except Exception as e:
-              print(json.dumps({"error": str(e), "ms": int((time.time() - t) * 1000)}))
+                return {'status':res.status,'ms':int((time.time()-t)*1000)}
+            except urllib.error.HTTPError as e:
+              e.read()
+              return {'status':e.code,'ms':int((time.time()-t)*1000)}
+            except Exception as e:
+              return {'error':str(e),'ms':int((time.time()-t)*1000)}
+          print(json.dumps({'calls':[one(), one(), one()]}))
           PY
 
           echo "=== done ==="

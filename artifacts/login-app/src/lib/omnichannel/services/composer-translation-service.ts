@@ -6,6 +6,7 @@ import {
 import { isAuthenticatedApiConfigured } from "@/lib/api-server/normalize-api-base";
 
 const ARABIC_RE = /[\u0600-\u06FF]/;
+const GERMAN_RE = /[äöüß]/i;
 const MENTION_RE = /@[A-Za-z0-9_.\u0600-\u06FF-]+/g;
 const MAX_TRANSLATION_LENGTH = 8_000;
 
@@ -15,6 +16,7 @@ export function detectComposerLanguage(text: string): ComposerDetectedLanguage {
   const trimmed = stripInternalTranslationMarkers(text);
   if (!trimmed) return "unknown";
   if (ARABIC_RE.test(trimmed)) return "ar";
+  if (GERMAN_RE.test(trimmed)) return "de";
   if (/[a-z]/i.test(trimmed)) return "en";
   return "unknown";
 }
@@ -69,14 +71,16 @@ export function validateComposerTranslationOutput(
 }
 
 function buildTranslationSystemPrompt(target: ResolvedConversationLanguage): string {
-  const language = target === "ar" ? "Arabic" : "English";
+  const language =
+    target === "ar" ? "Arabic" : target === "de" ? "German" : "English";
   return [
     "You translate customer-service agent draft replies.",
     "Return ONLY the translated message text.",
     "Do not add labels, prefixes, metadata, or wrappers.",
-    "Never include the words Translation, ترجمة, [Translation], or [ترجمة].",
+    "Never include the words Translation, ترجمة, Übersetzung, [Translation], [ترجمة], or [Übersetzung].",
     "Do not send messages or call tools.",
     "Preserve @mention tokens exactly (do not translate them).",
+    "Keep the brand name ValueOR unchanged.",
     `Target language: ${language}.`,
   ].join("\n");
 }
@@ -88,7 +92,8 @@ async function translateWithPlatformAi(input: {
 }): Promise<string> {
   // Dynamic import keeps unit tests free of browser Supabase env bootstrap.
   const { platformAiChatCompletion } = await import("@/lib/platform-ai/platform-ai-api-client");
-  const languageName = input.target === "ar" ? "Arabic" : "English";
+  const languageName =
+    input.target === "ar" ? "Arabic" : input.target === "de" ? "German" : "English";
   const response = await platformAiChatCompletion({
     companyId: input.companyId,
     providerKey: "openai",
@@ -128,7 +133,13 @@ export function translateComposerDraft(input: {
     return { source, translated: cleaned };
   }
   const from: ResolvedConversationLanguage =
-    source === "unknown" ? (input.target === "ar" ? "en" : "ar") : source;
+    source === "unknown"
+      ? input.target === "ar"
+        ? "en"
+        : input.target === "de"
+          ? "en"
+          : "ar"
+      : source;
   const translated = translateMessageForDisplay(cleaned, from, input.target);
   const validated = validateComposerTranslationOutput(translated, cleaned) ?? cleaned;
   return { source, translated: validated };

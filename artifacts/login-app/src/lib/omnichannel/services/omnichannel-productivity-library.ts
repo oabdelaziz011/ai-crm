@@ -45,6 +45,16 @@ const SLASH_COMMANDS: Record<ResolvedConversationLanguage, SlashCommand[]> = {
     { command: "/cancel", label: "Cancel", body: "I'll process your cancellation request now." },
     { command: "/appointment", label: "Appointment", body: "I can help schedule that. What date works best for you?" },
   ],
+  de: [
+    { command: "/hallo", label: "Hallo", body: "Guten Tag! Danke für Ihre Nachricht — wie kann ich Ihnen helfen?" },
+    { command: "/danke", label: "Danke", body: "Vielen Dank für Ihre Kontaktaufnahme." },
+    { command: "/erstattung", label: "Erstattung", body: "Gerne helfe ich bei Ihrer Erstattung. Können Sie Ihre Bestellnummer teilen?" },
+    { command: "/bestellung", label: "Bestellung", body: "Ich prüfe den Status Ihrer Bestellung und melde mich gleich." },
+    { command: "/rechnung", label: "Rechnung", body: "Ich prüfe Ihre Rechnungsdetails und komme auf Sie zurück." },
+    { command: "/eskalieren", label: "Eskalieren", body: "Ich eskaliere das an einen erfahrenen Agenten für eine schnellere Lösung." },
+    { command: "/stornieren", label: "Stornieren", body: "Ich bearbeite Ihre Stornierungsanfrage jetzt." },
+    { command: "/termin", label: "Termin", body: "Gerne helfe ich bei der Terminplanung. Welches Datum passt Ihnen am besten?" },
+  ],
 };
 
 const SAVED_REPLIES: Record<ResolvedConversationLanguage, SavedReply[]> = {
@@ -59,6 +69,12 @@ const SAVED_REPLIES: Record<ResolvedConversationLanguage, SavedReply[]> = {
     { id: "en-review", title: "Reviewing", body: "I'm reviewing your request and will follow up shortly." },
     { id: "en-thanks", title: "Thanks", body: "Thank you for contacting us." },
     { id: "en-wait", title: "Hold", body: "Thanks for your patience — I'm still checking on this." },
+  ],
+  de: [
+    { id: "de-greet", title: "Begrüßung", body: "Guten Tag! Wie kann ich Ihnen helfen?" },
+    { id: "de-review", title: "In Prüfung", body: "Ich prüfe Ihre Anfrage und melde mich in Kürze." },
+    { id: "de-thanks", title: "Danke", body: "Vielen Dank für Ihre Kontaktaufnahme." },
+    { id: "de-wait", title: "Bitte warten", body: "Vielen Dank für Ihre Geduld — ich prüfe das noch." },
   ],
 };
 
@@ -97,6 +113,23 @@ const REPLY_TEMPLATES: Record<ResolvedConversationLanguage, ReplyTemplate[]> = {
       body: "Your request has been escalated to our specialist support team.",
     },
   ],
+  de: [
+    {
+      id: "de-billing",
+      title: "Rechnungsanfrage",
+      body: "Danke für Ihre Nachricht. Ich prüfe die Rechnung {{invoice}} und melde mich.",
+    },
+    {
+      id: "de-booking",
+      title: "Terminbestätigung",
+      body: "Ihr Termin am {{date}} ist bestätigt. Bitte sagen Sie Bescheid, falls Änderungen nötig sind.",
+    },
+    {
+      id: "de-escalation",
+      title: "Eskalation",
+      body: "Ihre Anfrage wurde an unser spezialisiertes Support-Team eskaliert.",
+    },
+  ],
 };
 
 const REWRITE_OPTIONS: Record<ResolvedConversationLanguage, RewriteOption[]> = {
@@ -115,6 +148,14 @@ const REWRITE_OPTIONS: Record<ResolvedConversationLanguage, RewriteOption[]> = {
     { id: "longer", label: "Longer" },
     { id: "grammar", label: "Fix Grammar" },
     { id: "translate_ar", label: "Translate" },
+  ],
+  de: [
+    { id: "professional", label: "Professionell" },
+    { id: "friendly", label: "Freundlich" },
+    { id: "shorter", label: "Kürzer" },
+    { id: "longer", label: "Ausführlicher" },
+    { id: "grammar", label: "Grammatik korrigieren" },
+    { id: "translate_en", label: "Übersetzen" },
   ],
 };
 
@@ -159,6 +200,9 @@ export function getKeyboardHint(language: ResolvedConversationLanguage): string 
   if (language === "ar") {
     return "Enter إرسال · Shift+Enter سطر جديد · Ctrl+Enter إرسال";
   }
+  if (language === "de") {
+    return "Enter senden · Shift+Enter neue Zeile · Ctrl+Enter senden";
+  }
   return "Enter send · Shift+Enter newline · Ctrl+Enter send";
 }
 
@@ -174,6 +218,11 @@ const SNIPPET_COMMANDS: Record<ResolvedConversationLanguage, SnippetCommand[]> =
     { command: "::greet", label: "Quick greeting", body: "Hi there!" },
     { command: "::followup", label: "Follow up", body: "I'll follow up with any updates." },
     { command: "::sorry", label: "Apology", body: "Sorry for the inconvenience and thank you for your patience." },
+  ],
+  de: [
+    { command: "::gruss", label: "Kurze Begrüßung", body: "Hallo!" },
+    { command: "::nachfassen", label: "Nachfassen", body: "Ich melde mich bei Updates." },
+    { command: "::entschuldigung", label: "Entschuldigung", body: "Entschuldigung für die Unannehmlichkeiten und danke für Ihre Geduld." },
   ],
 };
 
@@ -206,6 +255,9 @@ export function getComposerPlaceholder(language: ResolvedConversationLanguage): 
   if (language === "ar") {
     return "اكتب ردًا أو / للأوامر أو :: للمقتطفات…";
   }
+  if (language === "de") {
+    return "Antwort schreiben, / für Befehle oder :: für Snippets…";
+  }
   return "Write a reply, / for commands, or :: for snippets…";
 }
 
@@ -227,6 +279,13 @@ const TONE_LABELS: Record<
     urgent: "Urgent",
     confused: "Confused",
   },
+  de: {
+    neutral: "Neutral",
+    happy: "Zufrieden",
+    angry: "Verärgert",
+    urgent: "Dringend",
+    confused: "Verwirrt",
+  },
 };
 
 export function getToneLabel(tone: CustomerTone, language: ResolvedConversationLanguage): string {
@@ -239,6 +298,9 @@ export function getTranslationToggleLabels(language: ResolvedConversationLanguag
 } {
   if (language === "ar") {
     return { original: "الأصل", translated: "مترجم" };
+  }
+  if (language === "de") {
+    return { original: "Original", translated: "Übersetzt" };
   }
   return { original: "Original", translated: "Translated" };
 }

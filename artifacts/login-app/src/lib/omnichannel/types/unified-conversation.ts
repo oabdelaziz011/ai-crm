@@ -149,11 +149,11 @@ export type OmnichannelAiAssistModel = {
   escalationRecommended: boolean;
   translationPlaceholder: string;
   detectedLanguage: DetectedConversationLanguage;
-  resolvedLanguage: "ar" | "en";
+  resolvedLanguage: "ar" | "en" | "de";
   /** Language used to generate suggested reply chips. */
-  suggestedReplyTargetLanguage: "ar" | "en";
+  suggestedReplyTargetLanguage: "ar" | "en" | "de";
   /** Alias for AI generation/runtime consumers. */
-  targetLanguage: "ar" | "en";
+  targetLanguage: "ar" | "en" | "de";
   languageLabel: string;
   confidence: number;
 };

@@ -217,6 +217,7 @@ export type ConversationViewLabels = {
     copy: string;
     english: string;
     arabic: string;
+    german: string;
     emptyDraft: string;
     translating: string;
     failed: string;

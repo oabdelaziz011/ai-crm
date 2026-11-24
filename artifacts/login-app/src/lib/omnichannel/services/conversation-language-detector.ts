@@ -1,6 +1,6 @@
-export type DetectedConversationLanguage = "ar" | "en" | "fr" | "auto";
+export type DetectedConversationLanguage = "ar" | "en" | "de" | "fr" | "auto";
 
-export type ResolvedConversationLanguage = "ar" | "en";
+export type ResolvedConversationLanguage = "ar" | "en" | "de";
 
 const ARABIC_RE = /[\u0600-\u06FF]/;
 const FRENCH_HINTS = [
@@ -16,9 +16,33 @@ const FRENCH_HINTS = [
   " avec ",
 ];
 
+const GERMAN_HINTS = [
+  "guten",
+  "danke",
+  "bitte",
+  "hallo",
+  "ich ",
+  " und ",
+  " nicht ",
+  " für ",
+  " mit ",
+  "rechnung",
+  "bestellung",
+  "termin",
+];
+
 function scoreFrench(text: string): number {
   const lower = text.toLowerCase();
   return FRENCH_HINTS.reduce((score, hint) => score + (lower.includes(hint) ? 1 : 0), 0);
+}
+
+function scoreGerman(text: string): number {
+  const lower = text.toLowerCase();
+  const umlautBonus = /[äöüß]/i.test(text) ? 2 : 0;
+  return (
+    umlautBonus +
+    GERMAN_HINTS.reduce((score, hint) => score + (lower.includes(hint) ? 1 : 0), 0)
+  );
 }
 
 function normalizeLanguageCode(value: string | null | undefined): DetectedConversationLanguage | null {
@@ -26,6 +50,7 @@ function normalizeLanguageCode(value: string | null | undefined): DetectedConver
   const lower = value.trim().toLowerCase();
   if (lower.startsWith("ar") || lower === "arabic" || lower === "عربي") return "ar";
   if (lower.startsWith("en") || lower === "english") return "en";
+  if (lower.startsWith("de") || lower === "german" || lower === "deutsch") return "de";
   if (lower.startsWith("fr") || lower === "french" || lower === "français") return "fr";
   return null;
 }
@@ -57,9 +82,10 @@ export function detectConversationLanguageFromMessages(
   if (ARABIC_RE.test(customerText)) return "ar";
 
   const frenchScore = scoreFrench(customerText);
-  const englishLikely = /[a-z]/i.test(customerText) && frenchScore === 0;
-  if (englishLikely) return "en";
+  const germanScore = scoreGerman(customerText);
+  if (germanScore >= 2 && germanScore >= frenchScore) return "de";
   if (frenchScore >= 2) return "fr";
+  if (/[a-z]/i.test(customerText)) return "en";
 
   return "auto";
 }
@@ -72,7 +98,9 @@ export function detectConversationLanguage(
 }
 
 export function resolveAgentWorkspaceLanguage(i18nLanguage: string | undefined): ResolvedConversationLanguage {
-  if (i18nLanguage?.toLowerCase().startsWith("ar")) return "ar";
+  const lower = i18nLanguage?.toLowerCase() ?? "";
+  if (lower.startsWith("ar")) return "ar";
+  if (lower.startsWith("de")) return "de";
   return "en";
 }
 
@@ -81,6 +109,7 @@ export function resolveProfileComposerLanguage(
 ): ResolvedConversationLanguage | null {
   if (preferredLanguage?.toLowerCase().startsWith("ar")) return "ar";
   if (preferredLanguage?.toLowerCase().startsWith("en")) return "en";
+  if (preferredLanguage?.toLowerCase().startsWith("de")) return "de";
   return null;
 }
 
@@ -99,6 +128,7 @@ export function resolveSuggestedReplyTargetLanguage(input: {
   companyDefaultLanguage?: ResolvedConversationLanguage | null;
 }): ResolvedConversationLanguage {
   if (input.conversationDetected === "ar") return "ar";
+  if (input.conversationDetected === "de") return "de";
   if (input.conversationDetected === "en" || input.conversationDetected === "fr") return "en";
 
   if (input.agentComposerLanguage) return input.agentComposerLanguage;
@@ -121,7 +151,13 @@ export function resolveConversationLanguage(input: {
 
   const detected: DetectedConversationLanguage = fromMetadata ?? fromMessages;
   const resolved: ResolvedConversationLanguage =
-    detected === "ar" ? "ar" : detected === "en" || detected === "fr" ? "en" : workspaceDefault;
+    detected === "ar"
+      ? "ar"
+      : detected === "de"
+        ? "de"
+        : detected === "en" || detected === "fr"
+          ? "en"
+          : workspaceDefault;
 
   return { detected, resolved };
 }
@@ -136,10 +172,26 @@ export function languageDisplayLabel(
         return "العربية";
       case "en":
         return "الإنجليزية";
+      case "de":
+        return "الألمانية";
       case "fr":
         return "الفرنسية";
       default:
         return "تلقائي";
+    }
+  }
+  if (locale === "de") {
+    switch (language) {
+      case "ar":
+        return "Arabisch";
+      case "en":
+        return "Englisch";
+      case "de":
+        return "Deutsch";
+      case "fr":
+        return "Französisch";
+      default:
+        return "Automatisch";
     }
   }
   switch (language) {
@@ -147,6 +199,8 @@ export function languageDisplayLabel(
       return "Arabic";
     case "en":
       return "English";
+    case "de":
+      return "German";
     case "fr":
       return "French";
     default:

@@ -8682,7 +8682,10 @@
         "copy": "Copy",
         "english": "English",
         "arabic": "Arabic",
-        "emptyDraft": "Write a message to translate."
+        "german": "German",
+        "emptyDraft": "Write a message to translate.",
+        "translating": "Translating…",
+        "failed": "Translation failed."
       },
       "mentionPanel": {
         "agents": "Agents",

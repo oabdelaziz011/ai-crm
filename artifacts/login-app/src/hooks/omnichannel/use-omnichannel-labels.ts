@@ -455,6 +455,7 @@ export function useConversationViewLabels() {
         copy: t("omnichannel.composer.translatePanel.copy"),
         english: t("omnichannel.composer.translatePanel.english"),
         arabic: t("omnichannel.composer.translatePanel.arabic"),
+        german: t("omnichannel.composer.translatePanel.german"),
         emptyDraft: t("omnichannel.composer.translatePanel.emptyDraft"),
         translating: t("omnichannel.composer.translatePanel.translating"),
         failed: t("omnichannel.composer.translatePanel.failed"),

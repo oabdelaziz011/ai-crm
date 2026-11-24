@@ -1,0 +1,191 @@
+{
+  "valueTypes": {
+    "string": "Text",
+    "integer": "Whole number",
+    "decimal": "Decimal number",
+    "boolean": "ja / keine",
+    "json": "JSON",
+    "template_ref": "E-Mail-Vorlage code"
+  },
+  "providerMode": {
+    "sandbox": "Sandbox (test)",
+    "production": "Production"
+  },
+  "paymentMethods": {
+    "visa": "Visa",
+    "mastercard": "Mastercard",
+    "meeza": "Meeza",
+    "apple_pay": "Apple Pay",
+    "google_pay": "Google Pay",
+    "paypal": "PayPal",
+    "stripe": "Stripe",
+    "paymob": "Paymob",
+    "fawry": "Fawry",
+    "manual": "Manual Zahlung"
+  },
+  "validation": {
+    "boolean": "auswählen ja oder keine.",
+    "integer": "Enter a whole number.",
+    "decimal": "Enter a gültig decimal number.",
+    "required": "This Wert ist erforderlich.",
+    "min": "Minimum Wert is {{min}}.",
+    "max": "Maximum Wert is {{max}}."
+  },
+  "fields": {
+    "default_currency": {
+      "label": "Standard Währung",
+      "description": "Platform Standard Abrechnung Währung für Rechnungen und payments.",
+      "tooltip": "Used when recording payments und am Arbeitsbereich Abrechnung summaries. Beispiel: USD."
+    },
+    "vat_percentage": {
+      "label": "VAT / tax percentage",
+      "description": "Standard tax rate applied an Abonnement Rechnungen.",
+      "tooltip": "Applied during manual Zahlung recording an compute Rechnung tax. Beispiel: 15."
+    },
+    "tax_inclusive_pricing": {
+      "label": "Tax-inclusive pricing",
+      "description": "Whether listed Tarif prices already include tax.",
+      "tooltip": "Reserved für checkout pricing display. Currently stored für future checkout Integration."
+    },
+    "grace_period_days": {
+      "label": "Grace period duration",
+      "description": "Tage nach a fehlgeschlagen renewal vor the Abonnement läuft ab.",
+      "tooltip": "Used when a renewal fails oder a trial ends ohne Zahlung. Abonnement enters grace period, then läuft ab nach this many Tage."
+    },
+    "auto_renewal_default": {
+      "label": "Auto-renewal Standard",
+      "description": "Standard auto-renewal flag für newly erstellt subscriptions.",
+      "tooltip": "neu subscriptions inherit this Wert. When off, successful payments do not Zeitplan the weiter renewal Datum."
+    },
+    "trial_duration_days": {
+      "label": "Trial duration",
+      "description": "Standard trial length in Tage für neu subscriptions.",
+      "tooltip": "Used when creating a Abonnement mit trial. Beispiel: 14-Tag trial ends 14 Tage nach Start."
+    },
+    "invoice_number_format": {
+      "label": "Rechnung number format",
+      "description": "Token pattern für generated Rechnung numbers.",
+      "tooltip": "Tokens: {YYYY}, {MM}, {COMPANY_ID_SHORT}, {SEQ}. Applied when recording a Zahlung."
+    },
+    "receipt_number_format": {
+      "label": "Receipt number format",
+      "description": "Token pattern für generated receipt numbers.",
+      "tooltip": "Tokens: {YYYY}, {MM}, {COMPANY_ID_SHORT}, {SEQ}. Applied when recording a Zahlung."
+    },
+    "default_payment_terms_days": {
+      "label": "Standard Zahlung terms",
+      "description": "Tage until Rechnung Fälligkeitsdatum von issue Datum.",
+      "tooltip": "Rechnung Fälligkeitsdatum = issue Datum + this Wert. Visible am Rechnung Verlauf nach Zahlung recording."
+    },
+    "invoice_logo_url": {
+      "label": "Rechnung logo URL",
+      "description": "Platform issuer logo URL für Abrechnung documents.",
+      "tooltip": "Stored für document branding. PDF generation will consume this in a later phase."
+    },
+    "invoice_footer_text": {
+      "label": "Rechnung footer text",
+      "description": "Footer text am platform Abrechnung documents.",
+      "tooltip": "Stored für document branding. PDF generation will consume this in a later phase."
+    },
+    "issuer_legal_name": {
+      "label": "Issuer legal Name",
+      "description": "Legal entity Name shown am Rechnungen.",
+      "tooltip": "Stored für document branding. PDF generation will consume this in a later phase."
+    },
+    "issuer_address": {
+      "label": "Issuer Adresse",
+      "description": "Legal Adresse shown am Rechnungen.",
+      "tooltip": "Stored für document branding. PDF generation will consume this in a later phase."
+    },
+    "issuer_tax_id": {
+      "label": "Issuer tax ID",
+      "description": "Tax identifier shown am Rechnungen.",
+      "tooltip": "Stored für document branding. PDF generation will consume this in a later phase."
+    },
+    "payment_retry_max_attempts": {
+      "label": "Zahlung erneut versuchen max attempts",
+      "description": "Maximum automatic Zahlung retries nach failure.",
+      "tooltip": "Reserved für the Zahlung erneut versuchen worker. Stored und audited heute."
+    },
+    "payment_retry_interval_hours": {
+      "label": "Zahlung erneut versuchen interval",
+      "description": "Stunden zwischen automatic Zahlung retries.",
+      "tooltip": "Reserved für the Zahlung erneut versuchen worker. Stored und audited heute."
+    },
+    "supported_payment_method_codes": {
+      "label": "Supported Zahlungsmethoden",
+      "description": "Zahlungsmethode types aktiviert für checkout und manual recording.",
+      "tooltip": "Only ausgewählt methods appear in Record Zahlung. deaktiviert methods sind hidden von operators."
+    },
+    "payment_sandbox_mode": {
+      "label": "Zahlung sandbox mode",
+      "description": "Route payments through the sandbox Anbieter instead von production.",
+      "tooltip": "When aktiviert, payments use the sandbox Anbieter. Anbieter Health shows the aktiv route."
+    },
+    "billing_from_email": {
+      "label": "Abrechnung von E-Mail",
+      "description": "Sender Adresse für Abrechnung E-Mail Benachrichtigungen.",
+      "tooltip": "Reserved für the E-Mail outbox worker. Stored und audited heute."
+    },
+    "email_template_payment_success": {
+      "label": "Zahlung Erfolg Vorlage",
+      "description": "Vorlage code für successful Zahlung emails.",
+      "tooltip": "References billing_email_templates. E-Mail dispatch is a later phase."
+    },
+    "email_template_payment_failed": {
+      "label": "Zahlung fehlgeschlagen Vorlage",
+      "description": "Vorlage code für fehlgeschlagen Zahlung emails.",
+      "tooltip": "References billing_email_templates. E-Mail dispatch is a later phase."
+    },
+    "email_template_expiring_soon": {
+      "label": "Expiring soon Vorlage",
+      "description": "Vorlage code für renewal reminder emails.",
+      "tooltip": "References billing_email_templates. Reminder jobs sind a later phase."
+    },
+    "email_template_grace_period": {
+      "label": "Grace period Vorlage",
+      "description": "Vorlage code für grace period notice emails.",
+      "tooltip": "References billing_email_templates. gesendet when grace period starts in a later phase."
+    },
+    "webhook_retry_max_attempts": {
+      "label": "Webhook erneut versuchen max attempts",
+      "description": "Maximum delivery retries für outbound webhooks.",
+      "tooltip": "Reserved für webhook delivery worker. Stored und audited heute."
+    },
+    "webhook_retry_backoff_seconds": {
+      "label": "Webhook erneut versuchen backoff",
+      "description": "Base backoff seconds zwischen webhook retries.",
+      "tooltip": "Reserved für webhook delivery worker. Stored und audited heute."
+    },
+    "webhook_signature_tolerance_seconds": {
+      "label": "Webhook signature tolerance",
+      "description": "zulässig clock skew für webhook signature Validierung.",
+      "tooltip": "Reserved für inbound webhook verification. Stored und audited heute."
+    },
+    "usage_rollup_schedule_cron": {
+      "label": "Usage rollup Zeitplan",
+      "description": "Cron expression für usage aggregation jobs.",
+      "tooltip": "Reserved für usage rollup worker. Stored und audited heute."
+    },
+    "usage_record_retention_days": {
+      "label": "Usage record retention",
+      "description": "Tage an retain granular usage records.",
+      "tooltip": "Reserved für usage retention job. Stored und audited heute."
+    },
+    "health_probe_interval_seconds": {
+      "label": "Health probe interval",
+      "description": "Seconds zwischen Abrechnung Anbieter health probes.",
+      "tooltip": "Reserved für Anbieter probe worker. Anbieter Health Seite reads snapshots heute."
+    },
+    "health_alert_threshold_failed_payments": {
+      "label": "fehlgeschlagen Zahlung alert threshold",
+      "description": "fehlgeschlagen payments in 24h vor degraded health Status.",
+      "tooltip": "Reserved für health evaluator. Stored und audited heute."
+    },
+    "entitlements_cache_ttl_seconds": {
+      "label": "Entitlements cache TTL",
+      "description": "Client-side entitlements cache Zeit-an-live in seconds.",
+      "tooltip": "Reserved für client cache wiring. Stored und audited heute."
+    }
+  }
+}

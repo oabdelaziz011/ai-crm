@@ -49,8 +49,8 @@ export type AgentEmployeeChannelRuntimeConfig = {
   executionPolicy?: {
     streaming?: boolean;
     maxDurationMs?: number;
-    temperature?: number | null;
-    maxTokens?: number | null;
+    temperature?: number;
+    maxTokens?: number;
   };
 };
 

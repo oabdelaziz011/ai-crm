@@ -5,9 +5,12 @@ import enCommon from "@/locales/en/common.json";
 import arCommon from "@/locales/ar/common.json";
 import enBillingSettingsFields from "@/locales/en/billing-settings-fields.json";
 import arBillingSettingsFields from "@/locales/ar/billing-settings-fields.json";
+import deBillingSettingsFields from "@/locales/de/billing-settings-fields.json";
 import enPublicSurfaces from "@/locales/overlays/public-surfaces.en.json";
 import arPublicSurfaces from "@/locales/overlays/public-surfaces.ar.json";
 import dePublicSurfaces from "@/locales/overlays/public-surfaces.de.json";
+import deCommon from "@/locales/de/common.json";
+import deWhatsAppBusinessProfile from "@/locales/de/whatsapp-business-profile.json";
 import {
   cacheAppLanguage,
   isAppLanguage,
@@ -120,7 +123,44 @@ void i18n.use(initReactI18next).init({
       },
     },
     de: {
-      common: dePublicSurfaces,
+      // Full DE common tree (EN key-parity) + public-surface and WhatsApp overlays.
+      common: {
+        ...mergeMessages(
+          mergeMessages(deCommon as Record<string, unknown>, dePublicSurfaces as Record<string, unknown>),
+          deWhatsAppBusinessProfile as Record<string, unknown>,
+        ),
+        billing: {
+          ...(deCommon as { billing?: Record<string, unknown> }).billing,
+          settings: {
+            ...((deCommon as { billing?: { settings?: Record<string, unknown> } }).billing?.settings ?? {}),
+            ...deBillingSettingsFields,
+            validation: {
+              ...((deCommon as { billing?: { settings?: { validation?: Record<string, unknown> } } }).billing
+                ?.settings?.validation ?? {}),
+              ...deBillingSettingsFields.validation,
+            },
+          },
+          payment: {
+            ...((deCommon as { billing?: { payment?: Record<string, unknown> } }).billing?.payment ?? {}),
+            methodLabel: "Zahlungsmethode",
+            noMethods: "In den Abrechnungseinstellungen sind keine Zahlungsmethoden aktiviert.",
+            providerMode: "Anbietermodus",
+            providerCode: "Anbieter",
+            autoRenewal: "Automatische Verlängerung",
+          },
+          platform: {
+            ...((deCommon as { billing?: { platform?: Record<string, unknown> } }).billing?.platform ?? {}),
+            providerHealth: {
+              ...((deCommon as {
+                billing?: { platform?: { providerHealth?: Record<string, unknown> } };
+              }).billing?.platform?.providerHealth ?? {}),
+              activeMode: "Aktiver Zahlungsmodus",
+              activeProvider: "Aktiver Anbieter",
+              activeRoute: "Aktive Route",
+            },
+          },
+        },
+      },
     },
   },
   lng: resolveBootstrapAppLanguage(),

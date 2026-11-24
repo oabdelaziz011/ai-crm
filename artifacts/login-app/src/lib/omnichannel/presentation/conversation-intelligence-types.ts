@@ -127,7 +127,7 @@ export type ConversationRecommendation = {
 
 export type ConversationInsight = {
   providerId: string;
-  language: "ar" | "en";
+  language: "ar" | "en" | "de";
   direction: "rtl" | "ltr";
   moods: ConversationMood[];
   explanations: string[];

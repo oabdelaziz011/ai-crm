@@ -22,6 +22,7 @@ type ComposerTranslatePopoverProps = {
     copy: string;
     english: string;
     arabic: string;
+    german: string;
     emptyDraft: string;
     translating?: string;
     failed?: string;
@@ -44,10 +45,10 @@ export const ComposerTranslatePopover = memo(function ComposerTranslatePopover({
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<ResolvedConversationLanguage>(
-    agentLanguage === "ar" ? "en" : "ar",
+    agentLanguage === "ar" ? "en" : agentLanguage === "de" ? "en" : "ar",
   );
   const [preview, setPreview] = useState<{
-    source: "ar" | "en" | "unknown";
+    source: ResolvedConversationLanguage | "unknown";
     translated: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -132,6 +133,7 @@ export const ComposerTranslatePopover = memo(function ComposerTranslatePopover({
                   >
                     <option value="en">{labels.english}</option>
                     <option value="ar">{labels.arabic}</option>
+                    <option value="de">{labels.german}</option>
                   </select>
                 </label>
                 <div className="rounded-md bg-[var(--ad-surface-2)] px-2 py-1.5 text-[10px] text-[var(--ad-text-muted)]">
@@ -139,9 +141,11 @@ export const ComposerTranslatePopover = memo(function ComposerTranslatePopover({
                   <p className="mt-1 font-medium text-[var(--ad-text)]" dir="auto">
                     {preview?.source === "ar"
                       ? labels.arabic
-                      : preview?.source === "en"
-                        ? labels.english
-                        : "—"}
+                      : preview?.source === "de"
+                        ? labels.german
+                        : preview?.source === "en"
+                          ? labels.english
+                          : "—"}
                   </p>
                 </div>
               </div>

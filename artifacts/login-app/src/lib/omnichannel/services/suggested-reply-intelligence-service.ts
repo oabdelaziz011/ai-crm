@@ -2,6 +2,7 @@ import type { ConversationMessageRecord } from "@workspace/ai-conversation";
 import type { LifecycleState } from "@/lib/conversation-lifecycle/types/lifecycle-types";
 import enCommon from "@/locales/en/common.json";
 import arCommon from "@/locales/ar/common.json";
+import deCommon from "@/locales/de/common.json";
 import type {
   CustomerTone,
   OmnichannelCustomerContext,
@@ -43,18 +44,21 @@ type ExplainTemplates = {
   signals: Record<SuggestedReplySignal, string>;
 };
 
+function localeBundle(language: ResolvedConversationLanguage) {
+  if (language === "ar") return arCommon;
+  if (language === "de") return deCommon;
+  return enCommon;
+}
+
 function explainTemplates(language: ResolvedConversationLanguage): ExplainTemplates {
-  const copy = language === "ar"
-    ? arCommon.omnichannel.suggestedReplies.explain
-    : enCommon.omnichannel.suggestedReplies.explain;
-  return copy as ExplainTemplates;
+  return localeBundle(language).omnichannel.suggestedReplies.explain as ExplainTemplates;
 }
 
 function intentLabels(language: ResolvedConversationLanguage): Record<SuggestedReplyIntentKey, string> {
-  const copy = language === "ar"
-    ? arCommon.omnichannel.suggestedReplies.intents
-    : enCommon.omnichannel.suggestedReplies.intents;
-  return copy as Record<SuggestedReplyIntentKey, string>;
+  return localeBundle(language).omnichannel.suggestedReplies.intents as Record<
+    SuggestedReplyIntentKey,
+    string
+  >;
 }
 
 function recentCustomerCorpus(messages: ConversationMessageRecord[]): string {

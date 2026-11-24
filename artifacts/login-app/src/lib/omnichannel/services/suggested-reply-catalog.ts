@@ -1,5 +1,6 @@
 import enCommon from "@/locales/en/common.json";
 import arCommon from "@/locales/ar/common.json";
+import deCommon from "@/locales/de/common.json";
 import type { CustomerTone } from "@/lib/omnichannel/types/unified-conversation";
 import type { ResolvedConversationLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
 import type {
@@ -17,11 +18,13 @@ type GenerationPromptCopy = {
 const CATALOG: Record<ResolvedConversationLanguage, SuggestedReplySamples> = {
   en: enCommon.omnichannel.suggestedReplies.samples as SuggestedReplySamples,
   ar: arCommon.omnichannel.suggestedReplies.samples as SuggestedReplySamples,
+  de: deCommon.omnichannel.suggestedReplies.samples as SuggestedReplySamples,
 };
 
 const GENERATION_PROMPT: Record<ResolvedConversationLanguage, GenerationPromptCopy> = {
   en: enCommon.omnichannel.suggestedReplies.generationPrompt,
   ar: arCommon.omnichannel.suggestedReplies.generationPrompt,
+  de: deCommon.omnichannel.suggestedReplies.generationPrompt,
 };
 
 export function getSuggestedReplySamples(

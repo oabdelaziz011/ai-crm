@@ -1,0 +1,1581 @@
+{
+  "groups": {
+    "customers": {
+      "icon": "👥",
+      "order": 10,
+      "label": "Kunden"
+    },
+    "bookings": {
+      "icon": "📅",
+      "order": 20,
+      "label": "Buchungen"
+    },
+    "invoices": {
+      "icon": "💳",
+      "order": 30,
+      "label": "Rechnungen"
+    },
+    "reports": {
+      "icon": "📊",
+      "order": 40,
+      "label": "Berichte"
+    },
+    "dashboard": {
+      "icon": "📈",
+      "order": 45,
+      "label": "Armaturenbrett"
+    },
+    "workspace": {
+      "icon": "🏢",
+      "order": 50,
+      "label": "Arbeitsplatz"
+    },
+    "billing": {
+      "icon": "💰",
+      "order": 60,
+      "label": "Abrechnung und Abonnements"
+    },
+    "users": {
+      "icon": "👤",
+      "order": 70,
+      "label": "Benutzer"
+    },
+    "roles": {
+      "icon": "🛡️",
+      "order": 80,
+      "label": "Rollen und Berechtigungen"
+    },
+    "companies": {
+      "icon": "🏛️",
+      "order": 90,
+      "label": "Unternehmen"
+    },
+    "settings": {
+      "icon": "⚙️",
+      "order": 100,
+      "label": "Einstellungen"
+    },
+    "company": {
+      "icon": "🏢",
+      "order": 95,
+      "label": "Unternehmensarbeitsbereich"
+    },
+    "audit": {
+      "icon": "📋",
+      "order": 110,
+      "label": "Audit-Protokolle"
+    },
+    "aiAssistant": {
+      "icon": "🤖",
+      "order": 120,
+      "label": "KI-Assistent"
+    },
+    "aiChat": {
+      "icon": "💬",
+      "order": 130,
+      "label": "KI-Arbeitsbereich"
+    },
+    "conversations": {
+      "icon": "📥",
+      "order": 140,
+      "label": "Gespräche"
+    },
+    "webPresence": {
+      "icon": "🌐",
+      "order": 47,
+      "label": "Webpräsenz"
+    },
+    "email": {
+      "icon": "✉️",
+      "order": 132,
+      "label": "E-Mail"
+    },
+    "prompts": {
+      "icon": "📝",
+      "order": 155,
+      "label": "KI-Eingabeaufforderungsvorlagen"
+    },
+    "agents": {
+      "icon": "🤖",
+      "order": 152,
+      "label": "KI-Mitarbeiter"
+    },
+    "scheduling": {
+      "icon": "📅",
+      "order": 21,
+      "label": "Terminplanung"
+    },
+    "channels": {
+      "icon": "📡",
+      "order": 150,
+      "label": "Kanäle"
+    },
+    "knowledge": {
+      "icon": "📚",
+      "order": 160,
+      "label": "Wissen"
+    },
+    "whatsapp": {
+      "icon": "📱",
+      "order": 170,
+      "label": "WhatsApp"
+    },
+    "aiAnalytics": {
+      "icon": "📈",
+      "order": 180,
+      "label": "KI-Analysen und Kosten"
+    },
+    "aiPlatform": {
+      "icon": "🔧",
+      "order": 190,
+      "label": "KI-Plattformdienste"
+    },
+    "automation": {
+      "icon": "⚙️",
+      "order": 195,
+      "label": "Automatisierung"
+    },
+    "leads": {
+      "icon": "🎯",
+      "order": 25,
+      "label": "Führt"
+    },
+    "tickets": {
+      "icon": "🎫",
+      "order": 28,
+      "label": "Tickets"
+    },
+    "products": {
+      "icon": "📦",
+      "order": 32,
+      "label": "Produkte"
+    },
+    "quotes": {
+      "icon": "📝",
+      "order": 34,
+      "label": "Zitate"
+    },
+    "opportunities": {
+      "icon": "💼",
+      "order": 26,
+      "label": "Gelegenheiten"
+    },
+    "handoff": {
+      "icon": "🔁",
+      "order": 145,
+      "label": "Menschliche Übergabe"
+    },
+    "organization": {
+      "icon": "🏛️",
+      "order": 96,
+      "label": "Organisation"
+    },
+    "marketplace": {
+      "icon": "🏪",
+      "order": 200,
+      "label": "Marktplatz"
+    },
+    "integrations": {
+      "icon": "🔌",
+      "order": 205,
+      "label": "Integrationen"
+    },
+    "governance": {
+      "icon": "⚖️",
+      "order": 210,
+      "label": "KI-Governance"
+    },
+    "configuration": {
+      "icon": "🧩",
+      "order": 215,
+      "label": "Konfiguration"
+    },
+    "featureFlags": {
+      "icon": "🚩",
+      "order": 220,
+      "label": "Feature-Flags"
+    },
+    "licenses": {
+      "icon": "📜",
+      "order": 225,
+      "label": "Lizenzen"
+    },
+    "operations": {
+      "icon": "🛠️",
+      "order": 230,
+      "label": "KI-Operationen"
+    },
+    "tasks": {
+      "icon": "✅",
+      "order": 235,
+      "label": "Aufgaben"
+    },
+    "skills": {
+      "icon": "🧠",
+      "order": 192,
+      "label": "KI-Fähigkeiten"
+    },
+    "executive": {
+      "icon": "📊",
+      "order": 46,
+      "label": "Exekutive"
+    }
+  },
+  "codes": {
+    "agents.create": {
+      "name": "Erstellen Sie KI-Mitarbeiter",
+      "description": "Ermöglicht die Erstellung von KI-Mitarbeiterprofilen im Arbeitsbereich.",
+      "group": "Agenten"
+    },
+    "agents.delete": {
+      "name": "Archivieren Sie KI-Mitarbeiter",
+      "description": "Ermöglicht die Archivierung von KI-Mitarbeiterprofilen.",
+      "group": "Agenten"
+    },
+    "agents.edit": {
+      "name": "Bearbeiten Sie KI-Mitarbeiter",
+      "description": "Ermöglicht die Bearbeitung von KI-Mitarbeiterprofilen und -Zuweisungen.",
+      "group": "Agenten"
+    },
+    "agents.execute": {
+      "name": "Führen Sie KI-Agenten aus",
+      "description": "Ermöglicht das Starten, Fortsetzen und Abbrechen von KI-Agent-Workflows.",
+      "group": "Agenten"
+    },
+    "agents.manage": {
+      "name": "Verwalten Sie KI-Agenten",
+      "description": "Ermöglicht die Verwaltung der KI-Agent-Konfiguration und -Richtlinien.",
+      "group": "Agenten"
+    },
+    "agents.publish": {
+      "name": "Agenten veröffentlichen",
+      "description": "Veröffentlichen Sie KI-Mitarbeiterversionen.",
+      "group": "Agenten"
+    },
+    "agents.rollback": {
+      "name": "Rollback-Agenten",
+      "description": "Rollback der KI-Mitarbeiterversionen.",
+      "group": "Agenten"
+    },
+    "agents.view": {
+      "name": "KI-Agenten anzeigen",
+      "description": "Ermöglicht die Anzeige von KI-Agent-Workflows, Ereignissen und Prüfpunkten.",
+      "group": "Agenten"
+    },
+    "ai_assistant.edit": {
+      "name": "KI-Assistent bearbeiten",
+      "description": "Ermöglicht das Bearbeiten der KI Assistant-Konfiguration.",
+      "group": "aiAssistant"
+    },
+    "ai_assistant.view": {
+      "name": "KI Assistant anzeigen",
+      "description": "Ermöglicht das Anzeigen der KI Assistant-Konfiguration.",
+      "group": "aiAssistant"
+    },
+    "ai_chat.use": {
+      "name": "Verwenden Sie KI-Chat",
+      "description": "Ermöglicht das Senden von Nachrichten über KI-Chat.",
+      "group": "aiChat"
+    },
+    "ai_chat.view": {
+      "name": "KI-Chat anzeigen",
+      "description": "Ermöglicht den Zugriff auf die KI-Chat-Schnittstelle.",
+      "group": "aiChat"
+    },
+    "ai.analytics.manage": {
+      "name": "Verwalten Sie KI-Analysen",
+      "description": "Ermöglicht die Verwaltung der KI-Beobachtbarkeitskonfiguration.",
+      "group": "aiAnalytics"
+    },
+    "ai.analytics.view": {
+      "name": "KI Analytics ansehen",
+      "description": "Ermöglicht die Anzeige von KI-Leistungsanalysen.",
+      "group": "aiAnalytics"
+    },
+    "ai.conversations.release": {
+      "name": "Zuweisung von Gesprächen aufheben",
+      "description": "Entfernen Sie die Mitarbeiterzuweisung aus einer Konversation in Email Workspace und dem Posteingang.",
+      "group": "Gespräche"
+    },
+    "ai.conversations.reply": {
+      "name": "Auf Gespräche antworten",
+      "description": "Senden Sie Antworten in Konversationen, auf die die Rolle zugreifen darf.",
+      "group": "Gespräche"
+    },
+    "ai.conversations.takeover": {
+      "name": "Konversationen zuweisen",
+      "description": "Weisen Sie einem Mitarbeiter im Email Workspace und im Posteingang manuell eine Konversation zu.",
+      "group": "Gespräche"
+    },
+    "ai.conversations.view": {
+      "name": "Alle Gespräche anzeigen",
+      "description": "Sehen Sie sich jede Konversation im Posteingang des Unternehmens an, einschließlich E-Mail-Arbeitsbereich (Alle anzeigen).",
+      "group": "Gespräche"
+    },
+    "ai.conversations.view_assigned": {
+      "name": "Zugewiesene Gespräche anzeigen",
+      "description": "Nur Konversationen anzeigen, die dem angemeldeten Benutzer zugewiesen sind.",
+      "group": "Gespräche"
+    },
+    "ai.email.manage": {
+      "name": "E-Mail-Einstellungen verwalten",
+      "description": "Öffnen Sie die Registerkarte „E-Mail-Arbeitsbereichseinstellungen“. Für die Postfachverbindung ist email.settings.manage erforderlich. Für die persönliche Identität ist email.identity.manage erforderlich. Für die Unternehmensidentität ist email.identity.company.manage erforderlich.",
+      "group": "E-Mail"
+    },
+    "ai.costs.view": {
+      "name": "KI-Kosten anzeigen",
+      "description": "Ermöglicht die Anzeige der KI-Token-Nutzung und Kostenrechnung.",
+      "group": "aiAnalytics"
+    },
+    "ai.execution.manage": {
+      "name": "KI-Ausführungen verwalten",
+      "description": "Ermöglicht die Verwaltung von Ausführungsrichtlinien und die Ausführung von Jobs.",
+      "group": "aiPlatform"
+    },
+    "ai.execution.view": {
+      "name": "KI-Ausführungen anzeigen",
+      "description": "Ermöglicht die Anzeige des KI-Ausführungsverlaufs und der KI-Metriken.",
+      "group": "aiPlatform"
+    },
+    "ai.knowledge.manage": {
+      "name": "KI-Wissen verwalten (Legacy)",
+      "description": "Legacy-Berechtigung, die der Wissensdatenbank verwalten zugeordnet ist.",
+      "group": "Wissen"
+    },
+    "ai.providers.manage": {
+      "name": "Verwalten Sie KI-Anbieter",
+      "description": "Ermöglicht die Verwaltung von KI-Anbieterverbindungen und -Konfiguration.",
+      "group": "aiPlatform"
+    },
+    "ai.providers.view": {
+      "name": "KI-Anbieter anzeigen",
+      "description": "Ermöglicht das Anzeigen von KI-Anbieterdefinitionen und -Verbindungen.",
+      "group": "aiPlatform"
+    },
+    "ai.whatsapp.manage": {
+      "name": "WhatsApp-Integration verwalten (Legacy)",
+      "description": "Legacy-Berechtigung, die „Kanäle verwalten“ zugeordnet ist.",
+      "group": "Kanäle"
+    },
+    "audit_logs.view": {
+      "name": "Audit-Protokolle anzeigen",
+      "description": "Ermöglicht das Anzeigen von Systemüberwachungsprotokollen.",
+      "group": "Prüfung"
+    },
+    "automation.archive": {
+      "name": "Archivautomatisierung",
+      "description": "Archivieren Sie Arbeitsabläufe und stoppen Sie die Produktionsausführung.",
+      "group": "Automatisierung"
+    },
+    "automation.create": {
+      "name": "Erstellen Sie Automatisierung",
+      "description": "Erstellen Sie Automatisierungsflüsse.",
+      "group": "Automatisierung"
+    },
+    "automation.delete": {
+      "name": "Automatisierung löschen",
+      "description": "Automatisierungsflüsse löschen.",
+      "group": "Automatisierung"
+    },
+    "automation.edit": {
+      "name": "Automatisierung bearbeiten",
+      "description": "Bearbeiten Sie Automatisierungsflüsse.",
+      "group": "Automatisierung"
+    },
+    "automation.execute": {
+      "name": "Automatisierung ausführen",
+      "description": "Führen Sie Automatisierungsflüsse und Sitzungen aus.",
+      "group": "Automatisierung"
+    },
+    "automation.publish": {
+      "name": "Automatisierung veröffentlichen",
+      "description": "Veröffentlichen Sie Automatisierungsflüsse.",
+      "group": "Automatisierung"
+    },
+    "automation.rollback": {
+      "name": "Rollback-Automatisierung",
+      "description": "Aktivieren Sie eine zuvor veröffentlichte Workflow-Version.",
+      "group": "Automatisierung"
+    },
+    "automation.simulate": {
+      "name": "Simulieren Sie Arbeitsabläufe",
+      "description": "Ermöglicht die Simulation eines Probelauf-Workflows im Builder ohne Produktionsausführung.",
+      "group": "Automatisierung"
+    },
+    "automation.view": {
+      "name": "Automatisierung anzeigen",
+      "description": "Ermöglicht das Anzeigen von Automatisierungsflüssen, -läufen und den Zugriff auf den Workflow-Builder.",
+      "group": "Automatisierung"
+    },
+    "availability.search": {
+      "name": "Suchplanung",
+      "description": "Suchen Sie über KI-Tools nach der Verfügbarkeit buchbarer Termine.",
+      "group": "Buchungen"
+    },
+    "billing.audit.export": {
+      "name": "Rechnungsprüfungsprotokoll exportieren",
+      "description": "Ermöglicht den Export von Rechnungsprüfungsdatensätzen.",
+      "group": "Abrechnung"
+    },
+    "billing.audit.view": {
+      "name": "Rechnungsprüfungsprotokoll anzeigen",
+      "description": "Ermöglicht die Anzeige des Rechnungsprüfprotokolls.",
+      "group": "Abrechnung"
+    },
+    "billing.contact.edit_own": {
+      "name": "Rechnungskontakt bearbeiten",
+      "description": "Ermöglicht die Bearbeitung der Rechnungskontaktdetails Ihres Unternehmens.",
+      "group": "Abrechnung"
+    },
+    "billing.documents.download_own": {
+      "name": "Laden Sie Abrechnungsdokumente herunter",
+      "description": "Ermöglicht das Herunterladen von Abonnementrechnungen und Quittungen.",
+      "group": "Abrechnung"
+    },
+    "billing.edit": {
+      "name": "Abrechnung verwalten (Plattform)",
+      "description": "Ermöglicht das Bearbeiten von Abonnements, Abrechnungskontakten sowie das Aussetzen oder Wiederherstellen von Aktionen.",
+      "group": "Abrechnung"
+    },
+    "billing.features.edit": {
+      "name": "Funktionsberechtigungen bearbeiten",
+      "description": "Ermöglicht die Verwaltung von Unternehmensfunktionsüberschreibungen.",
+      "group": "Abrechnung"
+    },
+    "billing.features.manage_catalog": {
+      "name": "Funktionskatalog verwalten",
+      "description": "Ermöglicht die Verwaltung des Feature-Definitionskatalogs.",
+      "group": "Abrechnung"
+    },
+    "billing.features.view": {
+      "name": "Funktionsberechtigungen anzeigen",
+      "description": "Ermöglicht die Anzeige von Funktionskatalogen und Unternehmensüberschreibungen.",
+      "group": "Abrechnung"
+    },
+    "billing.health.manage": {
+      "name": "Abrechnungsstatus verwalten",
+      "description": "Ermöglicht die Verwaltung von Abrechnungsintegritätsjobs und -wiederholungen.",
+      "group": "Abrechnung"
+    },
+    "billing.health.view": {
+      "name": "Abrechnungszustand anzeigen",
+      "description": "Ermöglicht die Anzeige des Abrechnungsstatus-Dashboards und von Warnungen.",
+      "group": "Abrechnung"
+    },
+    "billing.manage_own": {
+      "name": "Eigenes Abonnement verwalten",
+      "description": "Ermöglicht die Erneuerung und Verwaltung Ihres Unternehmensabonnements.",
+      "group": "Abrechnung"
+    },
+    "billing.manage_plans": {
+      "name": "Abonnementpläne verwalten",
+      "description": "Ermöglicht die Verwaltung des Abonnementkatalogs.",
+      "group": "Abrechnung"
+    },
+    "billing.payment_method.manage_own": {
+      "name": "Zahlungsmethoden verwalten",
+      "description": "Ermöglicht die Verwaltung der Zahlungsmethoden Ihres Unternehmens.",
+      "group": "Abrechnung"
+    },
+    "billing.record_payment": {
+      "name": "Erfassen Sie Zahlungen",
+      "description": "Ermöglicht die Aufzeichnung manueller Zahlungen und Rechnungen.",
+      "group": "Abrechnung"
+    },
+    "billing.settings.edit": {
+      "name": "Bearbeiten Sie die Abrechnungseinstellungen",
+      "description": "Ermöglicht das Ändern der Abrechnungskonfigurationseinstellungen.",
+      "group": "Abrechnung"
+    },
+    "billing.settings.view": {
+      "name": "Abrechnungseinstellungen anzeigen",
+      "description": "Ermöglicht das Anzeigen von Abrechnungskonfigurationseinstellungen.",
+      "group": "Abrechnung"
+    },
+    "billing.view": {
+      "name": "Abrechnung anzeigen (Plattform)",
+      "description": "Ermöglicht die Anzeige der Abrechnungsübersicht, Abonnements und Zahlungen der Plattform.",
+      "group": "Abrechnung"
+    },
+    "billing.view_own": {
+      "name": "Eigene Abrechnung anzeigen",
+      "description": "Ermöglicht die Anzeige Ihres Unternehmensabonnements und die Self-Service-Abrechnung.",
+      "group": "Abrechnung"
+    },
+    "billing.view_reports": {
+      "name": "Abrechnungsberichte anzeigen",
+      "description": "Ermöglicht die Anzeige von Abrechnungsanalysen und Umsatzberichten.",
+      "group": "Abrechnung"
+    },
+    "billing.webhooks.manage": {
+      "name": "Abrechnungs-Webhooks verwalten",
+      "description": "Ermöglicht die Verwaltung ausgehender Abrechnungs-Webhooks.",
+      "group": "Abrechnung"
+    },
+    "billing.webhooks.view": {
+      "name": "Abrechnungs-Webhooks anzeigen",
+      "description": "Ermöglicht die Anzeige ausgehender Abrechnungs-Webhook-Endpunkte.",
+      "group": "Abrechnung"
+    },
+    "bookings.create": {
+      "name": "Buchungen erstellen",
+      "description": "Ermöglicht das Erstellen neuer Buchungen.",
+      "group": "Buchungen"
+    },
+    "bookings.delete": {
+      "name": "Buchungen löschen",
+      "description": "Ermöglicht das Stornieren oder Löschen von Buchungen.",
+      "group": "Buchungen"
+    },
+    "bookings.edit": {
+      "name": "Buchungen bearbeiten",
+      "description": "Ermöglicht die Aktualisierung bestehender Buchungen.",
+      "group": "Buchungen"
+    },
+    "bookings.view": {
+      "name": "Buchungen anzeigen",
+      "description": "Ermöglicht die Anzeige von Buchungen und Zeitplänen.",
+      "group": "Buchungen"
+    },
+    "branches.manage": {
+      "name": "Filialen verwalten",
+      "description": "Ermöglicht das Erstellen und Verwalten von Unternehmenszweigen.",
+      "group": "Unternehmen"
+    },
+    "channel.platform.dispatch": {
+      "name": "Kanalnachrichten versenden",
+      "description": "Ermöglicht das Versenden ausgehender Kanalnachrichten.",
+      "group": "aiPlatform"
+    },
+    "channel.platform.route": {
+      "name": "Kanalereignisse weiterleiten",
+      "description": "Ermöglicht die Weiterleitung eingehender Kanalereignisse.",
+      "group": "aiPlatform"
+    },
+    "channel.platform.view": {
+      "name": "Kanalplattform anzeigen",
+      "description": "Ermöglicht das Anzeigen von Kanalplattformereignissen und dem Lieferstatus.",
+      "group": "aiPlatform"
+    },
+    "channels.manage": {
+      "name": "Kanäle verwalten",
+      "description": "Ermöglicht die Konfiguration von Unternehmenskommunikationskanälen.",
+      "group": "Kanäle"
+    },
+    "channels.view": {
+      "name": "Kanäle anzeigen",
+      "description": "Ermöglicht die Anzeige der Kommunikationskanäle des Unternehmens.",
+      "group": "Kanäle"
+    },
+    "collaboration.handover": {
+      "name": "Übergabe-Zusammenarbeit",
+      "description": "Fordern Sie die Übergabe von Agentenaufgaben an.",
+      "group": "aiPlatform"
+    },
+    "collaboration.manage": {
+      "name": "Zusammenarbeit verwalten",
+      "description": "Verwalten Sie Agentengruppen und Richtlinien.",
+      "group": "aiPlatform"
+    },
+    "collaboration.view": {
+      "name": "Zusammenarbeit anzeigen",
+      "description": "Sehen Sie sich die Zusammenarbeit mehrerer Agenten an.",
+      "group": "aiPlatform"
+    },
+    "collections.manage": {
+      "name": "Sammlungen verwalten",
+      "description": "Ermöglicht die Verwaltung von Vektorsammlungen und indizierten Vektoren.",
+      "group": "aiPlatform"
+    },
+    "companies.create": {
+      "name": "Unternehmen gründen",
+      "description": "Ermöglicht die Bereitstellung neuer Mandantenunternehmen.",
+      "group": "Unternehmen"
+    },
+    "companies.delete": {
+      "name": "Unternehmen löschen",
+      "description": "Ermöglicht das Entfernen von Mandantenunternehmen.",
+      "group": "Unternehmen"
+    },
+    "companies.edit": {
+      "name": "Unternehmen bearbeiten",
+      "description": "Ermöglicht die Aktualisierung von Unternehmensdatensätzen und -einstellungen.",
+      "group": "Unternehmen"
+    },
+    "companies.view": {
+      "name": "Unternehmen anzeigen",
+      "description": "Ermöglicht die Anzeige von Mieterunternehmen auf der Plattform.",
+      "group": "Unternehmen"
+    },
+    "company.branding": {
+      "name": "Verwalten Sie das Unternehmens-Branding",
+      "description": "Ermöglicht die Verwaltung von Unternehmens-Branding-Assets.",
+      "group": "Unternehmen"
+    },
+    "company.subscription": {
+      "name": "Unternehmensabonnement verwalten",
+      "description": "Ermöglicht die Anzeige und Verwaltung des Unternehmensabonnements.",
+      "group": "Unternehmen"
+    },
+    "company.update": {
+      "name": "Firma aktualisieren",
+      "description": "Ermöglicht die Aktualisierung der Unternehmensprofildetails.",
+      "group": "Unternehmen"
+    },
+    "company.view": {
+      "name": "Unternehmensarbeitsbereich anzeigen",
+      "description": "Ermöglicht die Anzeige des Unternehmensarbeitsbereichs.",
+      "group": "Unternehmen"
+    },
+    "configuration.publish": {
+      "name": "Konfiguration veröffentlichen",
+      "description": "Konfigurationsänderungen veröffentlichen.",
+      "group": "Konfiguration"
+    },
+    "configuration.read": {
+      "name": "Konfiguration lesen",
+      "description": "Plattformkonfiguration anzeigen.",
+      "group": "Konfiguration"
+    },
+    "configuration.write": {
+      "name": "Konfiguration schreiben",
+      "description": "Bearbeiten Sie Plattformkonfigurationsentwürfe.",
+      "group": "Konfiguration"
+    },
+    "conversation.assign": {
+      "name": "Konversationen zuweisen",
+      "description": "Weisen Sie Gespräche den Mitarbeitern zu. Wird mit der E-Mail-Arbeitsbereichszuweisung verwendet.",
+      "group": "Gespräche"
+    },
+    "conversation.close": {
+      "name": "Schließen Sie Gespräche",
+      "description": "Ermöglicht das Schließen von Gesprächen.",
+      "group": "Gespräche"
+    },
+    "conversation.create_customer": {
+      "name": "Kunde anlegen",
+      "description": "Ermöglicht das Erstellen eines Kunden aus einer Konversation.",
+      "group": "Gespräche"
+    },
+    "conversation.escalate": {
+      "name": "Gespräche eskalieren",
+      "description": "Ermöglicht die Weiterleitung von Gesprächen an Vorgesetzte.",
+      "group": "Gespräche"
+    },
+    "conversation.internal_note": {
+      "name": "Interne Notizen",
+      "description": "Ermöglicht das Hinzufügen interner Notizen zu Gesprächen.",
+      "group": "Gespräche"
+    },
+    "conversation.internal_notes.manage": {
+      "name": "Interne Notizen verwalten",
+      "description": "Ermöglicht das Bearbeiten und Löschen interner Notizen zu Gesprächen.",
+      "group": "Gespräche"
+    },
+    "conversation.link_customer": {
+      "name": "Kunden verknüpfen",
+      "description": "Ermöglicht die Verknüpfung eines bestehenden Kunden mit einer Konversation.",
+      "group": "Gespräche"
+    },
+    "conversation.reassign": {
+      "name": "Konversationen neu zuweisen",
+      "description": "Ermöglicht die Neuzuweisung von Gesprächen zwischen Agenten oder Teams.",
+      "group": "Gespräche"
+    },
+    "conversation.reopen": {
+      "name": "Gespräche wieder eröffnen",
+      "description": "Ermöglicht das erneute Öffnen geschlossener Konversationen.",
+      "group": "Gespräche"
+    },
+    "conversation.reply": {
+      "name": "Antworten Sie in Gesprächen",
+      "description": "Ermöglicht die Beantwortung von Kundennachrichten.",
+      "group": "Gespräche"
+    },
+    "conversation.resolve": {
+      "name": "Gespräche lösen",
+      "description": "Ermöglicht das Markieren von Konversationen als gelöst.",
+      "group": "Gespräche"
+    },
+    "conversation.return_to_ai": {
+      "name": "Zurück zur KI",
+      "description": "Ermöglicht die Rückgabe von Gesprächen an die KI-Verwaltung.",
+      "group": "Gespräche"
+    },
+    "conversation.take_over": {
+      "name": "Übernehmen Sie Gespräche",
+      "description": "Ermöglicht die Übernahme der Verantwortung für eine Konversation.",
+      "group": "Gespräche"
+    },
+    "conversation.view": {
+      "name": "Gespräche anzeigen",
+      "description": "Ermöglicht das Anzeigen von Omnichannel-Gesprächen.",
+      "group": "Gespräche"
+    },
+    "customers.create": {
+      "name": "Erstellen Sie Kunden",
+      "description": "Ermöglicht das Hinzufügen neuer Kunden.",
+      "group": "Kunden"
+    },
+    "customers.delete": {
+      "name": "Kunden löschen",
+      "description": "Ermöglicht das Entfernen von Kundendatensätzen.",
+      "group": "Kunden"
+    },
+    "customers.edit": {
+      "name": "Kunden bearbeiten",
+      "description": "Ermöglicht die Aktualisierung von Kundeninformationen.",
+      "group": "Kunden"
+    },
+    "customers.import": {
+      "name": "Kunden importieren",
+      "description": "Ermöglicht den Import von CRM-Kunden aus CSV/XLSX und Massenimporttools für CRM-Agenten. Impliziert „customers.create“ für RLS, wenn es über Agent-Tools verwendet wird.",
+      "group": "Kunden"
+    },
+    "customers.merge": {
+      "name": "Kunden zusammenführen (CRM-Agent)",
+      "description": "Ermöglicht CRM-Agent-Kundenzusammenführungstools. Impliziert „customers.edit“ und „customers.delete“ für RLS, wenn es über Agent-Tools verwendet wird.",
+      "group": "Kunden"
+    },
+    "customers.search": {
+      "name": "Kunden suchen (CRM-Agent)",
+      "description": "Ermöglicht die Suche nach CRM-Agenten und Tools zur Duplikaterkennung. Impliziert „customers.view“ für RLS, wenn es über Agent-Tools verwendet wird.",
+      "group": "Kunden"
+    },
+    "customers.update": {
+      "name": "Kunden aktualisieren (CRM-Agent)",
+      "description": "Ermöglicht Einzelfeld-Aktualisierungstools für CRM-Agenten. Impliziert „customers.edit“ für RLS, wenn es über Agent-Tools verwendet wird.",
+      "group": "Kunden"
+    },
+    "customers.view": {
+      "name": "Kunden anzeigen",
+      "description": "Ermöglicht die Anzeige der Kundenliste und ihrer Details.",
+      "group": "Kunden"
+    },
+    "dashboard.view": {
+      "name": "Dashboard anzeigen",
+      "description": "Ermöglicht die Anzeige des Unternehmensbetriebs-Dashboards und aggregierter Metriken.",
+      "group": "Armaturenbrett"
+    },
+    "departments.manage": {
+      "name": "Abteilungen verwalten",
+      "description": "Ermöglicht die Erstellung und Verwaltung von Unternehmensabteilungen.",
+      "group": "Unternehmen"
+    },
+    "email.identity.company.manage": {
+      "name": "Verwalten Sie die E-Mail-Identität des Unternehmens",
+      "description": "Bearbeiten Sie die Standardeinstellungen für die E-Mail-Identität des Unternehmens, einschließlich Logo, Absender des Unternehmens, Antwortadresse und Standardsignatur des Unternehmens.",
+      "group": "E-Mail"
+    },
+    "email.identity.manage": {
+      "name": "Persönliche E-Mail-Identität verwalten",
+      "description": "Bearbeiten Sie Ihre persönliche E-Mail-Identität und persönliche Signatur, die beim Senden von E-Mails verwendet wird.",
+      "group": "E-Mail"
+    },
+    "email.routing.view": {
+      "name": "E-Mail-KI-Routing anzeigen",
+      "description": "Öffnen Sie die Registerkarte „E-Mail Workspace KI Routing“ und konfigurieren Sie das Routing eingehender E-Mails.",
+      "group": "E-Mail"
+    },
+    "email.run": {
+      "name": "E-Mail betreiben",
+      "description": "E-Mail-Betriebsberechtigung für Unternehmen mit dem E-Mail-Kanal. E-Mail-Arbeitsbereich wird nicht geöffnet.",
+      "group": "E-Mail"
+    },
+    "email.settings.manage": {
+      "name": "E-Mail-Verbindung verwalten",
+      "description": "Konfigurieren Sie die E-Mail-Postfachverbindung des Unternehmens (SMTP, IMAP, Gmail, Microsoft) und die operativen E-Mail-Einstellungen.",
+      "group": "E-Mail"
+    },
+    "email.templates.view": {
+      "name": "E-Mail-Vorlagen anzeigen",
+      "description": "Öffnen Sie die Registerkarte „E-Mail-Arbeitsbereich-Vorlagen“ und verwalten Sie Unternehmens-E-Mail-Vorlagen.",
+      "group": "E-Mail"
+    },
+    "email.view": {
+      "name": "E-Mail anzeigen",
+      "description": "Öffnen Sie den E-Mail-Arbeitsbereich. Die Konversationssichtbarkeit folgt weiterhin „Alle anzeigen“ oder „Zugewiesen anzeigen“.",
+      "group": "E-Mail"
+    },
+    "embeddings.generate": {
+      "name": "Einbettungen generieren",
+      "description": "Ermöglicht das Einreihen und Verarbeiten von Einbettungsaufträgen.",
+      "group": "aiPlatform"
+    },
+    "embeddings.manage": {
+      "name": "Einbettungen verwalten",
+      "description": "Ermöglicht die Verwaltung eingebetteter Anbieterverbindungen.",
+      "group": "aiPlatform"
+    },
+    "embeddings.view": {
+      "name": "Einbettungen anzeigen",
+      "description": "Ermöglicht die Anzeige von Einbettungsanbietern, Jobs und Vektoren.",
+      "group": "aiPlatform"
+    },
+    "employees.manage": {
+      "name": "Mitarbeiter verwalten",
+      "description": "Ermöglicht das Einladen und Verwalten von Firmenmitarbeitern.",
+      "group": "Unternehmen"
+    },
+    "executive.manage_alerts": {
+      "name": "Verwalten Sie Executive Intelligence",
+      "description": "Verwerfen und lösen Sie Warnungen von Führungskräften.",
+      "group": "Exekutive"
+    },
+    "executive.view": {
+      "name": "Sehen Sie sich Executive Intelligence an",
+      "description": "Sehen Sie sich das Executive Intelligence-Dashboard an.",
+      "group": "Exekutive"
+    },
+    "feature_flags.publish": {
+      "name": "Feature-Flags veröffentlichen",
+      "description": "Veröffentlichen Sie Feature-Flag-Änderungen.",
+      "group": "featureFlags"
+    },
+    "feature_flags.read": {
+      "name": "Feature-Flags lesen",
+      "description": "Status der Feature-Flags anzeigen.",
+      "group": "featureFlags"
+    },
+    "feature_flags.write": {
+      "name": "Schreiben Sie Feature-Flags",
+      "description": "Feature-Flags verwalten.",
+      "group": "featureFlags"
+    },
+    "governance.approve": {
+      "name": "Governance genehmigen",
+      "description": "Genehmigen Sie Governance-Anfragen.",
+      "group": "Regierungsführung"
+    },
+    "governance.create": {
+      "name": "Schaffen Sie Governance",
+      "description": "Erstellen Sie KI-Governance-Richtlinien.",
+      "group": "Regierungsführung"
+    },
+    "governance.edit": {
+      "name": "Governance bearbeiten",
+      "description": "Bearbeiten Sie KI-Governance-Richtlinien.",
+      "group": "Regierungsführung"
+    },
+    "governance.manage": {
+      "name": "Governance verwalten",
+      "description": "Verwalten Sie die KI-Governance-Plattform.",
+      "group": "Regierungsführung"
+    },
+    "governance.view": {
+      "name": "Governance anzeigen",
+      "description": "Sehen Sie sich die Richtlinien zur KI-Governance an.",
+      "group": "Regierungsführung"
+    },
+    "handoff.accept": {
+      "name": "Akzeptieren Sie die menschliche Übergabe",
+      "description": "Akzeptieren Sie in der Warteschlange befindliche oder weitergeleitete Gespräche.",
+      "group": "weiterleiten"
+    },
+    "handoff.assign": {
+      "name": "Weisen Sie die menschliche Übergabe zu",
+      "description": "Weisen Sie Gespräche Agenten oder Warteschlangen zu.",
+      "group": "weiterleiten"
+    },
+    "handoff.escalate": {
+      "name": "Eskalieren Sie die menschliche Übergabe",
+      "description": "Leiten Sie Gespräche an Vorgesetzte oder spezielle Warteschlangen weiter.",
+      "group": "weiterleiten"
+    },
+    "handoff.manage": {
+      "name": "Verwalten Sie die menschliche Übergabe",
+      "description": "Verwalten Sie Übergabewarteschlangen, Routing-Regeln und Eskalationsrichtlinien.",
+      "group": "weiterleiten"
+    },
+    "handoff.presence": {
+      "name": "Präsenzmenschliche Übergabe",
+      "description": "Agentenpräsenz aktualisieren und anzeigen.",
+      "group": "weiterleiten"
+    },
+    "handoff.queue": {
+      "name": "Warteschlangenübergabe durch Menschen",
+      "description": "Konversationen in die Warteschlange ein- und aus der Warteschlange entfernen.",
+      "group": "weiterleiten"
+    },
+    "handoff.reject": {
+      "name": "Menschliche Übergabe ablehnen",
+      "description": "Übergabeanfragen ablehnen.",
+      "group": "weiterleiten"
+    },
+    "handoff.return_to_ai": {
+      "name": "Kehren Sie zur KI-Menschenübergabe zurück",
+      "description": "Führen Sie Gespräche zur KI-Verwaltung zurück.",
+      "group": "weiterleiten"
+    },
+    "handoff.transfer": {
+      "name": "Menschliche Übergabe übertragen",
+      "description": "Übertragen Sie Gespräche zwischen Agenten, Warteschlangen und KI.",
+      "group": "weiterleiten"
+    },
+    "handoff.view": {
+      "name": "Menschliche Übergabe anzeigen",
+      "description": "Zeigen Sie den Übergabestatus, die Warteschlangen und den Kontext des Agentenarbeitsbereichs an.",
+      "group": "weiterleiten"
+    },
+    "integrations.api_keys": {
+      "name": "API-Schlüssel-Integrationshub",
+      "description": "Erstellen und rotieren Sie API-Schlüssel.",
+      "group": "Integrationen"
+    },
+    "integrations.manage": {
+      "name": "Integration Hub verwalten",
+      "description": "Verwalten Sie API-Schlüssel, OAuth-Clients und Webhooks.",
+      "group": "Integrationen"
+    },
+    "integrations.view": {
+      "name": "Integration Hub anzeigen",
+      "description": "Sehen Sie sich das Integration Hub-Dashboard an.",
+      "group": "Integrationen"
+    },
+    "integrations.webhooks": {
+      "name": "Webhooks-Integrationshub",
+      "description": "Webhook-Abonnements verwalten.",
+      "group": "Integrationen"
+    },
+    "intents.manage": {
+      "name": "Absichten verwalten",
+      "description": "Ermöglicht die Verwaltung von Absichtsdefinitionen und deren Aktivierung.",
+      "group": "aiPlatform"
+    },
+    "intents.view": {
+      "name": "Absichten anzeigen",
+      "description": "Ermöglicht das Anzeigen von Absichtsdefinitionen und dem Übereinstimmungsverlauf.",
+      "group": "aiPlatform"
+    },
+    "invoices.create": {
+      "name": "Rechnungen erstellen",
+      "description": "Ermöglicht die Ausstellung neuer Rechnungen.",
+      "group": "Rechnungen"
+    },
+    "invoices.delete": {
+      "name": "Rechnungen löschen",
+      "description": "Ermöglicht das Entfernen von Rechnungsdatensätzen.",
+      "group": "Rechnungen"
+    },
+    "invoices.edit": {
+      "name": "Rechnungen bearbeiten",
+      "description": "Ermöglicht die Aktualisierung von Rechnungsdetails.",
+      "group": "Rechnungen"
+    },
+    "invoices.view": {
+      "name": "Rechnungen anzeigen",
+      "description": "Ermöglicht die Anzeige von Rechnungen und Abrechnungsdokumenten.",
+      "group": "Rechnungen"
+    },
+    "knowledge.import": {
+      "name": "Wissen importieren",
+      "description": "Ermöglicht den Import von Dokumenten und die Generierung von Wissensblöcken.",
+      "group": "Wissen"
+    },
+    "knowledge.manage": {
+      "name": "Wissensdatenbank verwalten",
+      "description": "Ermöglicht die Verwaltung von Wissensquellen und Dokumenten.",
+      "group": "Wissen"
+    },
+    "knowledge.publish": {
+      "name": "Wissen veröffentlichen",
+      "description": "Ermöglicht die Veröffentlichung von Wissensdokumentversionen.",
+      "group": "Wissen"
+    },
+    "knowledge.read": {
+      "name": "Lesen Sie Wissen",
+      "description": "Wissensdatenbank abfragen.",
+      "group": "Wissen"
+    },
+    "knowledge.view": {
+      "name": "Wissensdatenbank anzeigen",
+      "description": "Ermöglicht das Anzeigen von Wissensquellen und Dokumenten.",
+      "group": "Wissen"
+    },
+    "leads.archive": {
+      "name": "Archiv-Leads",
+      "description": "Leads archivieren oder wiederherstellen.",
+      "group": "führt"
+    },
+    "leads.assign": {
+      "name": "Weisen Sie Leads zu",
+      "description": "Weisen Sie Leads Agenten zu.",
+      "group": "führt"
+    },
+    "leads.convert": {
+      "name": "Konvertieren Sie Leads",
+      "description": "Wandeln Sie Leads in Kunden um.",
+      "group": "führt"
+    },
+    "leads.create": {
+      "name": "Erstellen Sie Leads",
+      "description": "Leads erstellen.",
+      "group": "führt"
+    },
+    "leads.delete": {
+      "name": "Leads löschen",
+      "description": "Leads archivieren und löschen.",
+      "group": "führt"
+    },
+    "leads.edit": {
+      "name": "Leads bearbeiten",
+      "description": "Lead-Felder aktualisieren.",
+      "group": "führt"
+    },
+    "leads.export": {
+      "name": "Leads exportieren",
+      "description": "Lead-Daten exportieren.",
+      "group": "führt"
+    },
+    "leads.manage": {
+      "name": "Leads verwalten",
+      "description": "Verwalten Sie Pipelines, Phasen und Lead-Plattformeinstellungen.",
+      "group": "führt"
+    },
+    "leads.merge": {
+      "name": "Leads zusammenführen",
+      "description": "Führen Sie doppelte Leads zusammen.",
+      "group": "führt"
+    },
+    "leads.qualify": {
+      "name": "Qualifizieren Sie Leads",
+      "description": "Qualifizieren oder disqualifizieren Sie Leads.",
+      "group": "führt"
+    },
+    "leads.view": {
+      "name": "Leads anzeigen",
+      "description": "Leads und Pipeline anzeigen.",
+      "group": "führt"
+    },
+    "licenses.assign": {
+      "name": "Lizenzen zuweisen",
+      "description": "Weisen Sie Pläne und Add-ons zu.",
+      "group": "Lizenzen"
+    },
+    "licenses.read": {
+      "name": "Lesen Sie Lizenzen",
+      "description": "Lizenz und Berechtigungen anzeigen.",
+      "group": "Lizenzen"
+    },
+    "licenses.write": {
+      "name": "Schreiblizenzen",
+      "description": "Unternehmenslizenzen verwalten.",
+      "group": "Lizenzen"
+    },
+    "marketplace.develop": {
+      "name": "Entwickeln Sie eine Plugin-Plattform",
+      "description": "Veröffentlichen und verwalten Sie benutzerdefinierte Plugins.",
+      "group": "Marktplatz"
+    },
+    "marketplace.install": {
+      "name": "Installieren Sie die Plugin-Plattform",
+      "description": "Installieren Sie Plugins vom Marktplatz.",
+      "group": "Marktplatz"
+    },
+    "marketplace.manage": {
+      "name": "Plugin-Plattform verwalten",
+      "description": "Installieren, aktivieren, deaktivieren und aktualisieren Sie Plugins.",
+      "group": "Marktplatz"
+    },
+    "marketplace.view": {
+      "name": "Plugin-Plattform anzeigen",
+      "description": "Plugin-Marktplatz ansehen.",
+      "group": "Marktplatz"
+    },
+    "operations.read": {
+      "name": "Lesevorgänge",
+      "description": "Betriebswarteschlange und Arbeitsbereich anzeigen.",
+      "group": "Operationen"
+    },
+    "operations.write": {
+      "name": "Schreiboperationen",
+      "description": "Führen Sie Betriebsbefehle aus.",
+      "group": "Operationen"
+    },
+    "opportunities.convert": {
+      "name": "Chancen umwandeln",
+      "description": "Schaffen Sie Chancen aus qualifizierten Leads.",
+      "group": "Gelegenheiten"
+    },
+    "opportunities.create": {
+      "name": "Chancen schaffen",
+      "description": "Schaffen Sie Möglichkeiten.",
+      "group": "Gelegenheiten"
+    },
+    "opportunities.delete": {
+      "name": "Chancen löschen",
+      "description": "Opportunities archivieren oder löschen.",
+      "group": "Gelegenheiten"
+    },
+    "opportunities.edit": {
+      "name": "Chancen bearbeiten",
+      "description": "Opportunity-Felder aktualisieren.",
+      "group": "Gelegenheiten"
+    },
+    "opportunities.view": {
+      "name": "Chancen anzeigen",
+      "description": "Sehen Sie sich Chancen und Pipeline an.",
+      "group": "Gelegenheiten"
+    },
+    "organization.manage": {
+      "name": "Verwalten Sie mehrere Zweigstellen",
+      "description": "Verwalten Sie Regionen, Gruppen und Zweigstellenrichtlinien.",
+      "group": "Organisation"
+    },
+    "organization.transfer": {
+      "name": "Übertragen Sie mehrere Zweigstellen",
+      "description": "Initiieren Sie filialübergreifende Überweisungen.",
+      "group": "Organisation"
+    },
+    "organization.view": {
+      "name": "Mehrzweig anzeigen",
+      "description": "Sehen Sie sich Organisationshierarchien und Analysen an.",
+      "group": "Organisation"
+    },
+    "permissions.edit": {
+      "name": "Benutzerberechtigungen bearbeiten (Legacy)",
+      "description": "Legacy-Berechtigung, die „Rollen bearbeiten“ zugeordnet ist.",
+      "group": "Rollen"
+    },
+    "permissions.view": {
+      "name": "Benutzerberechtigungen anzeigen (Legacy)",
+      "description": "Legacy-Berechtigung, die den Ansichtsrollen zugeordnet ist.",
+      "group": "Rollen"
+    },
+    "products.create": {
+      "name": "Produkte erstellen",
+      "description": "Erstellen Sie Katalogprodukte.",
+      "group": "Produkte"
+    },
+    "products.delete": {
+      "name": "Produkte löschen",
+      "description": "Katalogprodukte archivieren.",
+      "group": "Produkte"
+    },
+    "products.edit": {
+      "name": "Produkte bearbeiten",
+      "description": "Katalogprodukte aktualisieren.",
+      "group": "Produkte"
+    },
+    "products.pricing": {
+      "name": "Preise für Produkte",
+      "description": "Verwalten Sie globale und regionale Preise.",
+      "group": "Produkte"
+    },
+    "products.view": {
+      "name": "Produkte anzeigen",
+      "description": "Produkt- und Servicekatalog anzeigen.",
+      "group": "Produkte"
+    },
+    "prompts.manage": {
+      "name": "Eingabeaufforderungsvorlagen verwalten",
+      "description": "Ermöglicht die Verwaltung von Eingabeaufforderungsvorlagen und -versionen.",
+      "group": "Aufforderungen"
+    },
+    "prompts.preview": {
+      "name": "Vorschau der Eingabeaufforderungsvorlagen",
+      "description": "Ermöglicht die Vorschau der gerenderten Eingabeaufforderungsausgabe.",
+      "group": "Aufforderungen"
+    },
+    "prompts.publish": {
+      "name": "Veröffentlichen Sie Eingabeaufforderungsvorlagen",
+      "description": "Ermöglicht die Veröffentlichung validierter Eingabeaufforderungsvorlagenversionen.",
+      "group": "Aufforderungen"
+    },
+    "prompts.rollback": {
+      "name": "Vorlagen für Rollback-Eingabeaufforderungen",
+      "description": "Ermöglicht das Zurücksetzen von Eingabeaufforderungsvorlagen auf frühere Versionen.",
+      "group": "Aufforderungen"
+    },
+    "prompts.view": {
+      "name": "Eingabeaufforderungsvorlagen anzeigen",
+      "description": "Ermöglicht das Anzeigen von Eingabeaufforderungsvorlagen und dem Build-Verlauf.",
+      "group": "Aufforderungen"
+    },
+    "quotes.approve": {
+      "name": "Angebote genehmigen",
+      "description": "Genehmigen Sie Angebotsgenehmigungen oder lehnen Sie sie ab.",
+      "group": "Zitate"
+    },
+    "quotes.create": {
+      "name": "Erstellen Sie Angebote",
+      "description": "Erstellen Sie Angebote.",
+      "group": "Zitate"
+    },
+    "quotes.delete": {
+      "name": "Zitate löschen",
+      "description": "Zitate archivieren.",
+      "group": "Zitate"
+    },
+    "quotes.edit": {
+      "name": "Zitate bearbeiten",
+      "description": "Bearbeiten Sie Angebotsentwürfe.",
+      "group": "Zitate"
+    },
+    "quotes.send": {
+      "name": "Angebote senden",
+      "description": "Senden Sie Angebote an Kunden.",
+      "group": "Zitate"
+    },
+    "quotes.view": {
+      "name": "Zitate anzeigen",
+      "description": "Zitate ansehen.",
+      "group": "Zitate"
+    },
+    "reports.ai_consumption": {
+      "name": "KI-Verbrauchsberichte",
+      "description": "Sehen Sie sich den Bericht zum KI-Token-Verbrauch und zur bezahlten Nutzung an.",
+      "group": "Berichte"
+    },
+    "reports.ai_operations": {
+      "name": "KI-Berichte",
+      "description": "KI-Betriebsbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.bookings": {
+      "name": "Buchungsberichte",
+      "description": "Buchungsbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.companies": {
+      "name": "Unternehmensberichte",
+      "description": "Unternehmensbericht ansehen.",
+      "group": "Berichte"
+    },
+    "reports.company_revenue": {
+      "name": "Umsatzberichte des Unternehmens",
+      "description": "Sehen Sie sich den SaaS-Umsatzbericht des Unternehmens an.",
+      "group": "Berichte"
+    },
+    "reports.customers": {
+      "name": "Kundenberichte",
+      "description": "Kundenbericht ansehen.",
+      "group": "Berichte"
+    },
+    "reports.executive": {
+      "name": "Geschäftsberichte",
+      "description": "Executive Report ansehen.",
+      "group": "Berichte"
+    },
+    "reports.export": {
+      "name": "Berichte exportieren",
+      "description": "Berichte exportieren (CSV/PDF).",
+      "group": "Berichte"
+    },
+    "reports.financial": {
+      "name": "Finanzberichte",
+      "description": "Finanzbericht ansehen.",
+      "group": "Berichte"
+    },
+    "reports.invoices": {
+      "name": "Rechnungsberichte",
+      "description": "Rechnungsbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.leads": {
+      "name": "Leads-Berichte",
+      "description": "Lead-Bericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.operations": {
+      "name": "Betriebsberichte",
+      "description": "Betriebsbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.opportunities": {
+      "name": "Chancenberichte",
+      "description": "Chancenbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.overview": {
+      "name": "Übersichtsberichte",
+      "description": "Übersichtsanalysebericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.products": {
+      "name": "Produktberichte",
+      "description": "Produktbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.quotes": {
+      "name": "Zitatberichte",
+      "description": "Angebotsbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.schedule": {
+      "name": "Planen Sie Berichte",
+      "description": "Erstellen Sie geplante Berichtslieferungen.",
+      "group": "Berichte"
+    },
+    "reports.subscriptions": {
+      "name": "Abonnementberichte",
+      "description": "Abonnementbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.tickets": {
+      "name": "Ticketberichte",
+      "description": "Ticketbericht anzeigen.",
+      "group": "Berichte"
+    },
+    "reports.view": {
+      "name": "Berichte anzeigen",
+      "description": "Ermöglicht den Zugriff auf Geschäfts- und Analyseberichte.",
+      "group": "Berichte"
+    },
+    "retrieval.execute": {
+      "name": "Abruf ausführen",
+      "description": "Ermöglicht die Ausführung der Abrufkontextassemblierung.",
+      "group": "aiPlatform"
+    },
+    "retrieval.manage": {
+      "name": "Abruf verwalten",
+      "description": "Ermöglicht die Verwaltung von Abrufrichtlinien und -konfigurationen.",
+      "group": "aiPlatform"
+    },
+    "retrieval.view": {
+      "name": "Abruf anzeigen",
+      "description": "Ermöglicht das Anzeigen von Abrufrichtlinien, Ausführungen und Kontexten.",
+      "group": "aiPlatform"
+    },
+    "roles.create": {
+      "name": "Erstellen Sie Rollen",
+      "description": "Ermöglicht das Erstellen benutzerdefinierter Rollen.",
+      "group": "Rollen"
+    },
+    "roles.delete": {
+      "name": "Rollen löschen",
+      "description": "Ermöglicht das Löschen benutzerdefinierter Rollen.",
+      "group": "Rollen"
+    },
+    "roles.edit": {
+      "name": "Rollen bearbeiten",
+      "description": "Ermöglicht das Bearbeiten von Rollen und deren Berechtigungen.",
+      "group": "Rollen"
+    },
+    "roles.view": {
+      "name": "Rollen anzeigen",
+      "description": "Ermöglicht das Anzeigen von Rollen und deren Berechtigungen.",
+      "group": "Rollen"
+    },
+    "runtime.execute": {
+      "name": "KI Runtime ausführen",
+      "description": "Ermöglicht die Ausführung der KI-Laufzeitpipeline.",
+      "group": "aiPlatform"
+    },
+    "runtime.manage": {
+      "name": "KI Runtime verwalten",
+      "description": "Ermöglicht die Verwaltung von Laufzeitrichtlinien und -konfigurationen.",
+      "group": "aiPlatform"
+    },
+    "runtime.view": {
+      "name": "KI Runtime anzeigen",
+      "description": "Ermöglicht das Anzeigen von Laufzeitsitzungen und Pipelineschritten.",
+      "group": "aiPlatform"
+    },
+    "scheduling.edit": {
+      "name": "Terminplanung verwalten",
+      "description": "Ermöglicht das Erstellen und Bearbeiten der Planungskonfiguration.",
+      "group": "Terminplanung"
+    },
+    "scheduling.view": {
+      "name": "Terminplanung anzeigen",
+      "description": "Ermöglicht die Anzeige von Planungsressourcen, Verfügbarkeit, Regeln und Feiertagen.",
+      "group": "Terminplanung"
+    },
+    "settings.edit": {
+      "name": "Einstellungen bearbeiten",
+      "description": "Ermöglicht das Ändern von Unternehmens- und Anwendungseinstellungen.",
+      "group": "Einstellungen"
+    },
+    "settings.view": {
+      "name": "Einstellungen anzeigen",
+      "description": "Ermöglicht das Anzeigen von Unternehmens- und Anwendungseinstellungen.",
+      "group": "Einstellungen"
+    },
+    "skills.create": {
+      "name": "Fähigkeiten schaffen",
+      "description": "Schaffen Sie KI-Fähigkeiten.",
+      "group": "Fähigkeiten"
+    },
+    "skills.edit": {
+      "name": "Fertigkeiten bearbeiten",
+      "description": "Bearbeiten Sie KI-Fähigkeiten.",
+      "group": "Fähigkeiten"
+    },
+    "skills.manage": {
+      "name": "Fähigkeiten verwalten",
+      "description": "Verwalten Sie KI-Fähigkeiten.",
+      "group": "Fähigkeiten"
+    },
+    "skills.publish": {
+      "name": "Fertigkeiten veröffentlichen",
+      "description": "Veröffentlichen Sie KI-Skill-Versionen.",
+      "group": "Fähigkeiten"
+    },
+    "skills.rollback": {
+      "name": "Rollback-Fähigkeiten",
+      "description": "KI-Skill-Versionen zurücksetzen.",
+      "group": "Fähigkeiten"
+    },
+    "skills.view": {
+      "name": "Fähigkeiten anzeigen",
+      "description": "Katalog der KI-Fähigkeiten anzeigen.",
+      "group": "Fähigkeiten"
+    },
+    "subscriptions.edit": {
+      "name": "Abonnements bearbeiten (Legacy)",
+      "description": "Legacy-Berechtigung; Verwenden Sie nach Möglichkeit „Abrechnung verwalten“.",
+      "group": "Abrechnung"
+    },
+    "subscriptions.view": {
+      "name": "Abonnements anzeigen (Legacy)",
+      "description": "Legacy-Berechtigung; Verwenden Sie nach Möglichkeit View Billing.",
+      "group": "Abrechnung"
+    },
+    "tasks.assign": {
+      "name": "Aufgaben zuweisen",
+      "description": "Weisen Sie Benutzern Aufgaben zu.",
+      "group": "Aufgaben"
+    },
+    "tasks.read": {
+      "name": "Aufgaben lesen",
+      "description": "Aufgaben anzeigen.",
+      "group": "Aufgaben"
+    },
+    "tasks.write": {
+      "name": "Aufgaben schreiben",
+      "description": "Erstellen und verwalten Sie Aufgaben.",
+      "group": "Aufgaben"
+    },
+    "tickets.assign": {
+      "name": "Tickets zuweisen",
+      "description": "Weisen Sie Agenten Support-Tickets zu.",
+      "group": "Tickets"
+    },
+    "tickets.close": {
+      "name": "Tickets schließen",
+      "description": "Schließen oder lösen Sie Support-Tickets.",
+      "group": "Tickets"
+    },
+    "tickets.comment": {
+      "name": "Kommentar-Tickets",
+      "description": "Fügen Sie Kommentare zu Support-Tickets hinzu.",
+      "group": "Tickets"
+    },
+    "tickets.create": {
+      "name": "Tickets erstellen",
+      "description": "Erstellen Sie Support-Tickets.",
+      "group": "Tickets"
+    },
+    "tickets.edit": {
+      "name": "Tickets bearbeiten",
+      "description": "Aktualisieren Sie die Support-Ticketfelder.",
+      "group": "Tickets"
+    },
+    "tickets.manage": {
+      "name": "Tickets verwalten",
+      "description": "Verwalten Sie die Einstellungen der Support-Ticket-Plattform.",
+      "group": "Tickets"
+    },
+    "tickets.view": {
+      "name": "Tickets ansehen",
+      "description": "Support-Tickets anzeigen.",
+      "group": "Tickets"
+    },
+    "tools.execute": {
+      "name": "Werkzeuge ausführen",
+      "description": "Ermöglicht die Ausführung von Werkzeugen über den Werkzeug-Router.",
+      "group": "aiPlatform"
+    },
+    "tools.manage": {
+      "name": "Werkzeuge verwalten",
+      "description": "Ermöglicht die Verwaltung von Werkzeugdefinitionen und -aktivierungen.",
+      "group": "aiPlatform"
+    },
+    "tools.view": {
+      "name": "Tools anzeigen",
+      "description": "Ermöglicht die Anzeige von Werkzeugdefinitionen und Ausführungsverlauf.",
+      "group": "aiPlatform"
+    },
+    "users.create": {
+      "name": "Benutzer erstellen",
+      "description": "Ermöglicht das Erstellen neuer Benutzerkonten.",
+      "group": "Benutzer"
+    },
+    "users.delete": {
+      "name": "Benutzer löschen",
+      "description": "Ermöglicht das Deaktivieren oder Entfernen von Benutzerkonten.",
+      "group": "Benutzer"
+    },
+    "users.edit": {
+      "name": "Benutzer verwalten",
+      "description": "Ermöglicht das Erstellen, Bearbeiten und Zuweisen von Rollen zu Benutzern.",
+      "group": "Benutzer"
+    },
+    "users.view": {
+      "name": "Benutzer anzeigen",
+      "description": "Ermöglicht die Anzeige von Unternehmensbenutzern und deren Profilen.",
+      "group": "Benutzer"
+    },
+    "vectorquery.execute": {
+      "name": "Führen Sie Vektorabfragen aus",
+      "description": "Ermöglicht die Durchführung von Vektorähnlichkeitssuchen.",
+      "group": "aiPlatform"
+    },
+    "vectorquery.manage": {
+      "name": "Vektorabfragen verwalten",
+      "description": "Ermöglicht die Verwaltung von Vektorsuchrichtlinien und -konfigurationen.",
+      "group": "aiPlatform"
+    },
+    "vectorquery.view": {
+      "name": "Vektorabfragen anzeigen",
+      "description": "Ermöglicht die Anzeige von Vektorsuchrichtlinien und -ergebnissen.",
+      "group": "aiPlatform"
+    },
+    "vectorstores.manage": {
+      "name": "Vector Stores verwalten",
+      "description": "Ermöglicht die Verwaltung von Vektorspeicheranbieterverbindungen.",
+      "group": "aiPlatform"
+    },
+    "vectorstores.view": {
+      "name": "Vector Stores anzeigen",
+      "description": "Ermöglicht die Anzeige von Anbietern und Sammlungen von Vektorshops.",
+      "group": "aiPlatform"
+    },
+    "web_presence.manage": {
+      "name": "Webpräsenz verwalten",
+      "description": "Konfigurieren Sie die Einstellungen für die Unternehmensseite und das Web-Chat-Widget.",
+      "group": "webPresence"
+    },
+    "web_presence.view": {
+      "name": "Webpräsenz anzeigen",
+      "description": "Sehen Sie sich die Konfiguration der Unternehmensseite und des Web-Chat-Widgets an.",
+      "group": "webPresence"
+    },
+    "whatsapp.run": {
+      "name": "Führen Sie WhatsApp Automation (Legacy) aus.",
+      "description": "Die Legacy-Berechtigung ist „WhatsApp anzeigen“ zugeordnet.",
+      "group": "WhatsApp"
+    },
+    "whatsapp.view": {
+      "name": "Sehen Sie sich WhatsApp-Automatisierung an",
+      "description": "Ermöglicht das Anzeigen der WhatsApp-Automatisierungseinstellungen.",
+      "group": "WhatsApp"
+    },
+    "workflow.execute": {
+      "name": "Workflow ausführen",
+      "description": "Workflows starten und verwalten.",
+      "group": "Automatisierung"
+    },
+    "workflow.read": {
+      "name": "Lesen Sie den Workflow",
+      "description": "Workflow-Ausführungen anzeigen.",
+      "group": "Automatisierung"
+    },
+    "workspace.view": {
+      "name": "Greifen Sie auf den Arbeitsbereich zu",
+      "description": "Ermöglicht den Zugriff auf den Arbeitsbereich des Unternehmens.",
+      "group": "Arbeitsplatz"
+    }
+  }
+}

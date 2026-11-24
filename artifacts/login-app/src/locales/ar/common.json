@@ -8459,7 +8459,10 @@
         "copy": "نسخ",
         "english": "الإنجليزية",
         "arabic": "العربية",
-        "emptyDraft": "اكتب رسالة للترجمة."
+        "german": "الألمانية",
+        "emptyDraft": "اكتب رسالة للترجمة.",
+        "translating": "جارٍ الترجمة…",
+        "failed": "فشلت الترجمة."
       },
       "mentionPanel": {
         "agents": "الوكلاء",

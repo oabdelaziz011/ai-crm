@@ -129,6 +129,13 @@ jobs:
     environment: production
     timeout-minutes: 30
     steps:
+      - name: Clean stale Contabo artifact downloads
+        if: github.event.inputs.action == 'deploy'
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/valueor-gha-artifacts
+          mkdir -p /tmp/valueor-gha-artifacts
+
       - name: Download release artifact
         if: github.event.inputs.action == 'deploy'
         uses: actions/download-artifact@v4
@@ -142,14 +149,36 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          TGZ="$(find /tmp/valueor-gha-artifacts -name '*.tgz' -type f | head -n 1)"
-          test -n "$TGZ"
+          GIT_SHA="$(printf '%s' "$GIT_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$GIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Refusing a ref that is not a full git SHA."
+            exit 2
+          fi
+          # Prefer the SHA-named tarball; never silently pick a leftover older artifact.
+          TGZ="/tmp/valueor-gha-artifacts/valueor-release-${GIT_SHA}.tgz"
+          if [[ ! -f "$TGZ" ]]; then
+            TGZ="$(find /tmp/valueor-gha-artifacts -name "valueor-release-${GIT_SHA}.tgz" -type f | head -n 1)"
+          fi
+          if [[ -z "${TGZ}" || ! -f "$TGZ" ]]; then
+            echo "::error::Missing valueor-release-${GIT_SHA}.tgz under /tmp/valueor-gha-artifacts"
+            find /tmp/valueor-gha-artifacts -type f -name '*.tgz' -print || true
+            exit 2
+          fi
+          echo "artifact_tgz=$TGZ"
+          sha256sum "$TGZ"
           INCOMING="/tmp/valueor-incoming-${GIT_SHA}"
           rm -rf "$INCOMING"
           mkdir -p "$INCOMING"
           tar -xzf "$TGZ" -C "$INCOMING"
           test -f "${INCOMING}/api/artifacts/api-server/dist/main.mjs"
           test -f "${INCOMING}/frontend/index.html"
+          test -f "${INCOMING}/frontend/version.json"
+          ACTUAL="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8"))["sha"].lower())' "${INCOMING}/frontend/version.json")"
+          echo "artifact_frontend_sha=$ACTUAL"
+          if [[ "$ACTUAL" != "$GIT_SHA" ]]; then
+            echo "::error::Staged frontend version.json sha mismatch (got ${ACTUAL}, expected ${GIT_SHA})"
+            exit 2
+          fi
           echo "Staged release under ${INCOMING} (artifact names only; secrets not logged)"
 
       - name: Run production deploy or rollback on this host

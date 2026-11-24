@@ -31,6 +31,12 @@ jobs:
       actions: read
       contents: read
     steps:
+      - name: Clean stale Contabo FE replace downloads
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/valueor-gha-fe-replace-artifacts
+          mkdir -p /tmp/valueor-gha-fe-replace-artifacts
+
       - name: Download verified production release artifact
         uses: actions/download-artifact@v4
         with:
@@ -50,8 +56,16 @@ jobs:
             echo "Invalid frontend_sha"
             exit 2
           fi
-          TGZ="$(find /tmp/valueor-gha-fe-replace-artifacts -name '*.tgz' -type f | head -n 1)"
-          test -n "$TGZ"
+          # Prefer the SHA-named tarball; never silently pick a leftover older artifact.
+          TGZ="/tmp/valueor-gha-fe-replace-artifacts/valueor-release-${FE_SHA}.tgz"
+          if [[ ! -f "$TGZ" ]]; then
+            TGZ="$(find /tmp/valueor-gha-fe-replace-artifacts -name "valueor-release-${FE_SHA}.tgz" -type f | head -n 1)"
+          fi
+          if [[ -z "${TGZ}" || ! -f "$TGZ" ]]; then
+            echo "Missing valueor-release-${FE_SHA}.tgz under /tmp/valueor-gha-fe-replace-artifacts"
+            find /tmp/valueor-gha-fe-replace-artifacts -type f -name '*.tgz' -print || true
+            exit 2
+          fi
           echo "artifact_tgz=$TGZ"
           sha256sum "$TGZ"
           STAGE="/tmp/valueor-incoming-fe-replace-${FE_SHA}"

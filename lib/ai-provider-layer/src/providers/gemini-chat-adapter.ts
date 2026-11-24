@@ -202,7 +202,7 @@ export class GeminiChatAdapter implements AIProvider {
   async classify(input: ClassifyInput): Promise<ClassifyResult> {
     const result = await this.generate({
       prompt: `Classify into one of: ${(input.labels ?? []).join(", ")}\n\nText:\n${input.text}`,
-      model: input.model,
+      metadata: { temperature: 0 },
     });
     const label =
       (input.labels ?? []).find((candidate) =>

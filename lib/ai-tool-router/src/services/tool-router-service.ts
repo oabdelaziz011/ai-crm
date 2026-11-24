@@ -1,6 +1,7 @@
 import { findMissingAlignedPermission } from "@workspace/agent-runtime";
 import { TOOL_PERMISSIONS } from "../constants.js";
 import {
+  AiGuideToolBlockedError,
   ConversationAccessDeniedError,
   ConversationNotFoundError,
   PermissionDeniedError,
@@ -64,11 +65,22 @@ export class ToolRouterService {
     assertTenantContext(ctx);
     assertPermission(ctx, TOOL_PERMISSIONS.execute);
 
-    const conversation = await this.conversationReader.findById(input.conversationId);
+    let conversation;
+    try {
+      conversation = await this.conversationReader.findById(input.conversationId);
+    } catch {
+      // Classification / ownership lookup failure must fail closed (no tools).
+      throw new AiGuideToolBlockedError(input.conversationId);
+    }
     if (!conversation) {
       throw new ConversationNotFoundError(input.conversationId);
     }
     assertCompanyAccess(ctx, conversation.company_id);
+
+    // Authoritative Guide lock from DB — not client metadata / pageContext / browser scope.
+    if (conversation.ai_guide_locked === true) {
+      throw new AiGuideToolBlockedError(conversation.id);
+    }
 
     const definition = await this.definitionRepository.findByKey(input.toolKey);
     if (!definition) {

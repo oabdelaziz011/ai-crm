@@ -102,6 +102,11 @@ export type ConversationSnapshot = {
   customer_id: string | null;
   /** Optional metadata (channel identity stamps). Absent on legacy readers. */
   metadata?: Record<string, unknown> | null;
+  /**
+   * Authoritative AI Guide lock from DB (conversations.ai_guide_locked).
+   * When true, ToolRouterService must deny every tool. Client metadata cannot clear it.
+   */
+  ai_guide_locked?: boolean;
 };
 
 export type ServiceContext = {

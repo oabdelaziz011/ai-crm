@@ -73,3 +73,17 @@ export class TenantContextMissingError extends ToolRouterError {
     super("TENANT_CONTEXT_MISSING", "Tool execution requires tenant context (companyId and userId).");
   }
 }
+
+/** Authoritative Guide conversations cannot execute any tools (Phase 0B). */
+export const AI_GUIDE_TOOL_BLOCKED_CODE = "AI_GUIDE_TOOL_BLOCKED" as const;
+
+export class AiGuideToolBlockedError extends ToolRouterError {
+  constructor(conversationId?: string) {
+    super(
+      AI_GUIDE_TOOL_BLOCKED_CODE,
+      conversationId
+        ? `Tool execution is blocked for AI Guide conversation ${conversationId}.`
+        : "Tool execution is blocked for AI Guide conversations.",
+    );
+  }
+}

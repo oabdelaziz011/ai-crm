@@ -32,18 +32,20 @@ Local-only implementation on `feat/meta-oauth-safeguards-local`. Do **not** appl
 
 ## Production rollout checklist (do not execute yet)
 
-| # | Step | Status |
-| --- | --- | --- |
-| 1 | Meta App Review / Advanced Access for messaging scopes | External |
-| 2 | Review PR of `feat/meta-oauth-safeguards-local` | Pending |
-| 3 | Apply migration **467** to Production DB (backup first) | **Needs explicit approval** |
-| 4 | Deploy API + frontend bake with OAuth flags still **false** | **Needs approval** |
-| 5 | Confirm redirect URIs + App ID/Secret present (no values in chat) | Operator |
-| 6 | Allowlist **only** a net-new pilot company (empty settings) | **Needs approval** |
-| 7 | Enable server + VITE Messenger flags for pilot | **Needs approval** |
-| 8 | Do **not** allowlist companies with existing manual Messenger/IG | Guard |
-| 9 | Verify outbound health for existing ValueOR manual Page stays green | Read-only |
-| 10 | Instagram pilot only after Messenger pilot is green | Optional |
+Public-all allowlist syntax and rollback: see `docs/operations/meta-oauth-public-rollout.md`.
+
+| #   | Step                                                                                              | Status                 |
+| --- | ------------------------------------------------------------------------------------------------- | ---------------------- |
+| 1   | Meta App Review / Advanced Access for messaging scopes                                            | External               |
+| 2   | Deploy API that includes `*` public-all allowlist parser (flags still **false**)                  | **Needs approval**     |
+| 3   | Confirm migration **467** present on Production                                                   | Verify                 |
+| 4   | Confirm redirect URIs + App ID/Secret present (no values in chat)                                 | Operator               |
+| 5   | Set allowlists to `*` (not empty) **and** enable server flags                                     | **Needs approval**     |
+| 6   | Deploy FE with `VITE_META_MESSENGER_OAUTH_ENABLED` / `VITE_META_INSTAGRAM_LOGIN_ENABLED` **true** | **Needs approval**     |
+| 7   | Commercial entitlements still gate non-entitled companies                                         | Guard                  |
+| 8   | Existing manual connections still require confirm-to-replace                                      | Guard                  |
+| 9   | Verify outbound health for existing ValueOR manual Page stays green                               | Read-only              |
+| 10  | Rollback = disable enablement flags (do not wipe credentials)                                     | See public-rollout doc |
 
 ## Automated tests
 

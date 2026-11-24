@@ -1,17 +1,15 @@
+import {
+  isCompanyAllowedByMetaOauthAllowlistChain,
+  isMetaOauthCompanyUuid,
+  normalizeMetaOauthCompanyId,
+  parseMetaOauthCompanyAllowlist,
+} from "./meta-oauth-company-allowlist.js";
+
 function envFlagTrue(name: string): boolean {
   const raw = String(process.env[name] ?? "")
     .trim()
     .toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
-}
-
-const COMPANY_UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function normalizeCompanyId(companyId: unknown): string {
-  return String(companyId ?? "")
-    .trim()
-    .toLowerCase();
 }
 
 export const META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS_ENV =
@@ -23,15 +21,11 @@ export const META_INSTAGRAM_LOGIN_SCOPES = [
   "instagram_business_manage_messages",
 ] as const;
 
+/**
+ * @deprecated Prefer parseMetaOauthCompanyAllowlist — returns UUID set only (no `*` mode).
+ */
 export function parseAllowedCompanyIds(raw: unknown): ReadonlySet<string> {
-  const text = String(raw ?? "").trim();
-  if (!text) return new Set();
-  const out = new Set<string>();
-  for (const part of text.split(/[,;\s]+/)) {
-    const id = normalizeCompanyId(part);
-    if (COMPANY_UUID_RE.test(id)) out.add(id);
-  }
-  return out;
+  return parseMetaOauthCompanyAllowlist(raw).ids;
 }
 
 export function isMetaInstagramLoginEnabled(): boolean {
@@ -43,14 +37,21 @@ export function isMetaInstagramLoginEnabled(): boolean {
   return false;
 }
 
-export function isMetaInstagramLoginCompanyAllowed(companyId: unknown): boolean {
-  const id = normalizeCompanyId(companyId);
-  if (!COMPANY_UUID_RE.test(id)) return false;
-  const dedicated = parseAllowedCompanyIds(process.env[META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS_ENV]);
-  if (dedicated.size > 0) return dedicated.has(id);
-  const fallback = parseAllowedCompanyIds(process.env.META_PAGES_OAUTH_ALLOWED_COMPANY_IDS);
-  if (fallback.size === 0) return false;
-  return fallback.has(id);
+/**
+ * OAuth company allowlist gate only.
+ * Empty/missing dedicated + empty/missing Pages fallback → deny all.
+ * Dedicated or Pages value `*` → admit any valid company UUID (still requires enablement,
+ * auth, company scope, and commercial entitlement at the route layer).
+ */
+export function isMetaInstagramLoginCompanyAllowed(
+  companyId: unknown,
+): boolean {
+  if (!isMetaOauthCompanyUuid(companyId)) return false;
+  return isCompanyAllowedByMetaOauthAllowlistChain(
+    normalizeMetaOauthCompanyId(companyId),
+    process.env[META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS_ENV],
+    process.env.META_PAGES_OAUTH_ALLOWED_COMPANY_IDS,
+  );
 }
 
 export type MetaInstagramLoginEnvConfig = {
@@ -62,7 +63,9 @@ export type MetaInstagramLoginEnvConfig = {
 };
 
 function envPresent(...names: string[]): boolean {
-  return names.some((name) => String(process.env[name] ?? "").trim().length > 0);
+  return names.some(
+    (name) => String(process.env[name] ?? "").trim().length > 0,
+  );
 }
 
 /**

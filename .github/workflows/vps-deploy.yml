@@ -73,9 +73,10 @@ jobs:
           # Coexistence stays off until Meta eligibility is explicitly approved.
           VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED: "true"
           VITE_WHATSAPP_COEXISTENCE_ENABLED: "false"
-          # Messenger / Instagram / Pages OAuth UI stay off until Meta App Review + allowlists.
+          # Messenger / Pages OAuth UI stay off until separately approved.
+          # Instagram Login UI: narrow ValueOR enablement (server allowlist still required).
           VITE_META_MESSENGER_OAUTH_ENABLED: "false"
-          VITE_META_INSTAGRAM_LOGIN_ENABLED: "false"
+          VITE_META_INSTAGRAM_LOGIN_ENABLED: "true"
           VITE_META_PAGES_OAUTH_ENABLED: "false"
 
       - name: Write frontend version.json
@@ -180,6 +181,52 @@ jobs:
             exit 2
           fi
           echo "Staged release under ${INCOMING} (artifact names only; secrets not logged)"
+
+      - name: Stage Instagram Login env overlay for approved company only
+        if: github.event.inputs.action == 'deploy'
+        env:
+          GIT_SHA: ${{ github.sha }}
+          META_INSTAGRAM_LOGIN_APP_SECRET: ${{ secrets.META_INSTAGRAM_LOGIN_APP_SECRET }}
+        run: |
+          set -euo pipefail
+          GIT_SHA="$(printf '%s' "$GIT_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$GIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Refusing a ref that is not a full git SHA."
+            exit 2
+          fi
+          if [[ -z "${META_INSTAGRAM_LOGIN_APP_SECRET:-}" ]]; then
+            echo "::error::META_INSTAGRAM_LOGIN_APP_SECRET missing from production environment secrets."
+            exit 2
+          fi
+          # Length/fingerprint only — never print the secret.
+          SECRET_LEN="${#META_INSTAGRAM_LOGIN_APP_SECRET}"
+          SECRET_FP="$(printf '%s' "$META_INSTAGRAM_LOGIN_APP_SECRET" | sha256sum | awk '{print substr($1,1,12)}')"
+          echo "instagram_secret_len=${SECRET_LEN} sha256_12=${SECRET_FP}"
+          if [[ "$SECRET_LEN" -lt 20 ]]; then
+            echo "::error::Instagram App Secret looks too short."
+            exit 2
+          fi
+          INCOMING="/tmp/valueor-incoming-${GIT_SHA}"
+          test -d "$INCOMING"
+          OVERLAY="${INCOMING}/.instagram-login.env.overlay"
+          umask 077
+          cat >"$OVERLAY" <<EOF
+          META_INSTAGRAM_LOGIN_ENABLED=true
+          META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS=2d27f7fb-c15e-4d60-84e9-1793f36f2172
+          META_INSTAGRAM_LOGIN_APP_ID=4567945626796573
+          META_INSTAGRAM_LOGIN_APP_SECRET=${META_INSTAGRAM_LOGIN_APP_SECRET}
+          META_INSTAGRAM_LOGIN_REDIRECT_URI=https://api.valueor.org/api/oauth/instagram/callback
+          META_INSTAGRAM_LOGIN_GRAPH_VERSION=v21.0
+          EOF
+          # Strip accidental leading spaces from heredoc indentation
+          sed -i 's/^[[:space:]]*//' "$OVERLAY"
+          chmod 600 "$OVERLAY"
+          echo "overlay_keys=$(cut -d= -f1 "$OVERLAY" | paste -sd, -)"
+          # Refuse public-all allowlist
+          if grep -Eq '^META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS=\*' "$OVERLAY"; then
+            echo "::error::Refusing public-all Instagram allowlist"
+            exit 2
+          fi
 
       - name: Run production deploy or rollback on this host
         env:

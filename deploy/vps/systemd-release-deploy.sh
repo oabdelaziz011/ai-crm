@@ -56,6 +56,20 @@ if [[ -z "$ROOT_PREFIX" ]]; then
   fi
 fi
 
+# Optional narrow Instagram Login env overlay staged by VPS deploy (keys logged, values never).
+ARTIFACTS_DIR="${VALUEOR_ARTIFACTS_DIR:-}"
+INSTAGRAM_OVERLAY="${ARTIFACTS_DIR}/.instagram-login.env.overlay"
+if [[ -n "$ARTIFACTS_DIR" && -f "$INSTAGRAM_OVERLAY" ]]; then
+  UPSERT_JS="${APP_DIR}/deploy/vps/upsert-env-overlay.mjs"
+  if [[ ! -f "$UPSERT_JS" ]]; then
+    echo "Missing ${UPSERT_JS} required to apply Instagram Login env overlay"
+    exit 2
+  fi
+  echo "[deploy] applying Instagram Login env overlay (values not logged)"
+  /usr/bin/node "$UPSERT_JS" --env "$ENV_FILE" --overlay "$INSTAGRAM_OVERLAY"
+  rm -f "$INSTAGRAM_OVERLAY"
+fi
+
 # Validate env for the real production topology (no ACME_EMAIL required).
 /usr/bin/node "${APP_DIR}/scripts/validate-vps-config.mjs" --env "$ENV_FILE" --topology nginx-systemd
 

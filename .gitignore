@@ -103,3 +103,5 @@ dev-snapshot-v*/_inventory.json
 # Local one-off tenant clone dumps (contain auth password hashes)
 artifacts/.local-dev-clone/
 
+
+scripts/ops/_tmp-IG-APP-SECRET.local

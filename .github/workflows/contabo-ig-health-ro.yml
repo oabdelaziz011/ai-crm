@@ -1,5 +1,4 @@
-﻿name: Contabo IG health RO4
-
+﻿name: Contabo IG health RO5
 on:
   workflow_dispatch:
     inputs:
@@ -7,48 +6,21 @@ on:
         description: Type readonly-ig-health
         required: true
         type: string
-
 jobs:
   inspect:
     if: github.event.inputs.confirm == 'readonly-ig-health'
     runs-on: [self-hosted, linux, x64, valueor-production]
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - name: Node fetch Graph from Contabo
+      - name: Readable logs and simulate full health handler timing
         run: |
           set -euo pipefail
-          echo "=== node fetch graph.instagram.com 3x ==="
-          node <<'NODE'
-          async function one(i) {
-            const t = Date.now();
-            try {
-              const res = await fetch('https://graph.instagram.com/v21.0/me?fields=id', {
-                headers: { Authorization: 'Bearer INVALID' },
-              });
-              const text = await res.text();
-              console.log(JSON.stringify({ i, status: res.status, ms: Date.now() - t, bodyLen: text.length }));
-            } catch (e) {
-              console.log(JSON.stringify({ i, error: String(e), ms: Date.now() - t }));
-            }
-          }
-          await one(1); await one(2); await one(3);
-          NODE
-
-          echo "=== node fetch graph.facebook.com ==="
-          node <<'NODE'
-          const t = Date.now();
-          try {
-            const res = await fetch('https://graph.facebook.com/v21.0/me?fields=id', {
-              headers: { Authorization: 'Bearer INVALID' },
-            });
-            console.log(JSON.stringify({ status: res.status, ms: Date.now() - t, body: (await res.text()).slice(0,120) }));
-          } catch (e) {
-            console.log(JSON.stringify({ error: String(e), ms: Date.now() - t }));
-          }
-          NODE
-
-          echo "=== dns ==="
-          getent hosts graph.instagram.com || true
-          getent hosts graph.facebook.com || true
-
+          echo "=== nginx log readability ==="
+          ls -la /var/log/nginx 2>&1 | head -n 30 || true
+          for f in /var/log/nginx/access.log /var/log/nginx/error.log /var/log/nginx/api.access.log; do
+            if [[ -r "$f" ]]; then echo "readable $f"; grep -E 'channel-outbound-health|/api/instagram' "$f" | tail -n 20 || true; else echo "not_readable $f"; fi
+          done
+          echo "=== journal user readable? ==="
+          journalctl --user -n 1 2>&1 | head -n 5 || true
+          ls -la /var/log/journal 2>&1 | head -n 5 || true
           echo "=== done ==="

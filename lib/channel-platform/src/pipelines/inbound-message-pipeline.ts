@@ -76,6 +76,7 @@ import {
   INTERACTIVE_REPLY_DEDUPE_TTL_MS,
   releaseInteractiveReplyDedupe,
 } from "../utils/interactive-reply-dedupe.js";
+import { buildMetaSenderConversationMetadataPatch } from "../adapters/meta/meta-sender-profile.js";
 import {
   toEmailRoutingClassificationRuntime,
   toEmailRoutingDecisionRuntime,
@@ -1027,6 +1028,40 @@ export class InboundMessagePipeline {
           departmentId: emailDepartmentId,
         }),
       );
+
+      // Persist/refresh Messenger + Instagram sender name + photo on the conversation so
+      // Omnichannel shows provider identity for both new and returning threads.
+      if (
+        (request.channelKey === "messenger" || request.channelKey === "instagram") &&
+        this.ports.conversation.updateConversationMetadata &&
+        this.ports.conversation.getConversationMetadata
+      ) {
+        try {
+          const currentMeta =
+            (await this.ports.conversation.getConversationMetadata(session.conversation_id)) ?? {};
+          const patch = buildMetaSenderConversationMetadataPatch(
+            request.channelKey,
+            normalized.metadata,
+            currentMeta,
+          );
+          if (patch) {
+            await this.ports.conversation.updateConversationMetadata({
+              conversationId: session.conversation_id,
+              metadata: { ...currentMeta, ...patch },
+            });
+            request.trace?.step("webhook.meta_sender_profile_synced", {
+              conversationId: session.conversation_id,
+              channelKey: request.channelKey,
+              hasSenderName: Boolean(patch.senderName),
+              hasProfilePic: Boolean(
+                patch.profilePicUrl || patch.messengerProfilePic || patch.instagramProfilePic,
+              ),
+            });
+          }
+        } catch {
+          // Best-effort identity sync — never block inbound.
+        }
+      }
 
       if (request.channelKey === "email") {
         normalized = {

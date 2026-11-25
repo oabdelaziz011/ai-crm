@@ -37,6 +37,47 @@ export const META_ERROR_NUMBER_ALREADY_CLOUD_API = 2655122;
 /** Partner credit-line / already-shared with another solution provider (related family). */
 export const META_ERROR_ALREADY_SHARED_WITH_PARTNER = 2655093;
 
+/**
+ * Meta #3441067 — number sits on a WABA in a Business Portfolio the user does not manage.
+ * Source: Meta Embedded Signup Flow Errors (phone setup).
+ */
+export const META_ERROR_NUMBER_OTHER_BUSINESS_PORTFOLIO = 3441067;
+
+/**
+ * Meta #3441103 — number belongs to a different Business Portfolio than the one selected.
+ * Source: Meta Embedded Signup Flow Errors (WhatsApp Business app user onboarding).
+ */
+export const META_ERROR_NUMBER_DIFFERENT_PORTFOLIO_SELECTED = 3441103;
+
+/**
+ * Meta #3441090 — number is already on another WABA inside the same Business Portfolio.
+ * Source: Meta Embedded Signup Flow Errors (phone setup).
+ */
+export const META_ERROR_NUMBER_OTHER_WABA_SAME_PORTFOLIO = 3441090;
+
+/** Older / related “not associated with the business you selected” family. */
+export const META_ERROR_NUMBER_NOT_ASSOCIATED_WITH_BUSINESS_A = 3441041;
+export const META_ERROR_NUMBER_NOT_ASSOCIATED_WITH_BUSINESS_B = 3441062;
+export const META_ERROR_NUMBER_NOT_LINKED_TO_SELECTED_BUSINESS = 2655127;
+
+const OTHER_PORTFOLIO_CODES = new Set([
+  META_ERROR_NUMBER_OTHER_BUSINESS_PORTFOLIO,
+  META_ERROR_NUMBER_DIFFERENT_PORTFOLIO_SELECTED,
+  META_ERROR_NUMBER_NOT_ASSOCIATED_WITH_BUSINESS_A,
+  META_ERROR_NUMBER_NOT_ASSOCIATED_WITH_BUSINESS_B,
+  META_ERROR_NUMBER_NOT_LINKED_TO_SELECTED_BUSINESS,
+]);
+
+function looksLikeOtherBusinessPortfolioMessage(message: string): boolean {
+  const text = message.toLowerCase();
+  return (
+    /business portfolio|محفظة أعمال|محفظه اعمال|business manager|حساب أعمال آخر|حساب اعمال اخر/i.test(
+      text,
+    ) &&
+    /another|different|don't manage|do not manage|لا تدير|غير|أخرى|اخري|تاني|ثاني/i.test(text)
+  );
+}
+
 export function extractMetaGraphError(payload: unknown): GraphErrorLike | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   const root = payload as Record<string, unknown>;
@@ -79,6 +120,35 @@ export function mapMetaEmbeddedSignupGraphError(
       code: "ES_META_ALREADY_SHARED_WITH_PARTNER",
       message:
         "Meta error 2655093: this WhatsApp Business Account or number appears already associated with another partner or credit line. ValueOR cannot release that association. Ask the current partner/Meta administrator to resolve ownership before retrying.",
+      metaErrorCode,
+      metaErrorSubcode,
+    };
+  }
+
+  if (metaErrorCode === META_ERROR_NUMBER_OTHER_WABA_SAME_PORTFOLIO) {
+    return {
+      code: "ES_META_NUMBER_OTHER_WABA_SAME_PORTFOLIO",
+      message:
+        "Meta error 3441090: this phone number is already on another WhatsApp Business Account in the same Meta Business Portfolio. In WhatsApp Manager, remove the number from that other WABA (or pick that WABA), then retry Embedded Signup. ValueOR does not delete Meta assets automatically.",
+      metaErrorCode,
+      metaErrorSubcode,
+    };
+  }
+
+  if (metaErrorCode != null && OTHER_PORTFOLIO_CODES.has(metaErrorCode)) {
+    return {
+      code: "ES_META_NUMBER_OTHER_BUSINESS_PORTFOLIO",
+      message: `Meta error ${metaErrorCode}: this phone number is already linked to a WhatsApp Business Account in another Meta Business Portfolio (or a portfolio different from the one you selected). Go back in Meta’s signup and select the portfolio that owns the number, or ask an admin of that portfolio to grant you access / release the number. ValueOR cannot move Meta portfolio ownership.`,
+      metaErrorCode,
+      metaErrorSubcode,
+    };
+  }
+
+  if (looksLikeOtherBusinessPortfolioMessage(rawMessage)) {
+    return {
+      code: "ES_META_NUMBER_OTHER_BUSINESS_PORTFOLIO",
+      message:
+        "This phone number appears linked to another Meta Business Portfolio. In Meta Embedded Signup, select the portfolio that already owns the number, or ask that portfolio’s admin to grant access / release it. ValueOR cannot move Meta portfolio ownership.",
       metaErrorCode,
       metaErrorSubcode,
     };

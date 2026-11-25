@@ -3,6 +3,7 @@ import {
   isAuthenticatedApiConfigured,
   resolveAuthenticatedApiBase,
 } from "@/lib/api-server/normalize-api-base";
+import { requestMessengerOutboundHealth } from "@/lib/channels/messenger-outbound-health-client";
 
 export type CompanyMessengerSettings = {
   companyId: string;
@@ -127,13 +128,19 @@ export function isMessengerApiConfigured(): boolean {
   return isAuthenticatedApiConfigured();
 }
 
-export function fetchMessengerOutboundHealth(
+export async function fetchMessengerOutboundHealth(
   companyId: string,
   companyChannelId: string,
 ): Promise<MessengerOutboundHealthResponse> {
-  return postMessengerApi<MessengerOutboundHealthResponse>("/messenger/channel-outbound-health", {
+  const base = getApiBaseUrl();
+  if (!base) {
+    throw new Error("VITE_API_SERVER_URL is not configured");
+  }
+  return requestMessengerOutboundHealth({
+    apiBase: base,
     companyId,
     companyChannelId,
+    authHeaders: await buildAuthHeaders(),
   });
 }
 

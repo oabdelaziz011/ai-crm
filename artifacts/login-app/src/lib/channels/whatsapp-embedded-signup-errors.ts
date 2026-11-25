@@ -20,6 +20,8 @@ const CODE_TO_DESCRIPTION: Record<string, string> = {
   ES_CONNECTION_EXISTS: "existingConnection",
   ES_META_NUMBER_ALREADY_CLOUD_API: "metaNumberAlreadyCloudApi",
   ES_META_ALREADY_SHARED_WITH_PARTNER: "metaAlreadySharedWithPartner",
+  ES_META_NUMBER_OTHER_BUSINESS_PORTFOLIO: "metaNumberOtherBusinessPortfolio",
+  ES_META_NUMBER_OTHER_WABA_SAME_PORTFOLIO: "metaNumberOtherWabaSamePortfolio",
   ES_REGISTER_PIN_MISSING: "registerPinMissing",
   ES_REGISTER_FAILED: "registerFailed",
   ES_WEBHOOK_SUBSCRIBE_FAILED: "webhookSubscribeFailed",
@@ -54,6 +56,25 @@ export function resolveEmbeddedSignupErrorPresentation(input: {
     return {
       titleKey: "failed",
       descriptionKey: "metaAlreadySharedWithPartner",
+    };
+  }
+  if (
+    metaErrorCode === 3441067 ||
+    metaErrorCode === 3441103 ||
+    metaErrorCode === 3441041 ||
+    metaErrorCode === 3441062 ||
+    metaErrorCode === 2655127 ||
+    code === "ES_META_NUMBER_OTHER_BUSINESS_PORTFOLIO"
+  ) {
+    return {
+      titleKey: "failed",
+      descriptionKey: "metaNumberOtherBusinessPortfolio",
+    };
+  }
+  if (metaErrorCode === 3441090 || code === "ES_META_NUMBER_OTHER_WABA_SAME_PORTFOLIO") {
+    return {
+      titleKey: "failed",
+      descriptionKey: "metaNumberOtherWabaSamePortfolio",
     };
   }
 

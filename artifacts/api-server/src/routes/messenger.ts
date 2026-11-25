@@ -1,20 +1,93 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type NextFunction, type Request, type Response } from "express";
 import {
   createSupabaseMessengerCredentialsLoader,
   parseMessengerChannelReferences,
   performMessengerOutboundHealthCheck,
   resolveMessengerRuntimeConfiguration,
 } from "@workspace/channel-platform";
+import { logger } from "../lib/logger.js";
+import { applyApiCorsHeaders } from "../middleware/cors.js";
+import { HttpError } from "../middleware/error-handler.js";
 import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
+import {
+  isMessengerOutboundHealthPath,
+  timeMessengerHealthStage,
+  withMessengerHealthTimeout,
+  wrapMessengerHealthHardDeadline,
+  wrapMessengerHealthMiddleware,
+} from "./messenger-health-diag.js";
+
+/** Keep Meta Graph JSON+CORS ahead of Cloudflare/Nginx proxy budgets (which have no ACAO). */
+export const MESSENGER_OUTBOUND_HEALTH_TIMEOUT_MS = 20_000;
 
 const router: IRouter = Router();
 
 // Do not run auth for unrelated paths (e.g. public /oauth/*/callback) that share the API root mount.
 router.use(confineToPathPrefixes("/messenger"));
-router.use(requireSupabaseAuth);
-router.use(requireCompanyScope("companyId"));
+
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if (!isMessengerOutboundHealthPath(req) || req.method === "OPTIONS") {
+    next();
+    return;
+  }
+
+  const started = Date.now();
+  logger.info(
+    {
+      messengerHealthDiag: true,
+      stage: "received",
+      method: req.method,
+      origin: req.header("origin") ?? null,
+      hasAuthorization: Boolean(req.header("authorization")),
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+    },
+    "messenger.channel-outbound-health received",
+  );
+
+  res.on("finish", () => {
+    logger.info(
+      {
+        messengerHealthDiag: true,
+        stage: "finished",
+        method: req.method,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - started,
+        requestId: req.requestId,
+        correlationId: req.correlationId,
+      },
+      "messenger.channel-outbound-health finished",
+    );
+  });
+
+  next();
+});
+
+// Hard deadline writes JSON+CORS itself if anything below hangs past the proxy-safe budget.
+router.use(wrapMessengerHealthHardDeadline());
+
+// Health path: timed auth/scope wrappers. Other Messenger routes keep plain auth/scope.
+const messengerHealthAuth = wrapMessengerHealthMiddleware("supabase_auth", requireSupabaseAuth);
+const messengerHealthScope = wrapMessengerHealthMiddleware(
+  "company_scope",
+  requireCompanyScope("companyId"),
+);
+const messengerCompanyScope = requireCompanyScope("companyId");
+
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if (isMessengerOutboundHealthPath(req) && req.method !== "OPTIONS") {
+    return messengerHealthAuth(req, res, next);
+  }
+  return requireSupabaseAuth(req, res, next);
+});
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if (isMessengerOutboundHealthPath(req) && req.method !== "OPTIONS") {
+    return messengerHealthScope(req, res, next);
+  }
+  return messengerCompanyScope(req, res, next);
+});
 
 router.post("/messenger/channel-outbound-health", async (req, res, next) => {
   try {
@@ -26,25 +99,51 @@ router.post("/messenger/channel-outbound-health", async (req, res, next) => {
     }
 
     const platform = getWebhookPlatform();
-    const channel = await platform.ports.registry.getCompanyChannel(companyChannelId);
+    const channel = await timeMessengerHealthStage(req, "channel_lookup", () =>
+      platform.ports.registry.getCompanyChannel(companyChannelId),
+    );
     if (!channel || channel.companyId !== companyId || channel.channelKey !== "messenger") {
       res.status(404).json({ error: "messenger_channel_not_found" });
       return;
     }
 
     const credentialsLoader = createSupabaseMessengerCredentialsLoader(platform.client);
-    const runtimeConfig = await resolveMessengerRuntimeConfiguration(
-      companyId,
-      parseMessengerChannelReferences(channel.configuration),
-      credentialsLoader,
+    const runtimeConfig = await timeMessengerHealthStage(req, "credentials_load", () =>
+      resolveMessengerRuntimeConfiguration(
+        companyId,
+        parseMessengerChannelReferences(channel.configuration),
+        credentialsLoader,
+      ),
     );
 
-    const report = await performMessengerOutboundHealthCheck({
-      companyId,
-      runtimeConfig,
+    const report = await timeMessengerHealthStage(req, "meta_health", async () => {
+      const abort = new AbortController();
+      const abortTimer = setTimeout(() => abort.abort(), MESSENGER_OUTBOUND_HEALTH_TIMEOUT_MS);
+      try {
+        return await withMessengerHealthTimeout(
+          performMessengerOutboundHealthCheck({
+            companyId,
+            runtimeConfig,
+            signal: abort.signal,
+          }),
+          MESSENGER_OUTBOUND_HEALTH_TIMEOUT_MS,
+          () =>
+            new HttpError(
+              504,
+              "Messenger health check timed out before Meta Graph responded.",
+              "messenger_health_timeout",
+            ),
+        );
+      } finally {
+        clearTimeout(abortTimer);
+      }
     });
 
-    res.status(report.ok ? 200 : 502).json(report);
+    // Always HTTP 200 for a completed health evaluation (ok true/false in body).
+    // Application-level failure must NOT use HTTP 502: proxies/CDN treat 502 as a
+    // gateway error and browsers then surface CORS/"Failed to fetch" instead of JSON.
+    applyApiCorsHeaders(req, res);
+    res.status(200).json(report);
   } catch (error) {
     next(error);
   }

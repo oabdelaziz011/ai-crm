@@ -3,6 +3,8 @@ import type { NormalizedInboundMessageDto } from "../../dto/channel-dto.js";
 export type MetaSenderProfile = {
   senderName: string | null;
   profilePicUrl: string | null;
+  /** Instagram username when Graph returns one. */
+  username?: string | null;
 };
 
 export type FetchMetaSenderProfileInput = {
@@ -42,7 +44,7 @@ export async function fetchMetaSenderProfile(
   const senderId = String(input.senderExternalId ?? "").trim();
   const token = String(input.accessToken ?? "").trim();
   if (!senderId || !token) {
-    return { senderName: null, profilePicUrl: null };
+    return { senderName: null, profilePicUrl: null, username: null };
   }
 
   const version = sanitizeGraphVersion(input.apiVersion);
@@ -69,8 +71,10 @@ export async function fetchMetaSenderProfile(
       error?: { message?: string };
     };
     if (!res.ok) {
-      return { senderName: null, profilePicUrl: null };
+      return { senderName: null, profilePicUrl: null, username: null };
     }
+    const username =
+      typeof json.username === "string" && json.username.trim() ? json.username.trim() : null;
     return {
       senderName: buildDisplayName({
         name: json.name,
@@ -78,35 +82,109 @@ export async function fetchMetaSenderProfile(
         lastName: json.last_name,
         username: json.username,
       }),
-      profilePicUrl: typeof json.profile_pic === "string" && json.profile_pic.trim()
-        ? json.profile_pic.trim()
-        : null,
+      profilePicUrl:
+        typeof json.profile_pic === "string" && json.profile_pic.trim()
+          ? json.profile_pic.trim()
+          : null,
+      username,
     };
   } catch {
-    return { senderName: null, profilePicUrl: null };
+    return { senderName: null, profilePicUrl: null, username: null };
   }
 }
 
-/** Merge sender profile into inbound metadata without overwriting existing values. */
+/** Merge sender profile into inbound message metadata (refresh name + photo when Graph returns them). */
 export function applyMetaSenderProfileToNormalized(
   normalized: NormalizedInboundMessageDto,
   channelKey: "messenger" | "instagram",
   profile: MetaSenderProfile,
 ): NormalizedInboundMessageDto {
   const metadata: Record<string, unknown> = { ...(normalized.metadata ?? {}) };
-  if (profile.senderName && typeof metadata.senderName !== "string") {
+  if (profile.senderName) {
     metadata.senderName = profile.senderName;
   }
+  if (profile.username) {
+    metadata.username = profile.username;
+    if (channelKey === "instagram") {
+      metadata.instagramUsername = profile.username;
+      metadata.channelUsername = profile.username;
+    }
+  }
   if (profile.profilePicUrl) {
-    if (channelKey === "messenger" && typeof metadata.messengerProfilePic !== "string") {
+    metadata.profilePicUrl = profile.profilePicUrl;
+    if (channelKey === "messenger") {
       metadata.messengerProfilePic = profile.profilePicUrl;
     }
-    if (channelKey === "instagram" && typeof metadata.instagramProfilePic !== "string") {
+    if (channelKey === "instagram") {
       metadata.instagramProfilePic = profile.profilePicUrl;
-    }
-    if (typeof metadata.profilePicUrl !== "string") {
-      metadata.profilePicUrl = profile.profilePicUrl;
     }
   }
   return { ...normalized, metadata };
+}
+
+/**
+ * Build conversation-metadata fields from an enriched inbound message so Omnichannel
+ * can show provider name + photo on existing threads (not only on first create).
+ */
+export function buildMetaSenderConversationMetadataPatch(
+  channelKey: "messenger" | "instagram",
+  inboundMetadata: Record<string, unknown> | null | undefined,
+  currentConversationMetadata: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+  const inbound = inboundMetadata ?? {};
+  const current = currentConversationMetadata ?? {};
+  const patch: Record<string, unknown> = {};
+
+  const senderName =
+    typeof inbound.senderName === "string" && inbound.senderName.trim()
+      ? inbound.senderName.trim()
+      : null;
+  if (senderName && current.senderName !== senderName) {
+    patch.senderName = senderName;
+  }
+
+  const profilePicUrl =
+    typeof inbound.profilePicUrl === "string" && inbound.profilePicUrl.trim()
+      ? inbound.profilePicUrl.trim()
+      : channelKey === "messenger" &&
+          typeof inbound.messengerProfilePic === "string" &&
+          inbound.messengerProfilePic.trim()
+        ? inbound.messengerProfilePic.trim()
+        : channelKey === "instagram" &&
+            typeof inbound.instagramProfilePic === "string" &&
+            inbound.instagramProfilePic.trim()
+          ? inbound.instagramProfilePic.trim()
+          : null;
+
+  if (profilePicUrl) {
+    if (current.profilePicUrl !== profilePicUrl) patch.profilePicUrl = profilePicUrl;
+    if (channelKey === "messenger" && current.messengerProfilePic !== profilePicUrl) {
+      patch.messengerProfilePic = profilePicUrl;
+    }
+    if (channelKey === "instagram" && current.instagramProfilePic !== profilePicUrl) {
+      patch.instagramProfilePic = profilePicUrl;
+    }
+  }
+
+  if (channelKey === "instagram") {
+    const username =
+      typeof inbound.instagramUsername === "string" && inbound.instagramUsername.trim()
+        ? inbound.instagramUsername.trim()
+        : typeof inbound.username === "string" && inbound.username.trim()
+          ? inbound.username.trim()
+          : typeof inbound.channelUsername === "string" && inbound.channelUsername.trim()
+            ? inbound.channelUsername.trim()
+            : null;
+    if (username) {
+      if (current.instagramUsername !== username) patch.instagramUsername = username;
+      if (current.channelUsername !== username) patch.channelUsername = username;
+      if (current.username !== username) patch.username = username;
+    }
+  }
+
+  if (channelKey === "messenger" && senderName && current.messengerName !== senderName) {
+    patch.messengerName = senderName;
+  }
+
+  return Object.keys(patch).length > 0 ? patch : null;
 }

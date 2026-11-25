@@ -3,7 +3,12 @@ import {
   isAuthenticatedApiConfigured,
   resolveAuthenticatedApiBase,
 } from "@/lib/api-server/normalize-api-base";
-import { mapInstagramApiNetworkError } from "@/lib/channels/instagram-api-network-error";
+import {
+  requestInstagramOutboundHealth,
+  type InstagramOutboundHealthResponse,
+} from "@/lib/channels/instagram-outbound-health-client";
+
+export type { InstagramOutboundHealthResponse };
 
 export type CompanyInstagramSettings = {
   companyId: string;
@@ -19,30 +24,6 @@ export type CompanyInstagramSettings = {
   hasWebhookVerifyToken: boolean;
   hasAppSecret: boolean;
   updatedAt?: string;
-};
-
-export type InstagramOutboundHealthResponse = {
-  ok: boolean;
-  latencyMs: number;
-  error?: string;
-  metaErrorCode?: number;
-  instagramBusinessAccountId: string;
-  pageId: string | null;
-  accessToken: {
-    valid: boolean;
-    ownerId?: string;
-    ownerName?: string;
-  };
-  instagramAccount: {
-    ok: boolean;
-    username?: string;
-    name?: string;
-    error?: string;
-  };
-  sendProbe: {
-    ok: boolean;
-    error?: string;
-  };
 };
 
 export type InstagramSettingsDraft = Omit<
@@ -109,47 +90,23 @@ async function buildAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
-async function postInstagramApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
+export function isInstagramApiConfigured(): boolean {
+  return isAuthenticatedApiConfigured();
+}
+
+export async function fetchInstagramOutboundHealth(
+  companyId: string,
+  companyChannelId: string,
+): Promise<InstagramOutboundHealthResponse> {
   const base = getApiBaseUrl();
   if (!base) {
     throw new Error("VITE_API_SERVER_URL is not configured");
   }
 
-  const url = `${base}${path}`;
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: await buildAuthHeaders(),
-      credentials: "include",
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    throw mapInstagramApiNetworkError(error, url);
-  }
-
-  let payload: T & { error?: string; message?: string };
-  try {
-    payload = (await response.json()) as T & { error?: string; message?: string };
-  } catch {
-    throw new Error(`Instagram API returned non-JSON (${response.status}) from ${url}`);
-  }
-  if (!response.ok) {
-    throw new Error(payload.message ?? payload.error ?? `Instagram API failed (${response.status})`);
-  }
-  return payload;
-}
-
-export function isInstagramApiConfigured(): boolean {
-  return isAuthenticatedApiConfigured();
-}
-
-export function fetchInstagramOutboundHealth(
-  companyId: string,
-  companyChannelId: string,
-): Promise<InstagramOutboundHealthResponse> {
-  return postInstagramApi<InstagramOutboundHealthResponse>("/instagram/channel-outbound-health", {
+  return requestInstagramOutboundHealth({
+    apiBase: base,
     companyId,
     companyChannelId,
+    authHeaders: await buildAuthHeaders(),
   });
 }

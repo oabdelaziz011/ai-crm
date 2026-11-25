@@ -1,0 +1,131 @@
+name: Build production release artifact
+
+# Build-only. Produces valueor-production-release for Contabo FE replace.
+# Does NOT run on Contabo, does NOT call valueor-prod-deploy, does NOT restart API.
+# Contabo publishing remains Contabo FE replace or VPS deploy only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full 40-char main SHA to build into valueor-release-<sha>.tgz
+        required: true
+        type: string
+      confirm:
+        description: Type build-release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-release:
+    if: github.event.inputs.confirm == 'build-release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Validate release_sha
+        env:
+          RELEASE_SHA: ${{ github.event.inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          RELEASE_SHA="$(printf '%s' "$RELEASE_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::release_sha must be a full 40-char lowercase hex git SHA"
+            exit 2
+          fi
+          echo "RELEASE_SHA=$RELEASE_SHA" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.release_sha }}
+
+      - name: Confirm checked-out SHA
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git rev-parse HEAD | tr '[:upper:]' '[:lower:]')"
+          echo "checked_out=$ACTUAL"
+          if [[ "$ACTUAL" != "$RELEASE_SHA" ]]; then
+            echo "::error::checkout SHA mismatch (wanted $RELEASE_SHA, got $ACTUAL)"
+            exit 2
+          fi
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API bundle
+        run: pnpm --dir artifacts/api-server build
+
+      - name: Build frontend bundle
+        run: pnpm --dir artifacts/login-app build
+        env:
+          GITHUB_SHA: ${{ env.RELEASE_SHA }}
+          VITE_APP_ORIGIN: https://www.valueor.org
+          VITE_SITE_URL: https://www.valueor.org
+          VITE_API_SERVER_URL: https://api.valueor.org
+          VITE_WEBHOOK_BASE_URL: https://webhook.valueor.org
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          # Exact Contabo bake-time gates from vps-deploy.yml (not frontend-production-artifact).
+          VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED: "true"
+          VITE_WHATSAPP_COEXISTENCE_ENABLED: "false"
+          VITE_META_MESSENGER_OAUTH_ENABLED: "false"
+          VITE_META_INSTAGRAM_LOGIN_ENABLED: "true"
+          VITE_META_PAGES_OAUTH_ENABLED: "false"
+
+      - name: Write frontend version.json
+        run: |
+          set -euo pipefail
+          printf '{"service":"login-app","sha":"%s"}\n' "$RELEASE_SHA" \
+            > artifacts/login-app/dist/public/version.json
+
+      - name: Verify frontend production hosts and build identity
+        run: |
+          set -euo pipefail
+          node scripts/verify-frontend-production-bundle.mjs artifacts/login-app/dist/public
+          test -f artifacts/login-app/dist/public/index.html
+          grep -F "content=\"${RELEASE_SHA}\"" artifacts/login-app/dist/public/index.html
+          python3 - <<PY
+          import json, os
+          j = json.load(open("artifacts/login-app/dist/public/version.json", encoding="utf-8"))
+          assert j.get("sha", "").lower() == os.environ["RELEASE_SHA"], j
+          print("version_json_sha_ok")
+          PY
+
+      - name: Stage release artifact tree
+        run: |
+          set -euo pipefail
+          STAGE="${RUNNER_TEMP}/valueor-release-${RELEASE_SHA}"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/api/artifacts/api-server/dist"
+          mkdir -p "$STAGE/api/deploy/vps"
+          mkdir -p "$STAGE/api/scripts"
+          cp -a artifacts/api-server/dist/. "$STAGE/api/artifacts/api-server/dist/"
+          cp deploy/vps/start-api.mjs "$STAGE/api/deploy/vps/start-api.mjs"
+          cp -a scripts/lib "$STAGE/api/scripts/lib"
+          cp package.json "$STAGE/api/package.json"
+          mkdir -p "$STAGE/frontend"
+          cp -a artifacts/login-app/dist/public/. "$STAGE/frontend/"
+          test -f "$STAGE/api/artifacts/api-server/dist/main.mjs"
+          test -f "$STAGE/frontend/index.html"
+          test -f "$STAGE/frontend/version.json"
+          tar -C "$STAGE" -czf "${RUNNER_TEMP}/valueor-release-${RELEASE_SHA}.tgz" api frontend
+          echo "STAGE_TGZ=${RUNNER_TEMP}/valueor-release-${RELEASE_SHA}.tgz" >> "$GITHUB_ENV"
+          ls -la "${RUNNER_TEMP}/valueor-release-${RELEASE_SHA}.tgz"
+          sha256sum "${RUNNER_TEMP}/valueor-release-${RELEASE_SHA}.tgz"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: valueor-production-release
+          path: ${{ env.STAGE_TGZ }}
+          if-no-files-found: error
+          retention-days: 14

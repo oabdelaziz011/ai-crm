@@ -7,7 +7,12 @@ export type MetaOauthReadinessLike = {
   ready: boolean;
   reason: string | null;
   missingConfigKeys?: string[];
+  redirectUri?: string | null;
 };
+
+/** Exact production Messenger callback Meta must whitelist (Valid OAuth Redirect URIs). */
+export const VALUEOR_MESSENGER_OAUTH_REDIRECT_URI =
+  "https://api.valueor.org/api/oauth/messenger/callback";
 
 export function formatMetaOauthReadinessMessage(
   readiness: MetaOauthReadinessLike | null | undefined,
@@ -24,14 +29,14 @@ export function formatMetaOauthReadinessMessage(
   ) {
     const label = channel === "messenger" ? "Messenger" : "Instagram";
     return (
-      `${label} Connect is disabled until Development Meta App credentials are set in local env: ` +
+      `${label} Connect is disabled until Meta App credentials are set: ` +
       `${missing.join(", ")}. ` +
-      `Add them to .env.localstack or .env.local.integration, then restart the local API.`
+      `For production, set GitHub Production secrets / Contabo overlay, then redeploy.`
     );
   }
 
   if (reason === "MSL_COMPANY_NOT_ALLOWED" || reason === "IGL_COMPANY_NOT_ALLOWED") {
-    return "This company is not on the local OAuth allowlist (META_*_ALLOWED_COMPANY_IDS).";
+    return "This company is not on the OAuth allowlist (META_*_ALLOWED_COMPANY_IDS).";
   }
 
   if (reason === "MSL_DISABLED" || reason === "IGL_DISABLED") {
@@ -39,4 +44,19 @@ export function formatMetaOauthReadinessMessage(
   }
 
   return `Self-service not ready (${reason}).`;
+}
+
+/**
+ * When Meta shows "URL blocked", the Facebook Login app is missing this exact redirect URI.
+ * Safe to show — public callback URL, never secrets.
+ */
+export function formatMessengerRedirectUriHint(
+  readiness: MetaOauthReadinessLike | null | undefined,
+): string {
+  const uri =
+    String(readiness?.redirectUri ?? "").trim() || VALUEOR_MESSENGER_OAUTH_REDIRECT_URI;
+  return (
+    `If Meta shows "URL blocked", open Meta App → Facebook Login → Settings → Valid OAuth Redirect URIs ` +
+    `and add exactly: ${uri}`
+  );
 }

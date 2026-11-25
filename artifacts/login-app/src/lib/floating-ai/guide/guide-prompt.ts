@@ -96,6 +96,7 @@ export function buildGuideSystemPrompt(input: BuildGuidePromptInput): string {
     '{"type":"navigate","routeId":"<registry-route-id>"}',
     GUIDE_ACTION_FENCE_END,
     "Only use routeIds from permittedRouteIds. If unauthorized, explain the missing permission and that an admin can grant it via Roles.",
+    "For connecting WhatsApp / Messenger / Instagram use ONLY settings.whatsapp, settings.messenger, or settings.instagram — never channels and never whatsapp (legacy Omnichannel redirect).",
     "",
     "## Current page context",
     `- route: ${input.page.route ?? "unknown"}`,

@@ -665,6 +665,22 @@
             "completeOrAskAdmin": "Complete the remaining setup in the UI. If a control is disabled, you may need ai.whatsapp.manage or an administrator."
           }
         },
+        "connectMessenger": {
+          "title": "Connect Messenger",
+          "steps": {
+            "openSettings": "I will open Messenger Settings. Confirm when the page is visible.",
+            "reviewConnection": "Use Connect Facebook Messenger on this page (not the Channels hub). Tell me when you are ready for the next tip.",
+            "completeOrAskAdmin": "Finish authorization in Meta, then paste the webhook verify token into the Meta App Dashboard if asked. Guide cannot complete Meta for you."
+          }
+        },
+        "connectInstagram": {
+          "title": "Connect Instagram",
+          "steps": {
+            "openSettings": "I will open Instagram Settings. Confirm when the page is visible.",
+            "reviewConnection": "Use Instagram Login on this page to connect. Tell me when you are ready for the next tip.",
+            "completeOrAskAdmin": "Complete the remaining Meta steps in the UI. Guide cannot change Instagram credentials for you."
+          }
+        },
         "addCustomer": {
           "title": "Add a customer",
           "steps": {

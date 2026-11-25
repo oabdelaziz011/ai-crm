@@ -15,6 +15,7 @@ import {
   type GuideTaskId,
 } from "./permission-matrix";
 import { findGuidePageByRouteId } from "./product-knowledge";
+import { GUIDE_SETTINGS_CHANNEL_TARGETS } from "./guide-settings-targets";
 
 export type GuideEffectiveAuth = {
   userId: string | null;
@@ -134,12 +135,26 @@ const GUIDE_ROUTE_CANDIDATES: readonly DashboardSectionId[] = [
 ];
 
 /** Snapshot of permitted Guide route ids for the current user (dynamic each call). */
-export function listPermittedGuideRouteIds(auth: GuideEffectiveAuth): DashboardSectionId[] {
+export function listPermittedGuideRouteIds(auth: GuideEffectiveAuth): string[] {
   if (!auth.permissionsAvailable) return [];
-  const ids: DashboardSectionId[] = [];
+  const ids: string[] = [];
   for (const routeId of GUIDE_ROUTE_CANDIDATES) {
+    // Never advertise legacy dashboard `whatsapp` (Omnichannel redirect) to the Guide LLM.
+    if (routeId === "whatsapp") continue;
     const decision = evaluateGuideRouteAccess(auth, routeId);
     if (decision.allowed) ids.push(routeId);
+  }
+  // Channel connect pages live under Settings — expose logical Guide route ids.
+  for (const target of Object.values(GUIDE_SETTINGS_CHANNEL_TARGETS)) {
+    if (!hasGuideNavigationContext(auth)) continue;
+    const rbacOk =
+      auth.isSuperAdmin || target.anyOfPermissions.some((code) => hasCode(auth, code));
+    const commercialOk =
+      auth.isSuperAdmin ||
+      auth.commercialFeatureEnabled?.(target.commercialFeatureCode) === true;
+    if (rbacOk && commercialOk) {
+      ids.push(`settings.${target.id}`);
+    }
   }
   return ids;
 }
@@ -152,7 +167,7 @@ export function buildGuidePermissionSnapshot(auth: GuideEffectiveAuth): {
   isRefreshing: boolean;
   /** Sorted unique codes — fresh each build; never cache across turns. */
   permissionCodes: string[];
-  permittedRouteIds: DashboardSectionId[];
+  permittedRouteIds: string[];
   capturedAt: string;
 } {
   const codes = [...new Set(auth.permissionCodes)].sort();

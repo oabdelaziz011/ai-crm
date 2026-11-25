@@ -9,8 +9,12 @@ export type GuideWorkflowStep = {
   id: string;
   /** i18n key for step instruction */
   instructionKey: string;
-  /** Optional route to open before this step (permission-checked). */
-  navigateRouteId?: DashboardSectionId;
+  /**
+   * Optional route to open before this step (permission-checked).
+   * Use `settings.whatsapp` / `settings.messenger` / `settings.instagram` for channel connect
+   * (never the legacy dashboard `whatsapp` Omnichannel redirect).
+   */
+  navigateRouteId?: DashboardSectionId | `settings.${string}` | string;
   /** Require user confirmation / "done" before advancing. */
   awaitUserConfirmation: boolean;
 };
@@ -47,7 +51,7 @@ export const GUIDE_WORKFLOWS: readonly GuideWorkflow[] = Object.freeze([
       {
         id: "open_settings",
         instructionKey: "floatingAi.guide.workflows.connectWhatsapp.steps.openSettings",
-        navigateRouteId: "whatsapp",
+        navigateRouteId: "settings.whatsapp",
         awaitUserConfirmation: true,
       },
       {
@@ -58,6 +62,70 @@ export const GUIDE_WORKFLOWS: readonly GuideWorkflow[] = Object.freeze([
       {
         id: "complete_or_ask_admin",
         instructionKey: "floatingAi.guide.workflows.connectWhatsapp.steps.completeOrAskAdmin",
+        awaitUserConfirmation: false,
+      },
+    ],
+  },
+  {
+    id: "connect_messenger",
+    matchHints: [
+      "connect messenger",
+      "connect facebook messenger",
+      "messenger settings",
+      "ربط ماسنجر",
+      "ربط الماسنجر",
+      "اوصل ماسنجر",
+      "أوصل ماسنجر",
+      "فيسبوك ماسنجر",
+      "messenger verbinden",
+    ],
+    requiredTask: "settings.view",
+    steps: [
+      {
+        id: "open_settings",
+        instructionKey: "floatingAi.guide.workflows.connectMessenger.steps.openSettings",
+        navigateRouteId: "settings.messenger",
+        awaitUserConfirmation: true,
+      },
+      {
+        id: "review_connection",
+        instructionKey: "floatingAi.guide.workflows.connectMessenger.steps.reviewConnection",
+        awaitUserConfirmation: true,
+      },
+      {
+        id: "complete_or_ask_admin",
+        instructionKey: "floatingAi.guide.workflows.connectMessenger.steps.completeOrAskAdmin",
+        awaitUserConfirmation: false,
+      },
+    ],
+  },
+  {
+    id: "connect_instagram",
+    matchHints: [
+      "connect instagram",
+      "instagram settings",
+      "ربط انستجرام",
+      "ربط الإنستجرام",
+      "اوصل انستجرام",
+      "أوصل انستجرام",
+      "instagram verbinden",
+    ],
+    requiredTask: "settings.view",
+    steps: [
+      {
+        id: "open_settings",
+        instructionKey: "floatingAi.guide.workflows.connectInstagram.steps.openSettings",
+        navigateRouteId: "settings.instagram",
+        awaitUserConfirmation: true,
+      },
+      {
+        id: "review_connection",
+        instructionKey: "floatingAi.guide.workflows.connectInstagram.steps.reviewConnection",
+        awaitUserConfirmation: true,
+      },
+      {
+        id: "complete_or_ask_admin",
+        instructionKey: "floatingAi.guide.workflows.connectInstagram.steps.completeOrAskAdmin",
         awaitUserConfirmation: false,
       },
     ],
@@ -127,13 +195,15 @@ export function findGuideWorkflowById(id: string): GuideWorkflow | null {
   return GUIDE_WORKFLOWS.find((w) => w.id === id) ?? null;
 }
 
-/** Normalize colloquial WhatsApp spellings so Egyptian/Arabic variants still match. */
+/** Normalize colloquial channel spellings so Egyptian/Arabic variants still match. */
 function normalizeGuideWorkflowText(userText: string): string {
   return userText
     .trim()
     .toLowerCase()
     .replace(/الواتسب/g, "الواتساب")
     .replace(/واتسب/g, "واتساب")
+    .replace(/الانستا/g, "انستجرام")
+    .replace(/انستا(?!جرام)/g, "انستجرام")
     .replace(/اذي/g, "ازاي")
     .replace(/أذي/g, "ازاي");
 }
@@ -146,12 +216,17 @@ export function matchGuideWorkflow(userText: string): GuideWorkflow | null {
       return workflow;
     }
   }
-  // Connect WhatsApp: verb + whatsapp even when hint phrasing differs.
-  if (
-    /whatsapp|واتساب/.test(normalized) &&
-    /(connect|verbinden|ربط|اوصل|أوصل|ازاي|كيف)/.test(normalized)
-  ) {
+  // Channel connect: verb + channel even when hint phrasing differs.
+  const wantsConnect = /(connect|verbinden|ربط|اوصل|أوصل|ازاي|كيف)/.test(normalized);
+  if (!wantsConnect) return null;
+  if (/whatsapp|واتساب/.test(normalized)) {
     return findGuideWorkflowById("connect_whatsapp");
+  }
+  if (/messenger|ماسنجر|مسنجر/.test(normalized)) {
+    return findGuideWorkflowById("connect_messenger");
+  }
+  if (/instagram|انستجرام|إنستجرام/.test(normalized)) {
+    return findGuideWorkflowById("connect_instagram");
   }
   return null;
 }

@@ -76,9 +76,16 @@ describe("Phase 1C interactive guidance workflows", () => {
     }
   });
 
-  it("keeps step navigate targets on real registry routes", () => {
+  it("keeps channel connect steps on Settings pages (not Omnichannel / Channels hub)", () => {
     const wa = findGuideWorkflowById("connect_whatsapp");
-    assert.equal(wa?.steps[0]?.navigateRouteId, "whatsapp");
+    assert.equal(wa?.steps[0]?.navigateRouteId, "settings.whatsapp");
     assert.equal(wa?.requiredTask, "whatsapp.view");
+    assert.equal(findGuideWorkflowById("connect_messenger")?.steps[0]?.navigateRouteId, "settings.messenger");
+    assert.equal(findGuideWorkflowById("connect_instagram")?.steps[0]?.navigateRouteId, "settings.instagram");
+  });
+
+  it("matches Messenger and Instagram connect intents", () => {
+    assert.equal(matchGuideWorkflow("عايز اربط الماسنجر")?.id, "connect_messenger");
+    assert.equal(matchGuideWorkflow("connect Instagram please")?.id, "connect_instagram");
   });
 });

@@ -981,6 +981,15 @@
       "finish": "حفظ والتحقق من الاتصال",
       "connected": "تم ربط ماسنجر",
       "savedNotConnected": "تم الحفظ — الاتصال غير مكتمل",
+      "resultConnectedHint": "تم ربط الصفحة واشتراك الـ Webhook بنجاح.",
+      "resultIncompleteHint": "تم حفظ الاعتماد، لكن الاتصال لسه مش سليم بالكامل.",
+      "result": {
+        "connected": "تم ربط الصفحة واشتراك الـ Webhook بنجاح.",
+        "webhook_subscription_failed": "تم حفظ الاعتماد، لكن اشتراك الـ Webhook فشل. الصق رمز التحقق في Meta وأعد الربط لو لزم.",
+        "reauthorization_required": "تم حفظ الاعتماد، لكن فحص الصحة فشل. أعد الربط واختَر الصفحة تاني.",
+        "connection_expired": "انتهت صلاحية الاتصال. أعد ربط ماسنجر واختَر الصفحة تاني.",
+        "not_connected": "ماسنجر لسه مش متصل."
+      },
       "failed": "فشل ربط ماسنجر",
       "startFailed": "تعذر بدء تسجيل دخول فيسبوك",
       "pagesFailed": "تعذر تحميل الصفحات",
@@ -3048,7 +3057,13 @@
         "sms": "رسائل",
         "calls": "مكالمات",
         "history": "سجل المحادثات",
-        "historySubtitle": "الرسائل والبريد والإشعارات في تدفق واحد."
+        "historySubtitle": "الرسائل والبريد والإشعارات في تدفق واحد.",
+        "messagingHistoryTitle": "واتساب · ماسنجر · إنستجرام",
+        "messagingHistoryHint": "المحادثات المرتبطة بهذا العميل عبر قنوات المراسلة.",
+        "messagingHistoryEmpty": "لسه مفيش محادثات واتساب أو ماسنجر أو إنستجرام مربوطة.",
+        "messagingHistoryError": "تعذر تحميل سجل المراسلة.",
+        "openConversation": "فتح المحادثة",
+        "loadMore": "تحميل المزيد"
       },
       "notes": {
         "pinnedTitle": "ملاحظات مثبتة",

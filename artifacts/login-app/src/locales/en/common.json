@@ -1300,6 +1300,15 @@
       "finish": "Save & verify connection",
       "connected": "Messenger connected",
       "savedNotConnected": "Saved — not fully Connected",
+      "resultConnectedHint": "Page connected and webhook subscription succeeded.",
+      "resultIncompleteHint": "Credentials were saved, but the connection is not fully healthy yet.",
+      "result": {
+        "connected": "Page connected and webhook subscription succeeded.",
+        "webhook_subscription_failed": "Credentials saved, but webhook subscription failed. Paste the verify token into Meta and reconnect if needed.",
+        "reauthorization_required": "Credentials saved, but health check failed. Reconnect and select the Page again.",
+        "connection_expired": "Connection expired. Reconnect Messenger and select the Page again.",
+        "not_connected": "Messenger is not connected yet."
+      },
       "failed": "Messenger connection failed",
       "startFailed": "Could not start Facebook Login",
       "pagesFailed": "Could not load Pages",
@@ -3339,7 +3348,13 @@
         "sms": "SMS",
         "calls": "Calls",
         "history": "Conversation history",
-        "historySubtitle": "Messages, emails, and notifications unified in one stream."
+        "historySubtitle": "Messages, emails, and notifications unified in one stream.",
+        "messagingHistoryTitle": "WhatsApp · Messenger · Instagram",
+        "messagingHistoryHint": "Linked conversations for this customer across messaging channels.",
+        "messagingHistoryEmpty": "No WhatsApp, Messenger, or Instagram conversations linked yet.",
+        "messagingHistoryError": "Could not load messaging history.",
+        "openConversation": "Open conversation",
+        "loadMore": "Load more"
       },
       "notes": {
         "pinnedTitle": "Pinned notes",

@@ -169,7 +169,9 @@ export function resolveConversationIdentityAvatar(
 
   // Channel profile text (senderName etc.) may inform displayName via contact-display,
   // but there is no conversation-persisted image URL today → initials.
-  const metadataIdentity = extractContactIdentityFromMetadata(conversation?.source.metadata);
+  const metadataIdentity = extractContactIdentityFromMetadata(conversation?.source.metadata, {
+    channel: conversation?.channel,
+  });
   const hasChannelIdentity = Boolean(
     metadataIdentity.channelUsername || metadataIdentity.phone || metadataIdentity.email,
   );

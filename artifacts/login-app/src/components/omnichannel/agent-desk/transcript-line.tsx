@@ -47,6 +47,8 @@ type TranscriptLineProps = {
   onReaction?: (emoji: string | null) => void;
   reactionsEnabled?: boolean;
   starLabel?: string;
+  /** Customer profile image from conversation metadata / CRM (list/header share the same source). */
+  customerAvatarUrl?: string | null;
   attachmentLabels?: {
     download: string;
     openFullscreen: string;
@@ -161,6 +163,7 @@ export const TranscriptLine = memo(function TranscriptLine({
   onReaction,
   reactionsEnabled,
   starLabel = "Star",
+  customerAvatarUrl = null,
   attachmentLabels,
 }: TranscriptLineProps) {
   const [showTranslation, setShowTranslation] = useState(false);
@@ -238,7 +241,7 @@ export const TranscriptLine = memo(function TranscriptLine({
       <div className={`flex max-w-[68%] min-w-fit items-end gap-2 ${isOutgoing ? "flex-row-reverse" : "flex-row"}`}>
         {showMeta ? (
           <div
-            className={`mb-1 flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
+            className={`mb-1 flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold ${
               isCustomer
                 ? "bg-[var(--ad-surface-2)] text-[var(--ad-text-muted)]"
                 : isAssistant
@@ -247,7 +250,18 @@ export const TranscriptLine = memo(function TranscriptLine({
             }`}
             aria-hidden
           >
-            {isAssistant ? <Bot className="size-3.5" /> : initials(message.senderLabel)}
+            {isAssistant ? (
+              <Bot className="size-3.5" />
+            ) : isCustomer && customerAvatarUrl ? (
+              <img
+                src={customerAvatarUrl}
+                alt=""
+                className="size-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              initials(message.senderLabel)
+            )}
           </div>
         ) : (
           <div className="size-7 shrink-0" aria-hidden />

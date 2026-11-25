@@ -23,8 +23,30 @@ function readMetadataString(metadata: Record<string, unknown>, ...keys: string[]
 
 export function extractContactIdentityFromMetadata(
   metadata: Record<string, unknown> | null | undefined,
+  options?: { channel?: string | null },
 ): Omit<ConversationContactIdentity, "fullName"> {
   const source = metadata ?? {};
+  const channel = String(options?.channel ?? "")
+    .trim()
+    .toLowerCase();
+  const isMetaSocial = channel === "messenger" || channel === "instagram";
+
+  // WhatsApp/SMS unknown senders store the sender under senderExternalId / externalThreadId.
+  // Messenger PSID / Instagram IGSID must NEVER be treated as a phone number.
+  const phone = isMetaSocial
+    ? readMetadataString(source, "phone", "phoneNumber", "phone_number")
+    : readMetadataString(
+        source,
+        "phone",
+        "phoneNumber",
+        "phone_number",
+        "wa_id",
+        "senderExternalId",
+        "sender_external_id",
+        "externalThreadId",
+        "external_thread_id",
+      );
+
   return {
     businessName: readMetadataString(
       source,
@@ -33,18 +55,7 @@ export function extractContactIdentityFromMetadata(
       "companyName",
       "company_name",
     ),
-    // WhatsApp unknown senders store the sender under senderExternalId / externalThreadId.
-    phone: readMetadataString(
-      source,
-      "phone",
-      "phoneNumber",
-      "phone_number",
-      "wa_id",
-      "senderExternalId",
-      "sender_external_id",
-      "externalThreadId",
-      "external_thread_id",
-    ),
+    phone,
     email: readMetadataString(source, "email", "senderEmail", "sender_email"),
     channelUsername: readMetadataString(
       source,
@@ -78,7 +89,9 @@ export function formatChannelUsername(channel: OmnichannelChannelKey | string, u
 export function extractContactIdentityFromRecord(
   record: ConversationRecord,
 ): ConversationContactIdentity {
-  const fromMetadata = extractContactIdentityFromMetadata(record.metadata);
+  const fromMetadata = extractContactIdentityFromMetadata(record.metadata, {
+    channel: record.channel_type,
+  });
   return {
     fullName: null,
     ...fromMetadata,
@@ -91,7 +104,9 @@ export function buildEnrichedCustomerRef(
   if (!conversation) return null;
 
   const linked = conversation.customer;
-  const metadataIdentity = extractContactIdentityFromMetadata(conversation.source.metadata);
+  const metadataIdentity = extractContactIdentityFromMetadata(conversation.source.metadata, {
+    channel: conversation.channel,
+  });
 
   if (!linked?.id && !metadataIdentity.phone && !metadataIdentity.email && !metadataIdentity.channelUsername) {
     return linked;
@@ -110,8 +125,10 @@ export function buildContactDisplayInput(
   headerCustomer: { name: string; phone: string | null; email: string | null } | null | undefined,
   visitorLabel: string,
 ) {
+  const channel = conversation?.channel ?? null;
+  const isMetaSocial = channel === "messenger" || channel === "instagram";
   const metadataIdentity = conversation
-    ? extractContactIdentityFromMetadata(conversation.source.metadata)
+    ? extractContactIdentityFromMetadata(conversation.source.metadata, { channel })
     : {
         businessName: null,
         phone: null,
@@ -119,10 +136,10 @@ export function buildContactDisplayInput(
         channelUsername: null,
       };
 
+  // Never fall back to externalThreadId (PSID/IGSID) as a phone for Meta social channels.
   const channelPhone =
     metadataIdentity.phone?.trim() ||
-    conversation?.externalThreadId?.trim() ||
-    null;
+    (!isMetaSocial ? conversation?.externalThreadId?.trim() || null : null);
 
   return {
     name: headerCustomer?.name ?? conversation?.customer?.name ?? null,
@@ -130,7 +147,7 @@ export function buildContactDisplayInput(
     phone: headerCustomer?.phone ?? conversation?.customer?.phone ?? channelPhone,
     email: headerCustomer?.email ?? conversation?.customer?.email ?? null,
     channelUsername: metadataIdentity.channelUsername,
-    channel: conversation?.channel ?? null,
+    channel,
     conversationId: conversation?.id ?? null,
     metadataPhone: channelPhone,
     visitorLabel,

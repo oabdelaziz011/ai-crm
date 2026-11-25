@@ -94,6 +94,8 @@ type TranscriptViewProps = {
   conversationId?: string | null;
   isHistoryLoading?: boolean;
   newMessagesLabel?: string;
+  /** Shared customer avatar URL (conversation metadata / CRM) for inbound bubbles. */
+  customerAvatarUrl?: string | null;
 };
 
 type Row =
@@ -147,6 +149,7 @@ export const TranscriptView = memo(
       conversationId = null,
       isHistoryLoading = false,
       newMessagesLabel = "New messages",
+      customerAvatarUrl = null,
     },
     ref,
   ) {
@@ -443,6 +446,7 @@ export const TranscriptView = memo(
                       onReaction={onReaction ? (emoji) => onReaction(row.message.id, emoji) : undefined}
                       reactionsEnabled={channelSupportsReactions(channel)}
                       starLabel={starLabel}
+                      customerAvatarUrl={customerAvatarUrl}
                       attachmentLabels={attachmentLabels}
                     />
                   )}

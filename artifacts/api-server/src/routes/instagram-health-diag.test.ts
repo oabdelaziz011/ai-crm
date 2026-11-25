@@ -6,6 +6,7 @@ import { logger } from "../lib/logger.js";
 import { HttpError } from "../middleware/error-handler.js";
 import {
   buildInstagramHealthDiagFields,
+  INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS,
   isInstagramOutboundHealthPath,
   logInstagramHealthStage,
   sanitizeInstagramHealthDiagFields,
@@ -536,6 +537,52 @@ describe("wrapInstagramHealthMiddleware outcomes", () => {
 
     assert.equal(called, true);
     assert.equal(sink.length, 0);
+  });
+});
+
+describe("instagram health stage timeouts", () => {
+  it("times out hung auth middleware before proxy budgets and returns HttpError", async () => {
+    assert.equal(INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS, 10_000);
+    const sink: InstagramHealthDiagLogFields[] = [];
+    const req = createHealthReq();
+    const res = createFakeRes();
+    const wrapped = wrapInstagramHealthMiddleware(
+      "supabase_auth",
+      () => {
+        /* never calls next — simulates hung getUser / network */
+      },
+      (fields) => sink.push(fields),
+      { timeoutMs: 40 },
+    );
+
+    const error = await new Promise<unknown>((resolve) => {
+      wrapped(req, res, (err?: unknown) => resolve(err));
+    });
+
+    assert.ok(error instanceof HttpError);
+    assert.equal((error as HttpError).statusCode, 504);
+    assert.equal((error as HttpError).code, "instagram_health_stage_timeout");
+    assert.equal(sink.some((row) => row.event === "error" && row.stage === "supabase_auth"), true);
+  });
+
+  it("times out hung credentials_load work", async () => {
+    const sink: InstagramHealthDiagLogFields[] = [];
+    const req = createHealthReq();
+    await assert.rejects(
+      () =>
+        timeInstagramHealthStage(
+          req,
+          "credentials_load",
+          () => new Promise(() => {}),
+          (fields) => sink.push(fields),
+          { timeoutMs: 40 },
+        ),
+      (error: unknown) =>
+        error instanceof HttpError &&
+        error.statusCode === 504 &&
+        error.code === "instagram_health_stage_timeout",
+    );
+    assert.equal(sink.some((row) => row.event === "error"), true);
   });
 });
 

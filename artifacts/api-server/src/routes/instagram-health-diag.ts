@@ -38,6 +38,39 @@ export type InstagramHealthDiagLogFields = {
 
 type ExpressMiddleware = (req: Request, res: Response, next: NextFunction) => void | Promise<void>;
 
+/**
+ * Per-stage budget for auth/scope/channel/credentials on the Instagram health path only.
+ * Must stay under live Nginx/Cloudflare proxy budgets so Express can still return JSON+CORS
+ * instead of an origin 502 with no Access-Control-Allow-Origin (browser "Failed to fetch").
+ */
+export const INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS = 10_000;
+
+export function createInstagramHealthStageTimeoutError(stage: InstagramHealthDiagStage): HttpError {
+  return new HttpError(
+    504,
+    `Instagram health stage "${stage}" timed out before completion.`,
+    "instagram_health_stage_timeout",
+  );
+}
+
+export async function withInstagramHealthTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  onTimeout: () => Error,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(onTimeout()), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 const SENSITIVE_KEY_NORMALIZED = new Set([
   "authorization",
   "accesstoken",
@@ -197,7 +230,9 @@ export function wrapInstagramHealthMiddleware(
   stage: InstagramHealthDiagStage,
   middleware: ExpressMiddleware,
   logFn: InstagramHealthDiagLogFn = logInstagramHealthStage,
+  options?: { timeoutMs?: number },
 ): ExpressMiddleware {
+  const timeoutMs = options?.timeoutMs ?? INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS;
   return (req, res, next) => {
     if (!shouldInstrumentInstagramHealthDiag(req)) {
       return middleware(req, res, next);
@@ -205,6 +240,7 @@ export function wrapInstagramHealthMiddleware(
 
     const started = performance.now();
     let settled = false;
+    let stageTimer: ReturnType<typeof setTimeout> | undefined;
 
     const settle = (
       event: "end" | "error",
@@ -213,6 +249,7 @@ export function wrapInstagramHealthMiddleware(
     ): void => {
       if (settled) return;
       settled = true;
+      if (stageTimer) clearTimeout(stageTimer);
       res.removeListener("finish", onFinish);
       res.removeListener("close", onClose);
       logFn(
@@ -261,6 +298,13 @@ export function wrapInstagramHealthMiddleware(
       next();
     }) as NextFunction;
 
+    stageTimer = setTimeout(() => {
+      if (settled) return;
+      const timeoutError = createInstagramHealthStageTimeoutError(stage);
+      settle("error", "next_error", timeoutError);
+      next(timeoutError);
+    }, timeoutMs);
+
     try {
       const result = middleware(req, res, wrappedNext);
       if (result && typeof (result as Promise<void>).then === "function") {
@@ -283,6 +327,7 @@ export async function timeInstagramHealthStage<T>(
   stage: InstagramHealthDiagStage,
   work: () => Promise<T>,
   logFn: InstagramHealthDiagLogFn = logInstagramHealthStage,
+  options?: { timeoutMs?: number },
 ): Promise<T> {
   if (!shouldInstrumentInstagramHealthDiag(req)) {
     return work();
@@ -299,7 +344,14 @@ export async function timeInstagramHealthStage<T>(
   );
 
   try {
-    const value = await work();
+    // meta_health keeps its own Meta Graph budget in the route (20s); do not double-cap here.
+    const timeoutMs = options?.timeoutMs ?? INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS;
+    const value =
+      stage === "meta_health"
+        ? await work()
+        : await withInstagramHealthTimeout(work(), timeoutMs, () =>
+            createInstagramHealthStageTimeoutError(stage),
+          );
     logFn(
       buildInstagramHealthDiagFields({
         req,

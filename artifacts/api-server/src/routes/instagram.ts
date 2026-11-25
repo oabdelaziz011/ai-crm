@@ -13,25 +13,12 @@ import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 import {
   isInstagramOutboundHealthPath,
   timeInstagramHealthStage,
+  withInstagramHealthTimeout,
   wrapInstagramHealthMiddleware,
 } from "./instagram-health-diag.js";
 
-/** Keep origin JSON+CORS ahead of Cloudflare's ~100s proxy timeout (which has no ACAO). */
+/** Keep Meta Graph JSON+CORS ahead of Cloudflare/Nginx proxy budgets (which have no ACAO). */
 export const INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS = 20_000;
-
-async function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(onTimeout()), ms);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
 
 const router: IRouter = Router();
 
@@ -107,21 +94,28 @@ router.post("/instagram/channel-outbound-health", async (req, res, next) => {
       ),
     );
 
-    const report = await timeInstagramHealthStage(req, "meta_health", () =>
-      withTimeout(
-        performInstagramOutboundHealthCheck({
-          companyId,
-          runtimeConfig,
-        }),
-        INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS,
-        () =>
-          new HttpError(
-            504,
-            "Instagram health check timed out before Meta Graph responded.",
-            "instagram_health_timeout",
-          ),
-      ),
-    );
+    const report = await timeInstagramHealthStage(req, "meta_health", async () => {
+      const abort = new AbortController();
+      const abortTimer = setTimeout(() => abort.abort(), INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS);
+      try {
+        return await withInstagramHealthTimeout(
+          performInstagramOutboundHealthCheck({
+            companyId,
+            runtimeConfig,
+            signal: abort.signal,
+          }),
+          INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS,
+          () =>
+            new HttpError(
+              504,
+              "Instagram health check timed out before Meta Graph responded.",
+              "instagram_health_timeout",
+            ),
+        );
+      } finally {
+        clearTimeout(abortTimer);
+      }
+    });
 
     res.status(report.ok ? 200 : 502).json(report);
   } catch (error) {

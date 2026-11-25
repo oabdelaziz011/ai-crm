@@ -29,6 +29,7 @@ import {
   isCopyableWebhookVerifyToken,
 } from "@/lib/channels/webhook-verify-token-field";
 import { MetaPagesOauthPanel } from "@/components/channels/meta-pages-oauth-panel";
+import { isMetaPagesOauthUiEnabled } from "@/lib/channels/meta-pages-oauth-flags";
 import { InstagramLoginOauthPanel } from "@/components/channels/instagram-login-oauth-panel";
 import { MetaChannelConnectionStrip } from "@/components/channels/meta-channel-connection-strip";
 import { ChannelAiEmployeeAssignment } from "@/components/channels/channel-ai-employee-assignment";
@@ -256,7 +257,7 @@ export function SettingsInstagramPage() {
                 channelLabel={t("notifications.instagram.settings.title")}
               />
             ) : null}
-            {companyId ? (
+            {companyId && isMetaPagesOauthUiEnabled() ? (
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer">
                   {t("notifications.instagramLogin.legacyPageLinked", {

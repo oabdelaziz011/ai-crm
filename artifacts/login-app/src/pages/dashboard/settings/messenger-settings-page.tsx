@@ -33,6 +33,7 @@ import {
   isCopyableWebhookVerifyToken,
 } from "@/lib/channels/webhook-verify-token-field";
 import { MetaPagesOauthPanel } from "@/components/channels/meta-pages-oauth-panel";
+import { isMetaPagesOauthUiEnabled } from "@/lib/channels/meta-pages-oauth-flags";
 import { MessengerLoginOauthPanel } from "@/components/channels/messenger-login-oauth-panel";
 import { MetaChannelConnectionStrip } from "@/components/channels/meta-channel-connection-strip";
 import { ChannelAiEmployeeAssignment } from "@/components/channels/channel-ai-employee-assignment";
@@ -243,7 +244,7 @@ export function SettingsMessengerPage() {
                 channelLabel={t("notifications.messenger.settings.title")}
               />
             ) : null}
-            {companyId ? (
+            {companyId && isMetaPagesOauthUiEnabled() ? (
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer">
                   {t("notifications.messengerLogin.legacySdk", {

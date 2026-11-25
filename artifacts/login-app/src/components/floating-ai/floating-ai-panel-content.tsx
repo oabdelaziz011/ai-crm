@@ -1,7 +1,8 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLocation } from "wouter";
 import {
   Bot,
+  Compass,
   ExternalLink,
   Loader2,
   Maximize2,
@@ -33,6 +34,14 @@ import { dashboardNestHref } from "@/lib/routing";
 import { stripGuideActionsFromMessage } from "@/lib/floating-ai/guide/guide-actions";
 import { authorizeGuideNavigation } from "@/lib/floating-ai/guide/guide-navigation";
 import type { GuideEffectiveAuth } from "@/lib/floating-ai/guide/guide-auth";
+import {
+  createGuideWorkflowRuntime,
+  isGuideWorkflowLive,
+  matchGuideWorkflow,
+} from "@/lib/floating-ai/guide/guide-workflow-runtime";
+import { useFloatingAi } from "@/context/floating-ai-context";
+import { cn } from "@/lib/utils";
+import { GuideWorkflowPanel } from "./guide-workflow-panel";
 import { ContextBar } from "./context-bar";
 import { QuickActions } from "./quick-actions";
 import { TaskProgressList } from "./task-progress-list";
@@ -70,6 +79,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
   const [panelTab, setPanelTab] = useState<"chat" | "agent">("chat");
   const [pendingAgentGoal, setPendingAgentGoal] = useState<string | undefined>();
   const processedGuideActionMessageIds = useRef(new Set<string>());
+  const pendingGuideHandoffRef = useRef<{ text: string; workflowId: string } | null>(null);
 
   const {
     assistantName,
@@ -78,6 +88,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
     isLoading,
     isSending,
     sendError,
+    conversationError,
     sendMessage,
     confirmPendingAction,
     cancelPendingAction,
@@ -87,7 +98,9 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
     pendingConfirmation,
     runtimeConfig,
     surface = "assist",
+    conversationId = null,
   } = useFloatingAiChat();
+  const { setSurface } = useFloatingAi();
 
   const isGuideSurface = surface === "guide";
   const guideAgentTabVisible = showAgentTab && !isGuideSurface;
@@ -137,15 +150,78 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
     }
   }, [guideAgentTabVisible, panelTab]);
 
+  // Tool-less Guide workflow runtime (navigate + confirm only), scoped per conversation.
+  const guideAuthRef = useRef(guideAuth);
+  guideAuthRef.current = guideAuth;
+  const workflowRuntime = useMemo(
+    () =>
+      createGuideWorkflowRuntime({
+        conversationId: conversationId ?? null,
+        getAuth: () => guideAuthRef.current,
+      }),
+    [conversationId],
+  );
+  const workflowState = useSyncExternalStore(
+    workflowRuntime.subscribe,
+    workflowRuntime.getState,
+    workflowRuntime.getState,
+  );
+  const historicalGuideMessageIds = useRef<{ conversationId: string | null; ids: Set<string> } | null>(
+    null,
+  );
+
+  // Resume stored progress once permissions are usable (never re-navigates).
+  useEffect(() => {
+    if (!isGuideSurface || !guideAuth.permissionsAvailable) return;
+    if (workflowRuntime.getState()) return;
+    workflowRuntime.resume();
+  }, [guideAuth.permissionsAvailable, isGuideSurface, workflowRuntime]);
+
+  // On entering a step with navigateRouteId: authorize + navigate; never claims a write.
+  useEffect(() => {
+    if (!isGuideSurface || !workflowState?.navigationRequested) return;
+    if (!isGuideWorkflowLive(workflowState) || !workflowState.navigationRouteId) return;
+    if (!guideAuth.permissionsAvailable) return;
+    const result = authorizeGuideNavigation(guideAuth, {
+      kind: "route",
+      routeId: workflowState.navigationRouteId,
+    });
+    if (result.ok) {
+      setLocation(result.href);
+      workflowRuntime.acknowledgeNavigation();
+    } else {
+      workflowRuntime.denyWorkflow("navigation_denied");
+    }
+  }, [guideAuth, isGuideSurface, setLocation, workflowRuntime, workflowState]);
+
   useEffect(() => {
     if (!isGuideSurface) return;
+    // Snapshot history so stored/old workflow actions never restart a walkthrough on reload.
+    if (!isLoading && historicalGuideMessageIds.current?.conversationId !== conversationId) {
+      historicalGuideMessageIds.current = {
+        conversationId,
+        ids: new Set(displayMessages.map((m) => m.id).filter((id): id is string => Boolean(id))),
+      };
+    }
     for (const message of displayMessages) {
       if (message.role !== "assistant" || !message.id) continue;
       if (processedGuideActionMessageIds.current.has(message.id)) continue;
       const { actions } = stripGuideActionsFromMessage(message.content ?? "");
       processedGuideActionMessageIds.current.add(message.id);
+      const isHistorical = historicalGuideMessageIds.current?.ids.has(message.id) ?? isLoading;
       for (const action of actions) {
-        if (action.type === "navigate") {
+        if (action.type === "workflow") {
+          if (isHistorical) continue;
+          const current = workflowRuntime.getState();
+          if (
+            current &&
+            isGuideWorkflowLive(current) &&
+            current.workflowId === action.workflowId
+          ) {
+            continue;
+          }
+          workflowRuntime.startFromAction(action);
+        } else if (action.type === "navigate") {
           const result = authorizeGuideNavigation(guideAuth, {
             kind: "route",
             routeId: action.routeId,
@@ -160,19 +236,36 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         }
       }
     }
-  }, [displayMessages, guideAuth, isGuideSurface, setLocation]);
+  }, [conversationId, displayMessages, guideAuth, isGuideSurface, isLoading, setLocation, workflowRuntime]);
 
   const configBlocked = !runtimeConfig?.ready;
-  const composerDisabled = !canUseAi || !canExecuteRuntime || configBlocked || isLoading;
+  const composerDisabled =
+    !canUseAi
+    || !canExecuteRuntime
+    || configBlocked
+    || isLoading
+    || Boolean(conversationError)
+    || !conversationId;
   const showPlatformAdminCta =
     configBlocked &&
     !isLoading &&
+    !conversationError &&
     (runtimeConfig?.errorCode === "AI_PROVIDER_NOT_CONFIGURED" ||
       runtimeConfig?.errorCode === "AI_PROVIDER_UNAVAILABLE" ||
       runtimeConfig?.platformProviderReady === false ||
       runtimeConfig?.ready === false);
 
   const errorMessage = useMemo(() => {
+    if (conversationError === "company_context_missing") {
+      return t("dashboard.ai.errors.companyContextMissing");
+    }
+    if (conversationError === "assistant_settings_unavailable") {
+      return t("dashboard.ai.errors.assistantSettingsUnavailable");
+    }
+    if (conversationError === "conversation_start_failed") {
+      return t("dashboard.ai.errors.conversationStartFailed");
+    }
+    if (conversationError) return conversationError;
     if (sendError === "runtime_config_missing") {
       if (runtimeConfig?.errorCode === "AI_PROVIDER_UNAVAILABLE") {
         return t("dashboard.ai.errors.providerUnavailable");
@@ -192,7 +285,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
       return t("dashboard.ai.errors.providerNotConfigured");
     }
     return null;
-  }, [sendError, showPlatformAdminCta, runtimeConfig?.errorCode, t]);
+  }, [conversationError, sendError, showPlatformAdminCta, runtimeConfig?.errorCode, t]);
 
   const openPlatformAiSettings = useCallback(() => {
     setLocation(`${getDashboardRouteById("settings").nestedPath}/platform-ai`);
@@ -211,6 +304,14 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         return;
       }
       if (!isGuideSurface) {
+        // Product how-to intents belong to Guide (e.g. connect WhatsApp), not Assist tools.
+        const matchedForGuide = matchGuideWorkflow(text);
+        if (matchedForGuide) {
+          pendingGuideHandoffRef.current = { text, workflowId: matchedForGuide.id };
+          setSurface("guide");
+          return;
+        }
+
         const slash = parseSlashCommand(text);
         if (slash?.command.agentMode && FLOATING_AI_CAPABILITIES.agentMode && guideAgentTabVisible) {
           const goal = slash.remainder || "Execute multi-step workflow for current page context";
@@ -224,6 +325,16 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         }
       }
 
+      if (isGuideSurface) {
+        // User text that matches a known walkthrough starts it (navigate + confirm only).
+        // Skip when the same walkthrough is already running.
+        const matched = matchGuideWorkflow(text);
+        const current = workflowRuntime.getState();
+        if (matched && !(current && isGuideWorkflowLive(current) && current.workflowId === matched.id)) {
+          workflowRuntime.startWorkflow(matched.id);
+        }
+      }
+
       const result = await sendMessage(text);
       if (result?.needsConfirmation) return;
     },
@@ -234,9 +345,23 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
       isSuperAdmin,
       openPlatformAiSettings,
       sendMessage,
+      setSurface,
       routeToAgent,
+      workflowRuntime,
     ],
   );
+
+  // Finish Assist → Guide handoff after surface switch so send uses Guide runtime.
+  useEffect(() => {
+    const pending = pendingGuideHandoffRef.current;
+    if (!isGuideSurface || !pending) return;
+    pendingGuideHandoffRef.current = null;
+    const current = workflowRuntime.getState();
+    if (!(current && isGuideWorkflowLive(current) && current.workflowId === pending.workflowId)) {
+      workflowRuntime.startWorkflow(pending.workflowId);
+    }
+    void sendMessage(pending.text);
+  }, [isGuideSurface, sendMessage, workflowRuntime]);
 
   const handleQuickAction = useCallback(
     (action: FloatingAiQuickAction) => {
@@ -360,6 +485,45 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
           </div>
         </header>
 
+        <div
+          role="group"
+          aria-label={t("floatingAi.guide.surfaceSwitchLabel")}
+          data-surface={surface}
+          className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/20 px-3 py-1.5"
+        >
+          <div className="inline-flex rounded-md bg-muted p-0.5">
+            {(["assist", "guide"] as const).map((value) => {
+              const active = surface === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={active}
+                  data-surface-option={value}
+                  onClick={() => {
+                    if (!active) setSurface(value);
+                  }}
+                  className={cn(
+                    "inline-flex h-6 items-center gap-1 rounded px-2.5 text-xs font-medium transition-colors",
+                    active
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {value === "assist" ? (
+                    <Sparkles className="size-3" aria-hidden="true" />
+                  ) : (
+                    <Compass className="size-3" aria-hidden="true" />
+                  )}
+                  {value === "assist"
+                    ? t("floatingAi.guide.surfaceAssist")
+                    : t("floatingAi.guide.surfaceGuide")}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <ContextBar pageContext={pageContext} />
         <TaskProgressList />
 
@@ -422,6 +586,15 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
                 disabled={composerDisabled || isSending}
               />
             )}
+            {isGuideSurface && workflowState ? (
+              <GuideWorkflowPanel
+                state={workflowState}
+                onConfirm={() => workflowRuntime.confirmStep()}
+                onCancel={() => workflowRuntime.cancelWorkflow()}
+                onBack={() => workflowRuntime.goBack()}
+                onDismiss={() => workflowRuntime.dismiss()}
+              />
+            ) : null}
             <FloatingAiComposer disabled={composerDisabled} isSending={isSending} onSend={handleSend} />
           </TabsContent>
 

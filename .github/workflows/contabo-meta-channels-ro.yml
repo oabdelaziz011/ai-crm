@@ -1,0 +1,60 @@
+name: Contabo Meta channels RO
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type readonly-meta-channels
+        required: true
+        type: string
+jobs:
+  inspect:
+    if: github.event.inputs.confirm == 'readonly-meta-channels'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 5
+    steps:
+      - name: Read-only WhatsApp/Messenger env key presence (no values)
+        run: |
+          set -euo pipefail
+          ENV_FILE=/opt/valueor/.env
+          echo "host=$(hostname)"
+          echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if [[ ! -r "$ENV_FILE" ]]; then
+            echo "env_readable=no"
+            # Try via sudo without printing values
+            if sudo -n test -r "$ENV_FILE"; then
+              echo "env_sudo_readable=yes"
+              KEYS="$(sudo -n awk -F= '
+                /^[[:space:]]*#/ {next}
+                /^[A-Z0-9_]+=/ {
+                  k=$1
+                  if (k ~ /^(WHATSAPP_|META_EMBEDDED_|META_MESSENGER_|META_INSTAGRAM_|META_PAGES_|PUBLIC_WEBHOOK|WEBHOOK_BASE)/) {
+                    v=substr($0, index($0,"=")+1)
+                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+                    present=(length(v)>0)?"yes":"empty"
+                    print k "=" present " len=" length(v)
+                  }
+                }' "$ENV_FILE")"
+              echo "$KEYS"
+            else
+              echo "env_sudo_readable=no"
+              exit 0
+            fi
+          else
+            echo "env_readable=yes"
+            awk -F= '
+              /^[[:space:]]*#/ {next}
+              /^[A-Z0-9_]+=/ {
+                k=$1
+                if (k ~ /^(WHATSAPP_|META_EMBEDDED_|META_MESSENGER_|META_INSTAGRAM_|META_PAGES_|PUBLIC_WEBHOOK|WEBHOOK_BASE)/) {
+                  v=substr($0, index($0,"=")+1)
+                  gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+                  present=(length(v)>0)?"yes":"empty"
+                  print k "=" present " len=" length(v)
+                }
+              }' "$ENV_FILE"
+          fi
+          echo "=== api health ==="
+          curl -sS -o /dev/null -w "api_health_http=%{http_code}\n" https://api.valueor.org/health || true
+          echo "=== frontend version ==="
+          curl -sS https://www.valueor.org/version.json || true
+          echo

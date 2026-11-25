@@ -61,6 +61,7 @@ ARTIFACTS_DIR="${VALUEOR_ARTIFACTS_DIR:-}"
 UPSERT_JS="${APP_DIR}/deploy/vps/upsert-env-overlay.mjs"
 INSTAGRAM_OVERLAY="${ARTIFACTS_DIR}/.instagram-login.env.overlay"
 MESSENGER_OVERLAY="${ARTIFACTS_DIR}/.messenger-oauth.env.overlay"
+WHATSAPP_OVERLAY="${ARTIFACTS_DIR}/.whatsapp-embedded-signup.env.overlay"
 if [[ -n "$ARTIFACTS_DIR" && -f "$INSTAGRAM_OVERLAY" ]]; then
   if [[ ! -f "$UPSERT_JS" ]]; then
     echo "Missing ${UPSERT_JS} required to apply Instagram Login env overlay"
@@ -80,6 +81,18 @@ if [[ -n "$ARTIFACTS_DIR" && -f "$MESSENGER_OVERLAY" ]]; then
   /usr/bin/node "$UPSERT_JS" --env "$ENV_FILE" --overlay "$MESSENGER_OVERLAY" \
     --allow-prefix META_MESSENGER_OAUTH_
   rm -f "$MESSENGER_OVERLAY"
+fi
+if [[ -n "$ARTIFACTS_DIR" && -f "$WHATSAPP_OVERLAY" ]]; then
+  if [[ ! -f "$UPSERT_JS" ]]; then
+    echo "Missing ${UPSERT_JS} required to apply WhatsApp Embedded Signup env overlay"
+    exit 2
+  fi
+  echo "[deploy] applying WhatsApp Embedded Signup env overlay (values not logged)"
+  /usr/bin/node "$UPSERT_JS" --env "$ENV_FILE" --overlay "$WHATSAPP_OVERLAY" \
+    --allow-prefix WHATSAPP_EMBEDDED_SIGNUP_ \
+    --allow-prefix WHATSAPP_COEXISTENCE_ \
+    --allow-prefix META_EMBEDDED_SIGNUP_
+  rm -f "$WHATSAPP_OVERLAY"
 fi
 
 # Validate env for the real production topology (no ACME_EMAIL required).

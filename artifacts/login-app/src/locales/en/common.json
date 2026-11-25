@@ -46,15 +46,42 @@
       "ignore": "Ignore column"
     },
     "fields": {
-      "name": { "label": "Customer name", "description": "Required display name." },
-      "email": { "label": "Email", "description": "Optional unique email per company." },
-      "phone": { "label": "Phone", "description": "Prefer E.164 (+...). Local numbers need a region." },
-      "phoneRegion": { "label": "Phone region", "description": "ISO-2 country code for local phones." },
-      "gender": { "label": "Gender", "description": "Optional free-text gender." },
-      "dateOfBirth": { "label": "Date of birth", "description": "Optional YYYY-MM-DD." },
-      "notes": { "label": "Notes", "description": "Optional notes." },
-      "companyName": { "label": "Company", "description": "Customer organization or employer name." },
-      "source": { "label": "Source", "description": "Acquisition source (defaults to manual)." }
+      "name": {
+        "label": "Customer name",
+        "description": "Required display name."
+      },
+      "email": {
+        "label": "Email",
+        "description": "Optional unique email per company."
+      },
+      "phone": {
+        "label": "Phone",
+        "description": "Prefer E.164 (+...). Local numbers need a region."
+      },
+      "phoneRegion": {
+        "label": "Phone region",
+        "description": "ISO-2 country code for local phones."
+      },
+      "gender": {
+        "label": "Gender",
+        "description": "Optional free-text gender."
+      },
+      "dateOfBirth": {
+        "label": "Date of birth",
+        "description": "Optional YYYY-MM-DD."
+      },
+      "notes": {
+        "label": "Notes",
+        "description": "Optional notes."
+      },
+      "companyName": {
+        "label": "Company",
+        "description": "Customer organization or employer name."
+      },
+      "source": {
+        "label": "Source",
+        "description": "Acquisition source (defaults to manual)."
+      }
     },
     "template": {
       "sheetCustomers": "Customers",
@@ -478,6 +505,188 @@
         "graph": "Graph",
         "timeline": "Timeline",
         "report": "Report"
+      }
+    },
+    "guide": {
+      "title": "ValueOR Guide",
+      "subtitle": "Product help · read-only",
+      "panelLabel": "ValueOR product guide",
+      "surfaceSwitchLabel": "Assistant mode",
+      "surfaceAssist": "Assist",
+      "surfaceGuide": "Guide",
+      "workflow": {
+        "progress": "Step {{current}} of {{total}}",
+        "confirm": "Confirm",
+        "done": "Done",
+        "cancel": "Cancel",
+        "back": "Back",
+        "dismiss": "Dismiss",
+        "cancelled": "Walkthrough cancelled. Nothing was changed.",
+        "completed": "Walkthrough finished. You told Guide you completed the steps.",
+        "denied": "You don't have permission to follow this walkthrough, or your access is still loading. Ask an administrator if you need access.",
+        "navigateHint": "I opened the page for you. Complete the action yourself in the page — Guide does not perform writes.",
+        "noWriteClaim": "Guide only opens pages and explains steps. It never creates or updates anything for you."
+      },
+      "modules": {
+        "dashboard": {
+          "name": "Dashboard",
+          "description": "Home overview of your ValueOR workspace."
+        },
+        "customers": {
+          "name": "Customers",
+          "description": "CRM customer records, profiles, and related activity.",
+          "pagePurpose": "Browse and manage customer records you are allowed to access.",
+          "troubleshoot": {
+            "noAccess": "You need customers.view to open Customers. Ask an administrator if access is missing."
+          }
+        },
+        "leads": {
+          "name": "Leads",
+          "description": "Inbound and captured sales leads.",
+          "pagePurpose": "Review and qualify leads in your company CRM."
+        },
+        "opportunities": {
+          "name": "Opportunities",
+          "description": "Sales opportunities and pipeline stages.",
+          "pagePurpose": "Track opportunities and move deals through your pipeline."
+        },
+        "calendar": {
+          "name": "Calendar",
+          "description": "Calendar view of bookings and scheduled work.",
+          "pagePurpose": "See scheduled bookings on the calendar."
+        },
+        "bookings": {
+          "name": "Bookings",
+          "description": "Booking list and appointment management.",
+          "pagePurpose": "Create and manage bookings from the bookings workspace."
+        },
+        "scheduling": {
+          "pagePurpose": "Configure scheduling resources used by bookings."
+        },
+        "invoices": {
+          "name": "Invoices",
+          "description": "Customer invoices and billing documents.",
+          "pagePurpose": "View and manage invoices you are allowed to access."
+        },
+        "financial": {
+          "pagePurpose": "Financial workspace views related to invoices and payments."
+        },
+        "omnichannel": {
+          "name": "Omnichannel",
+          "description": "Unified inbox for customer conversations across channels.",
+          "pagePurpose": "Work conversations from WhatsApp, email, and other connected channels."
+        },
+        "whatsapp": {
+          "name": "WhatsApp Settings",
+          "description": "WhatsApp connection and channel configuration.",
+          "pagePurpose": "Connect and review WhatsApp Business settings for your company.",
+          "troubleshoot": {
+            "noAccess": "You need whatsapp.view to open WhatsApp settings.",
+            "connection": "If connection fails, verify Meta credentials with an administrator. Guide cannot change settings for you."
+          }
+        },
+        "email": {
+          "name": "Email Workspace",
+          "description": "Company email workspace, templates, and mailbox settings.",
+          "pagePurpose": "Work with email conversations and related email settings."
+        },
+        "tickets": {
+          "name": "Tickets",
+          "description": "Support tickets and service requests.",
+          "pagePurpose": "View and manage support tickets."
+        },
+        "aiAssistant": {
+          "name": "AI Assistant",
+          "description": "Company AI assistant configuration.",
+          "pagePurpose": "Review assistant settings available to your role."
+        },
+        "aiEmployees": {
+          "name": "AI Employees",
+          "description": "AI employees (agents) and their tool scopes.",
+          "pagePurpose": "Browse AI employees configured for your company."
+        },
+        "website": {
+          "name": "Website Builder",
+          "description": "Company web presence and public website builder.",
+          "pagePurpose": "Manage your company website presence."
+        },
+        "organization": {
+          "name": "Organization",
+          "description": "Organization structure and departments.",
+          "pagePurpose": "View organization settings for your company."
+        },
+        "users": {
+          "name": "Users",
+          "description": "Company users and invitations.",
+          "pagePurpose": "Manage users you are allowed to administer."
+        },
+        "roles": {
+          "name": "Roles & Permissions",
+          "description": "Roles and permission assignments.",
+          "pagePurpose": "Review roles and grant permissions through the Roles page."
+        },
+        "company": {
+          "name": "Company Workspace",
+          "description": "Company profile, branding, and workspace settings.",
+          "pagePurpose": "Update company profile details you are allowed to edit."
+        },
+        "knowledge": {
+          "name": "Knowledge",
+          "description": "Company knowledge base used by Assist.",
+          "pagePurpose": "Browse knowledge content available to your role."
+        },
+        "channels": {
+          "name": "Channels",
+          "description": "Channel connections and channel management.",
+          "pagePurpose": "Review connected communication channels."
+        },
+        "quotes": {
+          "name": "Quotes",
+          "description": "Sales quotes and quote workspace.",
+          "pagePurpose": "Create and manage quotes you are allowed to access."
+        },
+        "settings": {
+          "name": "Settings",
+          "description": "Application and company settings.",
+          "pagePurpose": "Open settings available to your role."
+        },
+        "automation": {
+          "name": "Automation",
+          "description": "Automation workflows and rules.",
+          "pagePurpose": "Review automations configured for your company."
+        }
+      },
+      "workflows": {
+        "connectWhatsapp": {
+          "title": "Connect WhatsApp",
+          "steps": {
+            "openSettings": "I will open WhatsApp Settings. Confirm when the page is visible.",
+            "reviewConnection": "Review the connection status and available setup actions on the page. Tell me when you are ready for the next tip.",
+            "completeOrAskAdmin": "Complete the remaining setup in the UI. If a control is disabled, you may need ai.whatsapp.manage or an administrator."
+          }
+        },
+        "addCustomer": {
+          "title": "Add a customer",
+          "steps": {
+            "openCustomers": "Opening Customers. Confirm when you see the customer list.",
+            "useCreateUi": "Use the Create / Add customer control in the page. Guide will not create the customer for you.",
+            "saveInUi": "Fill the required fields and save in the UI. Ask me if a field is unclear."
+          }
+        },
+        "createTicket": {
+          "title": "Create a ticket",
+          "steps": {
+            "openTickets": "Opening Tickets. Confirm when the ticket list is visible.",
+            "fillTicket": "Create the ticket using the page actions. Guide cannot submit the ticket itself."
+          }
+        },
+        "grantPermission": {
+          "title": "Grant a permission",
+          "steps": {
+            "openRoles": "Opening Roles. Confirm when the roles page is visible.",
+            "editRole": "Edit the role permissions in the UI, then ask the user to sign in again or refresh if needed."
+          }
+        }
       }
     }
   },

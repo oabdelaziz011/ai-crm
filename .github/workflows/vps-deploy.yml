@@ -278,6 +278,72 @@ jobs:
             exit 2
           fi
 
+      - name: Stage WhatsApp Embedded Signup env overlay for approved company only
+        if: github.event.inputs.action == 'deploy'
+        env:
+          GIT_SHA: ${{ github.sha }}
+          META_EMBEDDED_SIGNUP_APP_SECRET_DEDICATED: ${{ secrets.META_EMBEDDED_SIGNUP_APP_SECRET }}
+          META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID: ${{ secrets.META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID }}
+          META_EMBEDDED_SIGNUP_APP_ID_DEDICATED: ${{ secrets.META_EMBEDDED_SIGNUP_APP_ID }}
+          META_INSTAGRAM_LOGIN_APP_SECRET: ${{ secrets.META_INSTAGRAM_LOGIN_APP_SECRET }}
+        run: |
+          set -euo pipefail
+          GIT_SHA="$(printf '%s' "$GIT_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$GIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Refusing a ref that is not a full git SHA."
+            exit 2
+          fi
+          META_EMBEDDED_SIGNUP_APP_SECRET="${META_EMBEDDED_SIGNUP_APP_SECRET_DEDICATED:-}"
+          if [[ -z "$META_EMBEDDED_SIGNUP_APP_SECRET" ]]; then
+            META_EMBEDDED_SIGNUP_APP_SECRET="${META_INSTAGRAM_LOGIN_APP_SECRET:-}"
+          fi
+          if [[ -z "${META_EMBEDDED_SIGNUP_APP_SECRET:-}" ]]; then
+            echo "::warning::WhatsApp Embedded Signup secret missing — skipping WhatsApp overlay."
+            exit 0
+          fi
+          SECRET_LEN="${#META_EMBEDDED_SIGNUP_APP_SECRET}"
+          SECRET_FP="$(printf '%s' "$META_EMBEDDED_SIGNUP_APP_SECRET" | sha256sum | awk '{print substr($1,1,12)}')"
+          echo "whatsapp_secret_len=${SECRET_LEN} sha256_12=${SECRET_FP}"
+          if [[ "$SECRET_LEN" -lt 20 ]]; then
+            echo "::error::WhatsApp App Secret looks too short."
+            exit 2
+          fi
+          APP_ID="${META_EMBEDDED_SIGNUP_APP_ID_DEDICATED:-}"
+          if [[ -z "$APP_ID" ]]; then
+            # Same Meta app used for Instagram Login / Messenger OAuth on Contabo.
+            APP_ID="4567945626796573"
+          fi
+          CONFIG_ID="${META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID:-}"
+          if [[ -n "$CONFIG_ID" ]]; then
+            echo "whatsapp_config_id_len=${#CONFIG_ID}"
+          else
+            echo "::warning::META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID unset — overlay will not overwrite any host CONFIG_ID."
+          fi
+          INCOMING="/tmp/valueor-incoming-${GIT_SHA}"
+          test -d "$INCOMING"
+          OVERLAY="${INCOMING}/.whatsapp-embedded-signup.env.overlay"
+          umask 077
+          {
+            echo "WHATSAPP_EMBEDDED_SIGNUP_ENABLED=true"
+            echo "WHATSAPP_COEXISTENCE_ENABLED=false"
+            echo "WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS=2d27f7fb-c15e-4d60-84e9-1793f36f2172"
+            echo "WHATSAPP_EMBEDDED_SIGNUP_AUTO_SUBSCRIBE=false"
+            echo "WHATSAPP_EMBEDDED_SIGNUP_ALLOW_PRODUCTION_SUBSCRIBE=false"
+            echo "WHATSAPP_EMBEDDED_SIGNUP_REGISTER_PHONE=false"
+            echo "META_EMBEDDED_SIGNUP_APP_ID=${APP_ID}"
+            echo "META_EMBEDDED_SIGNUP_APP_SECRET=${META_EMBEDDED_SIGNUP_APP_SECRET}"
+            echo "META_EMBEDDED_SIGNUP_GRAPH_VERSION=v21.0"
+            if [[ -n "$CONFIG_ID" ]]; then
+              echo "META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID=${CONFIG_ID}"
+            fi
+          } >"$OVERLAY"
+          chmod 600 "$OVERLAY"
+          echo "overlay_keys=$(cut -d= -f1 "$OVERLAY" | paste -sd, -)"
+          if grep -Eq '^WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS=\*' "$OVERLAY"; then
+            echo "::error::Refusing public-all WhatsApp allowlist"
+            exit 2
+          fi
+
       - name: Run production deploy or rollback on this host
         env:
           ACTION: ${{ github.event.inputs.action }}

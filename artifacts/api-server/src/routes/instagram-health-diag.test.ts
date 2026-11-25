@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { describe, it } from "node:test";
 import type { Request, Response } from "express";
+import { logger } from "../lib/logger.js";
 import { HttpError } from "../middleware/error-handler.js";
 import {
   buildInstagramHealthDiagFields,
   isInstagramOutboundHealthPath,
+  logInstagramHealthStage,
   sanitizeInstagramHealthDiagFields,
   shouldInstrumentInstagramHealthDiag,
   timeInstagramHealthStage,
@@ -252,46 +254,127 @@ describe("instagram health diag redaction", () => {
     assert.equal(serialized.toLowerCase().includes("bearer "), false);
   });
 
-  it("keeps logger-bound payloads free of nested fake credentials", () => {
-    const sink: InstagramHealthDiagLogFields[] = [];
-    const req = createHealthReq();
-    const unsafeExtra = {
-      detail: {
-        client_secret: NESTED_CLIENT_SECRET,
-        apiKey: NESTED_API_KEY,
-        token: NESTED_META_TOKEN,
-        nested: [NESTED_JWT, { Authorization: `Bearer ${NESTED_OPAQUE}` }],
-      },
+  it("passes only sanitized fields to logger.info via logInstagramHealthStage", () => {
+    const captured: Array<{ fields: unknown; message: unknown }> = [];
+    const originalInfo = logger.info.bind(logger);
+    logger.info = ((fields: unknown, message?: unknown) => {
+      captured.push({ fields, message });
+    }) as typeof logger.info;
+
+    try {
+      const unsafe = {
+        ...buildInstagramHealthDiagFields({
+          req: createHealthReq(),
+          stage: "credentials_load",
+          event: "end",
+          completion: "async",
+          durationMs: 12,
+          hasAuthorization: true,
+        }),
+        detail: {
+          client_secret: NESTED_CLIENT_SECRET,
+          apiKey: NESTED_API_KEY,
+          token: NESTED_META_TOKEN,
+          nested: [
+            NESTED_JWT,
+            { Authorization: `Bearer ${NESTED_OPAQUE}` },
+            { graphCred: NESTED_META_TOKEN, keep: "visible" },
+          ],
+        },
+      } as InstagramHealthDiagLogFields;
+
+      logInstagramHealthStage(unsafe, "instagram.channel-outbound-health stage");
+
+      assert.equal(captured.length, 1);
+      const loggedFields = captured[0]?.fields as Record<string, unknown>;
+      assert.equal(loggedFields.instagramHealthDiag, true);
+      assert.equal(loggedFields.hasAuthorization, true);
+      assert.equal(loggedFields.stage, "credentials_load");
+      assert.equal(captured[0]?.message, "instagram.channel-outbound-health stage");
+
+      const detail = loggedFields.detail as Record<string, unknown>;
+      assert.equal("client_secret" in detail, false);
+      assert.equal("apiKey" in detail, false);
+      assert.equal("token" in detail, false);
+      const nested = detail.nested as unknown[];
+      assert.equal(nested[0], "[REDACTED]");
+      assert.equal("Authorization" in (nested[1] as object), false);
+      assert.equal((nested[2] as Record<string, unknown>).keep, "visible");
+      assert.equal((nested[2] as Record<string, unknown>).graphCred, "[REDACTED]");
+
+      // Exact object received by logger.info — not a re-sanitized copy.
+      assert.equal(captured[0]?.fields, loggedFields);
+      assertSerializedHasNoSecrets(captured[0]?.fields, [
+        NESTED_CLIENT_SECRET,
+        NESTED_API_KEY,
+        NESTED_META_TOKEN,
+        NESTED_JWT,
+        NESTED_OPAQUE,
+        "SECRET_TOKEN_VALUE",
+      ]);
+    } finally {
+      logger.info = originalInfo;
+    }
+  });
+
+  it("redacts values beyond the depth cap so nested secrets cannot bypass sanitization", () => {
+    const deepSecret = NESTED_META_TOKEN;
+    let deep: Record<string, unknown> = { leaf: deepSecret };
+    for (let i = 0; i < 12; i++) {
+      deep = { wrap: deep };
+    }
+
+    const sanitized = sanitizeInstagramHealthDiagFields({
+      instagramHealthDiag: true,
+      requestId: "req-depth",
+      correlationId: "corr-depth",
+      stage: "meta_health",
+      event: "start",
+      deep,
+      shallowSafe: "ok",
+    });
+    const serialized = JSON.stringify(sanitized);
+
+    assert.equal((sanitized as Record<string, unknown>).shallowSafe, "ok");
+    assert.equal(serialized.includes(deepSecret), false);
+    assert.equal(serialized.includes("[REDACTED]"), true);
+    // Past the cap the subtree collapses; no further object descent emits the leaf.
+    assert.equal(serialized.includes('"leaf"'), false);
+  });
+
+  it("handles circular references without leaking secrets or throwing on serialize", () => {
+    const circ: Record<string, unknown> = {
+      a: "ok",
+      client_secret: NESTED_CLIENT_SECRET,
+      apiKey: NESTED_API_KEY,
+      cred: NESTED_JWT,
     };
-    const fields = {
-      ...buildInstagramHealthDiagFields({
-        req,
-        stage: "credentials_load",
-        event: "end",
-        completion: "async",
-        durationMs: 12,
-        hasAuthorization: true,
-      }),
-      ...unsafeExtra,
-    } as InstagramHealthDiagLogFields;
+    circ.self = circ;
+    circ.bag = { token: NESTED_META_TOKEN, next: circ };
 
-    // Mimic logInstagramHealthStage: sanitize immediately before sink/logger.
-    const safe = sanitizeInstagramHealthDiagFields(
-      fields as unknown as Record<string, unknown>,
-    );
-    sink.push(safe);
+    const sanitized = sanitizeInstagramHealthDiagFields({
+      instagramHealthDiag: true,
+      requestId: "req-circ",
+      correlationId: "corr-circ",
+      stage: "credentials_load",
+      event: "end",
+      circ,
+    });
 
-    assert.equal(sink.length, 1);
-    assert.equal(sink[0]?.hasAuthorization, true);
-    assert.equal(sink[0]?.stage, "credentials_load");
-    assertSerializedHasNoSecrets(sink[0], [
+    let serialized = "";
+    assert.doesNotThrow(() => {
+      serialized = JSON.stringify(sanitized);
+    });
+    assert.equal((sanitized as Record<string, unknown>).requestId, "req-circ");
+    assertSerializedHasNoSecrets(sanitized, [
       NESTED_CLIENT_SECRET,
       NESTED_API_KEY,
-      NESTED_META_TOKEN,
       NESTED_JWT,
-      NESTED_OPAQUE,
-      "SECRET_TOKEN_VALUE",
+      NESTED_META_TOKEN,
     ]);
+    assert.equal(serialized.includes("client_secret"), false);
+    assert.equal(serialized.includes("apiKey"), false);
+    assert.equal(serialized.includes('"token"'), false);
   });
 });
 

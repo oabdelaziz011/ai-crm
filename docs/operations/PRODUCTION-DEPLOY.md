@@ -42,7 +42,9 @@ sudo install -m 0750 -o root -g root \
 | Deploy (API + frontend) | `.github/workflows/vps-deploy.yml` → `sudo -n /usr/local/sbin/valueor-prod-deploy` |
 | Rollback | `.github/workflows/vps-deploy.yml` → `sudo -n /usr/local/sbin/valueor-prod-rollback` |
 
-`frontend-production-artifact.yml` is **build-only** (artifact upload). It must never SSH/SCP to Contabo or call publish helpers. There is no separate frontend publish workflow.
+`frontend-production-artifact.yml` is **build-only** (frontend zip upload). It must never SSH/SCP to Contabo or call publish helpers.
+
+`build-production-release-artifact.yml` is also **build-only**: it uploads `valueor-production-release` (API+frontend tarball) for Contabo FE replace. It must never run on Contabo or call `valueor-prod-deploy`. Contabo publishing remains **Contabo FE replace** or **VPS deploy** only.
 
 ## Deploy (every release)
 

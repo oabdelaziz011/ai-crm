@@ -14,6 +14,7 @@ export type WebhookProcessingStep =
   | "webhook.workflow_resolved"
   | "webhook.workflow_missing"
   | "webhook.session_resolved"
+  | "webhook.meta_sender_profile_synced"
   | "webhook.automation_started"
   | "webhook.automation_completed"
   | "webhook.outbound_dispatched"

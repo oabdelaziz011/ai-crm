@@ -1,3 +1,8 @@
+import {
+  isInstagramLoginOnlyAppId,
+  isMetaNumericAppId,
+} from "./meta-oauth-state.js";
+
 function envFlagTrue(name: string): boolean {
   const raw = String(process.env[name] ?? "")
     .trim()
@@ -130,7 +135,8 @@ export function readMetaEmbeddedSignupEnvConfig(): MetaEmbeddedSignupEnvConfig |
   const graphApiVersion =
     String(process.env.META_EMBEDDED_SIGNUP_GRAPH_VERSION ?? "").trim() || "v21.0";
 
-  if (!appId || !appSecret) {
+  // Refuse Instagram Login App ID — FB JS SDK / facebook.com returns PLATFORM__INVALID_APP_ID.
+  if (!appId || !appSecret || !isMetaNumericAppId(appId) || isInstagramLoginOnlyAppId(appId)) {
     return null;
   }
 

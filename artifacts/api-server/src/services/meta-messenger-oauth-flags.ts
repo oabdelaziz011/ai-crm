@@ -4,6 +4,10 @@ import {
   normalizeMetaOauthCompanyId,
   parseMetaOauthCompanyAllowlist,
 } from "./meta-oauth-company-allowlist.js";
+import {
+  isInstagramLoginOnlyAppId,
+  isMetaNumericAppId,
+} from "./meta-oauth-state.js";
 
 function envFlagTrue(name: string): boolean {
   const raw = String(process.env[name] ?? "")
@@ -107,7 +111,10 @@ export function readMetaMessengerOauthEnvConfig(
     String(process.env.META_MESSENGER_OAUTH_APP_SECRET ?? "").trim() ||
     String(process.env.META_PAGES_OAUTH_APP_SECRET ?? "").trim() ||
     String(process.env.META_EMBEDDED_SIGNUP_APP_SECRET ?? "").trim();
-  if (!appId || !appSecret) return null;
+  // Refuse Instagram Login App ID — facebook.com OAuth returns PLATFORM__INVALID_APP_ID.
+  if (!appId || !appSecret || !isMetaNumericAppId(appId) || isInstagramLoginOnlyAppId(appId)) {
+    return null;
+  }
 
   const graphApiVersion =
     String(process.env.META_MESSENGER_OAUTH_GRAPH_VERSION ?? "").trim() ||

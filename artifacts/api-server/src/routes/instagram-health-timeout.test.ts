@@ -12,7 +12,15 @@ describe("Instagram outbound health timeout and diagnostics", () => {
   it("keeps a route timeout so Cloudflare cannot drop the POST without CORS", () => {
     assert.match(source, /INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS = 20_000/);
     assert.match(source, /instagram_health_timeout/);
-    assert.match(source, /withTimeout\(/);
+    assert.match(source, /withInstagramHealthTimeout\(/);
+    assert.match(source, /AbortController/);
+  });
+
+  it("applies pre-Meta stage timeouts on the Instagram health path only", () => {
+    const diag = readFileSync(resolve(here, "instagram-health-diag.ts"), "utf8");
+    assert.match(diag, /INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS = 10_000/);
+    assert.match(diag, /instagram_health_stage_timeout/);
+    assert.doesNotMatch(diag, /requireSupabaseAuth/);
   });
 
   it("logs request metadata without authorization values or Graph tokens", () => {

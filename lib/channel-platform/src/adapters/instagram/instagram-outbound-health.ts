@@ -44,12 +44,15 @@ export type InstagramOutboundHealthInput = {
   companyId: string;
   runtimeConfig: InstagramChannelConfiguration;
   fetchFn?: typeof fetch;
+  /** Optional abort (e.g. route-level health timeout) so Graph fetches do not hang past the budget. */
+  signal?: AbortSignal;
 };
 
 export async function performInstagramOutboundHealthCheck(
   input: InstagramOutboundHealthInput,
 ): Promise<InstagramOutboundHealthReport> {
   const fetchFn = input.fetchFn ?? globalThis.fetch.bind(globalThis);
+  const signal = input.signal;
   const started = Date.now();
   const config = input.runtimeConfig;
   const apiVersion = config.apiVersion ?? "v21.0";
@@ -75,6 +78,7 @@ export async function performInstagramOutboundHealthCheck(
   try {
     const meRes = await fetchFn(`${instagramGraphBaseUrl(apiVersion)}/me?fields=id,name`, {
       headers: { Authorization: `Bearer ${config.accessToken}` },
+      signal,
     });
     const meBody = (await meRes.json()) as { id?: string; name?: string; error?: { message?: string; code?: number } };
     if (!meRes.ok) {
@@ -93,7 +97,7 @@ export async function performInstagramOutboundHealthCheck(
   try {
     const accountRes = await fetchFn(
       `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.instagramBusinessAccountId)}?fields=id,username,name`,
-      { headers: { Authorization: `Bearer ${config.accessToken}` } },
+      { headers: { Authorization: `Bearer ${config.accessToken}` }, signal },
     );
     const accountBody = (await accountRes.json()) as {
       id?: string;
@@ -129,6 +133,7 @@ export async function performInstagramOutboundHealthCheck(
         Authorization: `Bearer ${config.accessToken}`,
         "Content-Type": "application/json",
       },
+      signal,
       body: JSON.stringify({
         recipient: { id: "0" },
         message: { text: "health-check-probe" },

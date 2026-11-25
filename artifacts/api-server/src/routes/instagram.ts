@@ -14,6 +14,7 @@ import {
   isInstagramOutboundHealthPath,
   timeInstagramHealthStage,
   withInstagramHealthTimeout,
+  wrapInstagramHealthHardDeadline,
   wrapInstagramHealthMiddleware,
 } from "./instagram-health-diag.js";
 
@@ -63,6 +64,8 @@ router.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Hard deadline writes JSON+CORS itself if anything below hangs past the proxy-safe budget.
+router.use(wrapInstagramHealthHardDeadline());
 // Path-gated timing wrappers only; shared auth/scope implementations are unchanged.
 router.use(wrapInstagramHealthMiddleware("supabase_auth", requireSupabaseAuth));
 router.use(wrapInstagramHealthMiddleware("company_scope", requireCompanyScope("companyId")));

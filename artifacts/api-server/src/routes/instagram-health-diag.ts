@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { logger } from "../lib/logger.js";
+import { applyApiCorsHeaders } from "../middleware/cors.js";
 import { HttpError } from "../middleware/error-handler.js";
 
 export const INSTAGRAM_HEALTH_DIAG_STAGES = [
@@ -8,6 +9,7 @@ export const INSTAGRAM_HEALTH_DIAG_STAGES = [
   "channel_lookup",
   "credentials_load",
   "meta_health",
+  "request_deadline",
 ] as const;
 
 export type InstagramHealthDiagStage = (typeof INSTAGRAM_HEALTH_DIAG_STAGES)[number];
@@ -45,12 +47,55 @@ type ExpressMiddleware = (req: Request, res: Response, next: NextFunction) => vo
  */
 export const INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS = 10_000;
 
+/**
+ * Absolute ceiling for the whole Instagram health POST (auth → Meta).
+ * Must remain below Nginx/Cloudflare proxy_read budgets (~60–100s) with margin.
+ * On expiry we write JSON+CORS directly (do not rely on next(err) while auth may still hang).
+ */
+export const INSTAGRAM_HEALTH_HARD_DEADLINE_MS = 45_000;
+
 export function createInstagramHealthStageTimeoutError(stage: InstagramHealthDiagStage): HttpError {
   return new HttpError(
     504,
     `Instagram health stage "${stage}" timed out before completion.`,
     "instagram_health_stage_timeout",
   );
+}
+
+/** Write a CORS-safe JSON 504 for the Instagram health path; no-ops if headers already sent. */
+export function sendInstagramHealthTimeoutResponse(
+  req: Request,
+  res: Response,
+  input: {
+    stage: InstagramHealthDiagStage;
+    code: string;
+    message: string;
+    durationMs?: number;
+    logFn?: InstagramHealthDiagLogFn;
+  },
+): boolean {
+  if (res.headersSent || res.writableEnded) return false;
+  applyApiCorsHeaders(req, res);
+  input.logFn?.(
+    buildInstagramHealthDiagFields({
+      req,
+      stage: input.stage,
+      event: "error",
+      durationMs: input.durationMs,
+      completion: "next_error",
+      statusCode: 504,
+      error: new HttpError(504, input.message, input.code),
+      hasAuthorization: Boolean(req.header("authorization")),
+    }),
+  );
+  res.status(504).json({
+    error: input.code,
+    message: input.message,
+    stage: input.stage,
+    requestId: req.requestId,
+    correlationId: req.correlationId,
+  });
+  return true;
 }
 
 export async function withInstagramHealthTimeout<T>(
@@ -223,6 +268,42 @@ export type InstagramHealthDiagLogFn = (
 ) => void;
 
 /**
+ * Absolute request deadline for Instagram outbound health.
+ * Writes JSON+CORS directly so a hung auth/await cannot leave Nginx to emit a bare 502.
+ */
+export function wrapInstagramHealthHardDeadline(
+  logFn: InstagramHealthDiagLogFn = logInstagramHealthStage,
+  options?: { deadlineMs?: number },
+): ExpressMiddleware {
+  const deadlineMs = options?.deadlineMs ?? INSTAGRAM_HEALTH_HARD_DEADLINE_MS;
+  return (req, res, next) => {
+    if (!shouldInstrumentInstagramHealthDiag(req) || req.method === "OPTIONS") {
+      next();
+      return;
+    }
+
+    const started = performance.now();
+    const timer = setTimeout(() => {
+      sendInstagramHealthTimeoutResponse(req, res, {
+        stage: "request_deadline",
+        code: "instagram_health_deadline",
+        message:
+          "Instagram health check exceeded the safe proxy budget before completion.",
+        durationMs: performance.now() - started,
+        logFn,
+      });
+    }, deadlineMs);
+
+    const clear = (): void => {
+      clearTimeout(timer);
+    };
+    res.on("finish", clear);
+    res.on("close", clear);
+    next();
+  };
+}
+
+/**
  * Time shared middleware only for the Instagram health path.
  * Settles exactly once via next(), next(err), res finish, or premature close.
  */
@@ -289,6 +370,10 @@ export function wrapInstagramHealthMiddleware(
     );
 
     const wrappedNext: NextFunction = ((error?: unknown) => {
+      // After a stage timeout we may already have written the response; never re-enter the chain.
+      if (settled || res.headersSent || res.writableEnded) {
+        return;
+      }
       if (error !== undefined && error !== null) {
         settle("error", "next_error", error);
         next(error);
@@ -299,22 +384,31 @@ export function wrapInstagramHealthMiddleware(
     }) as NextFunction;
 
     stageTimer = setTimeout(() => {
-      if (settled) return;
-      const timeoutError = createInstagramHealthStageTimeoutError(stage);
-      settle("error", "next_error", timeoutError);
-      next(timeoutError);
+      if (settled || res.headersSent || res.writableEnded) return;
+      settled = true;
+      if (stageTimer) clearTimeout(stageTimer);
+      res.removeListener("finish", onFinish);
+      res.removeListener("close", onClose);
+      sendInstagramHealthTimeoutResponse(req, res, {
+        stage,
+        code: "instagram_health_stage_timeout",
+        message: `Instagram health stage "${stage}" timed out before completion.`,
+        durationMs: performance.now() - started,
+        logFn,
+      });
     }, timeoutMs);
 
     try {
       const result = middleware(req, res, wrappedNext);
       if (result && typeof (result as Promise<void>).then === "function") {
         void (result as Promise<void>).catch((error: unknown) => {
-          if (settled) return;
+          if (settled || res.headersSent || res.writableEnded) return;
           settle("error", "thrown", error);
           next(error);
         });
       }
     } catch (error) {
+      if (settled || res.headersSent || res.writableEnded) return;
       settle("error", "thrown", error);
       next(error);
     }

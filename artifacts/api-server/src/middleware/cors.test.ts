@@ -195,11 +195,16 @@ describe("API CORS preflight and Instagram health route protection", () => {
 describe("Instagram outbound health auth contract", () => {
   it("still requires supabase auth and company scope before the health handler", () => {
     const source = readFileSync(resolve(here, "../routes/instagram.ts"), "utf8");
-    const authIndex = source.indexOf("router.use(requireSupabaseAuth)");
-    const scopeIndex = source.indexOf('router.use(requireCompanyScope("companyId"))');
+    const authIndex = source.indexOf(
+      'wrapInstagramHealthMiddleware("supabase_auth", requireSupabaseAuth)',
+    );
+    const scopeIndex = source.indexOf(
+      'wrapInstagramHealthMiddleware("company_scope", requireCompanyScope("companyId"))',
+    );
     const handlerIndex = source.indexOf('router.post("/instagram/channel-outbound-health"');
     assert.ok(authIndex >= 0);
     assert.ok(scopeIndex > authIndex);
     assert.ok(handlerIndex > scopeIndex);
+    assert.match(source, /wrapInstagramHealthHardDeadline\(/);
   });
 });

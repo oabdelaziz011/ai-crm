@@ -6,6 +6,7 @@ import {
   resolveInstagramRuntimeConfiguration,
 } from "@workspace/channel-platform";
 import { logger } from "../lib/logger.js";
+import { applyApiCorsHeaders } from "../middleware/cors.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
@@ -120,7 +121,11 @@ router.post("/instagram/channel-outbound-health", async (req, res, next) => {
       }
     });
 
-    res.status(report.ok ? 200 : 502).json(report);
+    // Always HTTP 200 for a completed health evaluation (ok true/false in body).
+    // Application-level failure must NOT use HTTP 502: proxies/CDN treat 502 as a
+    // gateway error and browsers then surface CORS/"Failed to fetch" instead of JSON.
+    applyApiCorsHeaders(req, res);
+    res.status(200).json(report);
   } catch (error) {
     next(error);
   }

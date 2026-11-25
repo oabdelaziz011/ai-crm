@@ -128,7 +128,7 @@ describe("requestInstagramOutboundHealth", () => {
     assert.equal(result.ok, true);
   });
 
-  it("does not retry application JSON 502 health reports", async () => {
+  it("accepts application JSON health reports even when status is legacy 502", async () => {
     let attempts = 0;
     const fetchFn: typeof fetch = async () => {
       attempts += 1;
@@ -144,18 +144,40 @@ describe("requestInstagramOutboundHealth", () => {
       });
     };
 
-    await assert.rejects(
-      () =>
-        requestInstagramOutboundHealth({
-          apiBase,
-          companyId: "company-1",
-          companyChannelId: "channel-1",
-          authHeaders: { "Content-Type": "application/json" },
-          fetchFn,
-        }),
-      /Instagram Business Account ID mismatch/,
-    );
+    const result = await requestInstagramOutboundHealth({
+      apiBase,
+      companyId: "company-1",
+      companyChannelId: "channel-1",
+      authHeaders: { "Content-Type": "application/json" },
+      fetchFn,
+    });
     assert.equal(attempts, 1);
+    assert.equal(result.ok, false);
+    assert.match(String(result.error), /Instagram Business Account ID mismatch/);
+  });
+
+  it("accepts HTTP 200 health reports with ok:false", async () => {
+    const fetchFn: typeof fetch = async () =>
+      jsonResponse(200, {
+        ok: false,
+        latencyMs: 12,
+        error: "token invalid",
+        instagramBusinessAccountId: "1",
+        pageId: null,
+        accessToken: { valid: false },
+        instagramAccount: { ok: false, error: "token invalid" },
+        sendProbe: { ok: false },
+      });
+
+    const result = await requestInstagramOutboundHealth({
+      apiBase,
+      companyId: "company-1",
+      companyChannelId: "channel-1",
+      authHeaders: { "Content-Type": "application/json" },
+      fetchFn,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.error, "token invalid");
   });
 
   it("does not retry a third time when HTML 502 repeats", async () => {

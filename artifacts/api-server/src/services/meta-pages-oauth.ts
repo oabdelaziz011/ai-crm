@@ -214,6 +214,44 @@ async function exchangeCodeForUserToken(
   return json.access_token;
 }
 
+/** Exchange short-lived user token for long-lived before listing Pages (never-expiring Page tokens). */
+async function exchangeForLongLivedUserToken(
+  shortLivedToken: string,
+  meta: NonNullable<ReturnType<typeof readMetaPagesOauthEnvConfig>>,
+  fetchImpl: typeof fetch,
+): Promise<string> {
+  const url = new URL(`https://graph.facebook.com/${meta.graphApiVersion}/oauth/access_token`);
+  url.searchParams.set("grant_type", "fb_exchange_token");
+  url.searchParams.set("client_id", meta.appId);
+  url.searchParams.set("client_secret", meta.appSecret);
+  url.searchParams.set("fb_exchange_token", shortLivedToken);
+  const res = await fetchImpl(url.toString());
+  const json = (await res.json()) as { access_token?: string; error?: { message?: string } };
+  if (!res.ok || !json.access_token) {
+    throw new MetaPagesOauthError(
+      json.error?.message ?? "Failed to exchange for a long-lived Facebook user token.",
+      "MPO_LONG_LIVED_EXCHANGE_FAILED",
+      400,
+    );
+  }
+  return json.access_token;
+}
+
+async function resolveLongLivedUserToken(input: {
+  code: string;
+  state: string;
+  meta: NonNullable<ReturnType<typeof readMetaPagesOauthEnvConfig>>;
+  fetchImpl: typeof fetch;
+  nowMs: number;
+}): Promise<string> {
+  let userToken = takeCachedUserToken(input.state, input.nowMs);
+  if (userToken) return userToken;
+  const shortLived = await exchangeCodeForUserToken(input.code, input.meta, input.fetchImpl);
+  userToken = await exchangeForLongLivedUserToken(shortLived, input.meta, input.fetchImpl);
+  cacheUserToken(input.state, userToken, input.nowMs);
+  return userToken;
+}
+
 async function listPageAssets(
   userToken: string,
   meta: NonNullable<ReturnType<typeof readMetaPagesOauthEnvConfig>>,
@@ -284,11 +322,13 @@ export async function discoverMetaPageAssets(input: {
   const secret = resolveStateSecret(input.deps.stateSecret);
   verifyAndParseState(input.state, secret, input.companyId, input.channel, nowMs);
   const fetchImpl = input.deps.fetchImpl ?? fetch;
-  let userToken = takeCachedUserToken(input.state, nowMs);
-  if (!userToken) {
-    userToken = await exchangeCodeForUserToken(input.code, meta, fetchImpl);
-    cacheUserToken(input.state, userToken, nowMs);
-  }
+  const userToken = await resolveLongLivedUserToken({
+    code: input.code,
+    state: input.state,
+    meta,
+    fetchImpl,
+    nowMs,
+  });
   const pages = await listPageAssets(userToken, meta, fetchImpl, input.channel === "instagram");
   return {
     pages: pages.map(({ pageId, name, instagramBusinessAccountId, instagramUsername }) => ({
@@ -334,11 +374,13 @@ export async function completeMetaPagesOauth(input: {
   const secret = resolveStateSecret(input.deps.stateSecret);
   verifyAndParseState(input.state, secret, input.companyId, input.channel, nowMs);
   const fetchImpl = input.deps.fetchImpl ?? fetch;
-  let userToken = takeCachedUserToken(input.state, nowMs);
-  if (!userToken) {
-    userToken = await exchangeCodeForUserToken(input.code, meta, fetchImpl);
-    cacheUserToken(input.state, userToken, nowMs);
-  }
+  const userToken = await resolveLongLivedUserToken({
+    code: input.code,
+    state: input.state,
+    meta,
+    fetchImpl,
+    nowMs,
+  });
   const pages = await listPageAssets(userToken, meta, fetchImpl, input.channel === "instagram");
   const selected = pages.find((page) => page.pageId === pageId);
   if (!selected?.pageAccessToken) {

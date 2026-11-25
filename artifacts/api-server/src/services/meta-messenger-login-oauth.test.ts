@@ -282,6 +282,106 @@ describe("meta-messenger-login-oauth", () => {
     });
   });
 
+  it("rejects expired Page tokens before upsert so reconnect cannot store a bad secret", async () => {
+    await withMessengerEnv(async () => {
+      const secret = resolveMetaOauthStateSecret("unit-msl-state");
+      const state = createMetaOauthState({
+        companyId: DEMO,
+        userId: "u1",
+        flow: __metaMessengerLoginTest.META_MESSENGER_LOGIN_FLOW,
+        secret,
+        confirmReplaceExisting: true,
+      });
+
+      const rpcCalls: string[] = [];
+      const client = {
+        rpc: async (name: string) => {
+          rpcCalls.push(name);
+          return { error: null };
+        },
+        from: () => ({
+          upsert: async () => ({ error: null }),
+          delete: () => ({ eq: async () => ({ error: null }) }),
+          update: () => ({ eq: async () => ({ error: null }) }),
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: {
+                  enabled: true,
+                  page_id: "page-1",
+                  access_token_encrypted: "enc-old",
+                  credential_source: "oauth",
+                  webhook_verify_token_encrypted: "enc-verify",
+                },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const fetchImpl: typeof fetch = async (input, init) => {
+        const url = String(input);
+        if (url.includes("/oauth/access_token") && url.includes("fb_exchange_token")) {
+          return new Response(JSON.stringify({ access_token: "long-lived-user" }), { status: 200 });
+        }
+        if (url.includes("/oauth/access_token")) {
+          return new Response(JSON.stringify({ access_token: "short-lived-user" }), { status: 200 });
+        }
+        if (url.includes("/me/accounts")) {
+          return new Response(
+            JSON.stringify({
+              data: [{ id: "page-1", name: "Demo Page", access_token: "expired-page-token" }],
+            }),
+            { status: 200 },
+          );
+        }
+        if (url.includes("page-1") && !url.includes("subscribed_apps")) {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  "Error validating access token: Session has expired on Monday, 23-Nov-26 13:00:00 PST.",
+              },
+            }),
+            { status: 400 },
+          );
+        }
+        return new Response(JSON.stringify({ error: { message: `unexpected ${url} ${init?.method}` } }), {
+          status: 500,
+        });
+      };
+
+      try {
+        const cb = await handleMetaMessengerLoginCallback({
+          code: "fb-code",
+          state,
+          error: null,
+          errorReason: null,
+          deps: { client: client as never, fetchImpl },
+        });
+        assert.match(cb.redirectUrl, /messenger_oauth=select_page/);
+
+        await assert.rejects(
+          () =>
+            completeMetaMessengerLogin({
+              companyId: DEMO,
+              state,
+              pageId: "page-1",
+              confirmReplaceExisting: true,
+              deps: { client: client as never, fetchImpl },
+            }),
+          (err: unknown) =>
+            err instanceof MetaMessengerLoginError && err.code === "MSL_PAGE_TOKEN_EXPIRED",
+        );
+        assert.ok(!rpcCalls.includes("upsert_company_messenger_settings"));
+      } finally {
+        await __metaMessengerLoginTest.clearPending({ state });
+        __metaMessengerLoginTest.clearMemory();
+      }
+    });
+  });
+
   it("disconnect best-effort unsubscribes page webhooks", async () => {
     await withMessengerEnv(async () => {
       const methods: string[] = [];

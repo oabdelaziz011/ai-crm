@@ -33,3 +33,39 @@ describe("resolveContactDisplayName — new WhatsApp sender", () => {
     assert.equal(formatPhoneForDisplay("01099988877"), "+201099988877");
   });
 });
+
+describe("resolveContactDisplayName — Messenger / Instagram", () => {
+  it("ignores CRM placeholder Messenger {PSID} and prefers Graph senderName", () => {
+    const name = resolveContactDisplayName({
+      name: "Messenger 29316316074655841",
+      channelUsername: "Omar Test",
+      channel: "messenger",
+      metadataPhone: "29316316074655841",
+      conversationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      visitorLabel: "Visitor",
+    });
+    assert.equal(name, "Omar Test");
+  });
+
+  it("does not render PSID as +phone when Graph name is missing", () => {
+    const name = resolveContactDisplayName({
+      name: "Messenger 29316316074655841",
+      channel: "messenger",
+      phone: "29316316074655841",
+      metadataPhone: "29316316074655841",
+      conversationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      visitorLabel: "Visitor",
+    });
+    assert.equal(name, "Visitor EEEE");
+  });
+
+  it("prefers Instagram @username over placeholder CRM name", () => {
+    const name = resolveContactDisplayName({
+      name: "Instagram 17841400000000000",
+      channelUsername: "valueor_demo",
+      channel: "instagram",
+      visitorLabel: "Visitor",
+    });
+    assert.equal(name, "valueor_demo");
+  });
+});

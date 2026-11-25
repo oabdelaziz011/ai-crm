@@ -36,6 +36,7 @@ import type {
 } from "@/lib/omnichannel/types/unified-conversation";
 import { useTranslation } from "react-i18next";
 import type { AgentDeskLabels, ConversationViewLabels } from "@/components/omnichannel/types/workspace-labels";
+import { resolveConversationIdentityAvatar } from "@/lib/omnichannel/presentation/conversation-identity-avatar";
 
 type ConversationPaneProps = {
   conversation: UnifiedConversation | null;
@@ -331,6 +332,16 @@ export const ConversationPane = memo(function ConversationPane({
   const lifecycleState = aiOwnsConversation ? "AI_HANDLING" : snapshotState;
   const showLinkCustomer = Boolean(canLinkCustomer) && !conversation.customer?.id;
   const customerMessages = messages.filter((message) => !message.isInternalNote);
+  const customerAvatarUrl = useMemo(
+    () =>
+      conversation
+        ? resolveConversationIdentityAvatar({
+            conversation,
+            visitorLabel: labels.visitorLabel,
+          }).imageUrl
+        : null,
+    [conversation, labels.visitorLabel],
+  );
 
   return (
     <div className="ws-conversation-pane flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--ws-bg)]">
@@ -507,6 +518,7 @@ export const ConversationPane = memo(function ConversationPane({
             attachmentLabels={labels.messageAttachments}
             onFocusComposer={() => composeRef.current?.focus()}
             focusComposerLabel={deskLabels.emptySecondary.transcript}
+            customerAvatarUrl={customerAvatarUrl}
           />
         )}
       </div>

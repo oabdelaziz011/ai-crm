@@ -7,6 +7,7 @@ import {
   customerEmailMatchesEmailSender,
   customerPhoneMatchesWhatsAppSender,
   normalizeMetaChannelExternalId,
+  isMetaChannelPlaceholderCustomerName,
   resolveOrCreateCustomerFromInbound,
 } from "@workspace/ai-tool-router";
 import type { ChannelCustomerIdentityPort } from "@workspace/channel-platform";
@@ -244,10 +245,28 @@ export function createWebhookChannelCustomerIdentityPort(
       });
 
       if (resolved.status === "known") {
+        let trustedName = resolved.trustedCustomerName || null;
+        const graphName =
+          typeof input.senderDisplayName === "string" ? input.senderDisplayName.trim() : "";
+        // Upgrade auto-created "Messenger {PSID}" / "Instagram {IGSID}" once Graph returns a real name.
+        if (
+          graphName &&
+          !isMetaChannelPlaceholderCustomerName(graphName) &&
+          isMetaChannelPlaceholderCustomerName(trustedName)
+        ) {
+          const { error: renameError } = await client
+            .from("customers")
+            .update({ name: graphName })
+            .eq("id", resolved.customerId)
+            .eq("company_id", companyId);
+          if (!renameError) {
+            trustedName = graphName;
+          }
+        }
         return {
           status: "known",
           customerId: resolved.customerId,
-          trustedCustomerName: resolved.trustedCustomerName || null,
+          trustedCustomerName: trustedName,
         };
       }
       if (resolved.status === "ambiguous") {

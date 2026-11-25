@@ -89,6 +89,15 @@ function trimDisplayName(value: string | null | undefined): string | null {
   return trimmed;
 }
 
+/** Auto-created labels like "Messenger 29316…" — safe to overwrite once Graph returns a real name. */
+export function isMetaChannelPlaceholderCustomerName(value: string | null | undefined): boolean {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (!trimmed) return true;
+  if (/^(messenger|instagram|facebook)\s+\d{8,}$/i.test(trimmed)) return true;
+  if (/^\d{10,20}$/.test(trimmed)) return true;
+  return false;
+}
+
 function emailLocalPart(email: string): string {
   const local = email.split("@")[0]?.trim() ?? "";
   return local || email;

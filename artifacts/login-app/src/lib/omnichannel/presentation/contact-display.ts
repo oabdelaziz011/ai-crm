@@ -14,13 +14,27 @@ export type ContactDisplayInput = {
 
 const UNKNOWN_PATTERNS = [/unknown/i, /^—+$/, /^-+$/];
 
+/** Auto-created CRM labels like "Messenger 29316…" / bare PSID — not a real person name. */
+export function isMetaChannelPlaceholderName(value: string | null | undefined): boolean {
+  const trimmed = value?.trim();
+  if (!trimmed) return true;
+  if (/^(messenger|instagram|facebook)\s+\d{8,}$/i.test(trimmed)) return true;
+  if (/^\d{10,20}$/.test(trimmed)) return true;
+  if (/^\+\d{10,20}$/.test(trimmed) && trimmed.replace(/\D/g, "").length >= 15) return true;
+  return false;
+}
+
 function hasDisplayValue(value: string | null | undefined): value is string {
   const trimmed = value?.trim();
   if (!trimmed) return false;
-  return !UNKNOWN_PATTERNS.some((pattern) => pattern.test(trimmed));
+  if (UNKNOWN_PATTERNS.some((pattern) => pattern.test(trimmed))) return false;
+  if (isMetaChannelPlaceholderName(trimmed)) return false;
+  return true;
 }
 
 export function resolveContactDisplayName(input: ContactDisplayInput): string {
+  const isMetaSocial = input.channel === "messenger" || input.channel === "instagram";
+
   if (hasDisplayValue(input.name)) return input.name.trim();
   if (hasDisplayValue(input.businessName)) return input.businessName!.trim();
 
@@ -34,12 +48,20 @@ export function resolveContactDisplayName(input: ContactDisplayInput): string {
   const channelProfileName = resolveChannelProfileDisplayName(input.channelUsername);
   if (channelProfileName) return channelProfileName;
 
-  if (phone) return formatPhoneForDisplay(phone);
+  // Never format Messenger PSID / Instagram IGSID as a "+…" phone.
+  if (phone && !isMetaSocial && !isMetaChannelPlaceholderName(phone)) {
+    return formatPhoneForDisplay(phone);
+  }
 
   if (input.channelUsername?.trim()) {
     const username = input.channelUsername.trim();
-    if (input.channel) return formatChannelUsername(input.channel, username);
-    return username.startsWith("@") ? username : `@${username}`;
+    if (isMetaChannelPlaceholderName(username)) {
+      // fall through to visitor label
+    } else if (input.channel) {
+      return formatChannelUsername(input.channel, username);
+    } else {
+      return username.startsWith("@") ? username : `@${username}`;
+    }
   }
 
   if (hasDisplayValue(input.email)) return input.email.trim();

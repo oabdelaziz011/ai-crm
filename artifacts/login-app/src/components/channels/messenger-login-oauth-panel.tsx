@@ -110,7 +110,14 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
                   : t("notifications.messengerLogin.savedNotConnected", {
                       defaultValue: "Saved — not fully Connected",
                     }),
-                description: completed.message,
+                description: t(
+                  `notifications.messengerLogin.result.${completed.connectionStatus}`,
+                  {
+                    defaultValue: completed.connected
+                      ? t("notifications.messengerLogin.resultConnectedHint")
+                      : t("notifications.messengerLogin.resultIncompleteHint"),
+                  },
+                ),
                 variant: completed.connected ? "default" : "destructive",
               });
               onConnected?.();
@@ -210,7 +217,11 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
           : t("notifications.messengerLogin.savedNotConnected", {
               defaultValue: "Saved — not fully Connected",
             }),
-        description: result.message,
+        description: t(`notifications.messengerLogin.result.${result.connectionStatus}`, {
+          defaultValue: result.connected
+            ? t("notifications.messengerLogin.resultConnectedHint")
+            : t("notifications.messengerLogin.resultIncompleteHint"),
+        }),
         variant: result.connected ? "default" : "destructive",
       });
       onConnected?.();

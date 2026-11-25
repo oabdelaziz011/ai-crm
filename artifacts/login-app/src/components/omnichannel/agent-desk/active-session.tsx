@@ -27,6 +27,7 @@ import type { ConversationRecord } from "@workspace/ai-conversation";
 import type { AgentDeskLabels, ConversationViewLabels } from "@/components/omnichannel/types/workspace-labels";
 import { usePermissions } from "@/hooks/use-rbac";
 import { CONVERSATION_LIFECYCLE_PERMISSIONS } from "@/lib/conversation-lifecycle";
+import { resolveConversationIdentityAvatar } from "@/lib/omnichannel/presentation/conversation-identity-avatar";
 
 type ActiveSessionProps = {
   conversation: UnifiedConversation | null;
@@ -248,6 +249,16 @@ export const ActiveSession = memo(function ActiveSession({
   const header = lifecycleSnapshot?.header;
   const lifecycleState = lifecycleSnapshot?.state ?? conversation.lifecycleState;
   const customerMessages = messages.filter((m) => !m.isInternalNote);
+  const customerAvatarUrl = useMemo(
+    () =>
+      conversation
+        ? resolveConversationIdentityAvatar({
+            conversation,
+            visitorLabel: labels.visitorLabel,
+          }).imageUrl
+        : null,
+    [conversation, labels.visitorLabel],
+  );
   const internalNotes = canViewNotes ? messages.filter((m) => m.isInternalNote) : [];
 
   return (
@@ -351,6 +362,7 @@ export const ActiveSession = memo(function ActiveSession({
             attachmentLabels={labels.messageAttachments}
             onFocusComposer={onFocusComposer}
             focusComposerLabel={deskLabels.emptySecondary.transcript}
+            customerAvatarUrl={customerAvatarUrl}
           />
         )}
       </div>

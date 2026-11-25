@@ -206,7 +206,15 @@ export function WhatsAppEmbeddedSignupPanel({
                 ? "ES_META_NUMBER_ALREADY_CLOUD_API"
                 : numeric === 2655093
                   ? "ES_META_ALREADY_SHARED_WITH_PARTNER"
-                  : "ES_META_GRAPH_ERROR",
+                  : numeric === 3441090
+                    ? "ES_META_NUMBER_OTHER_WABA_SAME_PORTFOLIO"
+                    : numeric === 3441067 ||
+                        numeric === 3441103 ||
+                        numeric === 3441041 ||
+                        numeric === 3441062 ||
+                        numeric === 2655127
+                      ? "ES_META_NUMBER_OTHER_BUSINESS_PORTFOLIO"
+                      : "ES_META_GRAPH_ERROR",
             message: typeof errorMessage === "string" ? errorMessage : undefined,
             metaErrorCode: numeric,
           };

@@ -30,6 +30,28 @@ describe("whatsapp-embedded-signup-meta-errors", () => {
     assert.match(mapped.message, /cannot release/i);
   });
 
+  it("maps Meta 3441067 to other Business Portfolio without inventing a ValueOR migration", () => {
+    const mapped = mapMetaEmbeddedSignupGraphError({
+      error: {
+        code: 3441067,
+        message:
+          "This number is already on a WhatsApp Business account in a business portfolio you don't manage.",
+      },
+    });
+    assert.equal(mapped.code, "ES_META_NUMBER_OTHER_BUSINESS_PORTFOLIO");
+    assert.equal(mapped.metaErrorCode, 3441067);
+    assert.match(mapped.message, /Business Portfolio/i);
+    assert.doesNotMatch(mapped.message, /ValueOR will delete|auto-migrate/i);
+  });
+
+  it("maps Meta 3441090 to other WABA in the same portfolio", () => {
+    const mapped = mapMetaEmbeddedSignupGraphError({
+      error: { code: 3441090, message: "Already on another WABA" },
+    });
+    assert.equal(mapped.code, "ES_META_NUMBER_OTHER_WABA_SAME_PORTFOLIO");
+    assert.match(mapped.message, /3441090/);
+  });
+
   it("keeps unknown Meta codes generic with the numeric id", () => {
     const mapped = mapMetaEmbeddedSignupGraphError({
       error: { code: 999001, message: "Something obscure" },

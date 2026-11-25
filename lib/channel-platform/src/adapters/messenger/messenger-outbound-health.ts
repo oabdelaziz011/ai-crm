@@ -42,12 +42,15 @@ export type MessengerOutboundHealthInput = {
   companyId: string;
   runtimeConfig: MessengerChannelConfiguration;
   fetchFn?: typeof fetch;
+  /** Optional abort (e.g. route-level health timeout) so Graph fetches do not hang past the budget. */
+  signal?: AbortSignal;
 };
 
 export async function performMessengerOutboundHealthCheck(
   input: MessengerOutboundHealthInput,
 ): Promise<MessengerOutboundHealthReport> {
   const fetchFn = input.fetchFn ?? globalThis.fetch.bind(globalThis);
+  const signal = input.signal;
   const started = Date.now();
   const config = input.runtimeConfig;
   const apiVersion = config.apiVersion ?? "v21.0";
@@ -72,8 +75,13 @@ export async function performMessengerOutboundHealthCheck(
   try {
     const meRes = await fetchFn(`${messengerGraphBaseUrl(apiVersion)}/me?fields=id,name`, {
       headers: { Authorization: `Bearer ${config.accessToken}` },
+      signal,
     });
-    const meBody = (await meRes.json()) as { id?: string; name?: string; error?: { message?: string; code?: number } };
+    const meBody = (await meRes.json()) as {
+      id?: string;
+      name?: string;
+      error?: { message?: string; code?: number };
+    };
     if (!meRes.ok) {
       const err = readMetaError(meBody);
       report.error = err.message;
@@ -90,7 +98,7 @@ export async function performMessengerOutboundHealthCheck(
   try {
     const pageRes = await fetchFn(
       `${messengerGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.pageId)}?fields=id,name`,
-      { headers: { Authorization: `Bearer ${config.accessToken}` } },
+      { headers: { Authorization: `Bearer ${config.accessToken}` }, signal },
     );
     const pageBody = (await pageRes.json()) as {
       id?: string;
@@ -121,6 +129,7 @@ export async function performMessengerOutboundHealthCheck(
         Authorization: `Bearer ${config.accessToken}`,
         "Content-Type": "application/json",
       },
+      signal,
       body: JSON.stringify({
         messaging_type: "RESPONSE",
         recipient: { id: "0" },

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   applyMetaSenderProfileToNormalized,
+  buildMetaSenderConversationMetadataPatch,
   fetchMetaSenderProfile,
 } from "./meta-sender-profile.js";
 import type { NormalizedInboundMessageDto } from "../../dto/channel-dto.js";
@@ -45,6 +46,7 @@ describe("meta-sender-profile", () => {
     });
     assert.equal(ok.senderName, "demo_ig");
     assert.equal(ok.profilePicUrl, "https://cdn.example/ig.jpg");
+    assert.equal(ok.username, "demo_ig");
 
     const failed = await fetchMetaSenderProfile({
       channelKey: "instagram",
@@ -57,7 +59,7 @@ describe("meta-sender-profile", () => {
     assert.equal(failed.profilePicUrl, null);
   });
 
-  it("merges profile into normalized metadata without overwriting", () => {
+  it("refreshes profile name and picture on inbound metadata when Graph returns them", () => {
     const base: NormalizedInboundMessageDto = {
       externalThreadId: "psid-1",
       externalMessageId: "m1",
@@ -70,7 +72,47 @@ describe("meta-sender-profile", () => {
       senderName: "New Name",
       profilePicUrl: "https://cdn.example/pic.jpg",
     });
-    assert.equal(merged.metadata?.senderName, "Existing");
+    assert.equal(merged.metadata?.senderName, "New Name");
     assert.equal(merged.metadata?.messengerProfilePic, "https://cdn.example/pic.jpg");
+    assert.equal(merged.metadata?.profilePicUrl, "https://cdn.example/pic.jpg");
+  });
+
+  it("builds conversation metadata patch for returning Messenger threads", () => {
+    const patch = buildMetaSenderConversationMetadataPatch(
+      "messenger",
+      {
+        senderName: "Ada Lovelace",
+        messengerProfilePic: "https://cdn.example/ada.jpg",
+        profilePicUrl: "https://cdn.example/ada.jpg",
+      },
+      { externalThreadId: "psid-1" },
+    );
+    assert.ok(patch);
+    assert.equal(patch?.senderName, "Ada Lovelace");
+    assert.equal(patch?.messengerProfilePic, "https://cdn.example/ada.jpg");
+    assert.equal(patch?.messengerName, "Ada Lovelace");
+  });
+
+  it("returns null conversation patch when metadata already matches", () => {
+    const patch = buildMetaSenderConversationMetadataPatch(
+      "instagram",
+      {
+        senderName: "demo_ig",
+        username: "demo_ig",
+        instagramUsername: "demo_ig",
+        channelUsername: "demo_ig",
+        instagramProfilePic: "https://cdn.example/ig.jpg",
+        profilePicUrl: "https://cdn.example/ig.jpg",
+      },
+      {
+        senderName: "demo_ig",
+        username: "demo_ig",
+        instagramUsername: "demo_ig",
+        channelUsername: "demo_ig",
+        instagramProfilePic: "https://cdn.example/ig.jpg",
+        profilePicUrl: "https://cdn.example/ig.jpg",
+      },
+    );
+    assert.equal(patch, null);
   });
 });

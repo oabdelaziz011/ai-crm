@@ -95,6 +95,15 @@ describe("WhatsApp Embedded Signup UI contracts", () => {
     assert.match(ar, /2655122/);
   });
 
+  it("includes EN and AR copy for Meta other Business Portfolio errors", () => {
+    assert.match(en, /"metaNumberOtherBusinessPortfolio"/);
+    assert.match(en, /"metaNumberOtherWabaSamePortfolio"/);
+    assert.match(ar, /"metaNumberOtherBusinessPortfolio"/);
+    assert.match(ar, /"metaNumberOtherWabaSamePortfolio"/);
+    assert.match(en, /3441090/);
+    assert.match(ar, /3441090/);
+  });
+
   it("routes API/Meta errors through the shared presentation helper", () => {
     assert.match(panel, /resolveEmbeddedSignupErrorPresentation/);
     assert.match(panel, /toastEmbeddedSignupError/);

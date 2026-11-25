@@ -67,7 +67,8 @@ jobs:
       - name: Build frontend bundle
         run: pnpm --dir artifacts/login-app build
         env:
-          GITHUB_SHA: ${{ env.RELEASE_SHA }}
+          # Prefer VERCEL_GIT_COMMIT_SHA: workflow_dispatch GITHUB_SHA is the workflow tip, not release_sha.
+          VERCEL_GIT_COMMIT_SHA: ${{ env.RELEASE_SHA }}
           VITE_APP_ORIGIN: https://www.valueor.org
           VITE_SITE_URL: https://www.valueor.org
           VITE_API_SERVER_URL: https://api.valueor.org
@@ -81,11 +82,29 @@ jobs:
           VITE_META_INSTAGRAM_LOGIN_ENABLED: "true"
           VITE_META_PAGES_OAUTH_ENABLED: "false"
 
-      - name: Write frontend version.json
+      - name: Stamp frontend version.json and valueor-build meta
         run: |
           set -euo pipefail
           printf '{"service":"login-app","sha":"%s"}\n' "$RELEASE_SHA" \
             > artifacts/login-app/dist/public/version.json
+          python3 - <<'PY'
+          import os, pathlib, re
+          sha = os.environ["RELEASE_SHA"]
+          path = pathlib.Path("artifacts/login-app/dist/public/index.html")
+          html = path.read_text(encoding="utf-8")
+          meta = f'<meta name="valueor-build" content="{sha}" />'
+          if re.search(r'<meta\s+name="valueor-build"\s+content="[^"]*"\s*/?>', html):
+              html = re.sub(
+                  r'<meta\s+name="valueor-build"\s+content="[^"]*"\s*/?>',
+                  meta,
+                  html,
+                  count=1,
+              )
+          else:
+              html = html.replace("</head>", f"    {meta}\n  </head>")
+          path.write_text(html, encoding="utf-8")
+          print("stamped_valueor_build_meta")
+          PY
 
       - name: Verify frontend production hosts and build identity
         run: |

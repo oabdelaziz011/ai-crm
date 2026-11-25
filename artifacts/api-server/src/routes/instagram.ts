@@ -121,6 +121,56 @@ router.post("/instagram/channel-outbound-health", async (req, res, next) => {
       }
     });
 
+    // Heal stale stored IG_ID when /me returns the messaging user_id (IG Login).
+    const resolvedId = String(report.resolvedInstagramBusinessAccountId ?? "").trim();
+    const configuredId = String(runtimeConfig.instagramBusinessAccountId ?? "").trim();
+    if (report.ok && resolvedId && resolvedId !== configuredId) {
+      try {
+        await timeInstagramHealthStage(req, "heal_instagram_business_account_id", async () => {
+          await platform.client
+            .from("company_instagram_settings")
+            .update({
+              instagram_business_account_id: resolvedId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("company_id", companyId);
+
+          const nextConfiguration = {
+            ...channel.configuration,
+            instagramBusinessAccountId: resolvedId,
+          };
+          await platform.client
+            .from("company_channels")
+            .update({ configuration: nextConfiguration })
+            .eq("id", companyChannelId)
+            .eq("company_id", companyId)
+            .is("deleted_at", null);
+        });
+        logger.info(
+          {
+            instagramHealthDiag: true,
+            stage: "heal_instagram_business_account_id",
+            companyId,
+            companyChannelId,
+            requestId: req.requestId,
+          },
+          "instagram.channel-outbound-health healed stored IG_ID from /me user_id",
+        );
+      } catch (healError) {
+        logger.warn(
+          {
+            instagramHealthDiag: true,
+            stage: "heal_instagram_business_account_id_failed",
+            companyId,
+            companyChannelId,
+            requestId: req.requestId,
+            error: healError instanceof Error ? healError.message : String(healError),
+          },
+          "instagram.channel-outbound-health IG_ID heal failed",
+        );
+      }
+    }
+
     // Always HTTP 200 for a completed health evaluation (ok true/false in body).
     // Application-level failure must NOT use HTTP 502: proxies/CDN treat 502 as a
     // gateway error and browsers then surface CORS/"Failed to fetch" instead of JSON.

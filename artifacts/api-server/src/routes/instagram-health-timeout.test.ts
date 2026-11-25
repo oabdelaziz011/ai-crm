@@ -22,6 +22,12 @@ describe("Instagram outbound health timeout and diagnostics", () => {
     assert.doesNotMatch(source, /report\.ok \? 200 : 502/);
   });
 
+  it("heals stale stored IG_ID from /me user_id without logging secrets", () => {
+    assert.match(source, /heal_instagram_business_account_id/);
+    assert.match(source, /resolvedInstagramBusinessAccountId/);
+    assert.doesNotMatch(source, /access_token/);
+  });
+
   it("applies pre-Meta stage timeouts on the Instagram health path only", () => {
     const diag = readFileSync(resolve(here, "instagram-health-diag.ts"), "utf8");
     assert.match(diag, /INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS = 10_000/);

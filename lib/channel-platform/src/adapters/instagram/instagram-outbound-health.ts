@@ -18,6 +18,8 @@ export type InstagramOutboundHealthReport = {
   endpoint: string;
   graphApiVersion: string;
   instagramBusinessAccountId: string;
+  /** IG_ID from /me `user_id` when present (messaging id). */
+  resolvedInstagramBusinessAccountId?: string;
   pageId: string | null;
   accessToken: {
     valid: boolean;
@@ -40,7 +42,7 @@ function readMetaError(body: { error?: { message?: string; code?: number } }): {
   };
 }
 
-/** Instagram Login Graph returns both `id` and `user_id`; OAuth persists `user_id`. */
+/** Instagram Login Graph returns both `id` (app-scoped) and `user_id` (IG_ID). */
 export function collectInstagramGraphIds(
   ...values: Array<string | number | null | undefined>
 ): string[] {
@@ -64,6 +66,39 @@ export function matchesConfiguredInstagramAccountId(
   return collectInstagramGraphIds(...candidates).includes(expected);
 }
 
+type IgMeProfile = {
+  userId?: string;
+  appScopedId?: string;
+  username?: string;
+  name?: string;
+  accountType?: string;
+};
+
+/**
+ * Meta docs sometimes show /me as a flat object and sometimes as `{ data: [...] }`.
+ * Prefer `user_id` (IG_ID) over app-scoped `id`.
+ */
+export function parseInstagramLoginMeProfile(body: unknown): IgMeProfile {
+  if (!body || typeof body !== "object") return {};
+  const root = body as Record<string, unknown>;
+  const row =
+    Array.isArray(root.data) && root.data[0] && typeof root.data[0] === "object"
+      ? (root.data[0] as Record<string, unknown>)
+      : root;
+  const userId = row.user_id != null ? String(row.user_id).trim() : undefined;
+  const appScopedId = row.id != null ? String(row.id).trim() : undefined;
+  const username = row.username != null ? String(row.username).trim() : undefined;
+  const name = row.name != null ? String(row.name).trim() : undefined;
+  const accountType = row.account_type != null ? String(row.account_type).trim() : undefined;
+  return {
+    userId: userId || undefined,
+    appScopedId: appScopedId || undefined,
+    username: username || undefined,
+    name: name || undefined,
+    accountType: accountType || undefined,
+  };
+}
+
 export type InstagramOutboundHealthInput = {
   companyId: string;
   runtimeConfig: InstagramChannelConfiguration;
@@ -80,15 +115,15 @@ export async function performInstagramOutboundHealthCheck(
   const started = Date.now();
   const config = input.runtimeConfig;
   const apiVersion = config.apiVersion ?? "v21.0";
-  const endpoint = `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.instagramBusinessAccountId)}/messages`;
+  const configuredId = config.instagramBusinessAccountId.trim();
 
   const report: InstagramOutboundHealthReport = {
     ok: false,
     latencyMs: 0,
     credentialSource: "company_instagram_settings",
-    endpoint,
+    endpoint: `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(configuredId)}/messages`,
     graphApiVersion: apiVersion,
-    instagramBusinessAccountId: config.instagramBusinessAccountId,
+    instagramBusinessAccountId: configuredId,
     pageId: config.pageId ?? null,
     accessToken: {
       valid: false,
@@ -99,86 +134,70 @@ export async function performInstagramOutboundHealthCheck(
     sendProbe: { ok: false },
   };
 
-  let meUserId: string | undefined;
-  let meId: string | undefined;
+  let resolvedIgId = configuredId;
 
   try {
-    // Match OAuth profile fields: Instagram Login exposes messaging id as `user_id`.
+    // Instagram Login: /me is the source of truth. `user_id` is IG_ID; `id` is app-scoped only.
     const meRes = await fetchFn(
-      `${instagramGraphBaseUrl(apiVersion)}/me?fields=user_id,id,username,name`,
+      `${instagramGraphBaseUrl(apiVersion)}/me?fields=user_id,id,username,name,account_type`,
       {
         headers: { Authorization: `Bearer ${config.accessToken}` },
         signal,
       },
     );
-    const meBody = (await meRes.json()) as {
-      user_id?: string | number;
-      id?: string | number;
-      username?: string;
-      name?: string;
+    const meRaw = (await meRes.json()) as {
       error?: { message?: string; code?: number };
     };
     if (!meRes.ok) {
-      const err = readMetaError(meBody);
+      const err = readMetaError(meRaw);
       report.error = err.message;
       report.metaErrorCode = err.code;
-    } else {
-      report.accessToken.valid = true;
-      meUserId = meBody.user_id != null ? String(meBody.user_id).trim() : undefined;
-      meId = meBody.id != null ? String(meBody.id).trim() : undefined;
-      report.accessToken.ownerId = meUserId || meId;
-      report.accessToken.ownerName = meBody.name ?? meBody.username;
-    }
-  } catch (error) {
-    report.error = error instanceof Error ? error.message : String(error);
-  }
-
-  try {
-    const accountRes = await fetchFn(
-      `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.instagramBusinessAccountId)}?fields=id,user_id,username,name`,
-      { headers: { Authorization: `Bearer ${config.accessToken}` }, signal },
-    );
-    const accountBody = (await accountRes.json()) as {
-      id?: string | number;
-      user_id?: string | number;
-      username?: string;
-      name?: string;
-      error?: { message?: string; code?: number };
-    };
-    if (!accountRes.ok) {
-      const err = readMetaError(accountBody);
       report.instagramAccount = { ok: false, error: err.message, metaErrorCode: err.code };
     } else {
-      // OAuth stores Instagram Login `user_id`. Node lookups often echo a different `id`.
-      // Accept either Graph identifier, or a /me identifier that matches the configured id.
-      const idsMatch = matchesConfiguredInstagramAccountId(
-        config.instagramBusinessAccountId,
-        accountBody.id,
-        accountBody.user_id,
-        meUserId,
-        meId,
-      );
-      // Path was the configured id and Graph resolved a profile → alias is valid.
-      const resolvedAlias =
-        !idsMatch &&
-        Boolean(String(accountBody.username ?? accountBody.name ?? "").trim());
-      report.instagramAccount = {
-        ok: idsMatch || resolvedAlias,
-        username: accountBody.username,
-        name: accountBody.name,
-        error:
-          idsMatch || resolvedAlias ? undefined : "Instagram Business Account ID mismatch",
-      };
+      const me = parseInstagramLoginMeProfile(meRaw);
+      report.accessToken.valid = true;
+      report.accessToken.ownerId = me.userId || me.appScopedId;
+      report.accessToken.ownerName = me.name ?? me.username;
+
+      if (me.userId) {
+        resolvedIgId = me.userId;
+        report.resolvedInstagramBusinessAccountId = me.userId;
+      }
+
+      // Never treat app-scoped `id` as the messaging account id.
+      // Account is healthy when /me returns a professional profile (username or user_id).
+      const accountType = (me.accountType ?? "").toUpperCase();
+      const personalBlocked = accountType === "PERSONAL";
+      if (personalBlocked) {
+        report.instagramAccount = {
+          ok: false,
+          username: me.username,
+          name: me.name,
+          error: "Personal Instagram accounts are not supported",
+        };
+      } else if (me.userId || me.username) {
+        report.instagramAccount = {
+          ok: true,
+          username: me.username,
+          name: me.name,
+        };
+      } else {
+        report.instagramAccount = {
+          ok: false,
+          error: "Instagram professional account profile missing user_id/username",
+        };
+      }
     }
   } catch (error) {
-    report.instagramAccount = {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+    const message = error instanceof Error ? error.message : String(error);
+    report.error = message;
+    report.instagramAccount = { ok: false, error: message };
   }
 
+  report.endpoint = `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(resolvedIgId)}/messages`;
+
   try {
-    const sendRes = await fetchFn(endpoint, {
+    const sendRes = await fetchFn(report.endpoint, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.accessToken}`,
@@ -198,8 +217,11 @@ export async function performInstagramOutboundHealthCheck(
         error: err.message,
         metaErrorCode: err.code,
       };
-    } else {
+    } else if (sendRes.ok) {
       report.sendProbe = { ok: true };
+    } else {
+      const err = readMetaError(sendBody);
+      report.sendProbe = { ok: false, error: err.message, metaErrorCode: err.code };
     }
   } catch (error) {
     report.sendProbe = {
@@ -212,7 +234,8 @@ export async function performInstagramOutboundHealthCheck(
   report.latencyMs = Date.now() - started;
 
   if (!report.error && !report.ok) {
-    report.error = report.instagramAccount.error ?? report.sendProbe.error ?? "Instagram outbound health check failed";
+    report.error =
+      report.instagramAccount.error ?? report.sendProbe.error ?? "Instagram outbound health check failed";
     report.metaErrorCode = report.instagramAccount.metaErrorCode ?? report.sendProbe.metaErrorCode;
   }
 

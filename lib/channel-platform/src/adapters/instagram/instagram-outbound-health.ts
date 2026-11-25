@@ -40,6 +40,30 @@ function readMetaError(body: { error?: { message?: string; code?: number } }): {
   };
 }
 
+/** Instagram Login Graph returns both `id` and `user_id`; OAuth persists `user_id`. */
+export function collectInstagramGraphIds(
+  ...values: Array<string | number | null | undefined>
+): string[] {
+  const ids: string[] = [];
+  for (const value of values) {
+    if (value == null) continue;
+    const trimmed = String(value).trim();
+    if (trimmed && !ids.includes(trimmed)) {
+      ids.push(trimmed);
+    }
+  }
+  return ids;
+}
+
+export function matchesConfiguredInstagramAccountId(
+  configuredId: string,
+  ...candidates: Array<string | number | null | undefined>
+): boolean {
+  const expected = configuredId.trim();
+  if (!expected) return false;
+  return collectInstagramGraphIds(...candidates).includes(expected);
+}
+
 export type InstagramOutboundHealthInput = {
   companyId: string;
   runtimeConfig: InstagramChannelConfiguration;
@@ -75,20 +99,35 @@ export async function performInstagramOutboundHealthCheck(
     sendProbe: { ok: false },
   };
 
+  let meUserId: string | undefined;
+  let meId: string | undefined;
+
   try {
-    const meRes = await fetchFn(`${instagramGraphBaseUrl(apiVersion)}/me?fields=id,name`, {
-      headers: { Authorization: `Bearer ${config.accessToken}` },
-      signal,
-    });
-    const meBody = (await meRes.json()) as { id?: string; name?: string; error?: { message?: string; code?: number } };
+    // Match OAuth profile fields: Instagram Login exposes messaging id as `user_id`.
+    const meRes = await fetchFn(
+      `${instagramGraphBaseUrl(apiVersion)}/me?fields=user_id,id,username,name`,
+      {
+        headers: { Authorization: `Bearer ${config.accessToken}` },
+        signal,
+      },
+    );
+    const meBody = (await meRes.json()) as {
+      user_id?: string | number;
+      id?: string | number;
+      username?: string;
+      name?: string;
+      error?: { message?: string; code?: number };
+    };
     if (!meRes.ok) {
       const err = readMetaError(meBody);
       report.error = err.message;
       report.metaErrorCode = err.code;
     } else {
       report.accessToken.valid = true;
-      report.accessToken.ownerId = meBody.id;
-      report.accessToken.ownerName = meBody.name;
+      meUserId = meBody.user_id != null ? String(meBody.user_id).trim() : undefined;
+      meId = meBody.id != null ? String(meBody.id).trim() : undefined;
+      report.accessToken.ownerId = meUserId || meId;
+      report.accessToken.ownerName = meBody.name ?? meBody.username;
     }
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error);
@@ -96,11 +135,12 @@ export async function performInstagramOutboundHealthCheck(
 
   try {
     const accountRes = await fetchFn(
-      `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.instagramBusinessAccountId)}?fields=id,username,name`,
+      `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.instagramBusinessAccountId)}?fields=id,user_id,username,name`,
       { headers: { Authorization: `Bearer ${config.accessToken}` }, signal },
     );
     const accountBody = (await accountRes.json()) as {
-      id?: string;
+      id?: string | number;
+      user_id?: string | number;
       username?: string;
       name?: string;
       error?: { message?: string; code?: number };
@@ -109,14 +149,25 @@ export async function performInstagramOutboundHealthCheck(
       const err = readMetaError(accountBody);
       report.instagramAccount = { ok: false, error: err.message, metaErrorCode: err.code };
     } else {
+      // OAuth stores Instagram Login `user_id`. Node lookups often echo a different `id`.
+      // Accept either Graph identifier, or a /me identifier that matches the configured id.
+      const idsMatch = matchesConfiguredInstagramAccountId(
+        config.instagramBusinessAccountId,
+        accountBody.id,
+        accountBody.user_id,
+        meUserId,
+        meId,
+      );
+      // Path was the configured id and Graph resolved a profile → alias is valid.
+      const resolvedAlias =
+        !idsMatch &&
+        Boolean(String(accountBody.username ?? accountBody.name ?? "").trim());
       report.instagramAccount = {
-        ok: accountBody.id === config.instagramBusinessAccountId,
+        ok: idsMatch || resolvedAlias,
         username: accountBody.username,
         name: accountBody.name,
         error:
-          accountBody.id === config.instagramBusinessAccountId
-            ? undefined
-            : "Instagram Business Account ID mismatch",
+          idsMatch || resolvedAlias ? undefined : "Instagram Business Account ID mismatch",
       };
     }
   } catch (error) {

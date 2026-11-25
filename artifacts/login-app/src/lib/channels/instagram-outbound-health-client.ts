@@ -101,8 +101,16 @@ async function requestInstagramOutboundHealthOnce(input: {
     } satisfies AttemptFailure;
   }
 
+  // Completed health evaluations may historically have used HTTP 502 with a JSON
+  // report body. Prefer the report when present so the UI can show Meta errors.
+  if (
+    typeof (payload as { ok?: unknown }).ok === "boolean" &&
+    (response.ok || response.status === 502)
+  ) {
+    return payload as InstagramOutboundHealthResponse;
+  }
+
   if (!response.ok) {
-    // Application JSON 4xx/5xx (including Express health 502 reports) are not retried.
     throw {
       retryable: false,
       error: new Error(

@@ -16,6 +16,12 @@ describe("Instagram outbound health timeout and diagnostics", () => {
     assert.match(source, /AbortController/);
   });
 
+  it("returns HTTP 200 for completed health reports instead of application-level 502", () => {
+    assert.match(source, /applyApiCorsHeaders\(req, res\)/);
+    assert.match(source, /res\.status\(200\)\.json\(report\)/);
+    assert.doesNotMatch(source, /report\.ok \? 200 : 502/);
+  });
+
   it("applies pre-Meta stage timeouts on the Instagram health path only", () => {
     const diag = readFileSync(resolve(here, "instagram-health-diag.ts"), "utf8");
     assert.match(diag, /INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS = 10_000/);

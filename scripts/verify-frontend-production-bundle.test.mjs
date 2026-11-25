@@ -22,7 +22,7 @@ describe("frontend production bundle verification", () => {
       [
         'const api="https://api.valueor.org";',
         'const hook="https://webhook.valueor.org";',
-        'const env={VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED:"true",VITE_WHATSAPP_COEXISTENCE_ENABLED:"false"};',
+        'const env={VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED:"true",VITE_WHATSAPP_COEXISTENCE_ENABLED:"false",VITE_META_MESSENGER_OAUTH_ENABLED:"true",VITE_META_PAGES_OAUTH_ENABLED:"false"};',
       ].join(" "),
     );
     const good = run(ok);

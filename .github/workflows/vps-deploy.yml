@@ -73,9 +73,10 @@ jobs:
           # Coexistence stays off until Meta eligibility is explicitly approved.
           VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED: "true"
           VITE_WHATSAPP_COEXISTENCE_ENABLED: "false"
-          # Messenger / Pages OAuth UI stay off until separately approved.
+          # Messenger OAuth UI: narrow ValueOR enablement (server allowlist still required).
+          # Pages OAuth stays off (Messenger Login path is preferred).
           # Instagram Login UI: narrow ValueOR enablement (server allowlist still required).
-          VITE_META_MESSENGER_OAUTH_ENABLED: "false"
+          VITE_META_MESSENGER_OAUTH_ENABLED: "true"
           VITE_META_INSTAGRAM_LOGIN_ENABLED: "true"
           VITE_META_PAGES_OAUTH_ENABLED: "false"
 
@@ -225,6 +226,55 @@ jobs:
           # Refuse public-all allowlist
           if grep -Eq '^META_INSTAGRAM_LOGIN_ALLOWED_COMPANY_IDS=\*' "$OVERLAY"; then
             echo "::error::Refusing public-all Instagram allowlist"
+            exit 2
+          fi
+
+      - name: Stage Messenger OAuth env overlay for approved company only
+        if: github.event.inputs.action == 'deploy'
+        env:
+          GIT_SHA: ${{ github.sha }}
+          # Prefer dedicated Messenger secret; fall back to Instagram Login secret (same Meta app).
+          META_MESSENGER_OAUTH_APP_SECRET_DEDICATED: ${{ secrets.META_MESSENGER_OAUTH_APP_SECRET }}
+          META_INSTAGRAM_LOGIN_APP_SECRET: ${{ secrets.META_INSTAGRAM_LOGIN_APP_SECRET }}
+        run: |
+          set -euo pipefail
+          GIT_SHA="$(printf '%s' "$GIT_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$GIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Refusing a ref that is not a full git SHA."
+            exit 2
+          fi
+          META_MESSENGER_OAUTH_APP_SECRET="${META_MESSENGER_OAUTH_APP_SECRET_DEDICATED:-}"
+          if [[ -z "$META_MESSENGER_OAUTH_APP_SECRET" ]]; then
+            META_MESSENGER_OAUTH_APP_SECRET="${META_INSTAGRAM_LOGIN_APP_SECRET:-}"
+          fi
+          if [[ -z "${META_MESSENGER_OAUTH_APP_SECRET:-}" ]]; then
+            echo "::warning::Messenger OAuth secret missing — skipping Messenger overlay (FE bake may still be on)."
+            exit 0
+          fi
+          SECRET_LEN="${#META_MESSENGER_OAUTH_APP_SECRET}"
+          SECRET_FP="$(printf '%s' "$META_MESSENGER_OAUTH_APP_SECRET" | sha256sum | awk '{print substr($1,1,12)}')"
+          echo "messenger_secret_len=${SECRET_LEN} sha256_12=${SECRET_FP}"
+          if [[ "$SECRET_LEN" -lt 20 ]]; then
+            echo "::error::Messenger App Secret looks too short."
+            exit 2
+          fi
+          INCOMING="/tmp/valueor-incoming-${GIT_SHA}"
+          test -d "$INCOMING"
+          OVERLAY="${INCOMING}/.messenger-oauth.env.overlay"
+          umask 077
+          cat >"$OVERLAY" <<EOF
+          META_MESSENGER_OAUTH_ENABLED=true
+          META_MESSENGER_OAUTH_ALLOWED_COMPANY_IDS=2d27f7fb-c15e-4d60-84e9-1793f36f2172
+          META_MESSENGER_OAUTH_APP_ID=4567945626796573
+          META_MESSENGER_OAUTH_APP_SECRET=${META_MESSENGER_OAUTH_APP_SECRET}
+          META_MESSENGER_OAUTH_REDIRECT_URI=https://api.valueor.org/api/oauth/messenger/callback
+          META_MESSENGER_OAUTH_GRAPH_VERSION=v21.0
+          EOF
+          sed -i 's/^[[:space:]]*//' "$OVERLAY"
+          chmod 600 "$OVERLAY"
+          echo "overlay_keys=$(cut -d= -f1 "$OVERLAY" | paste -sd, -)"
+          if grep -Eq '^META_MESSENGER_OAUTH_ALLOWED_COMPANY_IDS=\*' "$OVERLAY"; then
+            echo "::error::Refusing public-all Messenger allowlist"
             exit 2
           fi
 

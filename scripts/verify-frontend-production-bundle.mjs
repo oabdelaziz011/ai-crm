@@ -14,6 +14,8 @@ const required = ["https://api.valueor.org", "https://webhook.valueor.org"];
 const requiredFlagLiterals = [
   'VITE_WHATSAPP_EMBEDDED_SIGNUP_ENABLED:"true"',
   'VITE_WHATSAPP_COEXISTENCE_ENABLED:"false"',
+  'VITE_META_MESSENGER_OAUTH_ENABLED:"true"',
+  'VITE_META_PAGES_OAUTH_ENABLED:"false"',
 ];
 const forbidden = [
   "http://localhost:3000",

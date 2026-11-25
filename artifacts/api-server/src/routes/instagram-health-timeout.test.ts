@@ -19,8 +19,12 @@ describe("Instagram outbound health timeout and diagnostics", () => {
   it("applies pre-Meta stage timeouts on the Instagram health path only", () => {
     const diag = readFileSync(resolve(here, "instagram-health-diag.ts"), "utf8");
     assert.match(diag, /INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS = 10_000/);
+    assert.match(diag, /INSTAGRAM_HEALTH_HARD_DEADLINE_MS = 45_000/);
     assert.match(diag, /instagram_health_stage_timeout/);
+    assert.match(diag, /instagram_health_deadline/);
+    assert.match(diag, /sendInstagramHealthTimeoutResponse/);
     assert.doesNotMatch(diag, /requireSupabaseAuth/);
+    assert.match(source, /wrapInstagramHealthHardDeadline\(/);
   });
 
   it("logs request metadata without authorization values or Graph tokens", () => {

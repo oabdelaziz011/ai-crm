@@ -6,12 +6,14 @@ import { logger } from "../lib/logger.js";
 import { HttpError } from "../middleware/error-handler.js";
 import {
   buildInstagramHealthDiagFields,
+  INSTAGRAM_HEALTH_HARD_DEADLINE_MS,
   INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS,
   isInstagramOutboundHealthPath,
   logInstagramHealthStage,
   sanitizeInstagramHealthDiagFields,
   shouldInstrumentInstagramHealthDiag,
   timeInstagramHealthStage,
+  wrapInstagramHealthHardDeadline,
   wrapInstagramHealthMiddleware,
   type InstagramHealthDiagLogFields,
 } from "./instagram-health-diag.js";
@@ -21,6 +23,8 @@ type FakeRes = Response &
     headersSent: boolean;
     writableEnded: boolean;
     statusCode: number;
+    body?: unknown;
+    headers: Record<string, string>;
   };
 
 function createFakeRes(): FakeRes {
@@ -28,7 +32,35 @@ function createFakeRes(): FakeRes {
   res.headersSent = false;
   res.writableEnded = false;
   res.statusCode = 200;
+  res.headers = {};
+  res.setHeader = ((name: string, value: string | number | readonly string[]) => {
+    res.headers[String(name).toLowerCase()] = Array.isArray(value) ? value.join(",") : String(value);
+    return res;
+  }) as Response["setHeader"];
+  res.status = ((code: number) => {
+    res.statusCode = code;
+    return res;
+  }) as Response["status"];
+  res.json = ((body: unknown) => {
+    res.body = body;
+    res.headersSent = true;
+    res.writableEnded = true;
+    queueMicrotask(() => res.emit("finish"));
+    return res;
+  }) as Response["json"];
   return res;
+}
+
+function createCorsHealthReq(overrides: Partial<Request> = {}): Request {
+  return createHealthReq({
+    header(name: string) {
+      const lower = name.toLowerCase();
+      if (lower === "authorization") return "Bearer SECRET_TOKEN_VALUE";
+      if (lower === "origin") return "https://valueor.org";
+      return undefined;
+    },
+    ...overrides,
+  });
 }
 
 function createHealthReq(overrides: Partial<Request> = {}): Request {
@@ -541,11 +573,12 @@ describe("wrapInstagramHealthMiddleware outcomes", () => {
 });
 
 describe("instagram health stage timeouts", () => {
-  it("times out hung auth middleware before proxy budgets and returns HttpError", async () => {
+  it("times out hung auth middleware with direct JSON+CORS (no bare proxy 502)", async () => {
     assert.equal(INSTAGRAM_HEALTH_PRE_META_STAGE_TIMEOUT_MS, 10_000);
     const sink: InstagramHealthDiagLogFields[] = [];
-    const req = createHealthReq();
+    const req = createCorsHealthReq();
     const res = createFakeRes();
+    let nextCalled = false;
     const wrapped = wrapInstagramHealthMiddleware(
       "supabase_auth",
       () => {
@@ -555,14 +588,84 @@ describe("instagram health stage timeouts", () => {
       { timeoutMs: 40 },
     );
 
-    const error = await new Promise<unknown>((resolve) => {
-      wrapped(req, res, (err?: unknown) => resolve(err));
+    wrapped(req, res, () => {
+      nextCalled = true;
     });
 
-    assert.ok(error instanceof HttpError);
-    assert.equal((error as HttpError).statusCode, 504);
-    assert.equal((error as HttpError).code, "instagram_health_stage_timeout");
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (res.writableEnded) resolve();
+        else setTimeout(check, 5);
+      };
+      check();
+    });
+
+    assert.equal(nextCalled, false);
+    assert.equal(res.statusCode, 504);
+    assert.equal((res.body as { code?: string; error?: string }).error, "instagram_health_stage_timeout");
+    assert.equal(res.headers["access-control-allow-origin"], "https://valueor.org");
     assert.equal(sink.some((row) => row.event === "error" && row.stage === "supabase_auth"), true);
+  });
+
+  it("hard deadline writes JSON+CORS when the whole health request hangs", async () => {
+    assert.equal(INSTAGRAM_HEALTH_HARD_DEADLINE_MS, 45_000);
+    const sink: InstagramHealthDiagLogFields[] = [];
+    const req = createCorsHealthReq();
+    const res = createFakeRes();
+    const wrapped = wrapInstagramHealthHardDeadline((fields) => sink.push(fields), {
+      deadlineMs: 40,
+    });
+
+    wrapped(req, res, () => {
+      /* leave request open */
+    });
+
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (res.writableEnded) resolve();
+        else setTimeout(check, 5);
+      };
+      check();
+    });
+
+    assert.equal(res.statusCode, 504);
+    assert.equal((res.body as { error?: string }).error, "instagram_health_deadline");
+    assert.equal(res.headers["access-control-allow-origin"], "https://valueor.org");
+    assert.equal(sink.some((row) => row.stage === "request_deadline"), true);
+  });
+
+  it("ignores late next() after stage timeout so the CORS JSON response stays intact", async () => {
+    const sink: InstagramHealthDiagLogFields[] = [];
+    const req = createCorsHealthReq();
+    const res = createFakeRes();
+    let lateNext: ((err?: unknown) => void) | undefined;
+    const wrapped = wrapInstagramHealthMiddleware(
+      "supabase_auth",
+      (_req, _res, next) => {
+        lateNext = next;
+      },
+      (fields) => sink.push(fields),
+      { timeoutMs: 30 },
+    );
+
+    let outerNextCount = 0;
+    wrapped(req, res, () => {
+      outerNextCount += 1;
+    });
+
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (res.writableEnded) resolve();
+        else setTimeout(check, 5);
+      };
+      check();
+    });
+
+    assert.ok(lateNext);
+    lateNext();
+    assert.equal(outerNextCount, 0);
+    assert.equal(res.statusCode, 504);
+    assert.equal(res.headers["access-control-allow-origin"], "https://valueor.org");
   });
 
   it("times out hung credentials_load work", async () => {

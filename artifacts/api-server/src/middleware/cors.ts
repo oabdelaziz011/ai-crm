@@ -15,7 +15,8 @@ export const API_CORS_ALLOWED_ORIGINS = API_CORS_DEFAULT_ORIGINS;
 
 /** Include PUT/PATCH — used by CRM import mapping and other authenticated update routes. */
 const ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
-const ALLOWED_HEADERS = "Authorization, Content-Type, X-ValueOR-Instance";
+/** Include Accept — Instagram health client sends Accept: application/json. */
+const ALLOWED_HEADERS = "Authorization, Content-Type, Accept, X-ValueOR-Instance";
 
 export function normalizeCorsOrigin(origin: string): string {
   return origin.trim().replace(/\/+$/, "");

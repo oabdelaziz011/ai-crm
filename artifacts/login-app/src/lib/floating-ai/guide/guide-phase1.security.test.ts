@@ -59,6 +59,31 @@ describe("Phase 1 security and Assist regression", () => {
     assert.match(floatingChat, /refreshAuthContext/);
   });
 
+  it("panel wires tool-less workflow runtime, Assist|Guide toggle, and no write claims", () => {
+    const content = readFileSync(
+      join(here, "../../../components/floating-ai/floating-ai-panel-content.tsx"),
+      "utf8",
+    );
+    assert.match(content, /createGuideWorkflowRuntime/);
+    assert.match(content, /GuideWorkflowPanel/);
+    assert.match(content, /action\.type === "workflow"/);
+    assert.match(content, /authorizeGuideNavigation\(guideAuth, \{\s*kind: "route"/);
+    assert.match(content, /setSurface\(value\)/);
+    assert.match(content, /floatingAi\.guide\.surfaceAssist/);
+    assert.match(content, /floatingAi\.guide\.surfaceGuide/);
+
+    const panel = readFileSync(
+      join(here, "../../../components/floating-ai/guide-workflow-panel.tsx"),
+      "utf8",
+    );
+    assert.match(panel, /floatingAi\.guide\.workflow\.noWriteClaim/);
+    assert.match(panel, /floatingAi\.guide\.workflow\.navigateHint/);
+    assert.match(panel, /floatingAi\.guide\.workflow\.denied/);
+
+    const runtime = readFileSync(join(here, "guide-workflow-runtime.ts"), "utf8");
+    assert.doesNotMatch(runtime, /executeTool|toolRouter|supabase|fetch\(/);
+  });
+
   it("useAiChatWorkspace Guide branch still disables RAG and tools", () => {
     const workspace = readFileSync(
       join(here, "../../../hooks/ai-chat/use-ai-chat-workspace.ts"),

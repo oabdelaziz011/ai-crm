@@ -12877,7 +12877,13 @@ export class ToolCallLoopService {
           continue;
         }
 
-        if (toolCall.name === "search_customer") {
+        // Booking-channel short-circuit for search_customer: only when booking tools are
+        // offered (clinic/WhatsApp intake). Assist CRM employees with search_customer alone
+        // must reach ToolRouter so durable tool_executions are recorded.
+        const bookingToolsOffered =
+          input.allowedToolKeys.includes("create_booking") ||
+          input.allowedToolKeys.includes("create_customer");
+        if (toolCall.name === "search_customer" && bookingToolsOffered) {
           if (hasTrustedBookingIdentity(trustedCustomerId)) {
             messages.push({
               role: "tool",

@@ -13,6 +13,12 @@ import { extractResponseContent } from "@workspace/runtime-integration";
 import { readAgentEmployeeExecutionContext } from "@/lib/ai-employees/utilities/agent-employee-execution-context";
 import { runWithEmployeeToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
 import { createConversationSalesQualificationTurn } from "@/lib/channel-platform/conversation-sales-qualification-turn";
+import {
+  GUIDE_ALLOWED_TOOL_KEYS,
+  GUIDE_RUNTIME_SCOPE_EMPLOYEE_ID,
+  isGuidePageContext,
+  registerGuideToolScope,
+} from "@/lib/floating-ai/guide/guide-security";
 
 function mapCompanyChannelRecord(record: {
   id: string;
@@ -490,17 +496,27 @@ export function createChannelRuntimePort(
       };
 
       const response = await (async () => {
-        const executionContext = readAgentEmployeeExecutionContext(input.runtimeConfig.pageContext);
+        const pageContext = input.runtimeConfig.pageContext;
+        const guideTurn = isGuidePageContext(pageContext);
+        if (guideTurn && input.conversationId) {
+          registerGuideToolScope(input.conversationId);
+        }
+
+        const executionContext = guideTurn
+          ? null
+          : readAgentEmployeeExecutionContext(pageContext);
+        const knowledgeRetrieval = guideTurn ? undefined : input.runtimeConfig.knowledgeRetrieval;
+
         const executeRuntime = async () => {
           if (options?.unifiedExecute) {
             const unified = await options.unifiedExecute(runtimeCtx, {
               companyId: input.companyId,
               conversationId: input.conversationId,
               messageText: input.messageText,
-              pageContext: input.runtimeConfig.pageContext,
+              pageContext,
               correlationId: input.correlationId,
               providerConnectionId: input.runtimeConfig.providerConnectionId,
-              knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
+              knowledgeRetrieval,
               executionPolicy: input.runtimeConfig.executionPolicy,
               onStreamChunk: input.onStreamChunk,
               abortSignal: input.abortSignal,
@@ -516,14 +532,25 @@ export function createChannelRuntimePort(
             conversationId: input.conversationId,
             messageText: input.messageText,
             providerConnectionId: input.runtimeConfig.providerConnectionId,
-            knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
+            knowledgeRetrieval,
             executionPolicy: input.runtimeConfig.executionPolicy,
-            pageContext: input.runtimeConfig.pageContext,
+            pageContext,
             correlationId: input.correlationId,
             onStreamChunk: input.onStreamChunk,
             abortSignal: input.abortSignal,
           });
         };
+
+        if (guideTurn) {
+          return runWithEmployeeToolScope(
+            {
+              allowedToolKeys: GUIDE_ALLOWED_TOOL_KEYS,
+              employeeId: GUIDE_RUNTIME_SCOPE_EMPLOYEE_ID,
+              showProductPrices: false,
+            },
+            executeRuntime,
+          );
+        }
 
         if (!executionContext) {
           return executeRuntime();

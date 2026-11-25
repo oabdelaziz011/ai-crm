@@ -77,17 +77,25 @@ export function MetaPagesOauthPanel({ companyId, channel, onConnected, onDisconn
   const [pendingAuth, setPendingAuth] = useState<{ code: string; state: string } | null>(null);
 
   const refreshStatus = useCallback(async () => {
+    if (!uiEnabled) {
+      setReadiness({ ready: false, companyAllowed: false, reason: "MPO_DISABLED" });
+      return;
+    }
     try {
       const status = await fetchMetaPagesOauthStatus(companyId);
       setReadiness(status);
     } catch {
       setReadiness({ ready: false, companyAllowed: false, reason: "MPO_DISABLED" });
     }
-  }, [companyId]);
+  }, [companyId, uiEnabled]);
 
   useEffect(() => {
     void refreshStatus();
   }, [refreshStatus]);
+
+  if (!uiEnabled) {
+    return null;
+  }
 
   const startOAuth = async () => {
     setBusy(true);

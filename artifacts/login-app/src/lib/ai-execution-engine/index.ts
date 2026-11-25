@@ -14,6 +14,10 @@ import { createScopedRuntimeToolPort } from "@/lib/ai-employees/utilities/scoped
 import { createRpcCommercialEntitlementPort } from "@/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate";
 import { createPlatformRuntimeConfigPort } from "@/lib/platform-ai-provider/platform-runtime-port";
 import { assertPlatformAiApiConfigured } from "@/lib/platform-ai/platform-ai-api-client";
+import {
+  createGuideConversationResolver,
+  createGuideToolGuard,
+} from "@/lib/floating-ai/guide/guide-security";
 
 /**
  * Factory hook for AI Execution Engine domain services.
@@ -30,9 +34,12 @@ export function useAIExecutionServices() {
 
   const tools = useMemo(
     () =>
-      createScopedRuntimeToolPort(createRuntimeToolPort(toolRouterServices, createOptions), {
-        commercialEntitlement: createRpcCommercialEntitlementPort(supabase),
-      }),
+      createGuideToolGuard(
+        createScopedRuntimeToolPort(createRuntimeToolPort(toolRouterServices, createOptions), {
+          commercialEntitlement: createRpcCommercialEntitlementPort(supabase),
+        }),
+        createGuideConversationResolver(supabase),
+      ),
     [toolRouterServices, createOptions],
   );
   const platformConfig = useMemo(

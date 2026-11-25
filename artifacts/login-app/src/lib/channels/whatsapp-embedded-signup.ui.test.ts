@@ -102,6 +102,9 @@ describe("WhatsApp Embedded Signup UI contracts", () => {
     assert.match(ar, /"metaNumberOtherWabaSamePortfolio"/);
     assert.match(en, /3441090/);
     assert.match(ar, /3441090/);
+    assert.match(en, /"portfolioRemediationTitle"/);
+    assert.match(ar, /"portfolioRemediationTitle"/);
+    assert.match(panel, /whatsapp-portfolio-remediation/);
   });
 
   it("routes API/Meta errors through the shared presentation helper", () => {

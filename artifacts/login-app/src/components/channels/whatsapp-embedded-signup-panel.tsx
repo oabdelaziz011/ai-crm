@@ -387,6 +387,21 @@ export function WhatsAppEmbeddedSignupPanel({
         <p className="text-sm text-muted-foreground">
           {t("notifications.whatsapp.settings.embeddedSignup.description")}
         </p>
+        <div
+          className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 space-y-1"
+          role="note"
+          data-testid="whatsapp-portfolio-remediation"
+        >
+          <p className="font-medium">
+            {t("notifications.whatsapp.settings.embeddedSignup.portfolioRemediationTitle")}
+          </p>
+          <p>{t("notifications.whatsapp.settings.embeddedSignup.portfolioRemediationBody")}</p>
+          <ul className="list-disc ps-4 space-y-1">
+            <li>{t("notifications.whatsapp.settings.embeddedSignup.portfolioRemediationStep1")}</li>
+            <li>{t("notifications.whatsapp.settings.embeddedSignup.portfolioRemediationStep2")}</li>
+            <li>{t("notifications.whatsapp.settings.embeddedSignup.portfolioRemediationStep3")}</li>
+          </ul>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

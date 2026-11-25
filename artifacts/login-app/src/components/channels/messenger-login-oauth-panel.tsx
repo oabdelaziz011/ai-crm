@@ -158,14 +158,14 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
 
   const onComplete = async () => {
     if (!pendingState || !selectedPageId) return;
-    const replacing = Boolean(connection?.hasAccessToken);
     setBusy(true);
     try {
+      // Pending OAuth session is explicit reconnect intent — always replace stored Page token.
       const result = await completeMetaMessengerLogin({
         companyId,
         state: pendingState,
         pageId: selectedPageId,
-        confirmReplaceExisting: replacing,
+        confirmReplaceExisting: true,
       });
       setPendingState(null);
       setPages([]);
@@ -263,14 +263,23 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
     );
   }
 
-  const statusLabel = connection
-    ? META_CONNECTION_STATUS_LABELS[connection.status]
-    : META_CONNECTION_STATUS_LABELS.not_connected;
+  const statusLabel = t(
+    `notifications.messengerLogin.statusLabels.${connection?.status ?? "not_connected"}`,
+    {
+      defaultValue: connection
+        ? META_CONNECTION_STATUS_LABELS[connection.status]
+        : META_CONNECTION_STATUS_LABELS.not_connected,
+    },
+  );
   const connectDisabled = busy || readiness?.ready !== true;
   const readinessMessage = formatMetaOauthReadinessMessage(readiness, "messenger");
   const connectLabel = connection?.hasAccessToken
     ? t("notifications.messengerLogin.reconnect", { defaultValue: "Reconnect Messenger" })
     : t("notifications.messengerLogin.connect", { defaultValue: "Connect Facebook Messenger" });
+  const needsReconnect =
+    connection?.status === "connection_expired" ||
+    connection?.status === "reauthorization_required" ||
+    /session has expired|error validating access token/i.test(String(connection?.lastError ?? ""));
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 p-3">
@@ -295,6 +304,18 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
         {statusLabel}
         {connection?.pageName ? ` · ${connection.pageName}` : ""}
       </p>
+      {needsReconnect ? (
+        <div
+          className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-800 dark:text-amber-200"
+          role="status"
+          data-testid="messenger-token-expired-banner"
+        >
+          {t("notifications.messengerLogin.tokenExpiredBanner", {
+            defaultValue:
+              "Page access token expired or invalid. Click Reconnect, authorize Facebook, select the Page, then press Save & verify — Facebook Login alone is not enough.",
+          })}
+        </div>
+      ) : null}
       {readinessMessage ? (
         <div
           className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-xs text-amber-700 dark:text-amber-300"

@@ -1,6 +1,6 @@
 /**
- * Phase 1C — Permission-aware navigation using DASHBOARD_ROUTE_REGISTRY + dashboardNestHref.
- * Never invents routes. Never bypasses isDashboardRoutePermitted.
+ * Phase 1C — Permission-aware navigation using DASHBOARD_ROUTE_REGISTRY + Settings
+ * channel pages for WhatsApp / Messenger / Instagram connect walkthroughs.
  */
 import {
   DASHBOARD_ROUTE_REGISTRY,
@@ -14,6 +14,12 @@ import {
   type GuideEffectiveAuth,
 } from "./guide-auth";
 import { getGuideTaskRequirement, type GuideTaskId } from "./permission-matrix";
+import {
+  GUIDE_SETTINGS_CHANNEL_TARGETS,
+  resolveGuideSettingsChannelId,
+  resolveGuideSettingsTargetFromPath,
+  type GuideSettingsTarget,
+} from "./guide-settings-targets";
 
 export type GuideNavigateRequest =
   | { kind: "route"; routeId: string }
@@ -23,7 +29,7 @@ export type GuideNavigateRequest =
 export type GuideNavigateResult =
   | {
       ok: true;
-      routeId: DashboardSectionId;
+      routeId: string;
       nestedPath: string;
       href: string;
       titleKey: string;
@@ -35,9 +41,53 @@ export type GuideNavigateResult =
       routeId?: string;
     };
 
+function hasAnyPermission(auth: GuideEffectiveAuth, codes: readonly string[]): boolean {
+  if (auth.isSuperAdmin) return true;
+  return codes.some((code) => auth.permissionCodes.includes(code));
+}
+
+function authorizeSettingsTarget(
+  auth: GuideEffectiveAuth,
+  target: GuideSettingsTarget,
+): GuideNavigateResult {
+  if (!hasAnyPermission(auth, target.anyOfPermissions)) {
+    return {
+      ok: false,
+      reason: "unauthorized",
+      missingPermissions: [...target.anyOfPermissions],
+      routeId: `settings.${target.id}`,
+    };
+  }
+  // Mirror Settings commercial entitlement (missing lookup = deny, same as dashboard routes).
+  if (!auth.isSuperAdmin) {
+    const entitled = auth.commercialFeatureEnabled?.(target.commercialFeatureCode) === true;
+    if (!entitled) {
+      return {
+        ok: false,
+        reason: "unauthorized",
+        missingPermissions: [target.commercialFeatureCode],
+        routeId: `settings.${target.id}`,
+      };
+    }
+  }
+  const nest = target.href.replace(/^\/dashboard/, "") || target.href;
+  return {
+    ok: true,
+    routeId: `settings.${target.id}`,
+    nestedPath: nest.startsWith("/") ? nest : `/${nest}`,
+    href: dashboardNestHref(target.href),
+    titleKey: target.titleKey,
+  };
+}
+
 export function resolveGuideRouteIdFromNestedPath(
   nestedPath: string,
 ): DashboardSectionId | null {
+  const settings = resolveGuideSettingsTargetFromPath(nestedPath);
+  if (settings) {
+    // Settings channel paths are not dashboard section ids; callers use authorizeGuideNavigation.
+    return null;
+  }
   const normalized = nestedPath.startsWith("/") ? nestedPath : `/${nestedPath}`;
   const exact = DASHBOARD_ROUTE_REGISTRY.find((r) => r.nestedPath === normalized);
   if (exact) return exact.id;
@@ -56,6 +106,13 @@ export function authorizeGuideNavigation(
     return { ok: false, reason: "missing_context", missingPermissions: [] };
   }
 
+  if (request.kind === "path") {
+    const settingsFromPath = resolveGuideSettingsTargetFromPath(request.nestedPath);
+    if (settingsFromPath) {
+      return authorizeSettingsTarget(auth, settingsFromPath);
+    }
+  }
+
   let routeId: string | null = null;
 
   if (request.kind === "route") {
@@ -70,6 +127,10 @@ export function authorizeGuideNavigation(
         routeId: getGuideTaskRequirement(request.taskId).routeId,
       };
     }
+    // Channel connect tasks open Settings pages, not the legacy dashboard redirect.
+    if (request.taskId === "whatsapp.view" || request.taskId === "whatsapp.manage") {
+      return authorizeSettingsTarget(auth, GUIDE_SETTINGS_CHANNEL_TARGETS.whatsapp);
+    }
     routeId = getGuideTaskRequirement(request.taskId).routeId ?? null;
     if (!routeId) {
       return { ok: false, reason: "unsupported", missingPermissions: [] };
@@ -79,6 +140,11 @@ export function authorizeGuideNavigation(
     if (!routeId) {
       return { ok: false, reason: "unknown_route", missingPermissions: [] };
     }
+  }
+
+  const settingsChannel = resolveGuideSettingsChannelId(routeId);
+  if (settingsChannel) {
+    return authorizeSettingsTarget(auth, GUIDE_SETTINGS_CHANNEL_TARGETS[settingsChannel]);
   }
 
   const known = DASHBOARD_ROUTE_REGISTRY.some((r) => r.id === routeId);

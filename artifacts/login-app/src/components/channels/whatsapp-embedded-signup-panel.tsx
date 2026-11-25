@@ -274,6 +274,10 @@ export function WhatsAppEmbeddedSignupPanel({
             }
             toast({
               title: t("notifications.whatsapp.settings.embeddedSignup.cancelled"),
+              description: t("notifications.whatsapp.settings.embeddedSignup.popupClosedHint", {
+                defaultValue:
+                  "Meta login window closed before authorization finished (common after 2FA in some browsers). Complete Facebook 2FA in Chrome first, then click Connect again and keep the Meta window open until it finishes.",
+              }),
               variant: "destructive",
             });
             return;

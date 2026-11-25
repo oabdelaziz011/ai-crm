@@ -125,23 +125,28 @@ export function useFloatingAiChat() {
       }
 
       setPendingConfirmation(null);
-      const taskId = startTask(
-        text.startsWith("/") ? text.split("\n")[0] : surface === "guide" ? "Guide request" : "AI request",
-        { background: true },
-      );
+
+      // Guide uses the message-list "Thinking…" state only — never the task banner that
+      // steals conversation vertical space with "Guide request / Sending…".
+      const trackTask = surface !== "guide";
+      const taskId = trackTask
+        ? startTask(text.startsWith("/") ? text.split("\n")[0] : "AI request", { background: true })
+        : null;
 
       try {
         if (surface === "guide") {
           // Refresh effective permissions so guidance is not stuck on a stale snapshot.
           await refreshAuthContext();
         }
-        updateTaskProgress(taskId, 10, "Sending…");
+        if (taskId) updateTaskProgress(taskId, 10, "Sending…");
         await workspace.sendMessage(prompt);
-        updateTaskProgress(taskId, 100);
-        completeTask(taskId);
+        if (taskId) {
+          updateTaskProgress(taskId, 100);
+          completeTask(taskId);
+        }
         return { needsConfirmation: false as const };
       } catch {
-        failTask(taskId, "Request failed");
+        if (taskId) failTask(taskId, "Request failed");
         return { needsConfirmation: false as const };
       }
     },

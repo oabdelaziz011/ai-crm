@@ -525,7 +525,8 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         </div>
 
         <ContextBar pageContext={pageContext} />
-        <TaskProgressList />
+        {/* Guide keeps the chat body clear — Assist/Agent still show background task chips. */}
+        {!isGuideSurface ? <TaskProgressList /> : null}
 
         <Tabs
           value={panelTab}

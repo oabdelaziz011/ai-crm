@@ -23,7 +23,10 @@ import {
   type MetaMessengerLoginReadiness,
 } from "@/lib/channels/meta-messenger-login-client";
 import { META_CONNECTION_STATUS_LABELS } from "@/lib/channels/meta-connection-status";
-import { formatMetaOauthReadinessMessage } from "@/lib/channels/meta-oauth-readiness-message";
+import {
+  formatMessengerRedirectUriHint,
+  formatMetaOauthReadinessMessage,
+} from "@/lib/channels/meta-oauth-readiness-message";
 
 type Props = {
   companyId: string;
@@ -107,16 +110,22 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
     }
 
     if (outcome === "error") {
+      const rawMessage = params.get("message") || params.get("reason") || "";
+      const blocked =
+        /url\s*blocked|redirect_uri|redirect uri|valid oauth redirect/i.test(rawMessage) ||
+        /PLATFORM__INVALID|OAuthException/i.test(rawMessage);
       toast({
         title: t("notifications.messengerLogin.failed", {
           defaultValue: "Messenger connection failed",
         }),
-        description: params.get("message") || params.get("reason") || undefined,
+        description: blocked
+          ? formatMessengerRedirectUriHint(readiness)
+          : rawMessage || undefined,
         variant: "destructive",
       });
       cleanup();
     }
-  }, [companyId, t, toast]);
+  }, [companyId, readiness, t, toast]);
 
   const onConnect = async () => {
     const replacing = Boolean(connection?.hasAccessToken);
@@ -308,6 +317,14 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
           ) : null}
         </div>
       ) : null}
+      <p
+        className="rounded-md border border-border/60 bg-muted/20 px-2.5 py-2 text-[11px] text-muted-foreground"
+        data-testid="messenger-oauth-redirect-hint"
+      >
+        {t("notifications.messengerLogin.redirectUriHint", {
+          defaultValue: formatMessengerRedirectUriHint(readiness),
+        })}
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"

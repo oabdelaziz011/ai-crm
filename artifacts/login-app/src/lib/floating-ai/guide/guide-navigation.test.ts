@@ -28,6 +28,47 @@ describe("Phase 1C Guide navigation", () => {
     }
   });
 
+  it("maps WhatsApp / Messenger / Instagram Guide routes to Settings pages", () => {
+    const wa = authorizeGuideNavigation(
+      auth(["whatsapp.view"], {
+        commercialFeatureEnabled: (code) => code === "whatsapp_channel",
+      }),
+      { kind: "route", routeId: "settings.whatsapp" },
+    );
+    assert.equal(wa.ok, true);
+    if (wa.ok) {
+      assert.equal(wa.routeId, "settings.whatsapp");
+      assert.match(wa.href, /settings\/whatsapp/);
+    }
+
+    const legacyWa = authorizeGuideNavigation(
+      auth(["whatsapp.view"], {
+        commercialFeatureEnabled: (code) => code === "whatsapp_channel",
+      }),
+      { kind: "route", routeId: "whatsapp" },
+    );
+    assert.equal(legacyWa.ok, true);
+    if (legacyWa.ok) assert.match(legacyWa.href, /settings\/whatsapp/);
+
+    const ms = authorizeGuideNavigation(
+      auth(["settings.edit"], {
+        commercialFeatureEnabled: (code) => code === "facebook_channel",
+      }),
+      { kind: "route", routeId: "settings.messenger" },
+    );
+    assert.equal(ms.ok, true);
+    if (ms.ok) assert.match(ms.href, /settings\/messenger/);
+
+    const ig = authorizeGuideNavigation(
+      auth(["channels.view"], {
+        commercialFeatureEnabled: (code) => code === "instagram_channel",
+      }),
+      { kind: "route", routeId: "settings.instagram" },
+    );
+    assert.equal(ig.ok, true);
+    if (ig.ok) assert.match(ig.href, /settings\/instagram/);
+  });
+
   it("rejects unauthorized destinations", () => {
     const result = authorizeGuideNavigation(auth(["tickets.view"]), {
       kind: "route",
@@ -64,7 +105,7 @@ describe("Phase 1C Guide navigation", () => {
   });
 
   it("resolves nested paths to known registry ids only", () => {
-    assert.equal(resolveGuideRouteIdFromNestedPath("/whatsapp"), "whatsapp");
+    assert.equal(resolveGuideRouteIdFromNestedPath("/customers"), "customers");
     assert.equal(resolveGuideRouteIdFromNestedPath("/does-not-exist"), null);
   });
 

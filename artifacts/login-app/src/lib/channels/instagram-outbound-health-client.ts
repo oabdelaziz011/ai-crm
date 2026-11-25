@@ -9,6 +9,7 @@ export type InstagramOutboundHealthResponse = {
   error?: string;
   metaErrorCode?: number;
   instagramBusinessAccountId: string;
+  resolvedInstagramBusinessAccountId?: string;
   pageId: string | null;
   accessToken: {
     valid: boolean;
@@ -63,12 +64,19 @@ function asAttemptFailure(error: unknown): AttemptFailure {
   };
 }
 
+/** Keep UI spinner bounded below server hard deadline + one retry. */
+export const INSTAGRAM_HEALTH_CLIENT_TIMEOUT_MS = 35_000;
+
 async function requestInstagramOutboundHealthOnce(input: {
   url: string;
   headers: Record<string, string>;
   body: string;
   fetchFn: typeof fetch;
+  timeoutMs?: number;
 }): Promise<InstagramOutboundHealthResponse> {
+  const timeoutMs = input.timeoutMs ?? INSTAGRAM_HEALTH_CLIENT_TIMEOUT_MS;
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), timeoutMs);
   let response: Response;
   try {
     response = await input.fetchFn(input.url, {
@@ -76,12 +84,28 @@ async function requestInstagramOutboundHealthOnce(input: {
       headers: input.headers,
       credentials: "include",
       body: input.body,
+      signal: abort.signal,
     });
   } catch (error) {
+    const aborted =
+      typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      (error as { name?: string }).name === "AbortError";
+    if (aborted) {
+      throw {
+        retryable: false,
+        error: new Error(
+          `Instagram connection test timed out after ${timeoutMs}ms. Try again; if it keeps hanging, Meta Graph may be slow from the API host.`,
+        ),
+      } satisfies AttemptFailure;
+    }
     throw {
       retryable: isBrowserNetworkFetchError(error),
       error: mapInstagramApiNetworkError(error, input.url),
     } satisfies AttemptFailure;
+  } finally {
+    clearTimeout(timer);
   }
 
   const raw = await response.text();
@@ -132,6 +156,8 @@ export async function requestInstagramOutboundHealth(input: {
   companyChannelId: string;
   authHeaders: Record<string, string>;
   fetchFn?: typeof fetch;
+  /** Per-attempt browser timeout (defaults to INSTAGRAM_HEALTH_CLIENT_TIMEOUT_MS). */
+  timeoutMs?: number;
 }): Promise<InstagramOutboundHealthResponse> {
   const url = `${input.apiBase}/instagram/channel-outbound-health`;
   const headers = buildInstagramHealthRequestHeaders(input.authHeaders);
@@ -140,16 +166,17 @@ export async function requestInstagramOutboundHealth(input: {
     companyChannelId: input.companyChannelId,
   });
   const fetchFn = input.fetchFn ?? globalThis.fetch.bind(globalThis);
+  const timeoutMs = input.timeoutMs;
 
   try {
-    return await requestInstagramOutboundHealthOnce({ url, headers, body, fetchFn });
+    return await requestInstagramOutboundHealthOnce({ url, headers, body, fetchFn, timeoutMs });
   } catch (firstError) {
     const failure = asAttemptFailure(firstError);
     if (!failure.retryable) {
       throw failure.error;
     }
     try {
-      return await requestInstagramOutboundHealthOnce({ url, headers, body, fetchFn });
+      return await requestInstagramOutboundHealthOnce({ url, headers, body, fetchFn, timeoutMs });
     } catch (secondError) {
       throw asAttemptFailure(secondError).error;
     }

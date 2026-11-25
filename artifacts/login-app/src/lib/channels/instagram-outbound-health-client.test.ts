@@ -201,6 +201,40 @@ describe("requestInstagramOutboundHealth", () => {
     assert.equal(attempts, 2);
   });
 
+  it("surfaces a non-retryable timeout when the browser aborts the health POST", async () => {
+    let attempts = 0;
+    const fetchFn: typeof fetch = async (_input, init) => {
+      attempts += 1;
+      const signal = init?.signal;
+      return await new Promise<Response>((_resolve, reject) => {
+        const onAbort = () => {
+          const err = new Error("The operation was aborted");
+          err.name = "AbortError";
+          reject(err);
+        };
+        if (signal?.aborted) {
+          onAbort();
+          return;
+        }
+        signal?.addEventListener("abort", onAbort, { once: true });
+      });
+    };
+
+    await assert.rejects(
+      () =>
+        requestInstagramOutboundHealth({
+          apiBase,
+          companyId: "company-1",
+          companyChannelId: "channel-1",
+          authHeaders: { "Content-Type": "application/json" },
+          fetchFn,
+          timeoutMs: 50,
+        }),
+      /timed out/i,
+    );
+    assert.equal(attempts, 1);
+  });
+
   it("maps persistent network failure after one retry", async () => {
     let attempts = 0;
     const fetchFn: typeof fetch = async () => {

@@ -56,18 +56,30 @@ if [[ -z "$ROOT_PREFIX" ]]; then
   fi
 fi
 
-# Optional narrow Instagram Login env overlay staged by VPS deploy (keys logged, values never).
+# Optional narrow Meta OAuth env overlays staged by VPS deploy (keys logged, values never).
 ARTIFACTS_DIR="${VALUEOR_ARTIFACTS_DIR:-}"
+UPSERT_JS="${APP_DIR}/deploy/vps/upsert-env-overlay.mjs"
 INSTAGRAM_OVERLAY="${ARTIFACTS_DIR}/.instagram-login.env.overlay"
+MESSENGER_OVERLAY="${ARTIFACTS_DIR}/.messenger-oauth.env.overlay"
 if [[ -n "$ARTIFACTS_DIR" && -f "$INSTAGRAM_OVERLAY" ]]; then
-  UPSERT_JS="${APP_DIR}/deploy/vps/upsert-env-overlay.mjs"
   if [[ ! -f "$UPSERT_JS" ]]; then
     echo "Missing ${UPSERT_JS} required to apply Instagram Login env overlay"
     exit 2
   fi
   echo "[deploy] applying Instagram Login env overlay (values not logged)"
-  /usr/bin/node "$UPSERT_JS" --env "$ENV_FILE" --overlay "$INSTAGRAM_OVERLAY"
+  /usr/bin/node "$UPSERT_JS" --env "$ENV_FILE" --overlay "$INSTAGRAM_OVERLAY" \
+    --allow-prefix META_INSTAGRAM_LOGIN_
   rm -f "$INSTAGRAM_OVERLAY"
+fi
+if [[ -n "$ARTIFACTS_DIR" && -f "$MESSENGER_OVERLAY" ]]; then
+  if [[ ! -f "$UPSERT_JS" ]]; then
+    echo "Missing ${UPSERT_JS} required to apply Messenger OAuth env overlay"
+    exit 2
+  fi
+  echo "[deploy] applying Messenger OAuth env overlay (values not logged)"
+  /usr/bin/node "$UPSERT_JS" --env "$ENV_FILE" --overlay "$MESSENGER_OVERLAY" \
+    --allow-prefix META_MESSENGER_OAUTH_
+  rm -f "$MESSENGER_OVERLAY"
 fi
 
 # Validate env for the real production topology (no ACME_EMAIL required).

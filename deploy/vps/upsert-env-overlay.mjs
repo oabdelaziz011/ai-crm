@@ -3,20 +3,36 @@
  * Upsert KEY=value lines from an overlay file into a production dotenv file.
  * Never prints secret values — only key names and counts.
  *
- *   node deploy/vps/upsert-env-overlay.mjs --env /opt/valueor/.env --overlay /path/overlay
+ *   node deploy/vps/upsert-env-overlay.mjs --env /opt/valueor/.env --overlay /path/overlay \
+ *     --allow-prefix META_INSTAGRAM_LOGIN_
+ *   node deploy/vps/upsert-env-overlay.mjs --env /opt/valueor/.env --overlay /path/overlay \
+ *     --allow-prefix META_MESSENGER_OAUTH_
  */
 import { readFileSync, writeFileSync, renameSync, copyFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+/** Default keep Instagram-only for backward compatibility with existing callers. */
+const DEFAULT_ALLOW_PREFIXES = ["META_INSTAGRAM_LOGIN_"];
+
 function parseArgs(argv) {
   let envPath = "";
   let overlayPath = "";
+  /** @type {string[]} */
+  const allowPrefixes = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--env") envPath = argv[++i] ?? "";
     else if (a === "--overlay") overlayPath = argv[++i] ?? "";
+    else if (a === "--allow-prefix") {
+      const prefix = String(argv[++i] ?? "").trim();
+      if (prefix) allowPrefixes.push(prefix);
+    }
   }
-  return { envPath, overlayPath };
+  return {
+    envPath,
+    overlayPath,
+    allowPrefixes: allowPrefixes.length > 0 ? allowPrefixes : DEFAULT_ALLOW_PREFIXES,
+  };
 }
 
 function parseOverlay(text) {
@@ -32,9 +48,15 @@ function parseOverlay(text) {
   return map;
 }
 
-const { envPath, overlayPath } = parseArgs(process.argv.slice(2));
+function keyAllowed(key, allowPrefixes) {
+  return allowPrefixes.some((prefix) => key.startsWith(prefix));
+}
+
+const { envPath, overlayPath, allowPrefixes } = parseArgs(process.argv.slice(2));
 if (!envPath || !overlayPath) {
-  console.error("Usage: upsert-env-overlay.mjs --env <file> --overlay <file>");
+  console.error(
+    "Usage: upsert-env-overlay.mjs --env <file> --overlay <file> [--allow-prefix PREFIX ...]",
+  );
   process.exit(2);
 }
 
@@ -46,10 +68,11 @@ if (overlay.size === 0) {
   process.exit(2);
 }
 
-const allowedPrefix = "META_INSTAGRAM_LOGIN_";
 for (const key of overlay.keys()) {
-  if (!key.startsWith(allowedPrefix)) {
-    console.error(`refusing overlay key outside ${allowedPrefix}*: ${key}`);
+  if (!keyAllowed(key, allowPrefixes)) {
+    console.error(
+      `refusing overlay key outside allowed prefixes (${allowPrefixes.join(", ")}): ${key}`,
+    );
     process.exit(2);
   }
 }
@@ -92,9 +115,10 @@ for (const [key, value] of overlay.entries()) {
 while (out.length > 0 && out[out.length - 1] === "") out.pop();
 const body = `${out.join("\n")}\n`;
 
-const bak = `${absEnv}.bak-instagram-login-${Date.now()}`;
+const stamp = Date.now();
+const bak = `${absEnv}.bak-env-overlay-${stamp}`;
 copyFileSync(absEnv, bak);
-const tmp = `${absEnv}.tmp-instagram-login`;
+const tmp = `${absEnv}.tmp-env-overlay`;
 writeFileSync(tmp, body, { encoding: "utf8", mode: 0o600 });
 renameSync(tmp, absEnv);
 
@@ -103,6 +127,7 @@ console.log(
     ok: true,
     env: absEnv,
     backup: bak,
+    allow_prefixes: allowPrefixes,
     keys_upserted: [...overlay.keys()].sort(),
     keys_changed: changed.sort(),
   }),

@@ -59,7 +59,7 @@ describe("upsert-env-overlay", () => {
         "WHATSAPP_EMBEDDED_SIGNUP_ENABLED=true",
         "WHATSAPP_COEXISTENCE_ENABLED=false",
         "WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS=2d27f7fb-c15e-4d60-84e9-1793f36f2172",
-        "META_EMBEDDED_SIGNUP_APP_ID=4567945626796573",
+        "META_EMBEDDED_SIGNUP_APP_ID=1400885884891475",
         "META_EMBEDDED_SIGNUP_GRAPH_VERSION=v21.0",
       ].join("\n") + "\n",
       "utf8",
@@ -79,6 +79,6 @@ describe("upsert-env-overlay", () => {
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const body = readFileSync(envPath, "utf8");
     assert.match(body, /WHATSAPP_EMBEDDED_SIGNUP_ENABLED=true/);
-    assert.match(body, /META_EMBEDDED_SIGNUP_APP_ID=4567945626796573/);
+    assert.match(body, /META_EMBEDDED_SIGNUP_APP_ID=1400885884891475/);
   });
 });

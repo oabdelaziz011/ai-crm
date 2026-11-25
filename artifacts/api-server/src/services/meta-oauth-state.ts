@@ -144,3 +144,19 @@ export function sanitizeGraphVersion(version: string | undefined | null): string
   if (!trimmed) return "v21.0";
   return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
 }
+
+/** Meta App IDs are decimal digit strings (typically 15–16). Reject empty / non-numeric junk. */
+export function isMetaNumericAppId(appId: unknown): boolean {
+  return /^[0-9]{6,20}$/.test(String(appId ?? "").trim());
+}
+
+/**
+ * Instagram Login App ID used by ValueOR Instagram OAuth (`instagram.com/oauth`).
+ * Must never be used as `client_id` for `facebook.com/dialog/oauth` or FB JS SDK —
+ * Meta returns PLATFORM__INVALID_APP_ID.
+ */
+export const VALUEOR_INSTAGRAM_LOGIN_APP_ID = "4567945626796573";
+
+export function isInstagramLoginOnlyAppId(appId: unknown): boolean {
+  return String(appId ?? "").trim() === VALUEOR_INSTAGRAM_LOGIN_APP_ID;
+}

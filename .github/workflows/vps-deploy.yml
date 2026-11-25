@@ -233,9 +233,11 @@ jobs:
         if: github.event.inputs.action == 'deploy'
         env:
           GIT_SHA: ${{ github.sha }}
-          # Prefer dedicated Messenger secret; fall back to Instagram Login secret (same Meta app).
+          # Facebook Login app (NOT Instagram Login app 4567945626796573 — that fails facebook.com OAuth).
           META_MESSENGER_OAUTH_APP_SECRET_DEDICATED: ${{ secrets.META_MESSENGER_OAUTH_APP_SECRET }}
-          META_INSTAGRAM_LOGIN_APP_SECRET: ${{ secrets.META_INSTAGRAM_LOGIN_APP_SECRET }}
+          META_EMBEDDED_SIGNUP_APP_SECRET: ${{ secrets.META_EMBEDDED_SIGNUP_APP_SECRET }}
+          META_MESSENGER_OAUTH_APP_ID_DEDICATED: ${{ secrets.META_MESSENGER_OAUTH_APP_ID }}
+          META_EMBEDDED_SIGNUP_APP_ID: ${{ secrets.META_EMBEDDED_SIGNUP_APP_ID }}
         run: |
           set -euo pipefail
           GIT_SHA="$(printf '%s' "$GIT_SHA" | tr '[:upper:]' '[:lower:]')"
@@ -243,9 +245,10 @@ jobs:
             echo "::error::Refusing a ref that is not a full git SHA."
             exit 2
           fi
+          # Prefer Messenger secret, then WhatsApp/Facebook Login app secret. Never Instagram Login secret.
           META_MESSENGER_OAUTH_APP_SECRET="${META_MESSENGER_OAUTH_APP_SECRET_DEDICATED:-}"
           if [[ -z "$META_MESSENGER_OAUTH_APP_SECRET" ]]; then
-            META_MESSENGER_OAUTH_APP_SECRET="${META_INSTAGRAM_LOGIN_APP_SECRET:-}"
+            META_MESSENGER_OAUTH_APP_SECRET="${META_EMBEDDED_SIGNUP_APP_SECRET:-}"
           fi
           if [[ -z "${META_MESSENGER_OAUTH_APP_SECRET:-}" ]]; then
             echo "::warning::Messenger OAuth secret missing — skipping Messenger overlay (FE bake may still be on)."
@@ -258,6 +261,23 @@ jobs:
             echo "::error::Messenger App Secret looks too short."
             exit 2
           fi
+          APP_ID="${META_MESSENGER_OAUTH_APP_ID_DEDICATED:-}"
+          if [[ -z "$APP_ID" ]]; then
+            APP_ID="${META_EMBEDDED_SIGNUP_APP_ID:-}"
+          fi
+          if [[ -z "$APP_ID" ]]; then
+            # ValueOR Local Test / Facebook Login for Business + WhatsApp (public App ID).
+            APP_ID="1400885884891475"
+          fi
+          if [[ "$APP_ID" == "4567945626796573" ]]; then
+            echo "::error::Refusing Instagram Login App ID for Messenger Facebook OAuth (PLATFORM__INVALID_APP_ID)."
+            exit 2
+          fi
+          if [[ ! "$APP_ID" =~ ^[0-9]{6,20}$ ]]; then
+            echo "::error::Messenger App ID shape is invalid."
+            exit 2
+          fi
+          echo "messenger_app_id=${APP_ID}"
           INCOMING="/tmp/valueor-incoming-${GIT_SHA}"
           test -d "$INCOMING"
           OVERLAY="${INCOMING}/.messenger-oauth.env.overlay"
@@ -265,7 +285,7 @@ jobs:
           cat >"$OVERLAY" <<EOF
           META_MESSENGER_OAUTH_ENABLED=true
           META_MESSENGER_OAUTH_ALLOWED_COMPANY_IDS=2d27f7fb-c15e-4d60-84e9-1793f36f2172
-          META_MESSENGER_OAUTH_APP_ID=4567945626796573
+          META_MESSENGER_OAUTH_APP_ID=${APP_ID}
           META_MESSENGER_OAUTH_APP_SECRET=${META_MESSENGER_OAUTH_APP_SECRET}
           META_MESSENGER_OAUTH_REDIRECT_URI=https://api.valueor.org/api/oauth/messenger/callback
           META_MESSENGER_OAUTH_GRAPH_VERSION=v21.0
@@ -285,7 +305,6 @@ jobs:
           META_EMBEDDED_SIGNUP_APP_SECRET_DEDICATED: ${{ secrets.META_EMBEDDED_SIGNUP_APP_SECRET }}
           META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID: ${{ secrets.META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID }}
           META_EMBEDDED_SIGNUP_APP_ID_DEDICATED: ${{ secrets.META_EMBEDDED_SIGNUP_APP_ID }}
-          META_INSTAGRAM_LOGIN_APP_SECRET: ${{ secrets.META_INSTAGRAM_LOGIN_APP_SECRET }}
         run: |
           set -euo pipefail
           GIT_SHA="$(printf '%s' "$GIT_SHA" | tr '[:upper:]' '[:lower:]')"
@@ -293,10 +312,8 @@ jobs:
             echo "::error::Refusing a ref that is not a full git SHA."
             exit 2
           fi
+          # Never fall back to Instagram Login secret — wrong Meta app for Facebook Login / WhatsApp ES.
           META_EMBEDDED_SIGNUP_APP_SECRET="${META_EMBEDDED_SIGNUP_APP_SECRET_DEDICATED:-}"
-          if [[ -z "$META_EMBEDDED_SIGNUP_APP_SECRET" ]]; then
-            META_EMBEDDED_SIGNUP_APP_SECRET="${META_INSTAGRAM_LOGIN_APP_SECRET:-}"
-          fi
           if [[ -z "${META_EMBEDDED_SIGNUP_APP_SECRET:-}" ]]; then
             echo "::warning::WhatsApp Embedded Signup secret missing — skipping WhatsApp overlay."
             exit 0
@@ -310,9 +327,18 @@ jobs:
           fi
           APP_ID="${META_EMBEDDED_SIGNUP_APP_ID_DEDICATED:-}"
           if [[ -z "$APP_ID" ]]; then
-            # Same Meta app used for Instagram Login / Messenger OAuth on Contabo.
-            APP_ID="4567945626796573"
+            # ValueOR Local Test — Facebook Login for Business + WhatsApp Embedded Signup.
+            APP_ID="1400885884891475"
           fi
+          if [[ "$APP_ID" == "4567945626796573" ]]; then
+            echo "::error::Refusing Instagram Login App ID for WhatsApp Embedded Signup (PLATFORM__INVALID_APP_ID)."
+            exit 2
+          fi
+          if [[ ! "$APP_ID" =~ ^[0-9]{6,20}$ ]]; then
+            echo "::error::WhatsApp App ID shape is invalid."
+            exit 2
+          fi
+          echo "whatsapp_app_id=${APP_ID}"
           CONFIG_ID="${META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID:-}"
           if [[ -n "$CONFIG_ID" ]]; then
             echo "whatsapp_config_id_len=${#CONFIG_ID}"

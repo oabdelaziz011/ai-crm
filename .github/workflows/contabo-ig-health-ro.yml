@@ -6,21 +6,68 @@ on:
         description: Type readonly-ig-health
         required: true
         type: string
+      cf_ray:
+        description: Optional CF-Ray id to search (no health POST)
+        required: false
+        type: string
+        default: ""
 jobs:
   inspect:
     if: github.event.inputs.confirm == 'readonly-ig-health'
     runs-on: [self-hosted, linux, x64, valueor-production]
     timeout-minutes: 5
     steps:
-      - name: Readable logs and simulate full health handler timing
+      - name: Read-only correlate CF-Ray and IG health logs (no health POST)
+        env:
+          CF_RAY: ${{ github.event.inputs.cf_ray }}
         run: |
           set -euo pipefail
+          echo "=== scope ==="
+          echo "no_health_post=1"
+          echo "cf_ray_input=${CF_RAY:-}"
+          echo "=== api unit / cwd ==="
+          systemctl is-active valueor-api.service 2>&1 || true
+          systemctl show valueor-api.service -p MainPID -p ActiveEnterTimestamp -p FragmentPath --no-pager 2>&1 || true
+          readlink -f /opt/valueor-current 2>&1 || true
+          readlink -f /var/www/valueor 2>&1 || true
+          cat /var/www/valueor/version.json 2>&1 || true
           echo "=== nginx log readability ==="
-          ls -la /var/log/nginx 2>&1 | head -n 30 || true
-          for f in /var/log/nginx/access.log /var/log/nginx/error.log /var/log/nginx/api.access.log; do
-            if [[ -r "$f" ]]; then echo "readable $f"; grep -E 'channel-outbound-health|/api/instagram' "$f" | tail -n 20 || true; else echo "not_readable $f"; fi
+          ls -la /var/log/nginx 2>&1 | head -n 40 || true
+          for f in /var/log/nginx/access.log /var/log/nginx/error.log /var/log/nginx/api.access.log /var/log/nginx/access.log.1 /var/log/nginx/error.log.1; do
+            if [[ -r "$f" ]]; then
+              echo "readable $f"
+              if [[ -n "${CF_RAY}" ]]; then
+                grep -F "$CF_RAY" "$f" 2>/dev/null | tail -n 20 || true
+              fi
+              grep -E 'channel-outbound-health|/api/instagram' "$f" 2>/dev/null | tail -n 30 || true
+            else
+              echo "not_readable $f"
+              if command -v sudo >/dev/null 2>&1; then
+                echo "sudo_n_grep_$f"
+                sudo -n grep -F "${CF_RAY:-___none___}" "$f" 2>&1 | tail -n 5 || true
+                sudo -n grep -E 'channel-outbound-health|/api/instagram' "$f" 2>&1 | tail -n 20 || true
+              fi
+            fi
           done
-          echo "=== journal user readable? ==="
-          journalctl --user -n 1 2>&1 | head -n 5 || true
-          ls -la /var/log/journal 2>&1 | head -n 5 || true
+          echo "=== journalctl valueor-api (sudo -n) ==="
+          sudo -n journalctl -u valueor-api.service -n 3 --no-pager 2>&1 | head -n 20 || true
+          if [[ -n "${CF_RAY}" ]]; then
+            echo "=== journal cf-ray search ==="
+            sudo -n journalctl -u valueor-api.service --since '48 hours ago' --no-pager 2>&1 \
+              | grep -F "$CF_RAY" | tail -n 20 || true
+          fi
+          echo "=== journal instagramHealthDiag recent ==="
+          sudo -n journalctl -u valueor-api.service --since '48 hours ago' --no-pager 2>&1 \
+            | grep -E 'instagramHealthDiag|instagram\.channel-outbound-health|instagram_health_timeout|channel-outbound-health' \
+            | tail -n 40 || true
+          echo "=== pino / app log files under /opt/valueor* (readable only) ==="
+          for d in /opt/valueor-current /opt/valueor /var/log/valueor /var/lib/valueor; do
+            if [[ -d "$d" ]]; then
+              echo "dir $d"
+              find "$d" -maxdepth 3 -type f \( -name '*.log' -o -name '*pino*' \) 2>/dev/null | head -n 20 || true
+            fi
+          done
+          echo "=== localhost healthz only (not IG health) ==="
+          curl -sS -o /tmp/vo-hz.json -w 'http=%{http_code}\n' --max-time 5 http://127.0.0.1:3001/api/healthz || true
+          cat /tmp/vo-hz.json 2>/dev/null; echo
           echo "=== done ==="

@@ -191,6 +191,47 @@ describe("production path guards", () => {
     assert.ok(problems.some((problem) => /VPS_SSH_KEY|scp|publish-www/.test(problem)));
   });
 
+  it("flags valueor-prod-deploy even inside comments in non-approved workflows", () => {
+    const problems = githubWorkflowProductionEntryProblems([
+      {
+        name: "vps-deploy.yml",
+        text: readFileSync(join(root, ".github/workflows/vps-deploy.yml"), "utf8"),
+      },
+      {
+        name: "build-production-release-artifact.yml",
+        text: [
+          "name: Build production release artifact",
+          "# Does NOT call valueor-prod-deploy",
+          "on: workflow_dispatch",
+          "jobs:",
+          "  build:",
+          "    runs-on: ubuntu-latest",
+          "    steps:",
+          "      - run: echo build-only",
+        ].join("\n"),
+      },
+    ]);
+    assert.ok(
+      problems.some(
+        (problem) =>
+          problem.includes("build-production-release-artifact.yml") &&
+          problem.includes("valueor-prod-deploy"),
+      ),
+      "comment-only mentions of valueor-prod-deploy must still fail validation",
+    );
+  });
+
+  it("keeps build-production-release-artifact.yml free of Contabo publish markers", () => {
+    const text = readFileSync(
+      join(root, ".github/workflows/build-production-release-artifact.yml"),
+      "utf8",
+    );
+    assert.ok(!/\bvalueor-prod-deploy\b/.test(text));
+    assert.ok(!/\bvalueor-prod-rollback\b/.test(text));
+    assert.ok(!/\bVPS_SSH_KEY\b/.test(text));
+    assert.ok(!/\bscp\b/.test(text));
+  });
+
   it("does not require ACME_EMAIL for nginx-systemd topology", () => {
     const env = {
       ...VPS_PUBLIC_URLS,

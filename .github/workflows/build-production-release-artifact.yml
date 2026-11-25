@@ -1,7 +1,7 @@
 name: Build production release artifact
 
 # Build-only. Produces valueor-production-release for Contabo FE replace.
-# Does NOT run on Contabo, does NOT call valueor-prod-deploy, does NOT restart API.
+# Does NOT run on Contabo, does NOT invoke Contabo publish wrappers, does NOT restart API.
 # Contabo publishing remains Contabo FE replace or VPS deploy only.
 
 on:

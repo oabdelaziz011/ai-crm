@@ -70,7 +70,30 @@ describe("instagram health diag path gate", () => {
 });
 
 describe("instagram health diag redaction", () => {
-  it("drops sensitive keys and token-like string values", () => {
+  const NESTED_JWT =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFBP95ZtAI0";
+  const NESTED_META_TOKEN = "EAAGabcdefghijklmnopqrstuvwxyz0123456789token";
+  const NESTED_OPAQUE =
+    "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_secret_opaque_value_xx";
+  const NESTED_CLIENT_SECRET = "ig_client_secret_value_do_not_log";
+  const NESTED_API_KEY = "ig_api_key_value_do_not_log";
+
+  function assertSerializedHasNoSecrets(
+    payload: unknown,
+    secrets: string[],
+  ): void {
+    const serialized = JSON.stringify(payload);
+    for (const secret of secrets) {
+      assert.equal(
+        serialized.includes(secret),
+        false,
+        `serialized payload must not contain ${JSON.stringify(secret)}`,
+      );
+    }
+    assert.equal(serialized.toLowerCase().includes("bearer "), false);
+  }
+
+  it("drops sensitive keys and redacts token-like string values", () => {
     const sanitized = sanitizeInstagramHealthDiagFields({
       instagramHealthDiag: true,
       requestId: "r1",
@@ -82,11 +105,118 @@ describe("instagram health diag redaction", () => {
       note: "Bearer abc.def.ghi",
       safe: "ok",
     });
+    const record = sanitized as Record<string, unknown>;
     assert.equal(sanitized.instagramHealthDiag, true);
-    assert.equal((sanitized as Record<string, unknown>).safe, "ok");
+    assert.equal(record.safe, "ok");
     assert.equal("authorization" in sanitized, false);
     assert.equal("accessToken" in sanitized, false);
-    assert.equal("note" in sanitized, false);
+    assert.equal(record.note, "[REDACTED]");
+    assertSerializedHasNoSecrets(sanitized, ["leaked", "Bearer abc.def.ghi"]);
+  });
+
+  it("redacts nested objects/arrays and alternate sensitive key names", () => {
+    const sanitized = sanitizeInstagramHealthDiagFields({
+      instagramHealthDiag: true,
+      requestId: "req-nested",
+      correlationId: "corr-nested",
+      stage: "credentials_load",
+      event: "start",
+      hasAuthorization: true,
+      meta: {
+        client_secret: NESTED_CLIENT_SECRET,
+        apiKey: NESTED_API_KEY,
+        token: NESTED_META_TOKEN,
+        Authorization: `Bearer ${NESTED_OPAQUE}`,
+        app_secret: "nested_app_secret",
+        refresh_token: "nested_refresh",
+        verify_token: "nested_verify",
+        safeLabel: "credentials_ok",
+        nestedAgain: {
+          access_token: NESTED_JWT,
+          password: "nested-password",
+          cookie: "session=abc",
+        },
+      },
+      items: [
+        { api_key: "array_api_key", ok: true },
+        NESTED_JWT,
+        { deep: [{ secret: "array_secret", keep: "visible" }] },
+      ],
+    });
+    const record = sanitized as Record<string, unknown>;
+    const meta = record.meta as Record<string, unknown>;
+    const nestedAgain = meta.nestedAgain as Record<string, unknown>;
+    const items = record.items as unknown[];
+
+    assert.equal(record.hasAuthorization, true);
+    assert.equal(meta.safeLabel, "credentials_ok");
+    assert.equal("client_secret" in meta, false);
+    assert.equal("apiKey" in meta, false);
+    assert.equal("token" in meta, false);
+    assert.equal("Authorization" in meta, false);
+    assert.equal("app_secret" in meta, false);
+    assert.equal("refresh_token" in meta, false);
+    assert.equal("verify_token" in meta, false);
+    assert.equal("access_token" in nestedAgain, false);
+    assert.equal("password" in nestedAgain, false);
+    assert.equal("cookie" in nestedAgain, false);
+    assert.equal(items[0] && typeof items[0] === "object" && "api_key" in (items[0] as object), false);
+    assert.equal((items[0] as Record<string, unknown>).ok, true);
+    assert.equal(items[1], "[REDACTED]");
+    assert.equal(
+      ((items[2] as { deep: Array<Record<string, unknown>> }).deep[0] as Record<string, unknown>).keep,
+      "visible",
+    );
+    assert.equal(
+      "secret" in ((items[2] as { deep: Array<Record<string, unknown>> }).deep[0] as object),
+      false,
+    );
+
+    assertSerializedHasNoSecrets(sanitized, [
+      NESTED_JWT,
+      NESTED_META_TOKEN,
+      NESTED_OPAQUE,
+      NESTED_CLIENT_SECRET,
+      NESTED_API_KEY,
+      "nested_app_secret",
+      "nested_refresh",
+      "nested_verify",
+      "nested-password",
+      "session=abc",
+      "array_api_key",
+      "array_secret",
+    ]);
+  });
+
+  it("redacts token-like strings without a Bearer prefix", () => {
+    const sanitized = sanitizeInstagramHealthDiagFields({
+      instagramHealthDiag: true,
+      requestId: "req-tokenish",
+      correlationId: "corr-tokenish",
+      stage: "meta_health",
+      event: "end",
+      jwt: NESTED_JWT,
+      graphCred: NESTED_META_TOKEN,
+      // Built at runtime so the source file never contains a scanner-flagged sk_live_* literal.
+      stripeLike: ["sk", "live", "abcdefghijklmnopqrstuvwx"].join("_"),
+      opaque: NESTED_OPAQUE,
+      uuidSafe: "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      shortSafe: "ok",
+    });
+    const record = sanitized as Record<string, unknown>;
+    const stripeLikeValue = ["sk", "live", "abcdefghijklmnopqrstuvwx"].join("_");
+    assert.equal(record.jwt, "[REDACTED]");
+    assert.equal(record.graphCred, "[REDACTED]");
+    assert.equal(record.stripeLike, "[REDACTED]");
+    assert.equal(record.opaque, "[REDACTED]");
+    assert.equal(record.uuidSafe, "2d27f7fb-c15e-4d60-84e9-1793f36f2172");
+    assert.equal(record.shortSafe, "ok");
+    assertSerializedHasNoSecrets(sanitized, [
+      NESTED_JWT,
+      NESTED_META_TOKEN,
+      stripeLikeValue,
+      NESTED_OPAQUE,
+    ]);
   });
 
   it("preserves requestId and correlationId from request context", () => {
@@ -120,6 +250,48 @@ describe("instagram health diag redaction", () => {
     assert.equal(fields.hasAuthorization, true);
     assert.equal(serialized.includes("SECRET_TOKEN_VALUE"), false);
     assert.equal(serialized.toLowerCase().includes("bearer "), false);
+  });
+
+  it("keeps logger-bound payloads free of nested fake credentials", () => {
+    const sink: InstagramHealthDiagLogFields[] = [];
+    const req = createHealthReq();
+    const unsafeExtra = {
+      detail: {
+        client_secret: NESTED_CLIENT_SECRET,
+        apiKey: NESTED_API_KEY,
+        token: NESTED_META_TOKEN,
+        nested: [NESTED_JWT, { Authorization: `Bearer ${NESTED_OPAQUE}` }],
+      },
+    };
+    const fields = {
+      ...buildInstagramHealthDiagFields({
+        req,
+        stage: "credentials_load",
+        event: "end",
+        completion: "async",
+        durationMs: 12,
+        hasAuthorization: true,
+      }),
+      ...unsafeExtra,
+    } as InstagramHealthDiagLogFields;
+
+    // Mimic logInstagramHealthStage: sanitize immediately before sink/logger.
+    const safe = sanitizeInstagramHealthDiagFields(
+      fields as unknown as Record<string, unknown>,
+    );
+    sink.push(safe);
+
+    assert.equal(sink.length, 1);
+    assert.equal(sink[0]?.hasAuthorization, true);
+    assert.equal(sink[0]?.stage, "credentials_load");
+    assertSerializedHasNoSecrets(sink[0], [
+      NESTED_CLIENT_SECRET,
+      NESTED_API_KEY,
+      NESTED_META_TOKEN,
+      NESTED_JWT,
+      NESTED_OPAQUE,
+      "SECRET_TOKEN_VALUE",
+    ]);
   });
 });
 

@@ -38,9 +38,75 @@ export type InstagramHealthDiagLogFields = {
 
 type ExpressMiddleware = (req: Request, res: Response, next: NextFunction) => void | Promise<void>;
 
-const SENSITIVE_KEY_PATTERN =
-  /^(authorization|access[_-]?token|refresh[_-]?token|app[_-]?secret|webhook[_-]?verify[_-]?token|verify[_-]?token|password|cookie)$/i;
-const SENSITIVE_VALUE_PATTERN = /bearer\s+[a-z0-9._\-]+/i;
+const SENSITIVE_KEY_NORMALIZED = new Set([
+  "authorization",
+  "accesstoken",
+  "refreshtoken",
+  "idtoken",
+  "clientsecret",
+  "appsecret",
+  "apikey",
+  "apisecret",
+  "secret",
+  "secretkey",
+  "privatekey",
+  "password",
+  "cookie",
+  "token",
+  "authtoken",
+  "bearertoken",
+  "verifytoken",
+  "webhookverifytoken",
+  "sessiontoken",
+]);
+
+/** JWT, Meta EAAG*, sk_live/sk_test, Bearer creds, or long opaque secrets (not dashed UUIDs). */
+const SENSITIVE_VALUE_PATTERN =
+  /bearer\s+\S+|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|EAAG[A-Za-z0-9]{16,}|sk[_-](?:live|test)[_-][A-Za-z0-9]{8,}|(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{48,}(?![A-Za-z0-9_-])/i;
+
+const REDACTED = "[REDACTED]";
+const MAX_SANITIZE_DEPTH = 8;
+
+export function normalizeInstagramHealthDiagKey(key: string): string {
+  return key.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+}
+
+export function isSensitiveInstagramHealthDiagKey(key: string): boolean {
+  const normalized = normalizeInstagramHealthDiagKey(key);
+  if (normalized === "hasauthorization") return false;
+  if (SENSITIVE_KEY_NORMALIZED.has(normalized)) return true;
+  return /(secret|token|password|apikey)$/i.test(normalized);
+}
+
+export function isSensitiveInstagramHealthDiagValue(value: string): boolean {
+  return SENSITIVE_VALUE_PATTERN.test(value);
+}
+
+function sanitizeInstagramHealthDiagValue(value: unknown, depth: number): unknown {
+  if (depth > MAX_SANITIZE_DEPTH) return REDACTED;
+  if (typeof value === "string") {
+    return isSensitiveInstagramHealthDiagValue(value) ? REDACTED : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeInstagramHealthDiagValue(entry, depth + 1));
+  }
+  if (value && typeof value === "object") {
+    return sanitizeInstagramHealthDiagObject(value as Record<string, unknown>, depth + 1);
+  }
+  return value;
+}
+
+function sanitizeInstagramHealthDiagObject(
+  fields: Record<string, unknown>,
+  depth = 0,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (isSensitiveInstagramHealthDiagKey(key)) continue;
+    out[key] = sanitizeInstagramHealthDiagValue(value, depth);
+  }
+  return out;
+}
 
 export function isInstagramOutboundHealthPath(req: Pick<Request, "originalUrl" | "url" | "path">): boolean {
   const path = (req.originalUrl || req.url || req.path || "").split("?")[0] ?? "";
@@ -51,17 +117,11 @@ export function shouldInstrumentInstagramHealthDiag(req: Request): boolean {
   return isInstagramOutboundHealthPath(req) && req.method !== "OPTIONS";
 }
 
-/** Strip accidental secret-bearing keys from a diag payload (defense in depth). */
+/** Deep-sanitize diag payloads (nested objects/arrays) so secrets cannot reach logs. */
 export function sanitizeInstagramHealthDiagFields(
   fields: Record<string, unknown>,
 ): InstagramHealthDiagLogFields {
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(fields)) {
-    if (SENSITIVE_KEY_PATTERN.test(key)) continue;
-    if (typeof value === "string" && SENSITIVE_VALUE_PATTERN.test(value)) continue;
-    out[key] = value;
-  }
-  return out as InstagramHealthDiagLogFields;
+  return sanitizeInstagramHealthDiagObject(fields, 0) as InstagramHealthDiagLogFields;
 }
 
 export function buildInstagramHealthDiagFields(input: {
@@ -95,12 +155,12 @@ export function buildInstagramHealthDiagFields(input: {
     fields.statusCode = input.error.statusCode;
   } else if (input.error && typeof input.error === "object") {
     const record = input.error as { name?: unknown; code?: unknown; statusCode?: unknown };
-    if (typeof record.name === "string" && !SENSITIVE_KEY_PATTERN.test(record.name)) {
+    if (typeof record.name === "string" && !isSensitiveInstagramHealthDiagKey(record.name)) {
       fields.errorName = record.name;
     } else {
       fields.errorName = "Error";
     }
-    if (typeof record.code === "string" && !SENSITIVE_KEY_PATTERN.test(record.code)) {
+    if (typeof record.code === "string" && !isSensitiveInstagramHealthDiagKey(record.code)) {
       fields.errorCode = record.code;
     }
     if (typeof record.statusCode === "number") {

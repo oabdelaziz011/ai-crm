@@ -109,20 +109,34 @@ export function MetaChannelConnectionStrip({
           <dt className="text-muted-foreground">
             {t("notifications.metaPagesOauth.tokenStatus", { defaultValue: "Access token" })}
           </dt>
-          <dd>{hasAccessToken ? "present" : "missing"}</dd>
+          <dd>
+            {hasAccessToken
+              ? t("notifications.metaPagesOauth.present", { defaultValue: "present" })
+              : t("notifications.metaPagesOauth.missing", { defaultValue: "missing" })}
+          </dd>
         </div>
         <div>
           <dt className="text-muted-foreground">
             {t("notifications.metaPagesOauth.webhookTokenStatus", { defaultValue: "Webhook verify token" })}
           </dt>
-          <dd>{hasWebhookVerifyToken ? "present" : "missing"}</dd>
+          <dd>
+            {hasWebhookVerifyToken
+              ? t("notifications.metaPagesOauth.present", { defaultValue: "present" })
+              : t("notifications.metaPagesOauth.missing", { defaultValue: "missing" })}
+          </dd>
         </div>
         <div>
           <dt className="text-muted-foreground">
             {t("notifications.metaPagesOauth.healthStatus", { defaultValue: "Health" })}
           </dt>
           <dd>
-            {healthOk === true ? "ok" : healthOk === false ? `failed${healthError ? `: ${healthError}` : ""}` : "not run"}
+            {healthOk === true
+              ? t("notifications.metaPagesOauth.healthOkShort", { defaultValue: "ok" })
+              : healthOk === false
+                ? `${t("notifications.metaPagesOauth.healthFailedShort", { defaultValue: "failed" })}${
+                    healthError ? `: ${healthError}` : ""
+                  }`
+                : t("notifications.metaPagesOauth.healthNotRun", { defaultValue: "not run" })}
           </dd>
         </div>
         {lastVerifiedLabel ? (

@@ -28,6 +28,7 @@ import {
   revealMessengerWebhookVerifyToken,
   type MessengerSettingsDraft,
 } from "@/lib/channels/messenger-settings";
+import { resolveMessengerHealthErrorPresentation } from "@/lib/channels/messenger-health-error-message";
 import {
   draftWebhookVerifyTokenFromSettings,
   isCopyableWebhookVerifyToken,
@@ -170,20 +171,28 @@ export function SettingsMessengerPage() {
         if (result.ok) {
           toast({ title: t("notifications.messenger.settings.connectionTestSuccess") });
         } else {
+          const presentation = resolveMessengerHealthErrorPresentation(result.error);
           toast({
             title: t("notifications.messenger.settings.connectionTestFailed"),
-            description: result.error ?? t("notifications.messenger.settings.healthFailed", { error: "—" }),
+            description: presentation.descriptionKey
+              ? t(`notifications.messenger.settings.${presentation.descriptionKey}`)
+              : presentation.fallbackDescription ??
+                t("notifications.messenger.settings.healthFailed", { error: "—" }),
             variant: "destructive",
           });
         }
         void refetchHealth();
       },
-      onError: (error) =>
+      onError: (error) => {
+        const presentation = resolveMessengerHealthErrorPresentation(error.message);
         toast({
           title: t("notifications.messenger.settings.connectionTestFailed"),
-          description: error.message,
+          description: presentation.descriptionKey
+            ? t(`notifications.messenger.settings.${presentation.descriptionKey}`)
+            : presentation.fallbackDescription ?? error.message,
           variant: "destructive",
-        }),
+        });
+      },
     });
   };
 
@@ -469,7 +478,14 @@ export function SettingsMessengerPage() {
               <span>
                 {health?.ok
                   ? t("notifications.messenger.settings.healthOk", { ms: health.latencyMs })
-                  : t("notifications.messenger.settings.healthFailed", { error: health?.error ?? "—" })}
+                  : (() => {
+                      const presentation = resolveMessengerHealthErrorPresentation(health?.error);
+                      return presentation.descriptionKey
+                        ? t(`notifications.messenger.settings.${presentation.descriptionKey}`)
+                        : t("notifications.messenger.settings.healthFailed", {
+                            error: presentation.fallbackDescription ?? health?.error ?? "—",
+                          });
+                    })()}
               </span>
               <Button variant="ghost" size="sm" onClick={() => void refetchHealth()} disabled={healthLoading}>
                 <RefreshCw className={`w-3.5 h-3.5 ${healthLoading ? "animate-spin" : ""}`} />

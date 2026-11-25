@@ -31,7 +31,7 @@ function withMessengerEnv(run: () => Promise<void> | void) {
   };
   process.env.META_MESSENGER_OAUTH_ENABLED = "true";
   process.env.META_MESSENGER_OAUTH_ALLOWED_COMPANY_IDS = DEMO;
-  process.env.META_MESSENGER_OAUTH_APP_ID = "fb-app-id";
+  process.env.META_MESSENGER_OAUTH_APP_ID = "1400885884891475";
   process.env.META_MESSENGER_OAUTH_APP_SECRET = "fb-app-secret";
   process.env.META_OAUTH_PUBLIC_API_BASE_URL = "http://127.0.0.1:3010";
   process.env.META_MESSENGER_OAUTH_STATE_SECRET = "unit-msl-state";
@@ -90,6 +90,7 @@ describe("meta-messenger-login-oauth", () => {
       assert.match(session.authorizeUrl, /pages_read_engagement/);
       assert.equal(session.redirectUri, "http://127.0.0.1:3010/api/oauth/messenger/callback");
       assert.ok(!JSON.stringify(session).includes("fb-app-secret"));
+      assert.match(session.authorizeUrl, /client_id=1400885884891475/);
     });
   });
 

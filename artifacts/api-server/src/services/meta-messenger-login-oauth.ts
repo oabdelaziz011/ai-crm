@@ -60,7 +60,12 @@ type PageAsset = {
 
 type MessengerPendingPayload = {
   pages: PageAsset[];
-  /** Soft expiry hint from long-lived user token exchange (seconds). */
+  /**
+   * Long-lived Facebook user token used to re-resolve Page tokens at complete time.
+   * Never returned to the browser. Cleared when the pending session is consumed.
+   */
+  longLivedUserToken: string;
+  /** Soft expiry hint from long-lived user token exchange (seconds). Page tokens do not inherit this. */
   userTokenExpiresIn?: number | null;
 };
 
@@ -441,6 +446,7 @@ export async function handleMetaMessengerLoginCallback(input: {
       flow: META_MESSENGER_LOGIN_FLOW,
       payload: {
         pages,
+        longLivedUserToken: longLived.accessToken,
         userTokenExpiresIn: longLived.expiresIn,
       } satisfies MessengerPendingPayload,
       nowMs,
@@ -543,17 +549,6 @@ export async function completeMetaMessengerLogin(input: {
   }
 
   const existing = await loadExistingMessengerConnection(input.deps.client, input.companyId);
-  const confirmReplace =
-    Boolean(input.confirmReplaceExisting) || Boolean(statePayload.confirmReplaceExisting);
-  try {
-    assertCanReplaceExistingMetaConnection({
-      existing,
-      confirmReplaceExisting: confirmReplace,
-      channel: "messenger",
-    });
-  } catch (error) {
-    mapGuardError(error);
-  }
 
   let pending: MessengerPendingPayload | null = null;
   try {
@@ -575,11 +570,52 @@ export async function completeMetaMessengerLogin(input: {
       400,
     );
   }
-  const selected = pending.pages.find((p) => p.pageId === input.pageId);
-  if (!selected) {
+
+  // Completing a valid OAuth pending session is explicit reconnect intent.
+  // startMetaMessengerLogin already required confirmReplace when credentials existed.
+  const confirmReplace =
+    Boolean(input.confirmReplaceExisting) ||
+    Boolean(statePayload.confirmReplaceExisting) ||
+    Boolean(pending.longLivedUserToken);
+  try {
+    assertCanReplaceExistingMetaConnection({
+      existing,
+      confirmReplaceExisting: confirmReplace,
+      channel: "messenger",
+    });
+  } catch (error) {
+    mapGuardError(error);
+  }
+
+  const cached = pending.pages.find((p) => p.pageId === input.pageId);
+  if (!cached) {
     throw new MetaMessengerLoginError(
       "Selected Facebook Page was not found for this authorization.",
       "MSL_PAGE_NOT_FOUND",
+      400,
+    );
+  }
+
+  const fetchImpl = input.deps.fetchImpl ?? fetch;
+  // Always re-resolve the Page token at complete time so reconnect never keeps a stale
+  // pending/expired token (root cause of "Session has expired" after selecting a Page).
+  let selected: PageAsset = cached;
+  const userToken = String(pending.longLivedUserToken ?? "").trim();
+  if (userToken) {
+    try {
+      const freshPages = await listManagedPages(userToken, meta, fetchImpl);
+      const fresh = freshPages.find((p) => p.pageId === input.pageId);
+      if (fresh?.pageAccessToken) {
+        selected = fresh;
+      }
+    } catch {
+      // Fall back to the page token captured at callback time.
+    }
+  }
+  if (!selected.pageAccessToken.trim()) {
+    throw new MetaMessengerLoginError(
+      "Could not resolve a fresh Page access token. Reconnect Messenger and select the Page again.",
+      "MSL_PAGE_TOKEN_MISSING",
       400,
     );
   }
@@ -615,7 +651,6 @@ export async function completeMetaMessengerLogin(input: {
     throw new MetaMessengerLoginError(error.message, "MSL_PERSIST_FAILED", 500);
   }
 
-  const fetchImpl = input.deps.fetchImpl ?? fetch;
   let subscribe = await subscribePageMessagingWebhooks({
     pageId: selected.pageId,
     pageAccessToken: selected.pageAccessToken,
@@ -636,6 +671,7 @@ export async function completeMetaMessengerLogin(input: {
 
   // Health probe — Connected requires Page token health.
   let healthOk = false;
+  let healthError = "";
   try {
     const probe = new URL(
       `https://graph.facebook.com/${sanitizeGraphVersion(meta.graphApiVersion)}/${encodeURIComponent(selected.pageId)}`,
@@ -643,9 +679,23 @@ export async function completeMetaMessengerLogin(input: {
     probe.searchParams.set("fields", "id,name");
     probe.searchParams.set("access_token", selected.pageAccessToken);
     const res = await fetchImpl(probe.toString());
-    healthOk = res.ok;
-  } catch {
+    if (res.ok) {
+      healthOk = true;
+    } else {
+      const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      healthError = body.error?.message ?? `Page token health failed (HTTP ${res.status})`;
+    }
+  } catch (error) {
     healthOk = false;
+    healthError = error instanceof Error ? error.message : "Page token health check failed";
+  }
+
+  if (!healthOk && /session has expired|error validating access token/i.test(healthError)) {
+    throw new MetaMessengerLoginError(
+      "Meta rejected the Page access token (session expired). Reconnect Messenger, select the Page, and confirm again so ValueOR can store a fresh token.",
+      "MSL_PAGE_TOKEN_EXPIRED",
+      400,
+    );
   }
 
   const connectionStatus: MetaConnectionStatus = !subscribe.ok
@@ -654,21 +704,18 @@ export async function completeMetaMessengerLogin(input: {
       ? "connected"
       : "reauthorization_required";
 
-  const tokenExpiresAt =
-    pending.userTokenExpiresIn && pending.userTokenExpiresIn > 0
-      ? new Date(nowMs + pending.userTokenExpiresIn * 1000).toISOString()
-      : null;
-
+  // Page tokens from long-lived user tokens do not inherit the user-token expiry.
+  // Never stamp token_expires_at from the user token — that falsely marks Connected as expired.
   await input.deps.client
     .from("company_messenger_settings")
     .update({
       page_name: selected.name,
       credential_source: "oauth",
       connection_status: connectionStatus,
-      connection_last_error: subscribe.error ?? (healthOk ? "" : "Page token health check failed"),
+      connection_last_error: subscribe.error ?? (healthOk ? "" : healthError || "Page token health check failed"),
       webhook_subscription_status: subscribe.ok ? "subscribed" : "failed",
       webhook_subscription_error: subscribe.error ?? "",
-      ...(tokenExpiresAt ? { token_expires_at: tokenExpiresAt } : {}),
+      token_expires_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq("company_id", input.companyId);
@@ -739,7 +786,14 @@ export async function getMetaMessengerLoginConnection(input: {
     // Manual rows often keep default not_connected after migration 463 — infer from credentials.
     status = data.enabled && hasAccessToken ? "connected" : "not_connected";
   }
-  if (data.token_expires_at && new Date(String(data.token_expires_at)).getTime() < nowMs) {
+  // Page tokens from Messenger OAuth do not use user-token expiry. Only honor
+  // token_expires_at for non-OAuth rows (legacy/manual) when explicitly set.
+  const credentialSource = readCredentialSource(data.credential_source);
+  if (
+    credentialSource !== "oauth" &&
+    data.token_expires_at &&
+    new Date(String(data.token_expires_at)).getTime() < nowMs
+  ) {
     status = "connection_expired";
   }
   if (String(data.webhook_subscription_status ?? "") === "failed") {
@@ -755,7 +809,7 @@ export async function getMetaMessengerLoginConnection(input: {
     lastError: data.connection_last_error ? String(data.connection_last_error) : null,
     enabled: Boolean(data.enabled),
     hasAccessToken,
-    credentialSource: readCredentialSource(data.credential_source),
+    credentialSource,
     tokenExpiresAt: data.token_expires_at ? String(data.token_expires_at) : null,
   };
 }

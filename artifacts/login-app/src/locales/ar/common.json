@@ -977,6 +977,7 @@
       "connectDisabled": "ربط فيسبوك ماسنجر معطّل",
       "selectPage": "اختَر صفحة فيسبوك",
       "selectPageLabel": "اختَر صفحة فيسبوك",
+      "selectPageThenSave": "اختَر الصفحة ثم اضغط حفظ والتحقق عشان يتخزّن توكن جديد.",
       "finish": "حفظ والتحقق من الاتصال",
       "connected": "تم ربط ماسنجر",
       "savedNotConnected": "تم الحفظ — الاتصال غير مكتمل",

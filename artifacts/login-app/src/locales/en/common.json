@@ -1296,6 +1296,7 @@
       "connectDisabled": "Connect Facebook Messenger is disabled",
       "selectPage": "Select a Facebook Page",
       "selectPageLabel": "Select Facebook Page",
+      "selectPageThenSave": "Select the Page, then press Save & verify to store a fresh token.",
       "finish": "Save & verify connection",
       "connected": "Messenger connected",
       "savedNotConnected": "Saved — not fully Connected",

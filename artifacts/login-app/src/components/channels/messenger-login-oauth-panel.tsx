@@ -84,13 +84,45 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
       if (state) {
         setBusy(true);
         void fetchPendingMessengerPages(companyId, state)
-          .then((result) => {
+          .then(async (result) => {
             setPendingState(state);
             setPages(result.pages);
-            setSelectedPageId(result.pages[0]?.pageId ?? "");
+            const onlyPageId = result.pages[0]?.pageId ?? "";
+            setSelectedPageId(onlyPageId);
+            // Single Page: finish immediately so reconnect cannot stall on "select only".
+            if (result.pages.length === 1 && onlyPageId) {
+              const completed = await completeMetaMessengerLogin({
+                companyId,
+                state,
+                pageId: onlyPageId,
+                confirmReplaceExisting: true,
+              });
+              setPendingState(null);
+              setPages([]);
+              if (completed.webhookVerifyToken) {
+                setRevealedVerifyToken(completed.webhookVerifyToken);
+              }
+              toast({
+                title: completed.connected
+                  ? t("notifications.messengerLogin.connected", {
+                      defaultValue: "Messenger connected",
+                    })
+                  : t("notifications.messengerLogin.savedNotConnected", {
+                      defaultValue: "Saved — not fully Connected",
+                    }),
+                description: completed.message,
+                variant: completed.connected ? "default" : "destructive",
+              });
+              onConnected?.();
+              void refresh();
+              return;
+            }
             toast({
               title: t("notifications.messengerLogin.selectPage", {
                 defaultValue: "Select a Facebook Page",
+              }),
+              description: t("notifications.messengerLogin.selectPageThenSave", {
+                defaultValue: "Select the Page, then press Save & verify to store a fresh token.",
               }),
             });
           })
@@ -125,7 +157,7 @@ export function MessengerLoginOauthPanel({ companyId, onConnected, onDisconnecte
       });
       cleanup();
     }
-  }, [companyId, readiness, t, toast]);
+  }, [companyId, onConnected, readiness, refresh, t, toast]);
 
   const onConnect = async () => {
     const replacing = Boolean(connection?.hasAccessToken);

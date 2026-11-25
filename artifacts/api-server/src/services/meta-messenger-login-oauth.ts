@@ -367,6 +367,33 @@ async function confirmPageMessagingSubscription(input: {
   }
 }
 
+async function probeMessengerPageToken(input: {
+  pageId: string;
+  pageAccessToken: string;
+  graphApiVersion: string;
+  fetchImpl: typeof fetch;
+}): Promise<{ ok: boolean; error: string }> {
+  try {
+    const probe = new URL(
+      `https://graph.facebook.com/${sanitizeGraphVersion(input.graphApiVersion)}/${encodeURIComponent(input.pageId)}`,
+    );
+    probe.searchParams.set("fields", "id,name");
+    probe.searchParams.set("access_token", input.pageAccessToken);
+    const res = await input.fetchImpl(probe.toString());
+    if (res.ok) return { ok: true, error: "" };
+    const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+    return {
+      ok: false,
+      error: body.error?.message ?? `Page token health failed (HTTP ${res.status})`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Page token health check failed",
+    };
+  }
+}
+
 async function unsubscribePageMessagingWebhooks(input: {
   pageId: string;
   pageAccessToken: string;
@@ -620,6 +647,24 @@ export async function completeMetaMessengerLogin(input: {
     );
   }
 
+  // Probe BEFORE upsert so an expired/invalid Page token never replaces a stored secret.
+  const preHealth = await probeMessengerPageToken({
+    pageId: selected.pageId,
+    pageAccessToken: selected.pageAccessToken,
+    graphApiVersion: meta.graphApiVersion,
+    fetchImpl,
+  });
+  if (
+    !preHealth.ok &&
+    /session has expired|error validating access token/i.test(preHealth.error)
+  ) {
+    throw new MetaMessengerLoginError(
+      "Meta rejected the Page access token (session expired). Reconnect Messenger, select the Page, and confirm again so ValueOR can store a fresh token.",
+      "MSL_PAGE_TOKEN_EXPIRED",
+      400,
+    );
+  }
+
   // Preserve existing verify token on reconnect unless the UI explicitly sends a new one.
   const explicitVerify = String(input.webhookVerifyToken ?? "").trim();
   let verifyToken = explicitVerify;
@@ -669,34 +714,8 @@ export async function completeMetaMessengerLogin(input: {
     }
   }
 
-  // Health probe — Connected requires Page token health.
-  let healthOk = false;
-  let healthError = "";
-  try {
-    const probe = new URL(
-      `https://graph.facebook.com/${sanitizeGraphVersion(meta.graphApiVersion)}/${encodeURIComponent(selected.pageId)}`,
-    );
-    probe.searchParams.set("fields", "id,name");
-    probe.searchParams.set("access_token", selected.pageAccessToken);
-    const res = await fetchImpl(probe.toString());
-    if (res.ok) {
-      healthOk = true;
-    } else {
-      const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-      healthError = body.error?.message ?? `Page token health failed (HTTP ${res.status})`;
-    }
-  } catch (error) {
-    healthOk = false;
-    healthError = error instanceof Error ? error.message : "Page token health check failed";
-  }
-
-  if (!healthOk && /session has expired|error validating access token/i.test(healthError)) {
-    throw new MetaMessengerLoginError(
-      "Meta rejected the Page access token (session expired). Reconnect Messenger, select the Page, and confirm again so ValueOR can store a fresh token.",
-      "MSL_PAGE_TOKEN_EXPIRED",
-      400,
-    );
-  }
+  const healthOk = preHealth.ok;
+  const healthError = preHealth.error;
 
   const connectionStatus: MetaConnectionStatus = !subscribe.ok
     ? "webhook_subscription_failed"

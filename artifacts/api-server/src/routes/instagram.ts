@@ -10,6 +10,11 @@ import { HttpError } from "../middleware/error-handler.js";
 import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
+import {
+  isInstagramOutboundHealthPath,
+  timeInstagramHealthStage,
+  wrapInstagramHealthMiddleware,
+} from "./instagram-health-diag.js";
 
 /** Keep origin JSON+CORS ahead of Cloudflare's ~100s proxy timeout (which has no ACAO). */
 export const INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS = 20_000;
@@ -26,11 +31,6 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => 
   } finally {
     if (timer) clearTimeout(timer);
   }
-}
-
-function isInstagramOutboundHealthPath(req: Request): boolean {
-  const path = (req.originalUrl || req.url || req.path || "").split("?")[0] ?? "";
-  return path.endsWith("/instagram/channel-outbound-health");
 }
 
 const router: IRouter = Router();
@@ -53,6 +53,7 @@ router.use((req: Request, res: Response, next: NextFunction) => {
       origin: req.header("origin") ?? null,
       hasAuthorization: Boolean(req.header("authorization")),
       requestId: req.requestId,
+      correlationId: req.correlationId,
     },
     "instagram.channel-outbound-health received",
   );
@@ -66,6 +67,7 @@ router.use((req: Request, res: Response, next: NextFunction) => {
         statusCode: res.statusCode,
         durationMs: Date.now() - started,
         requestId: req.requestId,
+        correlationId: req.correlationId,
       },
       "instagram.channel-outbound-health finished",
     );
@@ -74,8 +76,9 @@ router.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-router.use(requireSupabaseAuth);
-router.use(requireCompanyScope("companyId"));
+// Path-gated timing wrappers only; shared auth/scope implementations are unchanged.
+router.use(wrapInstagramHealthMiddleware("supabase_auth", requireSupabaseAuth));
+router.use(wrapInstagramHealthMiddleware("company_scope", requireCompanyScope("companyId")));
 
 router.post("/instagram/channel-outbound-health", async (req, res, next) => {
   try {
@@ -87,31 +90,37 @@ router.post("/instagram/channel-outbound-health", async (req, res, next) => {
     }
 
     const platform = getWebhookPlatform();
-    const channel = await platform.ports.registry.getCompanyChannel(companyChannelId);
+    const channel = await timeInstagramHealthStage(req, "channel_lookup", () =>
+      platform.ports.registry.getCompanyChannel(companyChannelId),
+    );
     if (!channel || channel.companyId !== companyId || channel.channelKey !== "instagram") {
       res.status(404).json({ error: "instagram_channel_not_found" });
       return;
     }
 
     const credentialsLoader = createSupabaseInstagramCredentialsLoader(platform.client);
-    const runtimeConfig = await resolveInstagramRuntimeConfiguration(
-      companyId,
-      parseInstagramChannelReferences(channel.configuration),
-      credentialsLoader,
+    const runtimeConfig = await timeInstagramHealthStage(req, "credentials_load", () =>
+      resolveInstagramRuntimeConfiguration(
+        companyId,
+        parseInstagramChannelReferences(channel.configuration),
+        credentialsLoader,
+      ),
     );
 
-    const report = await withTimeout(
-      performInstagramOutboundHealthCheck({
-        companyId,
-        runtimeConfig,
-      }),
-      INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS,
-      () =>
-        new HttpError(
-          504,
-          "Instagram health check timed out before Meta Graph responded.",
-          "instagram_health_timeout",
-        ),
+    const report = await timeInstagramHealthStage(req, "meta_health", () =>
+      withTimeout(
+        performInstagramOutboundHealthCheck({
+          companyId,
+          runtimeConfig,
+        }),
+        INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS,
+        () =>
+          new HttpError(
+            504,
+            "Instagram health check timed out before Meta Graph responded.",
+            "instagram_health_timeout",
+          ),
+      ),
     );
 
     res.status(report.ok ? 200 : 502).json(report);

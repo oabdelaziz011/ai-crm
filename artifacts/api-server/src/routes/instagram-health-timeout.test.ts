@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(resolve(here, "instagram.ts"), "utf8");
+const appSource = readFileSync(resolve(here, "../app.ts"), "utf8");
 
 describe("Instagram outbound health timeout and diagnostics", () => {
   it("keeps a route timeout so Cloudflare cannot drop the POST without CORS", () => {
@@ -24,11 +25,20 @@ describe("Instagram outbound health timeout and diagnostics", () => {
   });
 
   it("still requires supabase auth and company scope before the health handler", () => {
-    const authIndex = source.indexOf("router.use(requireSupabaseAuth)");
-    const scopeIndex = source.indexOf('router.use(requireCompanyScope("companyId"))');
+    const authIndex = source.indexOf('wrapInstagramHealthMiddleware("supabase_auth", requireSupabaseAuth)');
+    const scopeIndex = source.indexOf(
+      'wrapInstagramHealthMiddleware("company_scope", requireCompanyScope("companyId"))',
+    );
     const handlerIndex = source.indexOf('router.post("/instagram/channel-outbound-health"');
     assert.ok(authIndex >= 0);
     assert.ok(scopeIndex > authIndex);
     assert.ok(handlerIndex > scopeIndex);
+  });
+
+  it("keeps request-context middleware before the /api router mount", () => {
+    const contextIndex = appSource.indexOf("app.use(requestContextMiddleware)");
+    const apiMountIndex = appSource.indexOf('app.use("/api", router)');
+    assert.ok(contextIndex >= 0, "requestContextMiddleware must remain mounted");
+    assert.ok(apiMountIndex > contextIndex, "request context must run before /api routes");
   });
 });

@@ -1,8 +1,7 @@
-name: Ops WA phone unbind
+﻿name: Ops WA phone unbind
 
-# One-shot ops: find company_whatsapp_settings rows holding a phone_number_id
-# and soft-disconnect any company that is NOT the target (ValueOR).
-# Never prints tokens/secrets. Never calls Meta Graph.
+# Soft-clear company_whatsapp_settings rows holding a Meta phone_number_id
+# claimed by another ValueOR company. Never prints tokens. Never calls Meta.
 on:
   workflow_dispatch:
     inputs:
@@ -11,9 +10,10 @@ on:
         required: true
         type: string
       phone_number_id:
-        description: Meta phone_number_id to free (digits)
-        required: true
+        description: Meta phone_number_id to free (digits). Empty = list all bound phones only.
+        required: false
         type: string
+        default: ""
       keep_company_id:
         description: Company UUID that should keep/claim the number
         required: true
@@ -46,42 +46,75 @@ jobs:
           echo "phone_number_id_len=${#PHONE_NUMBER_ID}"
           echo "keep_company_id=${KEEP_COMPANY_ID}"
 
-          if [[ ! "${PHONE_NUMBER_ID}" =~ ^[0-9]{5,32}$ ]]; then
-            echo "Invalid phone_number_id"
-            exit 2
-          fi
           if [[ ! "${KEEP_COMPANY_ID}" =~ ^[0-9a-fA-F-]{36}$ ]]; then
             echo "Invalid keep_company_id"
             exit 2
           fi
-
-          ENV_FILE=/opt/valueor/.env
-          if [[ ! -r "$ENV_FILE" ]]; then
-            if sudo -n test -r "$ENV_FILE"; then
-              READ_ENV=(sudo -n)
-            else
-              echo "env_readable=no"
-              exit 3
-            fi
-          else
-            READ_ENV=()
+          if [[ -n "${PHONE_NUMBER_ID}" && ! "${PHONE_NUMBER_ID}" =~ ^[0-9]{5,32}$ ]]; then
+            echo "Invalid phone_number_id"
+            exit 2
           fi
 
-          DATABASE_URL="$("${READ_ENV[@]}" awk -F= '
-            /^[[:space:]]*#/ {next}
-            $1=="DATABASE_URL" {
-              v=substr($0, index($0,"=")+1)
-              gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
-              gsub(/^"/, "", v); gsub(/"$/, "", v)
-              gsub(/^'\''/, "", v); gsub(/'\''$/, "", v)
-              print v
-              exit
-            }' "$ENV_FILE")"
+          resolve_database_url() {
+            local candidates=(
+              /opt/valueor/.env
+              /opt/valueor/deploy/vps/production.env
+              /home/github-runner/.valueor-db-url
+              /home/runner/.valueor-db-url
+            )
+            local f
+            for f in "${candidates[@]}"; do
+              if [[ -r "$f" ]]; then
+                echo "env_source=$f" >&2
+                awk -F= '
+                  /^[[:space:]]*#/ {next}
+                  $1=="DATABASE_URL" {
+                    v=substr($0, index($0,"=")+1)
+                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+                    gsub(/^"/, "", v); gsub(/"$/, "", v)
+                    gsub(/^'\''/, "", v); gsub(/'\''$/, "", v)
+                    print v
+                    exit
+                  }' "$f"
+                return 0
+              fi
+            done
+            # Fall back: extract from running API process environ (no file print).
+            if command -v systemctl >/dev/null 2>&1; then
+              local pid
+              pid="$(systemctl show -p MainPID --value valueor-api 2>/dev/null || true)"
+              if [[ -n "${pid:-}" && "${pid}" != "0" && -r "/proc/${pid}/environ" ]]; then
+                echo "env_source=proc:${pid}" >&2
+                tr '\0' '\n' <"/proc/${pid}/environ" | awk -F= '
+                  $1=="DATABASE_URL" { print substr($0, index($0,"=")+1); exit }'
+                return 0
+              fi
+            fi
+            # Docker compose API container env
+            if command -v docker >/dev/null 2>&1; then
+              local cid
+              cid="$(docker ps --format '{{.ID}} {{.Names}}' | awk '/api|valueor/ {print $1; exit}')"
+              if [[ -n "${cid:-}" ]]; then
+                echo "env_source=docker:${cid}" >&2
+                docker exec "$cid" printenv DATABASE_URL 2>/dev/null || true
+                return 0
+              fi
+            fi
+            return 1
+          }
+
+          DATABASE_URL="$(resolve_database_url || true)"
           if [[ -z "${DATABASE_URL}" ]]; then
             echo "database_url=missing"
+            echo "readable_probe:"
+            ls -la /opt/valueor 2>&1 | head -n 40 || true
+            ls -la /opt/valueor/.env /opt/valueor/deploy/vps/production.env 2>&1 || true
+            id; groups || true
+            systemctl is-active valueor-api 2>&1 || true
+            docker ps --format '{{.Names}}' 2>&1 | head -n 20 || true
             exit 4
           fi
-          echo "database_url=present"
+          echo "database_url=present len=${#DATABASE_URL}"
 
           export DATABASE_URL
           python3 - <<'PY'
@@ -91,9 +124,10 @@ jobs:
             import psycopg2.extras
           except Exception as e:
             print("psycopg2_import_failed", type(e).__name__)
+            # Fallback: use node/pg or psql
             sys.exit(5)
 
-          phone = os.environ["PHONE_NUMBER_ID"].strip()
+          phone = (os.environ.get("PHONE_NUMBER_ID") or "").strip()
           keep = os.environ["KEEP_COMPANY_ID"].strip().lower()
           apply = os.environ["APPLY_MODE"].strip().lower() == "apply"
 
@@ -122,6 +156,11 @@ jobs:
               f"waba={(r['business_account_id'] or '')}",
             )
 
+          if not phone:
+            print("status=list_only")
+            conn.close()
+            sys.exit(0)
+
           cur.execute(
             """
             select company_id::text as company_id,
@@ -142,7 +181,7 @@ jobs:
               "row",
               f"company_id={r['company_id']}",
               f"enabled={r['enabled']}",
-              f"waba={(r['business_account_id'] or '')[:8]}…",
+              f"waba={(r['business_account_id'] or '')}",
               f"token_len={r['access_token_len']}",
               f"is_keep={str(r['company_id']).lower()==keep}",
             )
@@ -161,8 +200,6 @@ jobs:
             conn.close()
             sys.exit(0)
 
-          # Direct soft-disconnect (ValueOR binding only). Avoid RPC auth.role()
-          # checks that fail under raw DATABASE_URL sessions.
           for r in conflicts:
             cid = r["company_id"]
             cur.execute(

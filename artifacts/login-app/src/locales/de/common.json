@@ -1310,7 +1310,17 @@
             "updateFailed": "Meta lehnte die Aktualisierung des Unternehmensprofils ab. Überprüfen Sie die Feldlängen und versuchen Sie es erneut.",
             "unsupportedMode": "Dieser WhatsApp-Verbindungsmodus unterstützt die Cloud API Business Profile-Verwaltung nicht. Verwenden Sie für diese Nummer die Meta Business Suite oder die WhatsApp Business App.",
             "forbidden": "Sie sind nicht berechtigt, die WhatsApp-Einstellungen für dieses Unternehmen zu verwalten."
-          }
+          },
+          "officialBadge": "Offizielles Geschäftskonto (blauer Haken)",
+          "officialBadgeNote": "Ein genehmigter Anzeigename ist nicht der blaue Haken. Der blaue Haken ist der Meta Official Business Account (OBA) — Meta prüft die Bekanntheit und entscheidet. ValueOR kann die Freigabe nicht erzwingen.",
+          "officialYes": "Offizielles Geschäftskonto genehmigt",
+          "officialNo": "Noch kein offizielles Geschäftskonto",
+          "pinEnabled": "Zwei-Schritt-Verifizierungs-PIN aktiviert",
+          "pinDisabled": "Zwei-Schritt-PIN noch nicht aktiviert (für OBA-Antrag erforderlich)",
+          "nameStatusLabel": "Status des Anzeigenamens",
+          "obaGuideTitle": "So beantragen Sie den blauen Haken",
+          "obaGuideSteps": "1) Zwei-Schritt-PIN in WhatsApp Manager oder per Graph aktivieren. 2) Business Verification und genehmigten Anzeigenamen bestätigen. 3) In WhatsApp Manager → Telefon → Profil → Official business account → Submit request (bei Bedarf seriöse Nachrichtenlinks). 4) Auf Meta-Prüfung warten — ValueOR zeigt nur den Status.",
+          "profilePermissionHint": "Profilfelder brauchen ein System-User-Token mit business_management und WhatsApp-Verwaltungsrechten sowie vollem Asset-Zugriff. Messaging kann funktionieren, während Meta Profilfehler zurückgibt."
         }
       }
     },

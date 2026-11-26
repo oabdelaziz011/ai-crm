@@ -45,6 +45,7 @@ import { WhatsAppEmbeddedSignupPanel } from "@/components/channels/whatsapp-embe
 import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-token-field";
 import { generateWhatsAppVerifyToken } from "@workspace/channel-registry";
 import { WhatsAppConnectionLifecyclePanel } from "@/components/channels/whatsapp-connection-lifecycle-panel";
+import { WhatsAppBusinessProfilePanel } from "@/components/channels/whatsapp-business-profile-panel";
 import {
   disconnectWhatsAppConnection,
   isWhatsAppLifecycleApiConfigured,
@@ -409,6 +410,14 @@ export function SettingsWhatsAppPage() {
           void queryClient.invalidateQueries({ queryKey: whatsappSettingsKey(companyId) });
           void refetchHealth();
         }}
+      />
+
+      <WhatsAppBusinessProfilePanel
+        companyId={companyId}
+        hasConnection={Boolean(
+          (settings?.phoneNumberId ?? "").trim() || settings?.hasAccessToken,
+        )}
+        phoneNumberId={settings?.phoneNumberId ?? null}
       />
 
       <DashboardCard className="p-6 space-y-5">

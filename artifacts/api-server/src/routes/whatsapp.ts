@@ -28,9 +28,33 @@ import {
   transferCompanyWhatsAppConnection,
 } from "../services/whatsapp-connection-lifecycle.js";
 import { readMetaEmbeddedSignupEnvConfig } from "../services/whatsapp-embedded-signup-flags.js";
+import {
+  WhatsAppBusinessProfileError,
+  createWhatsAppBusinessProfileDeps,
+  getWhatsAppBusinessProfile,
+  getWhatsAppPhoneVerificationStatus,
+  syncWhatsAppBusinessProfile,
+  updateWhatsAppBusinessProfile,
+  updateWhatsAppBusinessProfilePicture,
+} from "../services/whatsapp-business-profile.js";
 
 /** Matches public.whatsapp_settings_can_manage (settings.edit). */
 const WHATSAPP_SETTINGS_MANAGE_PERMISSION = "settings.edit";
+
+function mapBusinessProfileError(error: unknown): never {
+  if (error instanceof WhatsAppBusinessProfileError) {
+    throw new HttpError(error.statusCode, error.message, error.code);
+  }
+  throw error;
+}
+
+async function assertWhatsAppBusinessProfileAccess(
+  req: Parameters<typeof requireRequestCompanyPermission>[0],
+  companyId: string,
+): Promise<void> {
+  await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+  await requireRequestCompanyPermission(req, companyId, WHATSAPP_SETTINGS_MANAGE_PERMISSION);
+}
 
 const router: IRouter = Router();
 
@@ -388,6 +412,174 @@ router.post("/whatsapp/lifecycle-events", async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+});
+
+/**
+ * Fetch WhatsApp Business Profile from Meta for the authenticated company tenant.
+ * Phone Number ID is resolved from company credentials — never trusted from the client.
+ */
+router.post("/whatsapp/business-profile/get", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) throw new HttpError(400, "companyId required", "bad_request");
+    await assertWhatsAppBusinessProfileAccess(req, companyId);
+    const client = getServiceClient();
+    const profile = await getWhatsAppBusinessProfile(
+      companyId,
+      createWhatsAppBusinessProfileDeps(client),
+    );
+    res.json({ profile });
+  } catch (error) {
+    try {
+      mapBusinessProfileError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
+  }
+});
+
+router.post("/whatsapp/business-profile/status", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) throw new HttpError(400, "companyId required", "bad_request");
+    await assertWhatsAppBusinessProfileAccess(req, companyId);
+    const client = getServiceClient();
+    const status = await getWhatsAppPhoneVerificationStatus(
+      companyId,
+      createWhatsAppBusinessProfileDeps(client),
+    );
+    res.json({ status });
+  } catch (error) {
+    try {
+      mapBusinessProfileError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
+  }
+});
+
+router.post("/whatsapp/business-profile/sync", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) throw new HttpError(400, "companyId required", "bad_request");
+    await assertWhatsAppBusinessProfileAccess(req, companyId);
+    const client = getServiceClient();
+    const profile = await syncWhatsAppBusinessProfile(
+      companyId,
+      createWhatsAppBusinessProfileDeps(client),
+    );
+    res.json({ profile });
+  } catch (error) {
+    try {
+      mapBusinessProfileError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
+  }
+});
+
+router.post("/whatsapp/business-profile/update", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) throw new HttpError(400, "companyId required", "bad_request");
+    await assertWhatsAppBusinessProfileAccess(req, companyId);
+    // Reject client-supplied phoneNumberId for mutations — tenant credentials win.
+    if (req.body?.phoneNumberId != null && String(req.body.phoneNumberId).trim()) {
+      throw new HttpError(
+        400,
+        "phoneNumberId cannot be supplied by the client for business profile updates.",
+        "BP_PHONE_NUMBER_ID_FORBIDDEN",
+      );
+    }
+    const client = getServiceClient();
+    const profile = await updateWhatsAppBusinessProfile(
+      companyId,
+      {
+        about: req.body?.about,
+        address: req.body?.address,
+        description: req.body?.description,
+        email: req.body?.email,
+        websites: req.body?.websites,
+        vertical: req.body?.vertical,
+      },
+      createWhatsAppBusinessProfileDeps(client),
+    );
+    res.json({ profile });
+  } catch (error) {
+    try {
+      mapBusinessProfileError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
+  }
+});
+
+router.post("/whatsapp/business-profile/picture", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) throw new HttpError(400, "companyId required", "bad_request");
+    await assertWhatsAppBusinessProfileAccess(req, companyId);
+    if (req.body?.phoneNumberId != null && String(req.body.phoneNumberId).trim()) {
+      throw new HttpError(
+        400,
+        "phoneNumberId cannot be supplied by the client for business profile picture updates.",
+        "BP_PHONE_NUMBER_ID_FORBIDDEN",
+      );
+    }
+
+    const mimeType = String(req.body?.mimeType ?? "").trim();
+    const imageBase64 = String(req.body?.imageBase64 ?? "").trim();
+    if (!imageBase64) {
+      throw new HttpError(400, "imageBase64 is required", "BP_IMAGE_INVALID");
+    }
+    // Strip optional data-URL prefix.
+    const raw = imageBase64.replace(/^data:[^;]+;base64,/, "");
+    let bytes: Buffer;
+    try {
+      bytes = Buffer.from(raw, "base64");
+    } catch {
+      throw new HttpError(400, "imageBase64 is invalid", "BP_IMAGE_INVALID");
+    }
+    if (!bytes.length) {
+      throw new HttpError(400, "imageBase64 is empty", "BP_IMAGE_INVALID");
+    }
+
+    const client = getServiceClient();
+    const profile = await updateWhatsAppBusinessProfilePicture(
+      companyId,
+      {
+        mimeType,
+        bytes,
+        fileName: req.body?.fileName == null ? undefined : String(req.body.fileName),
+      },
+      createWhatsAppBusinessProfileDeps(client),
+    );
+    // Never return the Meta handle to the browser — only refreshed profile fields.
+    res.json({
+      profile: {
+        about: profile.about,
+        address: profile.address,
+        description: profile.description,
+        email: profile.email,
+        websites: profile.websites,
+        vertical: profile.vertical,
+        profilePictureUrl: profile.profilePictureUrl,
+        phoneNumberId: profile.phoneNumberId,
+        displayPhoneNumber: profile.displayPhoneNumber,
+        verifiedName: profile.verifiedName,
+        isOfficialBusinessAccount: profile.isOfficialBusinessAccount,
+        isPinEnabled: profile.isPinEnabled,
+        nameStatus: profile.nameStatus,
+        syncedAt: profile.syncedAt,
+      },
+    });
+  } catch (error) {
+    try {
+      mapBusinessProfileError(error);
+    } catch (mapped) {
+      next(mapped);
+    }
   }
 });
 

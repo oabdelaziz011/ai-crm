@@ -534,7 +534,8 @@ export async function completeWhatsAppEmbeddedSignup(
       const otherCompanyId = String((row as { company_id?: unknown }).company_id ?? "").trim();
       if (!otherCompanyId) continue;
       const otherWaba = String((row as { business_account_id?: unknown }).business_account_id ?? "").trim();
-      // Hint columns are NOT NULL DEFAULT '' — never write null (Postgres 23502).
+      // Text hint/hash columns are NOT NULL DEFAULT '' — never write null (Postgres 23502).
+      // Encrypted bytea columns may be null. Keep this list aligned with softDisconnectMetaChannel.
       const { error: clearError } = await client
         .from("company_whatsapp_settings")
         .update({
@@ -547,7 +548,7 @@ export async function completeWhatsAppEmbeddedSignup(
           webhook_verify_token: "",
           webhook_verify_token_encrypted: null,
           webhook_verify_token_hint: "",
-          webhook_verify_token_lookup_hash: null,
+          webhook_verify_token_lookup_hash: "",
           app_secret_encrypted: null,
           app_secret_hint: "",
           token_status: "missing",

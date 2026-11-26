@@ -34,102 +34,37 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          # Fallbacks used by some env layouts
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           PHONE_NUMBER_ID: ${{ github.event.inputs.phone_number_id }}
           KEEP_COMPANY_ID: ${{ github.event.inputs.keep_company_id }}
           APPLY_MODE: ${{ github.event.inputs.apply }}
         run: |
           set -euo pipefail
-          BASE="${SUPABASE_URL:-${VITE_SUPABASE_URL:-}}"
-          KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
-          echo "supabase_url_present=$([ -n "$BASE" ] && echo yes || echo no)"
-          echo "service_role_present=$([ -n "$KEY" ] && echo yes || echo no)"
-          echo "supabase_url_len=${#BASE} service_role_len=${#KEY}"
-          if [[ -z "$BASE" || -z "$KEY" ]]; then
-            echo "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in production environment"
-            exit 3
-          fi
-          if [[ ! "${KEEP_COMPANY_ID}" =~ ^[0-9a-fA-F-]{36}$ ]]; then
-            echo "Invalid keep_company_id"; exit 2
-          fi
-          KEEP_LC="$(printf '%s' "$KEEP_COMPANY_ID" | tr '[:upper:]' '[:lower:]')"
-          AUTH_H="Authorization: Bearer ${KEY}"
-          API_H="apikey: ${KEY}"
-          PREF="Prefer: return=representation"
+          python3 <<'PY'
+          import json, os, sys, urllib.error, urllib.parse, urllib.request
 
-          echo "=== all bound phones ==="
-          curl -sS -H "$AUTH_H" -H "$API_H" \
-            "${BASE}/rest/v1/company_whatsapp_settings?select=company_id,phone_number_id,business_account_id,enabled&phone_number_id=neq.&order=company_id" \
-            | python3 -c '
-          import json,sys,os
-          keep=os.environ["KEEP_COMPANY_ID"].strip().lower()
-          rows=json.load(sys.stdin)
-          if isinstance(rows, dict) and rows.get("message"):
-            print("error", rows); sys.exit(4)
-          bound=[r for r in rows if str(r.get("phone_number_id") or "").strip()]
-          print(f"all_bound_phone_rows={len(bound)}")
-          for r in bound:
-            pid=str(r.get("phone_number_id") or "").strip()
-            cid=str(r.get("company_id") or "")
-            print(f"bound company_id={cid} phone={pid} enabled={r.get(\"enabled\")} waba={r.get(\"business_account_id\") or \"\"} is_keep={cid.lower()==keep}")
-          '
+          base = (os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL") or "").rstrip("/")
+          key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or ""
+          phone = (os.environ.get("PHONE_NUMBER_ID") or "").strip()
+          keep = (os.environ.get("KEEP_COMPANY_ID") or "").strip().lower()
+          apply = (os.environ.get("APPLY_MODE") or "").strip().lower() == "apply"
 
-          PHONE="${PHONE_NUMBER_ID:-}"
-          if [[ -z "$PHONE" ]]; then
-            echo "status=list_only"
-            exit 0
-          fi
-          if [[ ! "$PHONE" =~ ^[0-9]{5,32}$ ]]; then
-            echo "Invalid phone_number_id"; exit 2
-          fi
+          print(f"supabase_url_present={'yes' if base else 'no'}")
+          print(f"service_role_present={'yes' if key else 'no'}")
+          print(f"supabase_url_len={len(base)} service_role_len={len(key)}")
+          if not base or not key:
+            print("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in production environment")
+            sys.exit(3)
+          if len(keep) != 36:
+            print("Invalid keep_company_id")
+            sys.exit(2)
 
-          echo "=== matches for phone ==="
-          MATCH_JSON="$(curl -sS -H "$AUTH_H" -H "$API_H" \
-            "${BASE}/rest/v1/company_whatsapp_settings?select=company_id,phone_number_id,business_account_id,enabled&phone_number_id=eq.${PHONE}")"
-          python3 - <<PY
-          import json,os,sys,urllib.request
-          rows=json.loads("""${MATCH_JSON}""".replace("\\","\\\\") if False else open("/dev/stdin").read())
-          PY
-          printf '%s' "$MATCH_JSON" | python3 -c '
-          import json,sys,os
-          keep=os.environ["KEEP_COMPANY_ID"].strip().lower()
-          apply=os.environ["APPLY_MODE"].strip().lower()=="apply"
-          phone=os.environ["PHONE_NUMBER_ID"].strip()
-          base=os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
-          key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-          rows=json.load(sys.stdin)
-          if isinstance(rows, dict) and rows.get("message"):
-            print("error", rows); sys.exit(4)
-          print(f"matching_rows={len(rows)}")
-          conflicts=[]
-          for r in rows:
-            cid=str(r.get("company_id") or "")
-            is_keep=cid.lower()==keep
-            print(f"row company_id={cid} enabled={r.get(\"enabled\")} waba={r.get(\"business_account_id\") or \"\"} is_keep={is_keep}")
-            if not is_keep:
-              conflicts.append(r)
-          print(f"conflict_rows={len(conflicts)}")
-          if not conflicts:
-            print("status=no_conflicts"); sys.exit(0)
-          if not apply:
-            for r in conflicts:
-              print(f"would_disconnect company_id={r.get(\"company_id\")}")
-            print("status=dry_run_would_disconnect"); sys.exit(0)
-          import urllib.request
-          for r in conflicts:
-            cid=str(r["company_id"])
-            body=json.dumps({
-              "enabled": False,
-              "phone_number_id": "",
-              "business_account_id": "",
-              "access_token": "",
-              "token_status": "missing",
-            }).encode()
-            req=urllib.request.Request(
-              f"{base}/rest/v1/company_whatsapp_settings?company_id=eq.{cid}&phone_number_id=eq.{phone}",
-              data=body,
-              method="PATCH",
+          def req(method: str, path: str, body: dict | None = None):
+            data = None if body is None else json.dumps(body).encode()
+            request = urllib.request.Request(
+              f"{base}{path}",
+              data=data,
+              method=method,
               headers={
                 "Authorization": f"Bearer {key}",
                 "apikey": key,
@@ -137,8 +72,97 @@ jobs:
                 "Prefer": "return=representation",
               },
             )
-            with urllib.request.urlopen(req) as resp:
-              out=resp.read().decode()
-            print(f"disconnected company_id={cid} http={resp.status} body_len={len(out)}")
+            try:
+              with urllib.request.urlopen(request) as resp:
+                raw = resp.read().decode()
+                return resp.status, json.loads(raw) if raw else None
+            except urllib.error.HTTPError as e:
+              raw = e.read().decode()
+              try:
+                parsed = json.loads(raw) if raw else {"message": str(e)}
+              except Exception:
+                parsed = {"message": raw or str(e)}
+              print(f"http_error status={e.code} body={parsed}")
+              sys.exit(4)
+
+          status, rows = req(
+            "GET",
+            "/rest/v1/company_whatsapp_settings?select=company_id,phone_number_id,business_account_id,enabled&order=company_id",
+          )
+          if not isinstance(rows, list):
+            print("unexpected_response", rows)
+            sys.exit(4)
+          bound = [r for r in rows if str(r.get("phone_number_id") or "").strip()]
+          print(f"all_bound_phone_rows={len(bound)}")
+          for r in bound:
+            cid = str(r.get("company_id") or "")
+            pid = str(r.get("phone_number_id") or "").strip()
+            print(
+              "bound",
+              f"company_id={cid}",
+              f"phone={pid}",
+              f"enabled={r.get('enabled')}",
+              f"waba={r.get('business_account_id') or ''}",
+              f"is_keep={cid.lower() == keep}",
+            )
+
+          if not phone:
+            print("status=list_only")
+            sys.exit(0)
+          if not phone.isdigit() or not (5 <= len(phone) <= 32):
+            print("Invalid phone_number_id")
+            sys.exit(2)
+
+          matches = [r for r in bound if str(r.get("phone_number_id") or "").strip() == phone]
+          print(f"matching_rows={len(matches)}")
+          conflicts = []
+          for r in matches:
+            cid = str(r.get("company_id") or "")
+            is_keep = cid.lower() == keep
+            print(
+              "row",
+              f"company_id={cid}",
+              f"enabled={r.get('enabled')}",
+              f"waba={r.get('business_account_id') or ''}",
+              f"is_keep={is_keep}",
+            )
+            if not is_keep:
+              conflicts.append(r)
+          print(f"conflict_rows={len(conflicts)}")
+          if not conflicts:
+            print("status=no_conflicts")
+            sys.exit(0)
+          if not apply:
+            for r in conflicts:
+              print(f"would_disconnect company_id={r.get('company_id')}")
+            print("status=dry_run_would_disconnect")
+            sys.exit(0)
+
+          for r in conflicts:
+            cid = str(r["company_id"])
+            q = urllib.parse.urlencode(
+              {
+                "company_id": f"eq.{cid}",
+                "phone_number_id": f"eq.{phone}",
+              }
+            )
+            # PostgREST expects filter query style: ?company_id=eq.uuid
+            path = (
+              "/rest/v1/company_whatsapp_settings"
+              f"?company_id=eq.{urllib.parse.quote(cid)}"
+              f"&phone_number_id=eq.{urllib.parse.quote(phone)}"
+            )
+            st, out = req(
+              "PATCH",
+              path,
+              {
+                "enabled": False,
+                "phone_number_id": "",
+                "business_account_id": "",
+                "access_token": "",
+                "token_status": "missing",
+              },
+            )
+            print(f"disconnected company_id={cid} http={st} rows={len(out) if isinstance(out, list) else out}")
           print("status=applied")
-          '
+          PY

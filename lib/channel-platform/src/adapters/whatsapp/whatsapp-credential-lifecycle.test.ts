@@ -108,6 +108,8 @@ describe("whatsapp-credential-lifecycle", () => {
             display_phone_number: "201012345989",
             verified_name: "ValueOR",
             status: "CONNECTED",
+            platform_type: "CLOUD_API",
+            health_status: { can_send_message: "AVAILABLE" },
           }),
           { status: 200 },
         );
@@ -138,7 +140,8 @@ describe("whatsapp-credential-lifecycle", () => {
     });
 
     assert.equal(report.ok, true);
-    assert.match(phoneUrl, /fields=id%2Cdisplay_phone_number%2Cverified_name%2Cstatus|fields=id,display_phone_number,verified_name,status/);
+    assert.match(phoneUrl, /platform_type/);
+    assert.match(phoneUrl, /health_status/);
     assert.doesNotMatch(phoneUrl, /whatsapp_business_account/);
     assert.doesNotMatch(phoneUrl, /metadata=/);
   });
@@ -171,6 +174,8 @@ describe("whatsapp-credential-lifecycle", () => {
             display_phone_number: "201012345989",
             verified_name: "ValueOR",
             status: "CONNECTED",
+            platform_type: "CLOUD_API",
+            health_status: { can_send_message: "AVAILABLE" },
           }),
           { status: 200 },
         );
@@ -209,6 +214,56 @@ describe("whatsapp-credential-lifecycle", () => {
     assert.equal(report.businessAccount.ok, true);
   });
 
+  it("fails connection test when Meta phone status is PENDING (not Cloud API registered)", async () => {
+    const fetchFn = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/me?")) {
+        return new Response(JSON.stringify({ id: "token-owner", name: "Owner" }), { status: 200 });
+      }
+      if (url.includes("1214681355059951") && !url.includes("phone_numbers")) {
+        return new Response(
+          JSON.stringify({
+            id: "1214681355059951",
+            display_phone_number: "+20 10 12345989",
+            verified_name: "ValueOR",
+            status: "PENDING",
+            platform_type: "NOT_APPLICABLE",
+            health_status: { can_send_message: "BLOCKED" },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/1584022663181525?") && url.includes("fields=id,name")) {
+        return new Response(JSON.stringify({ id: "1584022663181525", name: "Configured WABA" }), {
+          status: 200,
+        });
+      }
+      if (url.includes("/1584022663181525/phone_numbers")) {
+        return new Response(
+          JSON.stringify({ data: [{ id: "1214681355059951", display_phone_number: "+20 10 12345989" }] }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ error: { message: `unexpected ${url}` } }), { status: 500 });
+    };
+
+    const report = await performWhatsAppConnectionTest({
+      runtimeConfig: {
+        phoneNumberId: "1214681355059951",
+        accessToken: "EAAYds47ZCVXEBSabcdefghijklmnop",
+        verifyToken: "verify",
+        apiVersion: "v21.0",
+        businessAccountId: "1584022663181525",
+      },
+      fetchFn: fetchFn as typeof fetch,
+    });
+
+    assert.equal(report.ok, false);
+    assert.equal(report.phoneNumber.ok, false);
+    assert.equal(report.phoneNumber.status, "PENDING");
+    assert.match(report.error ?? "", /PENDING|Register|Cloud API/i);
+  });
+
   it("skips debug_token instead of using customer token when appId is missing", async () => {
     let debugCalled = false;
     const fetchFn = async (input: RequestInfo | URL) => {
@@ -229,6 +284,8 @@ describe("whatsapp-credential-lifecycle", () => {
             display_phone_number: "201012345989",
             verified_name: "ValueOR",
             status: "CONNECTED",
+            platform_type: "CLOUD_API",
+            health_status: { can_send_message: "AVAILABLE" },
           }),
           { status: 200 },
         );

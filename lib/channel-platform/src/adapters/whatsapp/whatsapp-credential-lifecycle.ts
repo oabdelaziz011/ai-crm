@@ -77,6 +77,10 @@ export type WhatsAppConnectionTestReport = {
     id?: string;
     displayPhoneNumber?: string;
     verifiedName?: string;
+    /** Meta phone status — must be CONNECTED to send/receive via Cloud API. */
+    status?: string | null;
+    /** CLOUD_API once registered; NOT_APPLICABLE means registration incomplete. */
+    platformType?: string | null;
     /** Owning WABA resolved from Meta for this phone number (when available). */
     owningWabaId?: string | null;
   };
@@ -420,10 +424,10 @@ export async function performWhatsAppConnectionTest(input: {
     // Ownership is validated via GET /{WABA_ID}/phone_numbers below.
     const phoneUrl =
       `${base}/${encodeURIComponent(configuredPhoneNumberId)}` +
-      `?fields=id,display_phone_number,verified_name,status`;
+      `?fields=id,display_phone_number,verified_name,status,platform_type,health_status`;
     console.log("[WHATSAPP_CONNECTION_TEST] Meta GET /{PHONE_NUMBER_ID}", {
       path: `/${configuredPhoneNumberId}`,
-      fields: "id,display_phone_number,verified_name,status",
+      fields: "id,display_phone_number,verified_name,status,platform_type,health_status",
       url: phoneUrl,
     });
 
@@ -434,6 +438,9 @@ export async function performWhatsAppConnectionTest(input: {
       id?: string;
       display_phone_number?: string;
       verified_name?: string;
+      status?: string;
+      platform_type?: string;
+      health_status?: { can_send_message?: string };
       metadata?: { parent?: { id?: string; type?: string } };
       [key: string]: unknown;
     };
@@ -443,6 +450,9 @@ export async function performWhatsAppConnectionTest(input: {
       ok: phoneRes.ok,
       phoneId: phoneBody.id ?? null,
       displayPhoneNumber: phoneBody.display_phone_number ?? null,
+      phoneStatus: phoneBody.status ?? null,
+      platformType: phoneBody.platform_type ?? null,
+      canSend: phoneBody.health_status?.can_send_message ?? null,
       owningWabaId: extractOwningWabaIdFromPhoneBody(phoneBody as Record<string, unknown>),
       metaErrorCode: phoneBody.error?.code ?? null,
       metaErrorMessage: phoneBody.error?.error_user_msg ?? phoneBody.error?.message ?? null,
@@ -483,13 +493,36 @@ export async function performWhatsAppConnectionTest(input: {
       }
     } else {
       actualWabaIdFromMeta = extractOwningWabaIdFromPhoneBody(phoneBody as Record<string, unknown>);
+      const phoneStatus = String(phoneBody.status ?? "").trim().toUpperCase();
+      const platformType = String(phoneBody.platform_type ?? "").trim().toUpperCase();
+      const canSend = String(phoneBody.health_status?.can_send_message ?? "").trim().toUpperCase();
+      const idMatches = phoneBody.id === configuredPhoneNumberId;
+      let phoneError: string | undefined;
+      if (!idMatches) {
+        phoneError = "Phone Number ID mismatch";
+      } else if (phoneStatus && phoneStatus !== "CONNECTED") {
+        phoneError =
+          `WhatsApp phone status is ${phoneStatus} (expected CONNECTED). ` +
+          `Register the number for Cloud API in Meta (2-step PIN) before messaging works.`;
+      } else if (platformType && platformType !== "CLOUD_API" && platformType !== "NOT_APPLICABLE") {
+        // Keep NOT_APPLICABLE as a soft signal when status already failed; otherwise warn.
+        phoneError = `WhatsApp platform_type is ${platformType} (expected CLOUD_API).`;
+      } else if (platformType === "NOT_APPLICABLE") {
+        phoneError =
+          "WhatsApp number is not registered for Cloud API yet (platform_type=NOT_APPLICABLE). Complete phone registration in Meta.";
+      } else if (canSend === "BLOCKED") {
+        phoneError =
+          "Meta health_status reports messaging BLOCKED for this phone (often missing Cloud API registration or payment method).";
+      }
       report.phoneNumber = {
-        ok: phoneBody.id === configuredPhoneNumberId,
+        ok: !phoneError,
         id: phoneBody.id,
         displayPhoneNumber: phoneBody.display_phone_number,
         verifiedName: phoneBody.verified_name,
+        status: phoneBody.status ?? null,
+        platformType: phoneBody.platform_type ?? null,
         owningWabaId: actualWabaIdFromMeta,
-        error: phoneBody.id === configuredPhoneNumberId ? undefined : "Phone Number ID mismatch",
+        error: phoneError,
       };
       if (!report.phoneNumber.ok && !report.error) {
         report.error = report.phoneNumber.error;

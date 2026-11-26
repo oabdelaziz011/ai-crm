@@ -27,6 +27,7 @@ import {
   disconnectCompanyWhatsAppConnection,
   transferCompanyWhatsAppConnection,
 } from "../services/whatsapp-connection-lifecycle.js";
+import { readMetaEmbeddedSignupEnvConfig } from "../services/whatsapp-embedded-signup-flags.js";
 
 /** Matches public.whatsapp_settings_can_manage (settings.edit). */
 const WHATSAPP_SETTINGS_MANAGE_PERMISSION = "settings.edit";
@@ -225,6 +226,10 @@ router.post("/whatsapp/test-connection", async (req, res, next) => {
       ...tokenFp,
     });
 
+    const metaAppId =
+      String(readMetaEmbeddedSignupEnvConfig()?.appId ?? "").trim() ||
+      String(process.env.META_EMBEDDED_SIGNUP_APP_ID ?? "").trim() ||
+      null;
     const report = await performWhatsAppConnectionTest({
       runtimeConfig: {
         phoneNumberId: credentials.phoneNumberId,
@@ -235,6 +240,7 @@ router.post("/whatsapp/test-connection", async (req, res, next) => {
         businessAccountId: credentials.businessAccountId,
       },
       appSecret: credentials.appSecret,
+      appId: metaAppId,
     });
 
     console.info("[whatsapp.test-connection.result]", {

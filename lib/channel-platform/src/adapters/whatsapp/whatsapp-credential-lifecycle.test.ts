@@ -143,6 +143,127 @@ describe("whatsapp-credential-lifecycle", () => {
     assert.doesNotMatch(phoneUrl, /metadata=/);
   });
 
+  it("keeps connection valid when debug_token (#100) needs app access token", async () => {
+    const fetchFn = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/debug_token")) {
+        assert.match(url, /access_token=1400885884891475%7Capp-secret|access_token=1400885884891475\|app-secret/);
+        assert.doesNotMatch(decodeURIComponent(url), /access_token=EAAY/);
+        return new Response(
+          JSON.stringify({
+            error: {
+              message:
+                "You must provide an app access token, or a user access token that is an owner or developer of the app",
+              code: 100,
+              type: "OAuthException",
+            },
+          }),
+          { status: 400 },
+        );
+      }
+      if (url.includes("/me?")) {
+        return new Response(JSON.stringify({ id: "token-owner", name: "Owner" }), { status: 200 });
+      }
+      if (url.includes("1214681355059951") && !url.includes("phone_numbers")) {
+        return new Response(
+          JSON.stringify({
+            id: "1214681355059951",
+            display_phone_number: "201012345989",
+            verified_name: "ValueOR",
+            status: "CONNECTED",
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/1584022663181525?") && url.includes("fields=id,name")) {
+        return new Response(JSON.stringify({ id: "1584022663181525", name: "Configured WABA" }), {
+          status: 200,
+        });
+      }
+      if (url.includes("/1584022663181525/phone_numbers")) {
+        return new Response(
+          JSON.stringify({ data: [{ id: "1214681355059951", display_phone_number: "201012345989" }] }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ error: { message: `unexpected ${url}` } }), { status: 500 });
+    };
+
+    const report = await performWhatsAppConnectionTest({
+      runtimeConfig: {
+        phoneNumberId: "1214681355059951",
+        accessToken: "EAAYds47ZCVXEBSabcdefghijklmnop",
+        verifyToken: "verify",
+        apiVersion: "v21.0",
+        businessAccountId: "1584022663181525",
+      },
+      appSecret: "app-secret",
+      appId: "1400885884891475",
+      fetchFn: fetchFn as typeof fetch,
+    });
+
+    assert.equal(report.ok, true);
+    assert.equal(report.tokenStatus, "valid");
+    assert.equal(report.accessToken.ok, true);
+    assert.equal(report.phoneNumber.ok, true);
+    assert.equal(report.businessAccount.ok, true);
+  });
+
+  it("skips debug_token instead of using customer token when appId is missing", async () => {
+    let debugCalled = false;
+    const fetchFn = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/debug_token")) {
+        debugCalled = true;
+        return new Response(JSON.stringify({ error: { message: "should not run", code: 100 } }), {
+          status: 400,
+        });
+      }
+      if (url.includes("/me?")) {
+        return new Response(JSON.stringify({ id: "token-owner", name: "Owner" }), { status: 200 });
+      }
+      if (url.includes("1214681355059951") && !url.includes("phone_numbers")) {
+        return new Response(
+          JSON.stringify({
+            id: "1214681355059951",
+            display_phone_number: "201012345989",
+            verified_name: "ValueOR",
+            status: "CONNECTED",
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/1584022663181525?") && url.includes("fields=id,name")) {
+        return new Response(JSON.stringify({ id: "1584022663181525", name: "Configured WABA" }), {
+          status: 200,
+        });
+      }
+      if (url.includes("/1584022663181525/phone_numbers")) {
+        return new Response(
+          JSON.stringify({ data: [{ id: "1214681355059951", display_phone_number: "201012345989" }] }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ error: { message: `unexpected ${url}` } }), { status: 500 });
+    };
+
+    const report = await performWhatsAppConnectionTest({
+      runtimeConfig: {
+        phoneNumberId: "1214681355059951",
+        accessToken: "EAAYds47ZCVXEBSabcdefghijklmnop",
+        verifyToken: "verify",
+        apiVersion: "v21.0",
+        businessAccountId: "1584022663181525",
+      },
+      appSecret: "app-secret",
+      fetchFn: fetchFn as typeof fetch,
+    });
+
+    assert.equal(debugCalled, false);
+    assert.equal(report.ok, true);
+    assert.equal(report.tokenStatus, "valid");
+  });
+
   it("reports mismatch when phone is not listed under configured WABA", async () => {
     const fetchFn = async (input: RequestInfo | URL) => {
       const url = String(input);

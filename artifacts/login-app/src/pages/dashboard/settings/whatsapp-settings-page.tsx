@@ -70,7 +70,9 @@ function defaultWebhookCallbackUrl(): string {
 
 function resolveInitialWebhookCallbackUrl(saved: string | null | undefined): string {
   const trimmed = (saved ?? "").trim();
-  return trimmed || defaultWebhookCallbackUrl();
+  // Ignore stale cross-channel callbacks (Messenger/Instagram) saved on WhatsApp settings.
+  if (trimmed && /\/api\/webhooks\/whatsapp(?:\/|$|\?)/i.test(trimmed)) return trimmed;
+  return defaultWebhookCallbackUrl();
 }
 
 function formatDateTime(value: string | null | undefined, locale: string): string {

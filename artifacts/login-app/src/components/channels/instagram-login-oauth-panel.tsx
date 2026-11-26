@@ -13,8 +13,8 @@ import {
   type MetaInstagramLoginConnection,
   type MetaInstagramLoginReadiness,
 } from "@/lib/channels/meta-instagram-login-client";
-import { META_CONNECTION_STATUS_LABELS } from "@/lib/channels/meta-connection-status";
 import { formatMetaOauthReadinessMessage } from "@/lib/channels/meta-oauth-readiness-message";
+import type { MetaChannelConnectionStatusUi } from "@/components/channels/meta-channel-connection-strip";
 
 type Props = {
   companyId: string;
@@ -210,17 +210,18 @@ export function InstagramLoginOauthPanel({ companyId, onConnected, onDisconnecte
     );
   }
 
-  const statusLabel = connection
-    ? META_CONNECTION_STATUS_LABELS[connection.status]
-    : META_CONNECTION_STATUS_LABELS.not_connected;
+  const statusKey = (connection?.status ?? "not_connected") as MetaChannelConnectionStatusUi;
+  const statusLabel = t(`notifications.metaPagesOauth.status.${statusKey}`, {
+    defaultValue: statusKey.replaceAll("_", " "),
+  });
   const connectDisabled = busy || readiness?.ready !== true;
   const readinessMessage = formatMetaOauthReadinessMessage(readiness, "instagram");
   const connectLabel =
     connection?.status === "connection_expired" ||
     connection?.status === "reauthorization_required" ||
     connection?.hasAccessToken
-      ? t("notifications.instagramLogin.reconnect", { defaultValue: "Reconnect Instagram" })
-      : t("notifications.instagramLogin.connect", { defaultValue: "Connect Instagram" });
+      ? t("notifications.instagramLogin.reconnect")
+      : t("notifications.instagramLogin.connect");
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 p-3">

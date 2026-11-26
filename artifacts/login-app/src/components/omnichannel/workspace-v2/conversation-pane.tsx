@@ -306,6 +306,18 @@ export const ConversationPane = memo(function ConversationPane({
     [conversation?.id, onSend, experience],
   );
 
+  // Hooks must run before any early return (React #310).
+  const customerAvatarUrl = useMemo(
+    () =>
+      conversation
+        ? resolveConversationIdentityAvatar({
+            conversation,
+            visitorLabel: labels.visitorLabel,
+          }).imageUrl
+        : null,
+    [conversation, labels.visitorLabel],
+  );
+
   if (!conversation) {
     return (
       <div className="ws-conversation-pane flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden bg-[var(--ws-bg)] px-6 text-center">
@@ -332,16 +344,6 @@ export const ConversationPane = memo(function ConversationPane({
   const lifecycleState = aiOwnsConversation ? "AI_HANDLING" : snapshotState;
   const showLinkCustomer = Boolean(canLinkCustomer) && !conversation.customer?.id;
   const customerMessages = messages.filter((message) => !message.isInternalNote);
-  const customerAvatarUrl = useMemo(
-    () =>
-      conversation
-        ? resolveConversationIdentityAvatar({
-            conversation,
-            visitorLabel: labels.visitorLabel,
-          }).imageUrl
-        : null,
-    [conversation, labels.visitorLabel],
-  );
 
   return (
     <div className="ws-conversation-pane flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--ws-bg)]">

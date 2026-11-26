@@ -113,6 +113,8 @@ function mapProfileErrorCode(code: string | undefined, fallback: string, t: (key
     case "BP_UPDATE_FAILED":
     case "BP_VALIDATION":
       return t("notifications.whatsapp.settings.businessProfile.errors.updateFailed");
+    case "BP_PERMISSION_DENIED":
+      return t("notifications.whatsapp.settings.businessProfile.errors.permissionDenied");
     case "BP_UNSUPPORTED_MODE":
       return t("notifications.whatsapp.settings.businessProfile.errors.unsupportedMode");
     case "forbidden":
@@ -155,6 +157,7 @@ export function WhatsAppBusinessProfilePanel({
   const [localError, setLocalError] = useState<string | null>(null);
 
   const profile = profileQuery.data ?? null;
+  const profileAccessDenied = Boolean(profile?.profileAccessDenied);
 
   const applyProfile = (next: WhatsAppBusinessProfile) => {
     const nextDraft = profileToDraft(next);
@@ -256,7 +259,7 @@ export function WhatsAppBusinessProfilePanel({
   };
 
   const onSaveFields = async () => {
-    if (!draft || updateMutation.isPending || pendingFile) return;
+    if (!draft || updateMutation.isPending || pendingFile || profileAccessDenied) return;
     const nextErrors = validateBusinessProfileDraft(draft);
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -321,7 +324,7 @@ export function WhatsAppBusinessProfilePanel({
   };
 
   const onUploadPicture = async () => {
-    if (!pendingFile || pictureMutation.isPending) return;
+    if (!pendingFile || pictureMutation.isPending || profileAccessDenied) return;
     setLocalError(null);
     try {
       const dataUrl = await readFileAsDataUrl(pendingFile);
@@ -571,6 +574,16 @@ export function WhatsAppBusinessProfilePanel({
         </div>
       ) : null}
 
+      {profileAccessDenied ? (
+        <div
+          className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200"
+          role="alert"
+          data-testid="wa-bp-access-denied"
+        >
+          {t("notifications.whatsapp.settings.businessProfile.errors.accessDeniedBanner")}
+        </div>
+      ) : null}
+
       {profile && draft ? (
         <>
           <div className="space-y-1 text-sm">
@@ -672,7 +685,7 @@ export function WhatsAppBusinessProfilePanel({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={busy}
+                  disabled={busy || profileAccessDenied}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <ImagePlus className="w-4 h-4" />
@@ -683,7 +696,7 @@ export function WhatsAppBusinessProfilePanel({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={busy || !pendingFile}
+                  disabled={busy || !pendingFile || profileAccessDenied}
                   onClick={() => void onUploadPicture()}
                 >
                   {pictureMutation.isPending ? (
@@ -913,7 +926,7 @@ export function WhatsAppBusinessProfilePanel({
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              disabled={busy || !dirty || !!pendingFile}
+              disabled={busy || !dirty || !!pendingFile || profileAccessDenied}
               onClick={() => void onSaveFields()}
             >
               {updateMutation.isPending ? (

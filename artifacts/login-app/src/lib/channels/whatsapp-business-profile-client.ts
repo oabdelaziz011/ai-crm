@@ -19,6 +19,8 @@ export type WhatsAppBusinessProfile = {
   isPinEnabled?: boolean | null;
   nameStatus?: string | null;
   syncedAt: string;
+  /** Meta denied the profile edge; saves will fail until asset/token permissions are fixed. */
+  profileAccessDenied?: boolean;
 };
 
 export type WhatsAppPhoneVerificationStatus = {

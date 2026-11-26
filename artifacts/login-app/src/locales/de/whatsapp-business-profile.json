@@ -92,6 +92,8 @@
             "imageInvalid": "Das Bild muss ein quadratisches JPG/PNG mit mindestens 192×192 Pixeln sein.",
             "pictureFailed": "Meta konnte das Profilbild nicht aktualisieren. Ein erfolgreicher Upload allein reicht nicht — die Profilaktualisierung muss gelingen.",
             "updateFailed": "Meta hat die Business-Profil-Aktualisierung abgelehnt. Feldlängen prüfen und erneut versuchen.",
+            "permissionDenied": "Meta hat den Zugriff auf das Business-Profil verweigert (#10). Gewähren Sie dem Systembenutzer Employee Vollzugriff auf WhatsApp-Konto und Messaging-Konto, erzeugen Sie das Token mit whatsapp_business_management neu, und laden Sie neu. Bis dahin im WhatsApp Manager bearbeiten.",
+            "accessDeniedBanner": "Meta blockiert Lesen/Schreiben des Business-Profils für dieses Token. Messaging kann weiter funktionieren. Asset-Zugriff des Systembenutzers korrigieren oder im WhatsApp Manager bearbeiten.",
             "unsupportedMode": "Dieser WhatsApp-Verbindungsmodus unterstützt keine Cloud-API-Verwaltung des Business-Profils. Nutzen Sie Meta Business Suite oder die WhatsApp Business App für diese Nummer.",
             "forbidden": "Sie haben keine Berechtigung, WhatsApp-Einstellungen für dieses Unternehmen zu verwalten."
           }

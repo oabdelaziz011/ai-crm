@@ -1342,6 +1342,8 @@
             "imageInvalid": "Image must be a square JPG/PNG of at least 192×192 pixels.",
             "pictureFailed": "Meta could not update the profile picture. The upload alone is not enough — the profile update must succeed.",
             "updateFailed": "Meta rejected the business profile update. Check field lengths and try again.",
+            "permissionDenied": "Meta denied Business Profile access (#10). Grant the Employee system user Full control on both the WhatsApp account and its Messaging account, regenerate the token with whatsapp_business_management, then reload. Until then edit the profile in WhatsApp Manager.",
+            "accessDeniedBanner": "Meta blocked Cloud API Business Profile read/write for this token. Messaging can still work. Fix system-user asset access or edit the profile in WhatsApp Manager.",
             "unsupportedMode": "This WhatsApp connection mode does not support Cloud API Business Profile management. Use Meta Business Suite or WhatsApp Business App for this number.",
             "forbidden": "You do not have permission to manage WhatsApp settings for this company."
           },

@@ -60,6 +60,11 @@ export type WhatsAppBusinessProfileData = {
   /** Display-name review status from Meta (APPROVED ≠ blue check). */
   nameStatus: string | null;
   syncedAt: string;
+  /**
+   * True when Meta rejected the profile edge (#10/#200) but phone-level status still loaded.
+   * UI must disable save and explain Manager / asset-permission remediation.
+   */
+  profileAccessDenied?: boolean;
 };
 
 export type WhatsAppBusinessProfileUpdateInput = {
@@ -186,6 +191,14 @@ function mapGraphFailure(
       "WhatsApp access token is invalid or expired. Update the token in WhatsApp Settings.",
       "BP_TOKEN_INVALID",
       401,
+      metaCode,
+    );
+  }
+  if (metaCode === 10 || metaCode === 200) {
+    throw new WhatsAppBusinessProfileError(
+      "Meta denied WhatsApp Business Profile access (#10/#200). Grant the system user Full control on both the WhatsApp account and its Messaging account, then regenerate the token with whatsapp_business_management.",
+      "BP_PERMISSION_DENIED",
+      403,
       metaCode,
     );
   }
@@ -641,9 +654,13 @@ export async function getWhatsAppBusinessProfile(
   if (!parsed.ok) {
     const err = (parsed.body.error ?? {}) as Record<string, unknown>;
     const metaCode = typeof err.code === "number" ? err.code : undefined;
-    // Permission gaps on the profile edge should not hide phone-level OBA / PIN status.
+    // Permission gaps on the profile edge should not hide phone-level OBA / PIN status,
+    // but the client must know saves will also fail (do not present a blank editable form).
     if (metaCode === 10 || metaCode === 200) {
-      return mapProfileRow({}, credentials, phoneMeta, syncedAt);
+      return {
+        ...mapProfileRow({}, credentials, phoneMeta, syncedAt),
+        profileAccessDenied: true,
+      };
     }
     mapGraphFailure(parsed.status, parsed.body, "BP_FETCH_FAILED");
   }

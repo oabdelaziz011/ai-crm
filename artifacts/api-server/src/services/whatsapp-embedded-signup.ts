@@ -625,8 +625,12 @@ export async function completeWhatsAppEmbeddedSignup(
   const existingVerifyPresent = Boolean(existing.has_webhook_verify_token);
   // Never rotate an existing verify token — preserves Production webhook verification.
   const webhookVerifyToken = existingVerifyPresent ? "" : generateVerifyToken();
+  const existingCallback = String(existing.webhook_callback_url ?? "").trim();
+  // Never keep a Messenger/Instagram callback on WhatsApp settings (stale cross-channel rows).
   const webhookCallbackUrl =
-    String(existing.webhook_callback_url ?? "").trim() || resolveWebhookCallbackUrl();
+    existingCallback && /\/api\/webhooks\/whatsapp(?:\/|$|\?)/i.test(existingCallback)
+      ? existingCallback
+      : resolveWebhookCallbackUrl() || existingCallback;
   const apiVersion = String(existing.api_version ?? "").trim() || meta.graphApiVersion || "v21.0";
   const defaultLanguage = String(existing.default_language ?? "en").trim() || "en";
   const maxRetryCount = Number(existing.max_retry_count ?? 3) || 3;

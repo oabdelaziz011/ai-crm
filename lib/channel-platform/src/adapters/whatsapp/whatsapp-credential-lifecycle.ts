@@ -320,9 +320,23 @@ function readMetaError(body: MetaErrorBody): {
   };
 }
 
+function isDebugTokenAppAccessRequiredError(input: {
+  message?: string | null;
+  code?: number | null;
+}): boolean {
+  const code = input.code ?? null;
+  const message = String(input.message ?? "");
+  return (
+    code === 100 &&
+    /app access token|owner or developer of the app/i.test(message)
+  );
+}
+
 export async function performWhatsAppConnectionTest(input: {
   runtimeConfig: WhatsAppChannelConfiguration;
   appSecret?: string | null;
+  /** Meta App ID used to build APP_ID|APP_SECRET for debug_token (never the customer token). */
+  appId?: string | null;
   fetchFn?: typeof fetch;
 }): Promise<WhatsAppConnectionTestReport> {
   const fetchFn = input.fetchFn ?? globalThis.fetch.bind(globalThis);
@@ -633,12 +647,14 @@ export async function performWhatsAppConnectionTest(input: {
   }
 
   const appSecret = input.appSecret?.trim() || "";
-  if (appSecret && report.accessToken.ok) {
+  const appId = String(input.appId ?? "").trim();
+  if (appSecret && appId && report.accessToken.ok) {
     try {
-      // Prefer app access token when we can discover app_id from /me/app or env is unavailable.
-      // Using input token as access_token often fails; skip if no app_id known.
+      // Meta requires an app access token (APP_ID|APP_SECRET) to inspect customer tokens.
+      // Never use the customer token as the inspecting access_token — that yields (#100).
+      const appAccessToken = `${appId}|${appSecret}`;
       const debugRes = await fetchFn(
-        `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(config.accessToken)}&access_token=${encodeURIComponent(config.accessToken)}`,
+        `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(config.accessToken)}&access_token=${encodeURIComponent(appAccessToken)}`,
       );
       const debugBody = (await debugRes.json()) as MetaErrorBody & {
         data?: {
@@ -666,20 +682,34 @@ export async function performWhatsAppConnectionTest(input: {
           if (!report.error) report.error = report.debugToken.error;
         }
       } else if (debugBody.error) {
-        const classified = classifyMetaAuthFailure({
-          message: debugBody.error.message,
-          code: debugBody.error.code,
-          subcode: debugBody.error.error_subcode,
-        });
-        report.debugToken = {
-          ok: false,
-          error: debugBody.error.message,
-          isValid: false,
-        };
-        if (classified.isAuthFailure) {
-          report.tokenStatus = classified.tokenStatus;
-          report.tokenExpiresAt = classified.expiresAt ?? report.tokenExpiresAt;
-          if (!report.error) report.error = classified.message;
+        if (
+          isDebugTokenAppAccessRequiredError({
+            message: debugBody.error.message,
+            code: debugBody.error.code,
+          })
+        ) {
+          // Soft warning only — do not flip customer token_status invalid.
+          report.debugToken = {
+            ok: true,
+            error: debugBody.error.message,
+            isValid: null,
+          };
+        } else {
+          const classified = classifyMetaAuthFailure({
+            message: debugBody.error.message,
+            code: debugBody.error.code,
+            subcode: debugBody.error.error_subcode,
+          });
+          report.debugToken = {
+            ok: false,
+            error: debugBody.error.message,
+            isValid: false,
+          };
+          if (classified.isAuthFailure) {
+            report.tokenStatus = classified.tokenStatus;
+            report.tokenExpiresAt = classified.expiresAt ?? report.tokenExpiresAt;
+            if (!report.error) report.error = classified.message;
+          }
         }
       }
     } catch (error) {
@@ -688,6 +718,13 @@ export async function performWhatsAppConnectionTest(input: {
         error: error instanceof Error ? error.message : String(error),
       };
     }
+  } else if (appSecret && !appId && report.accessToken.ok) {
+    // Skip debug_token rather than calling Meta with the customer token as inspector.
+    report.debugToken = {
+      ok: true,
+      error: "debug_token skipped: Meta App ID unavailable for app access token",
+      isValid: null,
+    };
   }
 
   report.ok =

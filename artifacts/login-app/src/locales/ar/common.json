@@ -1036,7 +1036,8 @@
         "connection_expired": "انتهت صلاحية الاتصال",
         "reauthorization_required": "يلزم إعادة التفويض",
         "webhook_subscription_failed": "فشل اشتراك الـ Webhook"
-      }
+      },
+      "connected": "متصل"
     },
     "instagram": {
       "settings": {
@@ -1213,6 +1214,42 @@
           "message": "فشل التجديد. تنتهي فترة السماح خلال {{daysRemaining}} أيام."
         }
       }
+    },
+    "instagramLogin": {
+      "title": "ربط إنستجرام (Instagram Login)",
+      "hint": "يستخدم Instagram API عبر Instagram Login. حسابات Business/Creator الاحترافية فقط. التوكنات تبقى على السيرفر.",
+      "status": "الحالة",
+      "connect": "ربط إنستجرام",
+      "reconnect": "إعادة ربط إنستجرام",
+      "connectDisabled": "ربط إنستجرام معطّل",
+      "refresh": "تحديث التوكن",
+      "disconnect": "قطع الاتصال",
+      "connected": "تم ربط إنستجرام",
+      "webhookFailed": "تم حفظ إنستجرام — فشل اشتراك الـ Webhook",
+      "failed": "فشل ربط إنستجرام",
+      "startFailed": "تعذر بدء تسجيل دخول إنستجرام",
+      "disconnected": "تم قطع اتصال إنستجرام (ناعم)",
+      "disabledKeptSecrets": "تم تعطيل إنستجرام مع الإبقاء على بيانات الاعتماد اليدوية",
+      "disconnectFailed": "فشل قطع الاتصال",
+      "refreshed": "تم تحديث توكن إنستجرام",
+      "refreshFailed": "فشل تحديث التوكن — أعد الربط",
+      "uiDisabled": "واجهة Instagram Login معطّلة في هذه البيئة.",
+      "confirmReplace": "إنستجرام لديه بيانات اعتماد بالفعل. إعادة الربط ستستبدل التوكن الحالي. هل نكمل؟",
+      "confirmDisableManual": "تعطيل إنستجرام لهذه الشركة مع الإبقاء على بيانات الاعتماد اليدوية؟",
+      "confirmClearManualSecrets": "سيؤدي هذا إلى مسح أسرار إنستجرام المخزّنة لهذه الشركة. هل نكمل؟",
+      "confirmClearOauth": "قطع اتصال Instagram OAuth بشكل ناعم لهذه الشركة؟",
+      "advancedManual": "متقدم: بيانات اعتماد إنستجرام اليدوية",
+      "legacyPageLinked": "قديم: الربط عبر صفحة فيسبوك (إنستجرام مرتبط بالصفحة)"
+    },
+    "channelAiAssignment": {
+      "title": "موظف الذكاء الاصطناعي لـ {{channel}}",
+      "hint": "ردود الذكاء الاصطناعي الواردة تعمل فقط عند تعيين موظف. اتركه فارغًا لتخطي الذكاء الاصطناعي بهدوء.",
+      "placeholder": "بدون موظف ذكاء اصطناعي",
+      "none": "بدون موظف ذكاء اصطناعي",
+      "clear": "مسح",
+      "saved": "تم حفظ تعيين موظف الذكاء الاصطناعي",
+      "saveFailed": "تعذر حفظ تعيين الذكاء الاصطناعي",
+      "channelRequired": "أنشئ القناة أولًا لتعيين موظف ذكاء اصطناعي."
     }
   },
   "auth": {

@@ -230,6 +230,18 @@ export const ActiveSession = memo(function ActiveSession({
     || hasPermission(CONVERSATION_LIFECYCLE_PERMISSIONS.internalNote)
     || hasPermission(CONVERSATION_LIFECYCLE_PERMISSIONS.reply);
 
+  // Hooks must run before any early return (React #310).
+  const customerAvatarUrl = useMemo(
+    () =>
+      conversation
+        ? resolveConversationIdentityAvatar({
+            conversation,
+            visitorLabel: labels.visitorLabel,
+          }).imageUrl
+        : null,
+    [conversation, labels.visitorLabel],
+  );
+
   if (!conversation) {
     return (
       <DeskEmptyState
@@ -249,16 +261,6 @@ export const ActiveSession = memo(function ActiveSession({
   const header = lifecycleSnapshot?.header;
   const lifecycleState = lifecycleSnapshot?.state ?? conversation.lifecycleState;
   const customerMessages = messages.filter((m) => !m.isInternalNote);
-  const customerAvatarUrl = useMemo(
-    () =>
-      conversation
-        ? resolveConversationIdentityAvatar({
-            conversation,
-            visitorLabel: labels.visitorLabel,
-          }).imageUrl
-        : null,
-    [conversation, labels.visitorLabel],
-  );
   const internalNotes = canViewNotes ? messages.filter((m) => m.isInternalNote) : [];
 
   return (

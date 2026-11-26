@@ -1532,6 +1532,42 @@
           "message": "Renewal failed. Grace period ends in {{daysRemaining}} days."
         }
       }
+    },
+    "instagramLogin": {
+      "title": "Connect Instagram (Instagram Login)",
+      "hint": "Uses Instagram API with Instagram Login. Professional Business/Creator accounts only. Tokens stay on the server.",
+      "status": "Status",
+      "connect": "Connect Instagram",
+      "reconnect": "Reconnect Instagram",
+      "connectDisabled": "Connect Instagram is disabled",
+      "refresh": "Refresh token",
+      "disconnect": "Disconnect",
+      "connected": "Instagram connected",
+      "webhookFailed": "Instagram saved — webhook subscription failed",
+      "failed": "Instagram connection failed",
+      "startFailed": "Could not start Instagram Login",
+      "disconnected": "Instagram soft-disconnected",
+      "disabledKeptSecrets": "Instagram disabled — manual credentials preserved",
+      "disconnectFailed": "Disconnect failed",
+      "refreshed": "Instagram token refreshed",
+      "refreshFailed": "Token refresh failed — reconnect",
+      "uiDisabled": "Instagram Login UI is disabled for this environment.",
+      "confirmReplace": "Instagram already has credentials. Reconnecting will replace the existing token. Continue?",
+      "confirmDisableManual": "Disable Instagram for this company while keeping manual credentials?",
+      "confirmClearManualSecrets": "This will clear stored Instagram secrets for this company. Continue?",
+      "confirmClearOauth": "Soft-disconnect Instagram OAuth for this company?",
+      "advancedManual": "Advanced: manual Instagram credentials",
+      "legacyPageLinked": "Legacy: connect via Facebook Page (Page-linked Instagram)"
+    },
+    "channelAiAssignment": {
+      "title": "AI Employee for {{channel}}",
+      "hint": "Inbound AI replies only when an employee is assigned. Leave empty to soft-skip AI.",
+      "placeholder": "No AI Employee",
+      "none": "No AI Employee",
+      "clear": "Clear",
+      "saved": "AI Employee assignment saved",
+      "saveFailed": "Could not save AI assignment",
+      "channelRequired": "Create the channel first to assign an AI Employee."
     }
   },
   "auth": {

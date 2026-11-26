@@ -82,7 +82,7 @@ describe("resolveInstagramWebhookCompanyChannelId", () => {
     }
   });
 
-  it("rejects duplicate instagram business account configuration", async () => {
+  it("rejects duplicate instagram business account configuration when no live winner", async () => {
     const result = await resolveInstagramWebhookCompanyChannelId({
       instagramBusinessAccountId: "17841412345678901",
       lookupByInstagramBusinessAccountId: async () => [
@@ -95,6 +95,36 @@ describe("resolveInstagramWebhookCompanyChannelId", () => {
     if (!result.ok) {
       assert.equal(result.code, "duplicate_instagram_business_account");
       assert.equal(result.matches.length, 2);
+    }
+  });
+
+  it("routes to the unique live Instagram Login connection when a stale duplicate exists", async () => {
+    const result = await resolveInstagramWebhookCompanyChannelId({
+      instagramBusinessAccountId: "17841412345678901",
+      lookupByInstagramBusinessAccountId: async () => [
+        {
+          id: "stale-channel",
+          companyId: "company-stale",
+          channelEnabled: true,
+          settingsEnabled: true,
+          connectionStatus: "not_connected",
+          webhookSubscriptionStatus: "",
+        },
+        {
+          id: "live-channel",
+          companyId: "company-live",
+          channelEnabled: true,
+          settingsEnabled: true,
+          connectionStatus: "connected",
+          webhookSubscriptionStatus: "subscribed",
+        },
+      ],
+    });
+
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.companyChannelId, "live-channel");
+      assert.equal(result.source, "instagram_business_account");
     }
   });
 

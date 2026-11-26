@@ -67,7 +67,40 @@ export async function processInstagramWebhookPost(
       const matches = await platform.ports.registry.findCompanyChannelByInstagramBusinessAccountId(
         lookupId,
       );
-      return matches.map((match) => ({ id: match.id, companyId: match.companyId }));
+      if (matches.length <= 1) {
+        return matches.map((match) => ({
+          id: match.id,
+          companyId: match.companyId,
+          channelEnabled: match.is_enabled,
+        }));
+      }
+
+      const companyIds = [...new Set(matches.map((match) => match.companyId).filter(Boolean))];
+      const { data: settingsRows } = await platform.client
+        .from("company_instagram_settings")
+        .select("company_id, enabled, connection_status, webhook_subscription_status")
+        .in("company_id", companyIds);
+      const settingsByCompany = new Map(
+        (settingsRows ?? []).map((row) => [String((row as { company_id?: unknown }).company_id ?? ""), row]),
+      );
+
+      return matches.map((match) => {
+        const settings = settingsByCompany.get(match.companyId) as
+          | {
+              enabled?: boolean | null;
+              connection_status?: string | null;
+              webhook_subscription_status?: string | null;
+            }
+          | undefined;
+        return {
+          id: match.id,
+          companyId: match.companyId,
+          channelEnabled: match.is_enabled,
+          settingsEnabled: settings?.enabled ?? null,
+          connectionStatus: settings?.connection_status ?? null,
+          webhookSubscriptionStatus: settings?.webhook_subscription_status ?? null,
+        };
+      });
     },
   });
 

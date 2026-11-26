@@ -434,6 +434,119 @@ async function unsubscribeInstagramMessagingWebhooks(input: {
   }
 }
 
+/**
+ * Soft-clear the same Instagram business account from other tenants so inbound
+ * webhook routing cannot 409 on duplicate_instagram_business_account.
+ * ValueOR-only reclaim (no Meta Graph calls). Hint/hash columns stay "".
+ */
+async function reclaimInstagramBusinessAccountFromOtherCompanies(input: {
+  client: SupabaseClient;
+  keepCompanyId: string;
+  igUserId: string;
+}): Promise<number> {
+  const igUserId = String(input.igUserId ?? "").trim();
+  if (!igUserId) return 0;
+
+  const { data: otherSettings, error: settingsLookupError } = await input.client
+    .from("company_instagram_settings")
+    .select("company_id")
+    .eq("instagram_business_account_id", igUserId)
+    .neq("company_id", input.keepCompanyId);
+  if (settingsLookupError) {
+    throw new MetaInstagramLoginError(settingsLookupError.message, "IGL_RECLAIM_FAILED", 500);
+  }
+
+  const { data: otherChannels, error: channelLookupError } = await input.client
+    .from("company_channels")
+    .select("id, company_id, configuration")
+    .filter("configuration->>instagramBusinessAccountId", "eq", igUserId)
+    .neq("company_id", input.keepCompanyId)
+    .is("deleted_at", null);
+  if (channelLookupError) {
+    throw new MetaInstagramLoginError(channelLookupError.message, "IGL_RECLAIM_FAILED", 500);
+  }
+
+  const companyIds = new Set<string>();
+  for (const row of otherSettings ?? []) {
+    const id = String((row as { company_id?: unknown }).company_id ?? "").trim();
+    if (id) companyIds.add(id);
+  }
+  for (const row of otherChannels ?? []) {
+    const id = String((row as { company_id?: unknown }).company_id ?? "").trim();
+    if (id) companyIds.add(id);
+  }
+
+  let cleared = 0;
+  for (const otherCompanyId of companyIds) {
+    const { error: clearSettingsError } = await input.client
+      .from("company_instagram_settings")
+      .update({
+        enabled: false,
+        page_id: "",
+        instagram_business_account_id: "",
+        access_token: "",
+        access_token_encrypted: null,
+        access_token_hint: "",
+        webhook_verify_token: "",
+        webhook_verify_token_encrypted: null,
+        webhook_verify_token_hint: "",
+        webhook_verify_token_lookup_hash: "",
+        app_secret_encrypted: null,
+        app_secret_hint: "",
+        connection_status: "not_connected",
+        connection_last_error:
+          "Reclaimed Instagram business account after another company connected via Instagram Login",
+        webhook_subscription_status: "",
+        webhook_subscription_error: "",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("company_id", otherCompanyId)
+      .eq("instagram_business_account_id", igUserId);
+    if (clearSettingsError) {
+      throw new MetaInstagramLoginError(clearSettingsError.message, "IGL_RECLAIM_FAILED", 500);
+    }
+
+    const channelsForCompany = (otherChannels ?? []).filter(
+      (row) => String((row as { company_id?: unknown }).company_id ?? "") === otherCompanyId,
+    );
+    for (const channel of channelsForCompany) {
+      const channelId = String((channel as { id?: unknown }).id ?? "").trim();
+      if (!channelId) continue;
+      const configuration = {
+        ...(((channel as { configuration?: Record<string, unknown> }).configuration ??
+          {}) as Record<string, unknown>),
+      };
+      delete configuration.instagramBusinessAccountId;
+      delete configuration.instagram_business_account_id;
+      delete configuration.pageId;
+      delete configuration.page_id;
+      const { error: clearChannelError } = await input.client
+        .from("company_channels")
+        .update({
+          is_enabled: false,
+          status: "disabled",
+          configuration,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", channelId)
+        .eq("company_id", otherCompanyId);
+      if (clearChannelError) {
+        throw new MetaInstagramLoginError(clearChannelError.message, "IGL_RECLAIM_FAILED", 500);
+      }
+    }
+
+    cleared += 1;
+    console.info("[instagram.login.reclaim_business_account]", {
+      keepCompanyId: input.keepCompanyId,
+      fromCompanyId: otherCompanyId,
+      igUserId,
+      metaGraph: "none",
+    });
+  }
+
+  return cleared;
+}
+
 async function persistInstagramConnection(input: {
   client: SupabaseClient;
   companyId: string;
@@ -458,6 +571,12 @@ async function persistInstagramConnection(input: {
   } catch (error) {
     mapGuardError(error);
   }
+
+  await reclaimInstagramBusinessAccountFromOtherCompanies({
+    client: input.client,
+    keepCompanyId: input.companyId,
+    igUserId: input.igUserId,
+  });
 
   // Preserve existing verify token on reconnect (empty → whatsapp_is_unchanged_secret).
   const { data: existing } = await input.client

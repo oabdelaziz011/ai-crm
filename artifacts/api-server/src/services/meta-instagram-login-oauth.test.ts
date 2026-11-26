@@ -16,6 +16,38 @@ import {
 const DEMO = "d0000010-0001-4001-8001-000000000002";
 const OTHER = "d0000010-0001-4001-8001-000000000099";
 
+/** Minimal thenable Supabase mock that supports reclaim lookups (empty) + status updates. */
+function createInstagramOauthClientMock(updates: Array<Record<string, unknown>>) {
+  const emptyResult = { data: [] as unknown[], error: null as null };
+  const selectChain = (): Record<string, unknown> => {
+    const chain: Record<string, unknown> = {
+      maybeSingle: async () => ({ data: null, error: null }),
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+        Promise.resolve(emptyResult).then(resolve, reject),
+    };
+    for (const key of ["eq", "neq", "filter", "in", "is"] as const) {
+      chain[key] = () => selectChain();
+    }
+    return chain;
+  };
+  return {
+    rpc: async (name: string, args: Record<string, unknown>) => ({ name, args, error: null }),
+    from: () => ({
+      select: () => selectChain(),
+      update: (row: Record<string, unknown>) => {
+        const eqChain = (): Record<string, unknown> => ({
+          eq: () => eqChain(),
+          then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
+            updates.push(row);
+            return Promise.resolve({ error: null }).then(resolve, reject);
+          },
+        });
+        return eqChain();
+      },
+    }),
+  };
+}
+
 describe("meta-instagram-login-oauth", () => {
   it("validates signed OAuth state and rejects company mismatch", () => {
     const secret = "unit-igl-state-secret";
@@ -125,24 +157,13 @@ describe("meta-instagram-login-oauth", () => {
 
     const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
     const updates: Array<Record<string, unknown>> = [];
+    const baseClient = createInstagramOauthClientMock(updates);
     const client = {
+      ...baseClient,
       rpc: async (name: string, args: Record<string, unknown>) => {
         rpcCalls.push({ name, args });
         return { error: null };
       },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            maybeSingle: async () => ({ data: null, error: null }),
-          }),
-        }),
-        update: (row: Record<string, unknown>) => ({
-          eq: async () => {
-            updates.push(row);
-            return { error: null };
-          },
-        }),
-      }),
     };
 
     const fetchImpl: typeof fetch = async (input, init) => {
@@ -260,22 +281,7 @@ describe("meta-instagram-login-oauth", () => {
     });
 
     const updates: Array<Record<string, unknown>> = [];
-    const client = {
-      rpc: async () => ({ error: null }),
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            maybeSingle: async () => ({ data: null, error: null }),
-          }),
-        }),
-        update: (row: Record<string, unknown>) => ({
-          eq: async () => {
-            updates.push(row);
-            return { error: null };
-          },
-        }),
-      }),
-    };
+    const client = createInstagramOauthClientMock(updates);
 
     const fetchImpl: typeof fetch = async (input) => {
       const url = String(input);

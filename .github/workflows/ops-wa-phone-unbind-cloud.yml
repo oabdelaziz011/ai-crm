@@ -1,0 +1,144 @@
+﻿name: Ops WA phone unbind (cloud)
+
+# Uses production environment Supabase secrets (service role). Never prints secrets/tokens.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type unbind-phone
+        required: true
+        type: string
+      phone_number_id:
+        description: Meta phone_number_id (empty = list all bound)
+        required: false
+        type: string
+        default: ""
+      keep_company_id:
+        description: Company UUID to keep
+        required: true
+        type: string
+      apply:
+        description: dry-run or apply
+        type: choice
+        options: [dry-run, apply]
+        default: dry-run
+
+jobs:
+  unbind:
+    if: github.event.inputs.confirm == 'unbind-phone'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Query/clear conflicting phone_number_id via Supabase REST
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Fallbacks used by some env layouts
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          PHONE_NUMBER_ID: ${{ github.event.inputs.phone_number_id }}
+          KEEP_COMPANY_ID: ${{ github.event.inputs.keep_company_id }}
+          APPLY_MODE: ${{ github.event.inputs.apply }}
+        run: |
+          set -euo pipefail
+          BASE="${SUPABASE_URL:-${VITE_SUPABASE_URL:-}}"
+          KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
+          echo "supabase_url_present=$([ -n "$BASE" ] && echo yes || echo no)"
+          echo "service_role_present=$([ -n "$KEY" ] && echo yes || echo no)"
+          echo "supabase_url_len=${#BASE} service_role_len=${#KEY}"
+          if [[ -z "$BASE" || -z "$KEY" ]]; then
+            echo "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in production environment"
+            exit 3
+          fi
+          if [[ ! "${KEEP_COMPANY_ID}" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+            echo "Invalid keep_company_id"; exit 2
+          fi
+          KEEP_LC="$(printf '%s' "$KEEP_COMPANY_ID" | tr '[:upper:]' '[:lower:]')"
+          AUTH_H="Authorization: Bearer ${KEY}"
+          API_H="apikey: ${KEY}"
+          PREF="Prefer: return=representation"
+
+          echo "=== all bound phones ==="
+          curl -sS -H "$AUTH_H" -H "$API_H" \
+            "${BASE}/rest/v1/company_whatsapp_settings?select=company_id,phone_number_id,business_account_id,enabled&phone_number_id=neq.&order=company_id" \
+            | python3 -c '
+          import json,sys,os
+          keep=os.environ["KEEP_COMPANY_ID"].strip().lower()
+          rows=json.load(sys.stdin)
+          if isinstance(rows, dict) and rows.get("message"):
+            print("error", rows); sys.exit(4)
+          bound=[r for r in rows if str(r.get("phone_number_id") or "").strip()]
+          print(f"all_bound_phone_rows={len(bound)}")
+          for r in bound:
+            pid=str(r.get("phone_number_id") or "").strip()
+            cid=str(r.get("company_id") or "")
+            print(f"bound company_id={cid} phone={pid} enabled={r.get(\"enabled\")} waba={r.get(\"business_account_id\") or \"\"} is_keep={cid.lower()==keep}")
+          '
+
+          PHONE="${PHONE_NUMBER_ID:-}"
+          if [[ -z "$PHONE" ]]; then
+            echo "status=list_only"
+            exit 0
+          fi
+          if [[ ! "$PHONE" =~ ^[0-9]{5,32}$ ]]; then
+            echo "Invalid phone_number_id"; exit 2
+          fi
+
+          echo "=== matches for phone ==="
+          MATCH_JSON="$(curl -sS -H "$AUTH_H" -H "$API_H" \
+            "${BASE}/rest/v1/company_whatsapp_settings?select=company_id,phone_number_id,business_account_id,enabled&phone_number_id=eq.${PHONE}")"
+          python3 - <<PY
+          import json,os,sys,urllib.request
+          rows=json.loads("""${MATCH_JSON}""".replace("\\","\\\\") if False else open("/dev/stdin").read())
+          PY
+          printf '%s' "$MATCH_JSON" | python3 -c '
+          import json,sys,os
+          keep=os.environ["KEEP_COMPANY_ID"].strip().lower()
+          apply=os.environ["APPLY_MODE"].strip().lower()=="apply"
+          phone=os.environ["PHONE_NUMBER_ID"].strip()
+          base=os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+          key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          rows=json.load(sys.stdin)
+          if isinstance(rows, dict) and rows.get("message"):
+            print("error", rows); sys.exit(4)
+          print(f"matching_rows={len(rows)}")
+          conflicts=[]
+          for r in rows:
+            cid=str(r.get("company_id") or "")
+            is_keep=cid.lower()==keep
+            print(f"row company_id={cid} enabled={r.get(\"enabled\")} waba={r.get(\"business_account_id\") or \"\"} is_keep={is_keep}")
+            if not is_keep:
+              conflicts.append(r)
+          print(f"conflict_rows={len(conflicts)}")
+          if not conflicts:
+            print("status=no_conflicts"); sys.exit(0)
+          if not apply:
+            for r in conflicts:
+              print(f"would_disconnect company_id={r.get(\"company_id\")}")
+            print("status=dry_run_would_disconnect"); sys.exit(0)
+          import urllib.request
+          for r in conflicts:
+            cid=str(r["company_id"])
+            body=json.dumps({
+              "enabled": False,
+              "phone_number_id": "",
+              "business_account_id": "",
+              "access_token": "",
+              "token_status": "missing",
+            }).encode()
+            req=urllib.request.Request(
+              f"{base}/rest/v1/company_whatsapp_settings?company_id=eq.{cid}&phone_number_id=eq.{phone}",
+              data=body,
+              method="PATCH",
+              headers={
+                "Authorization": f"Bearer {key}",
+                "apikey": key,
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+              },
+            )
+            with urllib.request.urlopen(req) as resp:
+              out=resp.read().decode()
+            print(f"disconnected company_id={cid} http={resp.status} body_len={len(out)}")
+          print("status=applied")
+          '

@@ -1,0 +1,48 @@
+name: Contabo IG webhook ingress RO
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type readonly-ig-webhook-ingress
+        required: true
+        type: string
+
+jobs:
+  inspect:
+    if: github.event.inputs.confirm == 'readonly-ig-webhook-ingress'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 5
+    steps:
+      - name: Read-only nginx + journal IG webhook signals (no secrets)
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname)"
+          echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          echo "=== nginx IG webhook lines (sudo, redacted) ==="
+          for f in /var/log/nginx/access.log /var/log/nginx/api.access.log /var/log/nginx/access.log.1; do
+            if sudo -n test -r "$f"; then
+              echo "file=$f"
+              sudo -n grep -E '/api/webhooks/instagram|instagram' "$f" | tail -n 40 | sed -E 's/(access_token|hub\.verify_token|X-Hub-Signature[^ ]*)=[^ &"]+/\\1=[redacted]/gi' || true
+            else
+              echo "not_readable_or_no_sudo=$f"
+            fi
+          done
+
+          echo "=== journal API IG webhook signals ==="
+          if sudo -n true 2>/dev/null; then
+            sudo -n journalctl -u valueor-api --since "48 hours ago" --no-pager 2>/dev/null \
+              | grep -E 'instagram|invalid_signature|channel_not_found|channel_not_entitled|webhook\.|IGL_|meta_sender' \
+              | tail -n 80 \
+              | sed -E 's/(access_token|token|secret|authorization)["=: ]+[^" ,}]+/\\1=[redacted]/gi' || true
+          else
+            echo "sudo_journal=unavailable"
+          fi
+
+          echo "=== webhook verify probe (GET challenge expected fail without token) ==="
+          curl -sS -o /tmp/ig_wh_probe.txt -w "bare_get_http=%{http_code}\n" \
+            "https://webhook.valueor.org/api/webhooks/instagram?hub.mode=subscribe&hub.challenge=probe&hub.verify_token=invalid" || true
+          head -c 200 /tmp/ig_wh_probe.txt; echo
+
+          echo "=== done ==="

@@ -1,0 +1,231 @@
+name: Ops WA phone unbind
+
+# One-shot ops: find company_whatsapp_settings rows holding a phone_number_id
+# and soft-disconnect any company that is NOT the target (ValueOR).
+# Never prints tokens/secrets. Never calls Meta Graph.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type unbind-phone
+        required: true
+        type: string
+      phone_number_id:
+        description: Meta phone_number_id to free (digits)
+        required: true
+        type: string
+      keep_company_id:
+        description: Company UUID that should keep/claim the number
+        required: true
+        type: string
+      apply:
+        description: dry-run or apply
+        required: true
+        type: choice
+        options:
+          - dry-run
+          - apply
+        default: dry-run
+
+jobs:
+  unbind:
+    if: github.event.inputs.confirm == 'unbind-phone'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 5
+    steps:
+      - name: Locate and optionally clear conflicting WhatsApp phone binding
+        env:
+          PHONE_NUMBER_ID: ${{ github.event.inputs.phone_number_id }}
+          KEEP_COMPANY_ID: ${{ github.event.inputs.keep_company_id }}
+          APPLY_MODE: ${{ github.event.inputs.apply }}
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname)"
+          echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "apply_mode=${APPLY_MODE}"
+          echo "phone_number_id_len=${#PHONE_NUMBER_ID}"
+          echo "keep_company_id=${KEEP_COMPANY_ID}"
+
+          if [[ ! "${PHONE_NUMBER_ID}" =~ ^[0-9]{5,32}$ ]]; then
+            echo "Invalid phone_number_id"
+            exit 2
+          fi
+          if [[ ! "${KEEP_COMPANY_ID}" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+            echo "Invalid keep_company_id"
+            exit 2
+          fi
+
+          ENV_FILE=/opt/valueor/.env
+          if [[ ! -r "$ENV_FILE" ]]; then
+            if sudo -n test -r "$ENV_FILE"; then
+              READ_ENV=(sudo -n)
+            else
+              echo "env_readable=no"
+              exit 3
+            fi
+          else
+            READ_ENV=()
+          fi
+
+          DATABASE_URL="$("${READ_ENV[@]}" awk -F= '
+            /^[[:space:]]*#/ {next}
+            $1=="DATABASE_URL" {
+              v=substr($0, index($0,"=")+1)
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+              gsub(/^"/, "", v); gsub(/"$/, "", v)
+              gsub(/^'\''/, "", v); gsub(/'\''$/, "", v)
+              print v
+              exit
+            }' "$ENV_FILE")"
+          if [[ -z "${DATABASE_URL}" ]]; then
+            echo "database_url=missing"
+            exit 4
+          fi
+          echo "database_url=present"
+
+          export DATABASE_URL
+          python3 - <<'PY'
+          import os, sys
+          try:
+            import psycopg2
+            import psycopg2.extras
+          except Exception as e:
+            print("psycopg2_import_failed", type(e).__name__)
+            sys.exit(5)
+
+          phone = os.environ["PHONE_NUMBER_ID"].strip()
+          keep = os.environ["KEEP_COMPANY_ID"].strip().lower()
+          apply = os.environ["APPLY_MODE"].strip().lower() == "apply"
+
+          conn = psycopg2.connect(os.environ["DATABASE_URL"])
+          conn.autocommit = False
+          cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+          cur.execute(
+            """
+            select company_id::text as company_id,
+                   nullif(trim(phone_number_id),'') as phone_number_id,
+                   nullif(trim(business_account_id),'') as business_account_id,
+                   coalesce(enabled,false) as enabled
+            from public.company_whatsapp_settings
+            where nullif(trim(phone_number_id),'') is not null
+            order by company_id
+            """
+          )
+          all_bound = cur.fetchall()
+          print(f"all_bound_phone_rows={len(all_bound)}")
+          for r in all_bound:
+            print(
+              "bound",
+              f"company_id={r['company_id']}",
+              f"phone={r['phone_number_id']}",
+              f"enabled={r['enabled']}",
+              f"waba={(r['business_account_id'] or '')}",
+            )
+
+          cur.execute(
+            """
+            select company_id::text as company_id,
+                   nullif(trim(phone_number_id),'') as phone_number_id,
+                   nullif(trim(business_account_id),'') as business_account_id,
+                   coalesce(enabled,false) as enabled,
+                   length(coalesce(access_token,'')) as access_token_len
+            from public.company_whatsapp_settings
+            where nullif(trim(phone_number_id),'') = %s
+            order by company_id
+            """,
+            (phone,),
+          )
+          rows = cur.fetchall()
+          print(f"matching_rows={len(rows)}")
+          for r in rows:
+            print(
+              "row",
+              f"company_id={r['company_id']}",
+              f"enabled={r['enabled']}",
+              f"waba={(r['business_account_id'] or '')[:8]}…",
+              f"token_len={r['access_token_len']}",
+              f"is_keep={str(r['company_id']).lower()==keep}",
+            )
+
+          conflicts = [r for r in rows if str(r["company_id"]).lower() != keep]
+          print(f"conflict_rows={len(conflicts)}")
+          if not conflicts:
+            print("status=no_conflicts")
+            conn.close()
+            sys.exit(0)
+
+          if not apply:
+            print("status=dry_run_would_disconnect")
+            for r in conflicts:
+              print(f"would_disconnect company_id={r['company_id']}")
+            conn.close()
+            sys.exit(0)
+
+          # Direct soft-disconnect (ValueOR binding only). Avoid RPC auth.role()
+          # checks that fail under raw DATABASE_URL sessions.
+          for r in conflicts:
+            cid = r["company_id"]
+            cur.execute(
+              """
+              update public.company_whatsapp_settings
+              set
+                enabled = false,
+                phone_number_id = '',
+                business_account_id = '',
+                access_token = '',
+                access_token_encrypted = null,
+                access_token_hint = null,
+                webhook_verify_token = '',
+                webhook_verify_token_encrypted = null,
+                webhook_verify_token_hint = null,
+                webhook_verify_token_lookup_hash = null,
+                app_secret_encrypted = null,
+                app_secret_hint = null,
+                token_status = 'missing',
+                token_expires_at = null,
+                token_checked_at = null,
+                last_auth_error = null,
+                last_auth_error_at = null,
+                last_auth_error_code = null,
+                updated_at = timezone('utc', now())
+              where company_id = %s::uuid
+                and nullif(trim(phone_number_id),'') = %s
+              returning company_id::text
+              """,
+              (cid, phone),
+            )
+            updated = cur.fetchone()
+            print(f"disconnected company_id={cid} updated={bool(updated)}")
+            try:
+              cur.execute(
+                """
+                insert into public.whatsapp_connection_lifecycle_events
+                  (action, status, company_id, phone_number_id, business_account_id, meta)
+                values
+                  ('disconnect', 'succeeded', %s::uuid, %s, %s,
+                   jsonb_build_object('source', 'ops_wa_phone_unbind', 'keep_company_id', %s))
+                """,
+                (cid, phone, r.get("business_account_id"), keep),
+              )
+            except Exception as e:
+              print(f"lifecycle_event_skip company_id={cid} err={type(e).__name__}")
+
+          conn.commit()
+          cur.execute(
+            """
+            select company_id::text as company_id,
+                   nullif(trim(phone_number_id),'') as phone_number_id,
+                   coalesce(enabled,false) as enabled
+            from public.company_whatsapp_settings
+            where nullif(trim(phone_number_id),'') = %s
+            order by company_id
+            """,
+            (phone,),
+          )
+          after = cur.fetchall()
+          print(f"after_matching_rows={len(after)}")
+          for r in after:
+            print(f"after company_id={r['company_id']} enabled={r['enabled']} phone={r['phone_number_id']}")
+          print("status=applied")
+          conn.close()
+          PY

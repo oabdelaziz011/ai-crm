@@ -407,6 +407,7 @@ export function createTestEnvironment(options?: {
     },
     getConversationMetadata: async (conversationId) =>
       conversationMetadataById.get(conversationId) ?? null,
+    getConversationState: async () => null,
     hasOutgoingMessages: async (conversationId) =>
       outgoingMessages.some((message) => message.conversationId === conversationId),
     listIncomingMessagesAfter: async (input) => {

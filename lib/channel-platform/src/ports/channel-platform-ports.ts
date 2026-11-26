@@ -146,6 +146,9 @@ export type ChannelConversationPort = {
 
   getConversationMetadata?(conversationId: string): Promise<Record<string, unknown> | null>;
 
+  /** Used by session engine to rotate sticky threads off terminal conversations. */
+  getConversationState?(conversationId: string): Promise<string | null>;
+
   /** True when the conversation already has at least one persisted outgoing message. */
   hasOutgoingMessages?(conversationId: string): Promise<boolean>;
 

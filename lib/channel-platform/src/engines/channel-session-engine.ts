@@ -26,6 +26,8 @@ export class ChannelSessionEngine {
     );
 
     if (existing) {
+      const rotatedClosed = await this.maybeRotateForClosedConversation(ctx, input, existing);
+      if (rotatedClosed) return rotatedClosed;
       const rotated = await this.maybeRotateForAiEmployee(ctx, input, existing);
       return rotated ?? existing;
     }
@@ -50,6 +52,33 @@ export class ChannelSessionEngine {
       ...input,
       conversationId,
     });
+  }
+
+  /**
+   * Closed is terminal for message writes. Sticky channel sessions that still
+   * point at a closed conversation must rotate so inbound can ingest again.
+   */
+  private async maybeRotateForClosedConversation(
+    ctx: ServiceContext,
+    input: ResolveSessionInput,
+    existing: ChannelSessionRecord,
+  ): Promise<ChannelSessionRecord | null> {
+    if (!this.ports.conversation.getConversationState) return null;
+    const state = await this.ports.conversation.getConversationState(existing.conversation_id);
+    if (state !== "closed") return null;
+
+    const desiredEmployeeId = readAiEmployeeId(input.employeeConversationMetadata);
+    const conversationId = await this.createConversationForSession({
+      ...input,
+      employeeConversationMetadata:
+        desiredEmployeeId && input.requireAiAssistant !== false
+          ? {
+              ...(input.employeeConversationMetadata ?? {}),
+              aiEmployeeInboundSession: true,
+            }
+          : input.employeeConversationMetadata,
+    });
+    return this.sessionRepository.reattachConversation(existing.id, conversationId);
   }
 
   /**

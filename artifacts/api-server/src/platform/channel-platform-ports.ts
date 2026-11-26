@@ -572,6 +572,13 @@ export function createChannelConversationPort(
       });
     },
 
+    async getConversationState(conversationId) {
+      return waRequestGetOrLoad(WA_REQUEST_CACHE_NS.conversation, `state:${conversationId}`, async () => {
+        const conversation = await services.conversations.getConversation(ctx, conversationId);
+        return conversation.state ?? null;
+      });
+    },
+
     async hasOutgoingMessages(conversationId) {
       if (!options?.supabaseClient || !conversationId?.trim()) {
         return false;

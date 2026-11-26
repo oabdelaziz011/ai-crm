@@ -182,6 +182,113 @@ describe("ChannelSessionEngine", () => {
   });
 });
 
+describe("ChannelSessionEngine closed-conversation rotation", () => {
+  it("rotates sticky session off a closed conversation", async () => {
+    const sessions: Array<{ id: string; conversation_id: string }> = [
+      { id: "session-1", conversation_id: "conv-closed" },
+    ];
+    const sessionRepository = {
+      findByExternalThread: async () => ({
+        id: "session-1",
+        company_id: "company-1",
+        company_channel_id: "channel-1",
+        channel_key: "whatsapp",
+        conversation_id: "conv-closed",
+        external_thread_id: "thread-1",
+        sender_external_id: "201011404109",
+        metadata: {},
+        inbound_count: 1,
+        outbound_count: 0,
+        last_inbound_at: null,
+        last_outbound_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+      createSession: async () => {
+        throw new Error("createSession should not run for existing thread");
+      },
+      reattachConversation: async (sessionId: string, conversationId: string) => {
+        const session = sessions.find((item) => item.id === sessionId);
+        if (!session) throw new Error("session not found");
+        session.conversation_id = conversationId;
+        return {
+          id: session.id,
+          company_id: "company-1",
+          company_channel_id: "channel-1",
+          channel_key: "whatsapp",
+          conversation_id: conversationId,
+          external_thread_id: "thread-1",
+          sender_external_id: "201011404109",
+          metadata: {},
+          inbound_count: 1,
+          outbound_count: 0,
+          last_inbound_at: null,
+          last_outbound_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+      },
+      touchInbound: async () => {
+        throw new Error("not implemented");
+      },
+      touchOutbound: async () => {
+        throw new Error("not implemented");
+      },
+    };
+
+    const ports = {
+      registry: {
+        getCompanyChannel: async () => null,
+        findCompanyChannelByPhoneNumberId: async () => [],
+        findCompanyChannelsByWhatsAppVerifyToken: async () => [],
+      },
+      conversation: {
+        getConversationState: async () => "closed",
+        createConversation: async () => ({ id: "conv-fresh-after-closed" }),
+        addIncomingMessage: async () => ({
+          id: "msg-1",
+          conversationId: "conv-fresh-after-closed",
+          messageType: "incoming",
+          content: "hello",
+          createdAt: new Date().toISOString(),
+        }),
+        addOutgoingMessage: async () => ({
+          id: "msg-2",
+          conversationId: "conv-fresh-after-closed",
+          messageType: "outgoing",
+          content: "hi",
+          createdAt: new Date().toISOString(),
+        }),
+      },
+      runtime: {
+        execute: async () => ({
+          executionId: "exec-1",
+          responseContent: "ok",
+          correlationId: "corr-1",
+        }),
+      },
+    } as unknown as ChannelPlatformPorts;
+
+    const engine = new ChannelSessionEngine(sessionRepository as never, ports);
+    const resolved = await engine.resolveSession(
+      { companyId: "company-1", userId: "user-1", isSuperAdmin: false, hasPermission: () => true },
+      {
+        companyId: "company-1",
+        companyChannelId: "channel-1",
+        channelKey: "whatsapp",
+        externalThreadId: "thread-1",
+        senderExternalId: "201011404109",
+        aiAssistantId: "assistant-1",
+        employeeConversationMetadata: { aiEmployeeId: "employee-1" },
+        requireAiAssistant: true,
+      },
+    );
+
+    assert.equal(resolved.conversation_id, "conv-fresh-after-closed");
+    assert.equal(sessions[0]?.conversation_id, "conv-fresh-after-closed");
+  });
+});
+
 describe("ChannelSessionEngine Phase 2 rotation identity", () => {
   it("Phase 2: rotation creates a fresh conversation without copying customer_id", async () => {
     const createdConversations: Array<Record<string, unknown>> = [];

@@ -64,7 +64,8 @@ function restoreEnv() {
 }
 
 function setMetaConfig() {
-  process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
+  // Must be a numeric Meta app id (Instagram Login-only IDs are rejected).
+  process.env.META_EMBEDDED_SIGNUP_APP_ID = "1400885884891475";
   process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
   process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV] = "cloud-config-111";
   process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV] = "coex-config-222";
@@ -96,6 +97,7 @@ function signTestState(
 function emptySettingsClient(extra?: {
   existing?: Record<string, unknown>;
   duplicatePhone?: boolean;
+  reclaimUpdates?: Array<Record<string, unknown>>;
 }) {
   const existing = extra?.existing ?? {
     phone_number_id: "",
@@ -107,6 +109,7 @@ function emptySettingsClient(extra?: {
     max_retry_count: 3,
     webhook_callback_url: "https://webhook.valueor.org/api/webhooks/whatsapp",
   };
+  const reclaimUpdates = extra?.reclaimUpdates;
   return {
     rpc: async (name: string, args?: Record<string, unknown>) => {
       if (name === "get_company_whatsapp_settings") {
@@ -118,6 +121,9 @@ function emptySettingsClient(extra?: {
       if (name === "sync_whatsapp_channel_references") {
         return { data: null, error: null };
       }
+      if (name === "record_whatsapp_connection_lifecycle_event") {
+        return { data: "evt-reclaim", error: null };
+      }
       return { data: null, error: null };
     },
     from: () => ({
@@ -126,11 +132,29 @@ function emptySettingsClient(extra?: {
           neq: () => ({
             limit: async () => ({
               data: extra?.duplicatePhone
-                ? [{ company_id: "other", phone_number_id: "999" }]
+                ? [
+                    {
+                      company_id: "22222222-2222-4222-8222-222222222222",
+                      phone_number_id: "999",
+                      business_account_id: "waba-other",
+                    },
+                  ]
                 : [],
               error: null,
             }),
           }),
+        }),
+      }),
+      update: (payload: Record<string, unknown>) => ({
+        eq: (_col1: string, val1: unknown) => ({
+          eq: async (_col2: string, val2: unknown) => {
+            reclaimUpdates?.push({
+              payload,
+              filter_company_id: val1,
+              filter_phone_number_id: val2,
+            });
+            return { error: null };
+          },
         }),
       }),
       upsert: async () => ({ error: null }),
@@ -158,7 +182,7 @@ describe("whatsapp-embedded-signup-flags", () => {
     setMetaConfig();
     const cfg = readMetaEmbeddedSignupEnvConfig();
     assert.ok(cfg);
-    assert.equal(cfg?.appId, "app-123");
+    assert.equal(cfg?.appId, "1400885884891475");
     assert.equal(cfg?.appSecret, "secret-xyz");
     assert.equal(
       readMetaEmbeddedSignupConfigIdForMode("cloud_api_new"),
@@ -172,7 +196,7 @@ describe("whatsapp-embedded-signup-flags", () => {
 
   it("does not cross-fall back between Cloud API and Coexistence config IDs", () => {
     snapshotEnv();
-    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
+    process.env.META_EMBEDDED_SIGNUP_APP_ID = "1400885884891475";
     process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
     process.env[META_EMBEDDED_SIGNUP_CLOUD_API_CONFIG_ID_ENV] = "cloud-only";
     delete process.env[META_EMBEDDED_SIGNUP_COEXISTENCE_CONFIG_ID_ENV];
@@ -360,30 +384,49 @@ describe("whatsapp-embedded-signup service", () => {
     assert.equal(exchanged, false);
   });
 
-  it("rejects duplicate phone_number_id owned by another company", async () => {
+  it("reclaims duplicate phone_number_id from another company then persists", async () => {
     snapshotEnv();
     process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
     setMetaConfig();
 
     const state = signTestState();
-    const client = emptySettingsClient({ duplicatePhone: true });
+    const reclaimUpdates: Array<Record<string, unknown>> = [];
+    const client = emptySettingsClient({ duplicatePhone: true, reclaimUpdates });
 
-    await assert.rejects(
-      () =>
-        completeWhatsAppEmbeddedSignup(
-          {
-            companyId: TEST_COMPANY_ID,
-            userId: "user-1",
-            code: "auth-code",
-            state,
-            phoneNumberId: "999",
-            businessAccountId: "888",
-          },
-          { client: client as never, stateSecret: "state-secret" },
-        ),
-      (err: unknown) =>
-        err instanceof WhatsAppEmbeddedSignupError && err.code === "ES_PHONE_IN_USE",
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("oauth/access_token")) {
+        return new Response(JSON.stringify({ access_token: "EAAB-reclaim-token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ id: "999" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const result = await completeWhatsAppEmbeddedSignup(
+      {
+        companyId: TEST_COMPANY_ID,
+        userId: "user-1",
+        code: "auth-code",
+        state,
+        phoneNumberId: "999",
+        businessAccountId: "888",
+      },
+      { client: client as never, stateSecret: "state-secret", fetchImpl },
     );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.phoneNumberId, "999");
+    assert.equal(reclaimUpdates.length, 1);
+    assert.equal(reclaimUpdates[0]?.filter_company_id, "22222222-2222-4222-8222-222222222222");
+    assert.equal(reclaimUpdates[0]?.filter_phone_number_id, "999");
+    const payload = reclaimUpdates[0]?.payload as Record<string, unknown>;
+    assert.equal(payload?.enabled, false);
+    assert.equal(payload?.phone_number_id, "");
   });
 
   it("persists via upsert RPC + sync + skips auto-subscribe", async () => {
@@ -464,7 +507,7 @@ describe("whatsapp-embedded-signup service", () => {
   it("fails clearly when Cloud API config ID is missing (no Coexistence fallback)", async () => {
     snapshotEnv();
     process.env.WHATSAPP_EMBEDDED_SIGNUP_ENABLED = "true";
-    process.env.META_EMBEDDED_SIGNUP_APP_ID = "app-123";
+    process.env.META_EMBEDDED_SIGNUP_APP_ID = "1400885884891475";
     process.env.META_EMBEDDED_SIGNUP_APP_SECRET = "secret-xyz";
     process.env.META_EMBEDDED_SIGNUP_STATE_SECRET = "state-secret";
     process.env[WHATSAPP_EMBEDDED_SIGNUP_ALLOWED_COMPANY_IDS_ENV] = TEST_COMPANY_ID;

@@ -510,29 +510,95 @@ export async function completeWhatsAppEmbeddedSignup(
     );
   }
 
-  const assertPhoneNotInUse = async (candidatePhoneNumberId: string) => {
+  /**
+   * Meta already authorized this Embedded Signup for candidatePhoneNumberId.
+   * ValueOR unique(phone_number_id) can still block if a stale tenant row holds it.
+   * Soft-clear other companies' ValueOR binding only (no Meta Graph calls), then continue.
+   */
+  const reclaimPhoneFromOtherCompanies = async (candidatePhoneNumberId: string) => {
     const { data: duplicateRows, error: duplicateError } = await client
       .from("company_whatsapp_settings")
-      .select("company_id, phone_number_id")
+      .select("company_id, phone_number_id, business_account_id")
       .eq("phone_number_id", candidatePhoneNumberId)
       .neq("company_id", companyId)
-      .limit(5);
+      .limit(10);
 
     if (duplicateError) {
       throw new WhatsAppEmbeddedSignupError(duplicateError.message, "ES_DUPLICATE_CHECK_FAILED", 500);
     }
-    if (Array.isArray(duplicateRows) && duplicateRows.length > 0) {
-      throw new WhatsAppEmbeddedSignupError(
-        "This phone_number_id is already connected to another company.",
-        "ES_PHONE_IN_USE",
-        409,
-      );
+    if (!Array.isArray(duplicateRows) || duplicateRows.length === 0) {
+      return;
+    }
+
+    for (const row of duplicateRows) {
+      const otherCompanyId = String((row as { company_id?: unknown }).company_id ?? "").trim();
+      if (!otherCompanyId) continue;
+      const otherWaba = String((row as { business_account_id?: unknown }).business_account_id ?? "").trim();
+      const { error: clearError } = await client
+        .from("company_whatsapp_settings")
+        .update({
+          enabled: false,
+          phone_number_id: "",
+          business_account_id: "",
+          access_token: "",
+          access_token_encrypted: null,
+          access_token_hint: null,
+          webhook_verify_token: "",
+          webhook_verify_token_encrypted: null,
+          webhook_verify_token_hint: null,
+          webhook_verify_token_lookup_hash: null,
+          app_secret_encrypted: null,
+          app_secret_hint: null,
+          token_status: "missing",
+          token_expires_at: null,
+          token_checked_at: null,
+          last_auth_error: null,
+          last_auth_error_at: null,
+          last_auth_error_code: null,
+        })
+        .eq("company_id", otherCompanyId)
+        .eq("phone_number_id", candidatePhoneNumberId);
+
+      if (clearError) {
+        throw new WhatsAppEmbeddedSignupError(
+          `Failed to reclaim phone_number_id from company ${otherCompanyId}: ${clearError.message}`,
+          "ES_PHONE_RECLAIM_FAILED",
+          500,
+        );
+      }
+
+      console.info("[whatsapp.embedded_signup.reclaim_phone]", {
+        keepCompanyId: companyId,
+        fromCompanyId: otherCompanyId,
+        phoneNumberId: candidatePhoneNumberId,
+        previousBusinessAccountId: otherWaba || null,
+        actorUserId: input.userId,
+        metaGraph: "none",
+      });
+
+      const { error: auditError } = await client.rpc("record_whatsapp_connection_lifecycle_event", {
+        p_action: "disconnect",
+        p_company_id: otherCompanyId,
+        p_phone_number_id: candidatePhoneNumberId,
+        p_business_account_id: otherWaba || null,
+        p_meta: {
+          source: "embedded_signup_reclaim",
+          keep_company_id: companyId,
+        },
+        p_actor_user_id: input.userId,
+      });
+      if (auditError) {
+        console.info("[whatsapp.embedded_signup.reclaim_phone.audit_skip]", {
+          fromCompanyId: otherCompanyId,
+          message: auditError.message,
+        });
+      }
     }
   };
 
-  // When Meta already returned phone_number_id, enforce tenant isolation before code exchange.
+  // When Meta already returned phone_number_id, free any stale ValueOR tenant binding first.
   if (phoneNumberId) {
-    await assertPhoneNotInUse(phoneNumberId);
+    await reclaimPhoneFromOtherCompanies(phoneNumberId);
   }
 
   const accessToken = await exchangeAuthorizationCode({
@@ -551,7 +617,7 @@ export async function completeWhatsAppEmbeddedSignup(
       graphApiVersion: meta.graphApiVersion,
       fetchImpl,
     });
-    await assertPhoneNotInUse(phoneNumberId);
+    await reclaimPhoneFromOtherCompanies(phoneNumberId);
   }
 
   const existingVerifyPresent = Boolean(existing.has_webhook_verify_token);

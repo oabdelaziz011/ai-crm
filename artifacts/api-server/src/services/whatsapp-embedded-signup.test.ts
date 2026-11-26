@@ -427,6 +427,9 @@ describe("whatsapp-embedded-signup service", () => {
     const payload = reclaimUpdates[0]?.payload as Record<string, unknown>;
     assert.equal(payload?.enabled, false);
     assert.equal(payload?.phone_number_id, "");
+    assert.equal(payload?.access_token_hint, "");
+    assert.equal(payload?.webhook_verify_token_hint, "");
+    assert.equal(payload?.app_secret_hint, "");
   });
 
   it("persists via upsert RPC + sync + skips auto-subscribe", async () => {

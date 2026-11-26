@@ -534,6 +534,7 @@ export async function completeWhatsAppEmbeddedSignup(
       const otherCompanyId = String((row as { company_id?: unknown }).company_id ?? "").trim();
       if (!otherCompanyId) continue;
       const otherWaba = String((row as { business_account_id?: unknown }).business_account_id ?? "").trim();
+      // Hint columns are NOT NULL DEFAULT '' — never write null (Postgres 23502).
       const { error: clearError } = await client
         .from("company_whatsapp_settings")
         .update({
@@ -542,13 +543,13 @@ export async function completeWhatsAppEmbeddedSignup(
           business_account_id: "",
           access_token: "",
           access_token_encrypted: null,
-          access_token_hint: null,
+          access_token_hint: "",
           webhook_verify_token: "",
           webhook_verify_token_encrypted: null,
-          webhook_verify_token_hint: null,
+          webhook_verify_token_hint: "",
           webhook_verify_token_lookup_hash: null,
           app_secret_encrypted: null,
-          app_secret_hint: null,
+          app_secret_hint: "",
           token_status: "missing",
           token_expires_at: null,
           token_checked_at: null,

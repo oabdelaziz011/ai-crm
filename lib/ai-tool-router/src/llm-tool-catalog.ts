@@ -599,6 +599,107 @@ const GET_QUOTE_DELIVERY_STATUS_LLM = {
   },
 } as const;
 
+const VALIDATE_DELIVERY_ZONE_LLM = {
+  type: "function",
+  function: {
+    name: "validate_delivery_zone",
+    description:
+      "Check whether an enabled company delivery zone covers the customer's governorate and city/area. Returns fee and ETA only from saved zones. Never invent fees or ETAs. Call before previewing or creating a sales order.",
+    parameters: {
+      type: "object",
+      properties: {
+        governorate: { type: "string", description: "Customer governorate" },
+        zoneName: { type: "string", description: "City or area / delivery zone name" },
+      },
+      required: ["governorate", "zoneName"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const PREVIEW_SALES_ORDER_LLM = {
+  type: "function",
+  function: {
+    name: "preview_sales_order",
+    description:
+      "Compute subtotal, delivery fee, and total from catalog prices and an enabled delivery zone. Does NOT create an order. Use only when AI order collection is enabled. After preview, summarize and ask the customer to explicitly confirm before create_sales_order.",
+    parameters: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          description: "Catalog lines [{productId, quantity}]",
+          items: {
+            type: "object",
+            properties: {
+              productId: { type: "string" },
+              quantity: { type: "number" },
+            },
+            required: ["productId", "quantity"],
+          },
+        },
+        governorate: { type: "string" },
+        zoneName: { type: "string" },
+        customerName: { type: "string" },
+        customerPhone: { type: "string" },
+        deliveryAddress: { type: "string" },
+      },
+      required: ["items", "governorate", "zoneName", "customerName", "customerPhone"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const CREATE_SALES_ORDER_LLM = {
+  type: "function",
+  function: {
+    name: "create_sales_order",
+    description:
+      "Create a COD sales order ONLY after the customer explicitly confirmed the preview (customerConfirmed=true). Requires AI order collection enabled. Defaults to pending_approval when human approval is required. Never claim paid, shipped, or delivered. Distinct from quote tools.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerConfirmed: {
+          type: "boolean",
+          description: "Must be true only after the customer explicitly confirmed the order summary",
+        },
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              productId: { type: "string" },
+              quantity: { type: "number" },
+            },
+            required: ["productId", "quantity"],
+          },
+        },
+        customerName: { type: "string" },
+        customerPhone: { type: "string" },
+        customerEmail: { type: "string" },
+        preferredLanguage: { type: "string" },
+        governorate: { type: "string" },
+        zoneName: { type: "string" },
+        deliveryAddress: { type: "string" },
+        deliveryNotes: { type: "string" },
+        deliveryLocationUrl: { type: "string" },
+        deliveryLat: { type: "number" },
+        deliveryLng: { type: "number" },
+      },
+      required: [
+        "customerConfirmed",
+        "items",
+        "customerName",
+        "customerPhone",
+        "governorate",
+        "zoneName",
+        "deliveryAddress",
+      ],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   {
     key: "knowledge_lookup",
@@ -1154,6 +1255,38 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
       "Reads real quote delivery state from quote status, send attempts, and AI send-request metadata.",
     requiredPermissions: ["tools.execute", "quotes.view"],
     llmDefinition: GET_QUOTE_DELIVERY_STATUS_LLM,
+  },
+  {
+    key: "validate_delivery_zone",
+    displayName: "Validate Delivery Zone",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description: "Looks up an enabled company delivery zone for fee/ETA. Fail-closed when unsupported.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: VALIDATE_DELIVERY_ZONE_LLM,
+  },
+  {
+    key: "preview_sales_order",
+    displayName: "Preview Sales Order",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description:
+      "Computes order totals from catalog prices and delivery zones without writing. Requires AI order collection.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: PREVIEW_SALES_ORDER_LLM,
+  },
+  {
+    key: "create_sales_order",
+    displayName: "Create Sales Order",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "sales_order_agent",
+    description:
+      "Creates a COD sales order after explicit customer confirmation when AI order collection is enabled.",
+    requiredPermissions: ["tools.execute", "orders.create"],
+    llmDefinition: CREATE_SALES_ORDER_LLM,
   },
 ];
 

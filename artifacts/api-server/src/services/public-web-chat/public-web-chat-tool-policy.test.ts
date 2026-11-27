@@ -33,8 +33,6 @@ const UNSAFE_TOOLS = [
   "crm_lookup",
   "internal_search",
   "transfer_workflow",
-  "search_products",
-  "get_product_details",
   "create_draft_quote",
   "request_send_quote",
   "qualify_lead",
@@ -94,7 +92,10 @@ describe("29. Public Web Chat tool policy", () => {
     for (const tool of UNSAFE_TOOLS) {
       assert.equal((PUBLIC_WEB_CHAT_ALLOWED_TOOL_KEYS as readonly string[]).includes(tool), false, tool);
     }
-    assert.deepEqual(filterPublicWebChatToolKeys([...UNSAFE_TOOLS, "knowledge_search"]), ["knowledge_search"]);
+    assert.deepEqual(
+      filterPublicWebChatToolKeys([...UNSAFE_TOOLS, "knowledge_search", "search_products", "create_sales_order"]),
+      ["knowledge_search", "search_products", "create_sales_order"],
+    );
   });
 
   it("route-time guard blocks unsafe tools on public web chat conversations", async () => {

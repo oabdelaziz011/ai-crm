@@ -23,6 +23,7 @@ import { createWebhookSchedulingToolPorts } from "./webhook-scheduling-tool-port
 import type { WorkflowTransferToolPorts } from "@workspace/ai-tool-router";
 import { createWebhookProductAgentPorts } from "./webhook-product-agent-ports.js";
 import { createWebhookQuoteAgentPorts } from "./webhook-quote-agent-ports.js";
+import { createWebhookSalesOrderPorts } from "./webhook-sales-order-ports.js";
 
 export type WebhookToolRouterIntegrations = {
   toolRouterServices: ToolRouterServices;
@@ -87,6 +88,7 @@ export function createWebhookToolRouterIntegrations(
     leadAgentPorts,
     productAgentPorts: createWebhookProductAgentPorts(client),
     quoteAgentPorts: createWebhookQuoteAgentPorts(client),
+    salesOrderPorts: createWebhookSalesOrderPorts(client, customerService),
     ...(extras?.workflowTransferPorts
       ? { workflowTransferPorts: extras.workflowTransferPorts }
       : {}),

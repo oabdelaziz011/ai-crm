@@ -7,11 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useSalesOrderDetail } from "@/hooks/sales/use-sales-orders";
+import { Button } from "@/components/ui/button";
+import {
+  useSalesOrderApprovalActions,
+  useSalesOrderDetail,
+} from "@/hooks/sales/use-sales-orders";
 import { formatSalesMoney } from "@/lib/sales/sales-localize";
 import type { SalesOrderStatus } from "@/lib/sales-orders/sales-order-types";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
 import { cn } from "@/lib/utils";
+import { useAuthUser, usePermissions } from "@/hooks/use-rbac";
 
 function statusClass(status: SalesOrderStatus): string {
   switch (status) {
@@ -43,7 +48,12 @@ export function SalesOrderDetailsPanel({
 }) {
   const { t, i18n } = useTranslation("common");
   const detail = useSalesOrderDetail(companyId, orderId);
+  const { approve, reject } = useSalesOrderApprovalActions(companyId);
+  const { user } = useAuthUser();
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission("orders.edit");
   const order = detail.data;
+  const busy = approve.isPending || reject.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -75,7 +85,52 @@ export function SalesOrderDetailsPanel({
                   date: new Date(order.createdAt).toLocaleString(i18n.language),
                 })}
               </span>
+              <span className="text-xs text-muted-foreground">
+                {t("salesOrders.details.updatedAt", {
+                  defaultValue: "Updated {{date}}",
+                  date: new Date(order.updatedAt).toLocaleString(i18n.language),
+                })}
+              </span>
             </div>
+
+            {order.status === "pending_approval" && canEdit && user?.id ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() =>
+                    approve.mutate({ orderId: order.id, userId: user.id })
+                  }
+                >
+                  {approve.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    t("salesOrders.details.approve", { defaultValue: "Approve" })
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    reject.mutate({ orderId: order.id, userId: user.id })
+                  }
+                >
+                  {reject.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    t("salesOrders.details.reject", { defaultValue: "Reject" })
+                  )}
+                </Button>
+              </div>
+            ) : null}
+            {approve.error || reject.error ? (
+              <DashboardErrorBanner
+                message={(approve.error ?? reject.error)?.message ?? "Action failed"}
+              />
+            ) : null}
 
             <section className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-border/60 p-3">
@@ -86,12 +141,33 @@ export function SalesOrderDetailsPanel({
                 <p className="text-muted-foreground" dir="ltr">
                   {order.customerPhone || "—"}
                 </p>
+                {order.customerEmail ? (
+                  <p className="text-muted-foreground" dir="ltr">
+                    {order.customerEmail}
+                  </p>
+                ) : null}
+                {order.customerId ? (
+                  <Link
+                    href={`~/dashboard/customers/${order.customerId}/orders`}
+                    className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    {t("salesOrders.details.openCustomer", {
+                      defaultValue: "Open CRM customer",
+                    })}
+                  </Link>
+                ) : null}
               </div>
               <div className="rounded-xl border border-border/60 p-3">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {t("salesOrders.details.payment")}
                 </h3>
                 <p>{t(`salesOrders.payment.${order.paymentMethod}`)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("salesOrders.details.paymentStatus", {
+                    defaultValue: "Payment status: {{status}}",
+                    status: order.paymentStatus,
+                  })}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {order.requireHumanApproval
                     ? t("salesOrders.details.humanApprovalRequired")
@@ -100,17 +176,65 @@ export function SalesOrderDetailsPanel({
               </div>
             </section>
 
-            <section className="rounded-xl border border-border/60 p-3">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {t("salesOrders.details.delivery")}
-              </h3>
-              <p>
-                {[order.deliveryGovernorate, order.deliveryCityArea].filter(Boolean).join(" · ") || "—"}
-              </p>
-              <p className="mt-1 text-muted-foreground">{order.deliveryAddress || "—"}</p>
-              {order.deliveryNotes ? (
-                <p className="mt-2 text-xs text-muted-foreground">{order.deliveryNotes}</p>
-              ) : null}
+            <section className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-border/60 p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("salesOrders.details.attribution", { defaultValue: "Attribution" })}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {t("salesOrders.details.aiEmployee", {
+                    defaultValue: "AI employee: {{id}}",
+                    id: order.aiEmployeeId || "—",
+                  })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("salesOrders.details.salesperson", {
+                    defaultValue: "Salesperson: {{id}}",
+                    id: order.assignedSalespersonId || "—",
+                  })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("salesOrders.details.sourceChannel", {
+                    defaultValue: "Source: {{channel}}",
+                    channel: order.sourceChannel || "—",
+                  })}
+                </p>
+                {order.preferredLanguage ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("salesOrders.details.preferredLanguage", {
+                      defaultValue: "Language: {{lang}}",
+                      lang: order.preferredLanguage,
+                    })}
+                  </p>
+                ) : null}
+              </div>
+              <div className="rounded-xl border border-border/60 p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("salesOrders.details.delivery")}
+                </h3>
+                <p>
+                  {[order.deliveryGovernorate, order.deliveryCityArea].filter(Boolean).join(" · ") || "—"}
+                </p>
+                <p className="mt-1 text-muted-foreground">{order.deliveryAddress || "—"}</p>
+                {order.deliveryNotes ? (
+                  <p className="mt-2 text-xs text-muted-foreground">{order.deliveryNotes}</p>
+                ) : null}
+                {order.deliveryLocationUrl ? (
+                  <a
+                    href={order.deliveryLocationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    {t("salesOrders.details.locationUrl", { defaultValue: "Open location" })}
+                  </a>
+                ) : null}
+                {order.deliveryLat != null && order.deliveryLng != null ? (
+                  <p className="mt-1 text-xs text-muted-foreground" dir="ltr">
+                    {order.deliveryLat}, {order.deliveryLng}
+                  </p>
+                ) : null}
+              </div>
             </section>
 
             <section className="rounded-xl border border-border/60 p-3">

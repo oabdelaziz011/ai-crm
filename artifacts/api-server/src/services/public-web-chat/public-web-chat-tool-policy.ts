@@ -23,6 +23,12 @@ export const PUBLIC_WEB_CHAT_ALLOWED_TOOL_KEYS = Object.freeze([
   "recommend_appointment",
   "escalate_to_human",
   "queue_handoff",
+  // DEMO Beta local E2E sales journey (catalog + COD order). CRM search/create remain denied.
+  "search_products",
+  "get_product_details",
+  "validate_delivery_zone",
+  "preview_sales_order",
+  "create_sales_order",
 ] as const);
 
 const ALLOWED = new Set<string>(PUBLIC_WEB_CHAT_ALLOWED_TOOL_KEYS);

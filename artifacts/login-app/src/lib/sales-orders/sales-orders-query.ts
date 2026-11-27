@@ -3,10 +3,12 @@ import {
   isSalesOrderPaymentMethod,
   isSalesOrderStatus,
   normalizeSalesOrdersPageSize,
+  type CustomerSalesOrderHistory,
   type SalesOrderDetail,
   type SalesOrderItem,
   type SalesOrderListRow,
   type SalesOrderPaymentMethod,
+  type SalesOrderPaymentStatus,
   type SalesOrderStatus,
   type SalesOrderStatusEvent,
   type SalesOrdersListFilters,
@@ -21,19 +23,31 @@ type OrderRow = {
   customer_id: string | null;
   customer_name: string | null;
   customer_phone: string | null;
+  customer_email?: string | null;
+  preferred_language?: string | null;
   conversation_id: string | null;
   delivery_zone_id: string | null;
   delivery_governorate: string | null;
   delivery_city_area: string | null;
   delivery_address: string | null;
   delivery_notes: string | null;
+  delivery_lat?: number | null;
+  delivery_lng?: number | null;
+  delivery_location_url?: string | null;
   delivery_fee: number | string | null;
   subtotal: number | string | null;
   total_amount: number | string | null;
   currency: string | null;
+  source_channel?: string | null;
+  payment_status?: string | null;
+  ai_employee_id?: string | null;
+  assigned_salesperson_id?: string | null;
+  created_by_ai?: boolean | null;
   require_human_approval: boolean | null;
   approved_at: string | null;
   approved_by: string | null;
+  rejected_at?: string | null;
+  rejected_by?: string | null;
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
@@ -252,6 +266,13 @@ export async function getSalesOrderDetail(
   const items = ((itemRows ?? []) as ItemRow[]).map(mapItem);
   const list = mapListRow(row, items);
 
+  const paymentStatusRaw = row.payment_status ?? "unpaid";
+  const paymentStatus = (
+    ["unpaid", "pending", "paid", "refunded", "failed"] as const
+  ).includes(paymentStatusRaw as SalesOrderPaymentStatus)
+    ? (paymentStatusRaw as SalesOrderPaymentStatus)
+    : "unpaid";
+
   return {
     ...list,
     customerId: row.customer_id,
@@ -261,13 +282,144 @@ export async function getSalesOrderDetail(
     deliveryCityArea: row.delivery_city_area ?? "",
     deliveryAddress: row.delivery_address ?? "",
     deliveryNotes: row.delivery_notes ?? "",
+    deliveryLat: row.delivery_lat ?? null,
+    deliveryLng: row.delivery_lng ?? null,
+    deliveryLocationUrl: row.delivery_location_url ?? "",
+    customerEmail: row.customer_email ?? "",
+    preferredLanguage: row.preferred_language ?? "",
+    sourceChannel: row.source_channel ?? "",
+    paymentStatus,
+    aiEmployeeId: row.ai_employee_id ?? null,
+    assignedSalespersonId: row.assigned_salesperson_id ?? null,
+    createdByAi: row.created_by_ai === true,
     subtotal: toNumber(row.subtotal),
     requireHumanApproval: row.require_human_approval !== false,
     approvedAt: row.approved_at,
     approvedBy: row.approved_by,
+    rejectedAt: row.rejected_at ?? null,
+    rejectedBy: row.rejected_by ?? null,
     cancelledAt: row.cancelled_at,
     updatedAt: row.updated_at,
     items,
     statusHistory: ((eventRows ?? []) as EventRow[]).map(mapEvent),
   };
+}
+
+export async function listCustomerSalesOrderHistory(
+  client: SupabaseClient,
+  companyId: string,
+  customerId: string,
+): Promise<CustomerSalesOrderHistory> {
+  const { data, error } = await client
+    .from("sales_orders")
+    .select(
+      "id, order_number, status, payment_method, customer_id, customer_name, customer_phone, conversation_id, delivery_fee, subtotal, total_amount, currency, created_at, updated_at",
+    )
+    .eq("company_id", companyId)
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as OrderRow[];
+  const orderIds = rows.map((row) => row.id);
+  const itemsByOrder = new Map<string, SalesOrderItem[]>();
+  if (orderIds.length > 0) {
+    const { data: itemRows, error: itemsError } = await client
+      .from("sales_order_items")
+      .select("id, order_id, product_id, product_name, product_sku, quantity, unit_price, line_total, sort_order")
+      .eq("company_id", companyId)
+      .in("order_id", orderIds)
+      .order("sort_order", { ascending: true });
+    if (itemsError) throw new Error(itemsError.message);
+    for (const item of (itemRows ?? []) as ItemRow[]) {
+      const list = itemsByOrder.get(item.order_id) ?? [];
+      list.push(mapItem(item));
+      itemsByOrder.set(item.order_id, list);
+    }
+  }
+
+  const orders = rows.map((row) => mapListRow(row, itemsByOrder.get(row.id) ?? []));
+  const totalValue = Number(
+    orders.reduce((sum, order) => sum + order.totalAmount, 0).toFixed(2),
+  );
+  const dates = orders.map((order) => order.createdAt).filter(Boolean);
+  return {
+    totalOrders: orders.length,
+    totalValue,
+    currency: orders[0]?.currency ?? "EGP",
+    firstOrderAt: dates.length ? dates[dates.length - 1]! : null,
+    lastOrderAt: dates[0] ?? null,
+    orders,
+  };
+}
+
+export async function approveSalesOrder(
+  client: SupabaseClient,
+  input: { companyId: string; orderId: string; userId: string; note?: string },
+): Promise<void> {
+  const detail = await getSalesOrderDetail(client, input.companyId, input.orderId);
+  if (!detail) throw new Error("Order not found.");
+  if (detail.status !== "pending_approval") {
+    throw new Error("Only pending_approval orders can be approved.");
+  }
+  const now = new Date().toISOString();
+  const { error } = await client
+    .from("sales_orders")
+    .update({
+      status: "confirmed",
+      approved_at: now,
+      approved_by: input.userId,
+      updated_by: input.userId,
+      updated_at: now,
+    })
+    .eq("company_id", input.companyId)
+    .eq("id", input.orderId)
+    .eq("status", "pending_approval");
+  if (error) throw new Error(error.message);
+
+  const { error: eventError } = await client.from("sales_order_status_events").insert({
+    company_id: input.companyId,
+    order_id: input.orderId,
+    from_status: "pending_approval",
+    to_status: "confirmed",
+    note: input.note?.trim() || "Approved by human reviewer",
+    changed_by: input.userId,
+  });
+  if (eventError) throw new Error(eventError.message);
+}
+
+export async function rejectSalesOrder(
+  client: SupabaseClient,
+  input: { companyId: string; orderId: string; userId: string; note?: string },
+): Promise<void> {
+  const detail = await getSalesOrderDetail(client, input.companyId, input.orderId);
+  if (!detail) throw new Error("Order not found.");
+  if (detail.status !== "pending_approval") {
+    throw new Error("Only pending_approval orders can be rejected.");
+  }
+  const now = new Date().toISOString();
+  const { error } = await client
+    .from("sales_orders")
+    .update({
+      status: "cancelled",
+      cancelled_at: now,
+      rejected_at: now,
+      rejected_by: input.userId,
+      updated_by: input.userId,
+      updated_at: now,
+    })
+    .eq("company_id", input.companyId)
+    .eq("id", input.orderId)
+    .eq("status", "pending_approval");
+  if (error) throw new Error(error.message);
+
+  const { error: eventError } = await client.from("sales_order_status_events").insert({
+    company_id: input.companyId,
+    order_id: input.orderId,
+    from_status: "pending_approval",
+    to_status: "cancelled",
+    note: input.note?.trim() || "Rejected by human reviewer",
+    changed_by: input.userId,
+  });
+  if (eventError) throw new Error(eventError.message);
 }

@@ -65,6 +65,9 @@ export const FEATURE_TOOL_KEYS: Readonly<Record<AiEmployeeCapabilityFeatureCode,
     "create_draft_quote",
     "request_send_quote",
     "get_quote_delivery_status",
+    "validate_delivery_zone",
+    "preview_sales_order",
+    "create_sales_order",
   ],
 };
 
@@ -134,6 +137,9 @@ const TOOL_CAPABILITY_GROUP: Readonly<Record<string, AiEmployeeCapabilityGroupId
   create_draft_quote: "sales",
   request_send_quote: "sales",
   get_quote_delivery_status: "sales",
+  validate_delivery_zone: "sales",
+  preview_sales_order: "sales",
+  create_sales_order: "sales",
 };
 
 export const CAPABILITY_GROUP_ORDER: readonly AiEmployeeCapabilityGroupId[] = [

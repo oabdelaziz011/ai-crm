@@ -51,6 +51,13 @@ export type SalesOrderListRow = {
   createdAt: string;
 };
 
+export type SalesOrderPaymentStatus =
+  | "unpaid"
+  | "pending"
+  | "paid"
+  | "refunded"
+  | "failed";
+
 export type SalesOrderDetail = SalesOrderListRow & {
   customerId: string | null;
   conversationId: string | null;
@@ -59,14 +66,35 @@ export type SalesOrderDetail = SalesOrderListRow & {
   deliveryCityArea: string;
   deliveryAddress: string;
   deliveryNotes: string;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+  deliveryLocationUrl: string;
+  customerEmail: string;
+  preferredLanguage: string;
+  sourceChannel: string;
+  paymentStatus: SalesOrderPaymentStatus;
+  aiEmployeeId: string | null;
+  assignedSalespersonId: string | null;
+  createdByAi: boolean;
   subtotal: number;
   requireHumanApproval: boolean;
   approvedAt: string | null;
   approvedBy: string | null;
+  rejectedAt: string | null;
+  rejectedBy: string | null;
   cancelledAt: string | null;
   updatedAt: string;
   items: SalesOrderItem[];
   statusHistory: SalesOrderStatusEvent[];
+};
+
+export type CustomerSalesOrderHistory = {
+  totalOrders: number;
+  totalValue: number;
+  currency: string;
+  firstOrderAt: string | null;
+  lastOrderAt: string | null;
+  orders: SalesOrderListRow[];
 };
 
 export type SalesOrdersListFilters = {

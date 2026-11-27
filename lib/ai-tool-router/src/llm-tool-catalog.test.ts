@@ -10,7 +10,7 @@ import { listRegisteredToolHandlerKeys as listHandlerKeys } from "./tool-handler
 
 describe("llm-tool-catalog", () => {
   it("registers every known tool with a classification", () => {
-    assert.equal(TOOL_REGISTRY.length, 55);
+    assert.equal(TOOL_REGISTRY.length, 58);
     for (const entry of TOOL_REGISTRY) {
       assert.ok(entry.key);
       assert.ok(entry.classification);
@@ -28,6 +28,7 @@ describe("llm-tool-catalog", () => {
       workflowTransferPorts: {} as never,
       productAgentPorts: {} as never,
       quoteAgentPorts: {} as never,
+      salesOrderPorts: {} as never,
     });
 
     const exposure = resolveLlmToolExposure(registered);
@@ -39,6 +40,9 @@ describe("llm-tool-catalog", () => {
     assert.ok(exposure.allowedToolKeys.includes("create_draft_quote"));
     assert.ok(exposure.allowedToolKeys.includes("request_send_quote"));
     assert.ok(exposure.allowedToolKeys.includes("get_quote_delivery_status"));
+    assert.ok(exposure.allowedToolKeys.includes("validate_delivery_zone"));
+    assert.ok(exposure.allowedToolKeys.includes("preview_sales_order"));
+    assert.ok(exposure.allowedToolKeys.includes("create_sales_order"));
     assert.equal(exposure.excludedMocks.length, 7);
     assert.equal(exposure.protectedConfirmation.length, 2);
     assert.equal(exposure.gaps.length, 0);
@@ -48,7 +52,7 @@ describe("llm-tool-catalog", () => {
     const registered = listHandlerKeys({ customerService: {} as never });
     const exposure = resolveLlmToolExposure(registered);
     assert.deepEqual(exposure.allowedToolKeys, [CREATE_CUSTOMER_TOOL_KEY]);
-    assert.equal(exposure.gaps.length, 45);
+    assert.equal(exposure.gaps.length, 48);
   });
 
   it("builds audit report with newly exposed tools", () => {
@@ -62,6 +66,7 @@ describe("llm-tool-catalog", () => {
       workflowTransferPorts: {} as never,
       productAgentPorts: {} as never,
       quoteAgentPorts: {} as never,
+      salesOrderPorts: {} as never,
     });
     const report = buildToolRouterAuditReport(registered);
     assert.ok(report.llmExposure.exposedCount >= 24);

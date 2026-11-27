@@ -3193,6 +3193,7 @@
         "email": "Email",
         "sms": "SMS",
         "bookings": "Bookings",
+        "orders": "Orders",
         "invoices": "Invoices",
         "payments": "Payments",
         "commerce": "Commerce",
@@ -3202,6 +3203,15 @@
         "history": "History",
         "campaigns": "Campaigns",
         "more": "More"
+      },
+      "orders": {
+        "subtitle": "Sales orders linked to this CRM customer (not bookings).",
+        "totalOrders": "Total orders",
+        "totalValue": "Total value",
+        "firstOrder": "First order",
+        "lastOrder": "Last order",
+        "created": "Created",
+        "empty": "No sales orders for this customer yet."
       },
       "bookingStatus": {
         "checkedIn": "Checked in",
@@ -16706,7 +16716,7 @@
     "subtitle": "Review company sales orders, delivery details, and approval status.",
     "noPermission": "You need orders.view permission to open Sales Orders.",
     "emptyTitle": "No sales orders yet",
-    "emptyBody": "Orders will appear here once they are created for this company. AI order creation is not enabled in this phase.",
+    "emptyBody": "Orders will appear here once they are created for this company.",
     "noItems": "No items",
     "filters": {
       "search": "Search",
@@ -16768,7 +16778,18 @@
       "openConversation": "Open related conversation",
       "noConversation": "No related conversation linked.",
       "statusHistory": "Status history",
-      "noHistory": "No status history recorded yet."
+      "noHistory": "No status history recorded yet.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "updatedAt": "Updated {{date}}",
+      "openCustomer": "Open CRM customer",
+      "paymentStatus": "Payment status: {{status}}",
+      "attribution": "Attribution",
+      "aiEmployee": "AI employee: {{id}}",
+      "salesperson": "Salesperson: {{id}}",
+      "sourceChannel": "Source: {{channel}}",
+      "preferredLanguage": "Language: {{lang}}",
+      "locationUrl": "Open location"
     }
   },
   "quotes": {

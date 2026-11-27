@@ -124,6 +124,16 @@ const BookingsTab = lazy(() =>
 
 );
 
+const OrdersTab = lazy(() =>
+
+  import("@/components/customer-workspace/tabs/workspace-orders-tab").then((m) => ({
+
+    default: m.WorkspaceOrdersTab,
+
+  })),
+
+);
+
 const InvoicesTab = lazy(() =>
 
   import("@/components/customer-workspace/tabs/workspace-invoices-tab").then((m) => ({
@@ -730,6 +740,10 @@ export function CustomerWorkspacePage({
           />
 
         );
+
+      case "orders":
+
+        return <OrdersTab companyId={companyId} customerId={customer.id} />;
 
       case "invoices":
 

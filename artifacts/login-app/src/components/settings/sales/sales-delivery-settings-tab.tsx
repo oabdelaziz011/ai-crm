@@ -122,6 +122,18 @@ export function SalesDeliverySettingsTab({
               onChange={(e) => setDraft((prev) => ({ ...prev, zoneName: e.target.value }))}
             />
           </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">{t("dashboard.settings.salesOrder.delivery.aliases")}</Label>
+            <Input
+              disabled={!canEdit}
+              value={draft.aliasesText}
+              placeholder={t("dashboard.settings.salesOrder.delivery.aliasesPlaceholder")}
+              onChange={(e) => setDraft((prev) => ({ ...prev, aliasesText: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("dashboard.settings.salesOrder.delivery.aliasesHelp")}
+            </p>
+          </div>
           <div className="space-y-1">
             <Label className="text-xs">{t("dashboard.settings.salesOrder.delivery.fee")}</Label>
             <Input
@@ -206,10 +218,17 @@ export function SalesDeliverySettingsTab({
                 key={zone.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 p-3 text-sm"
               >
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 space-y-1 text-start">
                   <p className="font-medium">
                     {zone.governorate} · {zone.zoneName}
                   </p>
+                  {zone.aliasesText ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("dashboard.settings.salesOrder.delivery.aliasesList", {
+                        aliases: zone.aliasesText,
+                      })}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     {t("dashboard.settings.salesOrder.delivery.zoneSummary", {
                       fee: zone.deliveryFee,

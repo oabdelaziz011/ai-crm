@@ -23,6 +23,8 @@ describe("company order settings", () => {
     assert.deepEqual(form.paymentMethods, ["cash_on_delivery"]);
     assert.equal(form.requiredFields.customerName, true);
     assert.equal(form.requiredFields.deliveryNotes, false);
+    assert.equal(form.requiredFields.deliveryLocation, false);
+    assert.equal(form.requiredFields.secondaryPhone, true);
     assert.equal(companyOrderConfigState(null), "unconfigured");
   });
 
@@ -58,6 +60,16 @@ describe("company order settings", () => {
       }),
       "payment_methods_required",
     );
+  });
+
+  it("defaults delivery assignment mode to manual and persists ai", () => {
+    const form = normalizeCompanyOrderSettings(null);
+    assert.equal(form.deliveryAssignmentMode, "manual");
+    const row = companyOrderSettingsToRow("company-a", {
+      ...DEFAULT_COMPANY_ORDER_SETTINGS,
+      deliveryAssignmentMode: "ai",
+    });
+    assert.equal(row.delivery_assignment_mode, "ai");
   });
 });
 
@@ -96,6 +108,7 @@ describe("company delivery zones", () => {
     const insert = deliveryZoneToInsert("company-b", {
       governorate: " Giza ",
       zoneName: " Dokki ",
+      aliasesText: "الدقي، الدقى",
       enabled: true,
       deliveryFee: 25,
       etaMin: 2,
@@ -105,6 +118,7 @@ describe("company delivery zones", () => {
     assert.equal(insert.company_id, "company-b");
     assert.equal(insert.governorate, "Giza");
     assert.equal(insert.zone_name, "Dokki");
+    assert.deepEqual(insert.aliases, ["الدقي", "الدقى"]);
     assert.equal(insert.eta_min, 2);
     assert.equal(insert.eta_max, 2);
     assert.equal(insert.eta_unit, "hours");
@@ -117,6 +131,7 @@ describe("company delivery zones", () => {
       company_id: "company-b",
       governorate: "Alexandria",
       zone_name: "Smouha",
+      aliases: ["سموحه"],
       enabled: true,
       delivery_fee: "15.50",
       eta_min: 1,
@@ -125,6 +140,7 @@ describe("company delivery zones", () => {
     });
     assert.equal(zone.governorate, "Alexandria");
     assert.equal(zone.zoneName, "Smouha");
+    assert.equal(zone.aliasesText, "سموحه");
     assert.equal(zone.deliveryFee, 15.5);
     assert.equal(zone.etaUnit, "days");
   });

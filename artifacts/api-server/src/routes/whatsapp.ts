@@ -160,6 +160,31 @@ router.post("/whatsapp/test-message", async (req, res, next) => {
   }
 });
 
+router.post("/whatsapp/send-text", async (req, res, next) => {
+  try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("whatsapp/send-text");
+    const companyId = String(req.body?.companyId ?? "");
+    const recipientPhone = String(req.body?.recipientPhone ?? "");
+    const text = String(req.body?.text ?? "");
+    if (!recipientPhone) {
+      res.status(400).json({ error: "recipientPhone required" });
+      return;
+    }
+    if (!text.trim()) {
+      res.status(400).json({ error: "text required" });
+      return;
+    }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    const client = getServiceClient();
+    const provider = createProvider(client);
+    const result = await provider.sendFreeformText(companyId, recipientPhone, text);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/whatsapp/process-queue", async (req, res, next) => {
   try {
     const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");

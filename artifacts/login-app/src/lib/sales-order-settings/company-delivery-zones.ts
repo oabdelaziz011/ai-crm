@@ -10,6 +10,8 @@ export type CompanyDeliveryZoneFormValues = {
   id?: string;
   governorate: string;
   zoneName: string;
+  /** Comma/newline-separated alternate names (Arabic/English) for AI matching. */
+  aliasesText: string;
   enabled: boolean;
   deliveryFee: number;
   etaMin: number;
@@ -20,6 +22,7 @@ export type CompanyDeliveryZoneFormValues = {
 export const DEFAULT_DELIVERY_ZONE_FORM: CompanyDeliveryZoneFormValues = {
   governorate: "",
   zoneName: "",
+  aliasesText: "",
   enabled: true,
   deliveryFee: 0,
   etaMin: 1,
@@ -32,6 +35,7 @@ export type CompanyDeliveryZoneRow = {
   company_id: string;
   governorate: string;
   zone_name: string;
+  aliases?: string[] | null;
   enabled: boolean;
   delivery_fee: number | string;
   eta_min: number;
@@ -40,6 +44,21 @@ export type CompanyDeliveryZoneRow = {
   created_at?: string;
   updated_at?: string;
 };
+
+export function parseDeliveryZoneAliasesText(raw: string): string[] {
+  return [
+    ...new Set(
+      raw
+        .split(/[\n,،]+/)
+        .map((part) => part.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+export function formatDeliveryZoneAliasesText(aliases: string[] | null | undefined): string {
+  return (aliases ?? []).map((alias) => String(alias).trim()).filter(Boolean).join("، ");
+}
 
 function toFiniteNumber(value: unknown, fallback: number): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -52,6 +71,7 @@ export function normalizeDeliveryZone(row: CompanyDeliveryZoneRow): CompanyDeliv
     id: row.id,
     governorate: String(row.governorate ?? "").trim(),
     zoneName: String(row.zone_name ?? "").trim(),
+    aliasesText: formatDeliveryZoneAliasesText(row.aliases),
     enabled: row.enabled !== false,
     deliveryFee: Math.max(0, toFiniteNumber(row.delivery_fee, 0)),
     etaMin: Math.max(1, Math.floor(toFiniteNumber(row.eta_min, 1))),
@@ -78,6 +98,7 @@ export function deliveryZoneToInsert(companyId: string, values: CompanyDeliveryZ
     company_id: companyId,
     governorate: values.governorate.trim(),
     zone_name: values.zoneName.trim(),
+    aliases: parseDeliveryZoneAliasesText(values.aliasesText ?? ""),
     enabled: values.enabled !== false,
     delivery_fee: Math.max(0, Number(values.deliveryFee) || 0),
     eta_min: etaMin,
@@ -93,6 +114,7 @@ export function deliveryZoneToUpdate(values: CompanyDeliveryZoneFormValues) {
   return {
     governorate: values.governorate.trim(),
     zone_name: values.zoneName.trim(),
+    aliases: parseDeliveryZoneAliasesText(values.aliasesText ?? ""),
     enabled: values.enabled !== false,
     delivery_fee: Math.max(0, Number(values.deliveryFee) || 0),
     eta_min: etaMin,

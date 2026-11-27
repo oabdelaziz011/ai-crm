@@ -82,60 +82,62 @@ export function SalesOrdersPage() {
         <p className="max-w-2xl text-[13px] text-muted-foreground">{t("salesOrders.subtitle")}</p>
       </div>
 
-      <div className="grid gap-3 rounded-2xl border border-border/50 bg-card/40 p-4 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="space-y-1 lg:col-span-2">
-          <Label htmlFor="sales-orders-search">{t("salesOrders.filters.search")}</Label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="sales-orders-search"
-              className="ps-9"
-              value={search}
-              placeholder={t("salesOrders.filters.searchPlaceholder")}
+      <div className="space-y-3 rounded-2xl border border-border/50 bg-card/40 p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="sales-orders-search">{t("salesOrders.filters.search")}</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="sales-orders-search"
+                className="ps-9"
+                value={search}
+                placeholder={t("salesOrders.filters.searchPlaceholder")}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="sales-orders-status">{t("salesOrders.filters.status")}</Label>
+            <select
+              id="sales-orders-status"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={status}
               onChange={(event) => {
-                setSearch(event.target.value);
+                const next = event.target.value;
+                setStatus(next === "all" ? "all" : (next as SalesOrderStatus));
                 setPage(1);
               }}
-            />
+            >
+              <option value="all">{t("salesOrders.filters.allStatuses")}</option>
+              {SALES_ORDER_STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`salesOrders.status.${value}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="sales-orders-payment">{t("salesOrders.filters.payment")}</Label>
+            <select
+              id="sales-orders-payment"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={paymentMethod}
+              onChange={(event) => {
+                const next = event.target.value;
+                setPaymentMethod(next === "all" ? "all" : (next as SalesOrderPaymentMethod));
+                setPage(1);
+              }}
+            >
+              <option value="all">{t("salesOrders.filters.allPayments")}</option>
+              <option value="cash_on_delivery">{t("salesOrders.payment.cash_on_delivery")}</option>
+            </select>
           </div>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="sales-orders-status">{t("salesOrders.filters.status")}</Label>
-          <select
-            id="sales-orders-status"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={status}
-            onChange={(event) => {
-              const next = event.target.value;
-              setStatus(next === "all" ? "all" : (next as SalesOrderStatus));
-              setPage(1);
-            }}
-          >
-            <option value="all">{t("salesOrders.filters.allStatuses")}</option>
-            {SALES_ORDER_STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {t(`salesOrders.status.${value}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="sales-orders-payment">{t("salesOrders.filters.payment")}</Label>
-          <select
-            id="sales-orders-payment"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={paymentMethod}
-            onChange={(event) => {
-              const next = event.target.value;
-              setPaymentMethod(next === "all" ? "all" : (next as SalesOrderPaymentMethod));
-              setPage(1);
-            }}
-          >
-            <option value="all">{t("salesOrders.filters.allPayments")}</option>
-            <option value="cash_on_delivery">{t("salesOrders.payment.cash_on_delivery")}</option>
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-1 lg:grid-cols-1">
+        <div className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="sales-orders-from">{t("salesOrders.filters.from")}</Label>
             <Input
@@ -204,7 +206,11 @@ export function SalesOrdersPage() {
                   </p>
                 </div>
                 <p>{order.customerName || "—"}</p>
-                <p dir="ltr">{order.customerPhone || "—"}</p>
+                <p className="min-w-0 text-start">
+                  <span dir="ltr" className="inline-block">
+                    {order.customerPhone || "—"}
+                  </span>
+                </p>
                 <p className="truncate text-muted-foreground">
                   {order.itemsSummary || t("salesOrders.noItems")}
                 </p>

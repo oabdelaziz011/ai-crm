@@ -5,6 +5,8 @@ export type SalesOrderRequiredFields = {
   cityArea: boolean;
   detailedAddress: boolean;
   deliveryNotes: boolean;
+  deliveryLocation: boolean;
+  secondaryPhone: boolean;
 };
 
 export type CompanyOrderSettingsSnapshot = {
@@ -67,6 +69,10 @@ export type CreateSalesOrderWriteInput = {
   deliveryLat: number | null;
   deliveryLng: number | null;
   deliveryLocationUrl: string;
+  customerSecondaryPhone: string;
+  etaMinSnapshot: number;
+  etaMaxSnapshot: number;
+  etaUnitSnapshot: "hours" | "days";
   deliveryFee: number;
   subtotal: number;
   totalAmount: number;
@@ -95,7 +101,14 @@ export type SalesOrderToolPorts = {
     companyId: string;
     governorate: string;
     zoneName: string;
-  }): Promise<DeliveryZoneSnapshot | null>;
+  }): Promise<
+    | { status: "ok"; zone: DeliveryZoneSnapshot }
+    | { status: "none" }
+    | {
+        status: "ambiguous";
+        candidates: Array<{ id: string; governorate: string; zoneName: string }>;
+      }
+  >;
 
   priceCatalogLines(input: {
     companyId: string;
@@ -119,6 +132,13 @@ export type SalesOrderToolPorts = {
     phone: string;
     email?: string | null;
     preferredLanguage?: string | null;
+    secondaryPhone?: string | null;
+    deliveryAddress?: string | null;
+    deliveryGovernorate?: string | null;
+    deliveryCityArea?: string | null;
+    deliveryLat?: number | null;
+    deliveryLng?: number | null;
+    deliveryLocationUrl?: string | null;
   }): Promise<UpsertOrderCustomerResult>;
 
   createSalesOrder(input: CreateSalesOrderWriteInput): Promise<CreateSalesOrderWriteResult>;

@@ -81,6 +81,69 @@ export class WhatsAppProvider {
     return { ...result, enabled: true };
   }
 
+  async sendFreeformText(
+    companyId: string,
+    recipientPhone: string,
+    text: string,
+  ): Promise<WhatsAppDeliveryResult> {
+    await this.assertCommercialAccess(companyId);
+    const settings = await this.settingsRepository.getSecure(companyId);
+    if (!settings?.enabled) {
+      throw new Error("WhatsApp provider is disabled");
+    }
+    this.assertCredentialsSendable(settings);
+
+    const body = text.trim();
+    if (!body) throw new Error("Message text is required");
+
+    const rendered = this.renderer.renderEvent(
+      "generic_system",
+      { detail: body.slice(0, 900) },
+      settings.defaultLanguage,
+    );
+
+    const outbound = resolveWhatsAppOutboundPhone({ phone: recipientPhone });
+    const phoneValidation = outbound.ok
+      ? validateRecipientPhone(outbound.phone)
+      : { valid: false as const, normalized: null, error: outbound.reason };
+    if (!phoneValidation.valid || !phoneValidation.normalized) {
+      throw new Error(`Invalid recipient phone: ${phoneValidation.error ?? "invalid"}`);
+    }
+
+    const started = Date.now();
+    try {
+      const sendResult = await this.transport.send(
+        {
+          to: phoneValidation.normalized,
+          templateKey: rendered.templateKey,
+          templateId: rendered.templateId,
+          languageCode: rendered.languageCode,
+          bodyParameters: rendered.bodyParameters,
+          fallbackText: body,
+        },
+        this.toMetaConfig(settings),
+      );
+
+      return {
+        queueId: "delivery-dispatch",
+        notificationId: null,
+        companyId,
+        provider: WHATSAPP_PROVIDER,
+        status: "completed",
+        durationMs: Date.now() - started,
+        attempts: 1,
+        lastError: null,
+        recipientPhone,
+        messageId: sendResult.messageId,
+        templateKey: rendered.templateKey,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`WhatsApp dispatch failed: ${message}`);
+    }
+  }
+
   async sendTestMessage(companyId: string, recipientPhone: string): Promise<WhatsAppDeliveryResult> {
     await this.assertCommercialAccess(companyId);
     const settings = await this.settingsRepository.getSecure(companyId);

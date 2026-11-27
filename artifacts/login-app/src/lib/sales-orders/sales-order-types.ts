@@ -33,6 +33,21 @@ export type SalesOrderStatusEvent = {
   toStatus: SalesOrderStatus;
   note: string;
   changedBy: string | null;
+  changedByName: string | null;
+  createdAt: string;
+};
+
+export type SalesOrderDeliveryAssignment = {
+  id: string;
+  previousWorkerId: string | null;
+  previousWorkerName: string | null;
+  newWorkerId: string | null;
+  newWorkerName: string | null;
+  assignmentMode: "manual" | "ai";
+  assignedBy: string | null;
+  assignedByName: string | null;
+  reassignmentReason: string | null;
+  outcome: "assigned" | "reassigned" | "failed";
   createdAt: string;
 };
 
@@ -69,6 +84,22 @@ export type SalesOrderDetail = SalesOrderListRow & {
   deliveryLat: number | null;
   deliveryLng: number | null;
   deliveryLocationUrl: string;
+  customerSecondaryPhone: string;
+  etaMinSnapshot: number | null;
+  etaMaxSnapshot: number | null;
+  etaUnitSnapshot: "hours" | "days" | null;
+  assignedDeliveryWorkerId: string | null;
+  assignedAt: string | null;
+  assignedBy: string | null;
+  assignedDeliveryWorkerName: string | null;
+  assignedDeliveryWorkerPhone: string | null;
+  assignmentPendingReason: string | null;
+  deliveryAssignmentModeApplied: "manual" | "ai" | null;
+  deliveryNotifyStatus: "none" | "pending" | "sent" | "failed";
+  deliveryNotifyMessageId: string | null;
+  deliveryNotifyError: string | null;
+  deliveryNotifyIdempotencyKey: string | null;
+  deliveryAssignments: SalesOrderDeliveryAssignment[];
   customerEmail: string;
   preferredLanguage: string;
   sourceChannel: string;

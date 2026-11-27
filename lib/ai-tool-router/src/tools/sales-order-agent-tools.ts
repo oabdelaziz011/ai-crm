@@ -28,7 +28,8 @@ const ACTIVE_STATES: ConversationState[] = [
 
 const ORDER_INSTRUCTION =
   "If success is false, do not invent an order number, fee, or ETA. " +
-  "If success is true, never claim the order is paid, shipped, or delivered. " +
+  "If success is true, tell the customer the ETA window from etaMin/etaMax/etaUnit when present. " +
+  "Never claim the order is paid, shipped, or delivered. " +
   "pending_approval means a human teammate must still approve.";
 
 function requireCompany(context: ToolExecutionContext): string {
@@ -190,6 +191,7 @@ function createCreateSalesOrderTool(ports: SalesOrderToolPorts): Tool {
             deliveryLocationUrl: { type: "string" },
             deliveryLat: { type: "number" },
             deliveryLng: { type: "number" },
+            customerSecondaryPhone: { type: "string" },
           },
           required: [
             "customerConfirmed",
@@ -230,6 +232,8 @@ function createCreateSalesOrderTool(ports: SalesOrderToolPorts): Tool {
           typeof input.deliveryLocationUrl === "string" ? input.deliveryLocationUrl : "",
         deliveryLat: typeof input.deliveryLat === "number" ? input.deliveryLat : null,
         deliveryLng: typeof input.deliveryLng === "number" ? input.deliveryLng : null,
+        customerSecondaryPhone:
+          typeof input.customerSecondaryPhone === "string" ? input.customerSecondaryPhone : "",
       });
 
       if (!result.ok) {
@@ -252,6 +256,9 @@ function createCreateSalesOrderTool(ports: SalesOrderToolPorts): Tool {
         paymentStatus: result.paymentStatus,
         totalAmount: result.totalAmount,
         currency: result.currency,
+        etaMin: result.etaMin,
+        etaMax: result.etaMax,
+        etaUnit: result.etaUnit,
         message: result.message,
         instruction: ORDER_INSTRUCTION,
       };

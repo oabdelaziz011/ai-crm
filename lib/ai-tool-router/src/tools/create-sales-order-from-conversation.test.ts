@@ -30,11 +30,13 @@ function createPorts(overrides: Partial<SalesOrderToolPorts> = {}): SalesOrderTo
           cityArea: true,
           detailedAddress: true,
           deliveryNotes: false,
+          deliveryLocation: false,
+          secondaryPhone: true,
         },
       };
     },
     async findEnabledDeliveryZone() {
-      return zone;
+      return { status: "ok" as const, zone };
     },
     async priceCatalogLines({ items }) {
       return {
@@ -113,6 +115,8 @@ describe("createSalesOrderFromConfirmedConversation", () => {
             cityArea: true,
             detailedAddress: true,
             deliveryNotes: false,
+            deliveryLocation: false,
+            secondaryPhone: true,
           },
         };
       },
@@ -137,7 +141,7 @@ describe("createSalesOrderFromConfirmedConversation", () => {
   it("fails closed for unsupported delivery zones", async () => {
     const ports = createPorts({
       async findEnabledDeliveryZone() {
-        return null;
+        return { status: "none" as const };
       },
     });
     const zone = await validateDeliveryZoneForOrder(ports, {
@@ -147,6 +151,30 @@ describe("createSalesOrderFromConfirmedConversation", () => {
     });
     assert.equal(zone.ok, false);
     if (!zone.ok) assert.equal(zone.code, "zone_unsupported");
+  });
+
+  it("asks for clarification when multiple zones match", async () => {
+    const ports = createPorts({
+      async findEnabledDeliveryZone() {
+        return {
+          status: "ambiguous" as const,
+          candidates: [
+            { id: "z1", governorate: "Cairo", zoneName: "Nasr City" },
+            { id: "z2", governorate: "Cairo", zoneName: "New Cairo" },
+          ],
+        };
+      },
+    });
+    const zone = await validateDeliveryZoneForOrder(ports, {
+      companyId: "co-1",
+      governorate: "Cairo",
+      zoneName: "Nasr",
+    });
+    assert.equal(zone.ok, false);
+    if (!zone.ok) {
+      assert.equal(zone.code, "zone_ambiguous");
+      assert.equal(zone.candidates?.length, 2);
+    }
   });
 
   it("previews totals without writing and creates pending_approval after confirm", async () => {

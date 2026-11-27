@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageSquareReply } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { DashboardCard } from "@/components/dashboard/ui";
@@ -8,7 +9,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SalesFollowUpTab } from "@/components/settings/sales/sales-follow-up-tab";
 import { SalesOrderManagementTab } from "@/components/settings/sales/sales-order-management-tab";
 import { SalesDeliverySettingsTab } from "@/components/settings/sales/sales-delivery-settings-tab";
+import { SalesDeliveryWorkersTab } from "@/components/settings/sales/sales-delivery-workers-tab";
 import { SalesOrderApprovalsTab } from "@/components/settings/sales/sales-order-approvals-tab";
+
+const SALES_FOLLOW_UP_TABS = ["follow-up", "orders", "delivery", "workers", "approvals"] as const;
+type SalesFollowUpTabId = (typeof SALES_FOLLOW_UP_TABS)[number];
+
+function resolveSalesFollowUpTab(search: string): SalesFollowUpTabId {
+  const raw = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("tab");
+  return (SALES_FOLLOW_UP_TABS as readonly string[]).includes(raw ?? "")
+    ? (raw as SalesFollowUpTabId)
+    : "follow-up";
+}
 
 function useWorkerStatus() {
   const [status, setStatus] = useState<{
@@ -42,13 +54,30 @@ function useWorkerStatus() {
 }
 
 export function SettingsSalesFollowUpPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { profile } = useAuth();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const companyId = profile?.company_id ?? null;
   const canEdit =
     isSuperAdmin || hasPermission("settings.edit") || hasPermission("leads.manage");
   const workerStatus = useWorkerStatus();
+  const dir = i18n.dir();
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const tabFromUrl = useMemo(() => resolveSalesFollowUpTab(search), [search]);
+  const [tab, setTab] = useState<SalesFollowUpTabId>(tabFromUrl);
+
+  useEffect(() => {
+    setTab(tabFromUrl);
+  }, [tabFromUrl]);
+
+  const onTabChange = (value: string) => {
+    const next = (SALES_FOLLOW_UP_TABS as readonly string[]).includes(value)
+      ? (value as SalesFollowUpTabId)
+      : "follow-up";
+    setTab(next);
+    setLocation(`/dashboard/settings/sales/follow-up?tab=${next}`);
+  };
 
   return (
     <DashboardCard className="overflow-hidden">
@@ -62,9 +91,9 @@ export function SettingsSalesFollowUpPage() {
         </p>
       </div>
 
-      <div className="p-5 pt-3">
-        <Tabs defaultValue="follow-up">
-          <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b border-border/60 bg-transparent p-0">
+      <div className="p-5 pt-3" dir={dir}>
+        <Tabs value={tab} onValueChange={onTabChange} dir={dir}>
+          <TabsList className="flex h-auto w-full justify-start gap-0 rounded-none border-b border-border/60 bg-transparent p-0">
             <TabsTrigger
               value="follow-up"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
@@ -84,6 +113,12 @@ export function SettingsSalesFollowUpPage() {
               {t("dashboard.settings.salesOrder.tabs.delivery")}
             </TabsTrigger>
             <TabsTrigger
+              value="workers"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            >
+              {t("dashboard.settings.salesOrder.tabs.workers")}
+            </TabsTrigger>
+            <TabsTrigger
               value="approvals"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
             >
@@ -99,6 +134,13 @@ export function SettingsSalesFollowUpPage() {
           </TabsContent>
           <TabsContent value="delivery" className="mt-4">
             <SalesDeliverySettingsTab companyId={companyId} canEdit={canEdit} />
+          </TabsContent>
+          <TabsContent value="workers" className="mt-4">
+            <SalesDeliveryWorkersTab
+              companyId={companyId}
+              canEdit={canEdit}
+              onOpenDeliverySettings={() => onTabChange("delivery")}
+            />
           </TabsContent>
           <TabsContent value="approvals" className="mt-4">
             <SalesOrderApprovalsTab companyId={companyId} canEdit={canEdit} />

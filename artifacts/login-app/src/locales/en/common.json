@@ -1901,7 +1901,8 @@
       "expiredLink": "This link has expired. Request a new one and try again.",
       "invalidResetLink": "This reset link is invalid or has expired.",
       "networkError": "Network error. Check your connection and try again.",
-      "rateLimitExceeded": "Too many email requests. Please wait a few minutes before trying again.",
+      "rateLimitExceeded": "Too many requests. Please wait a few minutes before trying again.",
+      "loginRateLimited": "Too many failed sign-in attempts. Please wait {{minutes}} minute(s) and try again.",
       "unknownServerError": "Something went wrong. Please try again."
     }
   },
@@ -4295,6 +4296,7 @@
           "followUp": "Sales Follow-up",
           "orders": "Order Management",
           "delivery": "Delivery Settings",
+          "workers": "Delivery Workers",
           "approvals": "Order Approvals"
         },
         "save": "Save order settings",
@@ -4319,7 +4321,57 @@
             "governorate": "Governorate",
             "cityArea": "City / area",
             "detailedAddress": "Detailed address",
-            "deliveryNotes": "Delivery notes"
+            "deliveryNotes": "Delivery notes",
+            "deliveryLocation": "Delivery location (maps link / coordinates)",
+            "secondaryPhone": "Ask for a second phone number (optional to skip)"
+          }
+        },
+        "workers": {
+          "subtitle": "Add delivery workers with phone numbers and map them to the zones they serve.",
+          "addWorker": "Add delivery worker",
+          "editWorker": "Edit delivery worker",
+          "cancelEdit": "Cancel edit",
+          "fullName": "Full name",
+          "phone": "WhatsApp phone",
+          "phoneHelp": "Pick a country code, then enter the local number — or paste an international number.",
+          "active": "Worker is active",
+          "activeHelp": "Inactive workers are hidden from order assignment and do not receive new order notifications.",
+          "assignmentModeTitle": "Who assigns orders to delivery workers?",
+          "assignmentModeHelp": "Choose manual assignment from the order details panel, or automatic assignment after confirmation.",
+          "assignmentModeManual": "Human assignment",
+          "assignmentModeManualHelp": "From Sales Orders → order details, pick the worker yourself.",
+          "assignmentModeAi": "Automatic (AI)",
+          "assignmentModeAiHelp": "After the order is confirmed, assign the first active worker covering that zone.",
+          "assignmentModeManualSaved": "Assignment mode set to human",
+          "assignmentModeAiSaved": "Assignment mode set to automatic",
+          "zones": "Service zones",
+          "zonesHelp": "Check every delivery zone this worker covers. You can select more than one.",
+          "openDeliverySettings": "Add / edit zones",
+          "addZonesHint": "To add a new zone, open Delivery Settings with the button above.",
+          "oneZoneHint": "Only one zone exists. Add more zones under Delivery Settings to assign multiple areas.",
+          "selectedZones": "Selected zones: {{zones}}",
+          "noZones": "No delivery zones yet. Add zones in Delivery Settings first.",
+          "noZonesAssigned": "No zones assigned",
+          "saveWorker": "Save worker",
+          "updateWorker": "Update worker",
+          "listTitle": "Delivery workers",
+          "empty": "No delivery workers yet.",
+          "edit": "Edit",
+          "deleted": "Delivery worker deleted",
+          "deleteFailed": "Could not delete delivery worker",
+          "saved": "Delivery worker saved",
+          "saveFailed": "Could not save delivery worker",
+          "activated": "Worker activated",
+          "deactivated": "Worker deactivated — hidden from order assignment",
+          "statusActive": "Active",
+          "statusInactive": "Inactive",
+          "zoneCount": "{{count}} zone(s)",
+          "errors": {
+            "nameRequired": "Full name is required.",
+            "phoneRequired": "Phone number is required.",
+            "phoneRegionRequired": "Select a country code first.",
+            "phoneInvalid": "Phone number is invalid.",
+            "duplicate": "A worker with this phone already exists for the company."
           }
         },
         "delivery": {
@@ -4330,6 +4382,10 @@
           "cancelEdit": "Cancel edit",
           "governorate": "Governorate",
           "zoneName": "City / area / zone name",
+          "aliases": "Alternate names (Arabic / English)",
+          "aliasesPlaceholder": "e.g. مدينة نصر, مدينه نصر",
+          "aliasesHelp": "Comma-separated names customers might type. AI uses these for matching.",
+          "aliasesList": "Aliases: {{aliases}}",
           "fee": "Delivery fee",
           "etaMin": "Minimum ETA",
           "etaMax": "Maximum ETA",
@@ -16781,6 +16837,48 @@
       "noHistory": "No status history recorded yet.",
       "approve": "Approve",
       "reject": "Reject",
+      "assignDelivery": "Assign delivery",
+      "assignDeliveryHelp": "Choose a worker who covers this order zone. WhatsApp will receive the order details.",
+      "assignDeliveryNearDetails": "Assignment happens here, next to the delivery details on this order.",
+      "assignDeliverySelect": "Delivery worker",
+      "assignDeliveryEmpty": "No active workers mapped to this zone.",
+      "assignDeliverySuccess": "Assigned to {{name}}",
+      "assignDeliveryNotifyOk": "WhatsApp dispatch sent.",
+      "assignDeliveryNotifyFailed": "Assigned, but WhatsApp notify failed: {{error}}",
+      "assignmentPendingTitle": "Pending assignment",
+      "notifyStatus": "Notify status: {{status}}",
+      "notifyStatusValue": {
+        "none": "none",
+        "pending": "pending",
+        "sent": "sent",
+        "failed": "failed"
+      },
+      "assignmentModeValue": {
+        "manual": "Manual",
+        "ai": "Automatic"
+      },
+      "retryNotify": "Retry WhatsApp notify",
+      "retryNotifyOk": "WhatsApp notify resent",
+      "retryNotifyFailed": "WhatsApp notify retry failed",
+      "retryNotifySkipped": "Notify already sent",
+      "reassignTitle": "Reassign delivery worker",
+      "reassignHelp": "Replace the current worker. Confirmation and a reason are required.",
+      "reassignReasonPlaceholder": "Reason for reassignment",
+      "reassignConfirm": "I confirm replacing the current delivery worker",
+      "reassign": "Reassign",
+      "reassignSuccess": "Reassigned to {{name}}",
+      "assignmentHistory": "Assignment history",
+      "assignmentOutcome": {
+        "assigned": "Assigned",
+        "reassigned": "Reassigned",
+        "failed": "Failed"
+      },
+      "previousWorker": "was {{name}}",
+      "assignedBy": "By {{name}}",
+      "assignedWorker": "Delivery worker: {{name}}",
+      "etaSnapshot": "ETA: {{min}}–{{max}} {{unit}}",
+      "secondaryPhone": "Second phone: {{phone}}",
+      "actionFailed": "Action failed",
       "updatedAt": "Updated {{date}}",
       "openCustomer": "Open CRM customer",
       "paymentStatus": "Payment status: {{status}}",
@@ -16789,7 +16887,29 @@
       "salesperson": "Salesperson: {{id}}",
       "sourceChannel": "Source: {{channel}}",
       "preferredLanguage": "Language: {{lang}}",
-      "locationUrl": "Open location"
+      "locationUrl": "Open location",
+      "notes": {
+        "createdByAi": "Created by AI after explicit customer confirmation",
+        "approvedByHuman": "Approved by {{name}}",
+        "rejectedByHuman": "Rejected by {{name}}",
+        "approvedByHumanFallback": "Approved by human reviewer",
+        "rejectedByHumanFallback": "Rejected by human reviewer"
+      }
+    },
+    "paymentStatus": {
+      "unpaid": "Unpaid",
+      "pending": "Pending",
+      "paid": "Paid",
+      "refunded": "Refunded",
+      "failed": "Failed"
+    },
+    "sourceChannel": {
+      "web_chat": "Web chat",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "messenger": "Messenger",
+      "instagram": "Instagram",
+      "sms": "SMS"
     }
   },
   "quotes": {

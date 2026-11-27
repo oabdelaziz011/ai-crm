@@ -13,7 +13,14 @@ export type OrderRequiredFields = {
   cityArea: boolean;
   detailedAddress: boolean;
   deliveryNotes: boolean;
+  /** Maps link or coordinates — configurable required. */
+  deliveryLocation: boolean;
+  /** Always optional in the journey; toggle only controls whether AI asks. */
+  secondaryPhone: boolean;
 };
+
+export const DELIVERY_ASSIGNMENT_MODES = ["manual", "ai"] as const;
+export type DeliveryAssignmentMode = (typeof DELIVERY_ASSIGNMENT_MODES)[number];
 
 export type CompanyOrderSettingsFormValues = {
   aiOrderCollectionEnabled: boolean;
@@ -22,6 +29,8 @@ export type CompanyOrderSettingsFormValues = {
   requireHumanApproval: boolean;
   defaultReviewerProfileId: string | null;
   notifyOnPendingApproval: boolean;
+  /** manual = human assigns on sales order details; ai = auto-assign after confirm. */
+  deliveryAssignmentMode: DeliveryAssignmentMode;
 };
 
 export const DEFAULT_ORDER_REQUIRED_FIELDS: OrderRequiredFields = {
@@ -31,6 +40,8 @@ export const DEFAULT_ORDER_REQUIRED_FIELDS: OrderRequiredFields = {
   cityArea: true,
   detailedAddress: true,
   deliveryNotes: false,
+  deliveryLocation: false,
+  secondaryPhone: true,
 };
 
 export const DEFAULT_COMPANY_ORDER_SETTINGS: CompanyOrderSettingsFormValues = {
@@ -40,6 +51,7 @@ export const DEFAULT_COMPANY_ORDER_SETTINGS: CompanyOrderSettingsFormValues = {
   requireHumanApproval: true,
   defaultReviewerProfileId: null,
   notifyOnPendingApproval: true,
+  deliveryAssignmentMode: "manual",
 };
 
 export type CompanyOrderConfigState = "unconfigured" | "configured";
@@ -63,6 +75,8 @@ function normalizeRequiredFields(raw: unknown): OrderRequiredFields {
     cityArea: asBoolean(obj.cityArea, DEFAULT_ORDER_REQUIRED_FIELDS.cityArea),
     detailedAddress: asBoolean(obj.detailedAddress, DEFAULT_ORDER_REQUIRED_FIELDS.detailedAddress),
     deliveryNotes: asBoolean(obj.deliveryNotes, DEFAULT_ORDER_REQUIRED_FIELDS.deliveryNotes),
+    deliveryLocation: asBoolean(obj.deliveryLocation, DEFAULT_ORDER_REQUIRED_FIELDS.deliveryLocation),
+    secondaryPhone: asBoolean(obj.secondaryPhone, DEFAULT_ORDER_REQUIRED_FIELDS.secondaryPhone),
   };
 }
 
@@ -74,6 +88,10 @@ function normalizePaymentMethods(raw: unknown): OrderPaymentMethod[] {
   return allowed.length > 0 ? [...new Set(allowed)] : ["cash_on_delivery"];
 }
 
+function normalizeDeliveryAssignmentMode(raw: unknown): DeliveryAssignmentMode {
+  return raw === "ai" ? "ai" : "manual";
+}
+
 export function normalizeCompanyOrderSettings(
   row: Partial<{
     ai_order_collection_enabled: boolean | null;
@@ -82,6 +100,7 @@ export function normalizeCompanyOrderSettings(
     require_human_approval: boolean | null;
     default_reviewer_profile_id: string | null;
     notify_on_pending_approval: boolean | null;
+    delivery_assignment_mode: string | null;
   }> | null,
 ): CompanyOrderSettingsFormValues {
   if (!row) return { ...DEFAULT_COMPANY_ORDER_SETTINGS, requiredFields: { ...DEFAULT_ORDER_REQUIRED_FIELDS } };
@@ -95,6 +114,7 @@ export function normalizeCompanyOrderSettings(
         ? row.default_reviewer_profile_id.trim()
         : null,
     notifyOnPendingApproval: row.notify_on_pending_approval !== false,
+    deliveryAssignmentMode: normalizeDeliveryAssignmentMode(row.delivery_assignment_mode),
   };
 }
 
@@ -121,6 +141,7 @@ export function companyOrderSettingsToRow(companyId: string, values: CompanyOrde
     require_human_approval: values.requireHumanApproval !== false,
     default_reviewer_profile_id: values.defaultReviewerProfileId?.trim() || null,
     notify_on_pending_approval: values.notifyOnPendingApproval !== false,
+    delivery_assignment_mode: values.deliveryAssignmentMode === "ai" ? "ai" : "manual",
     updated_at: new Date().toISOString(),
   };
 }

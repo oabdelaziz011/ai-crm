@@ -16,7 +16,12 @@ import { formatSalesMoney } from "@/lib/sales/sales-localize";
 import type { SalesOrderStatus } from "@/lib/sales-orders/sales-order-types";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 import { useAuthUser, usePermissions } from "@/hooks/use-rbac";
+import { useDeliveryWorkersForZone } from "@/hooks/sales/use-company-delivery-workers";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 function statusClass(status: SalesOrderStatus): string {
   switch (status) {
@@ -35,6 +40,36 @@ function statusClass(status: SalesOrderStatus): string {
   }
 }
 
+const KNOWN_STATUS_NOTES: Record<string, string> = {
+  "Created by AI after explicit customer confirmation":
+    "salesOrders.details.notes.createdByAi",
+  "Approved by human reviewer": "salesOrders.details.notes.approvedByHuman",
+  "Rejected by human reviewer": "salesOrders.details.notes.rejectedByHuman",
+};
+
+function translateStatusNote(
+  note: string,
+  changedByName: string | null,
+  t: (key: string, options?: Record<string, string>) => string,
+): string {
+  const key = KNOWN_STATUS_NOTES[note];
+  if (!key) return note;
+  if (
+    changedByName &&
+    (key === "salesOrders.details.notes.approvedByHuman" ||
+      key === "salesOrders.details.notes.rejectedByHuman")
+  ) {
+    return t(key, { name: changedByName });
+  }
+  if (key === "salesOrders.details.notes.approvedByHuman") {
+    return t("salesOrders.details.notes.approvedByHumanFallback");
+  }
+  if (key === "salesOrders.details.notes.rejectedByHuman") {
+    return t("salesOrders.details.notes.rejectedByHumanFallback");
+  }
+  return t(key);
+}
+
 export function SalesOrderDetailsPanel({
   companyId,
   orderId,
@@ -47,13 +82,25 @@ export function SalesOrderDetailsPanel({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t, i18n } = useTranslation("common");
+  const { toast } = useToast();
   const detail = useSalesOrderDetail(companyId, orderId);
-  const { approve, reject } = useSalesOrderApprovalActions(companyId);
+  const { approve, reject, assignDelivery, retryDeliveryNotify } =
+    useSalesOrderApprovalActions(companyId);
   const { user } = useAuthUser();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("orders.edit");
+  const canAssign = hasPermission("orders.assign_delivery");
   const order = detail.data;
-  const busy = approve.isPending || reject.isPending;
+  const { workers } = useDeliveryWorkersForZone(companyId, order?.deliveryZoneId ?? null);
+  const [workerId, setWorkerId] = useState("");
+  const [reassignWorkerId, setReassignWorkerId] = useState("");
+  const [reassignReason, setReassignReason] = useState("");
+  const [reassignConfirm, setReassignConfirm] = useState(false);
+  const busy =
+    approve.isPending ||
+    reject.isPending ||
+    assignDelivery.isPending ||
+    retryDeliveryNotify.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,7 +134,6 @@ export function SalesOrderDetailsPanel({
               </span>
               <span className="text-xs text-muted-foreground">
                 {t("salesOrders.details.updatedAt", {
-                  defaultValue: "Updated {{date}}",
                   date: new Date(order.updatedAt).toLocaleString(i18n.language),
                 })}
               </span>
@@ -100,13 +146,36 @@ export function SalesOrderDetailsPanel({
                   size="sm"
                   disabled={busy}
                   onClick={() =>
-                    approve.mutate({ orderId: order.id, userId: user.id })
+                    approve.mutate(
+                      { orderId: order.id, userId: user.id },
+                      {
+                        onSuccess: (result) => {
+                          if (result.pendingReason) {
+                            toast({
+                              title: t("salesOrders.details.assignmentPendingTitle"),
+                              description: result.pendingReason,
+                            });
+                          } else if (result.autoAssigned && result.assignResult) {
+                            toast({
+                              title: t("salesOrders.details.assignDeliverySuccess", {
+                                name: result.assignResult.workerName,
+                              }),
+                              description: result.notifyOk
+                                ? t("salesOrders.details.assignDeliveryNotifyOk")
+                                : t("salesOrders.details.assignDeliveryNotifyFailed", {
+                                    error: result.notifyError ?? "",
+                                  }),
+                            });
+                          }
+                        },
+                      },
+                    )
                   }
                 >
                   {approve.isPending ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    t("salesOrders.details.approve", { defaultValue: "Approve" })
+                    t("salesOrders.details.approve")
                   )}
                 </Button>
                 <Button
@@ -121,15 +190,34 @@ export function SalesOrderDetailsPanel({
                   {reject.isPending ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    t("salesOrders.details.reject", { defaultValue: "Reject" })
+                    t("salesOrders.details.reject")
                   )}
                 </Button>
               </div>
             ) : null}
-            {approve.error || reject.error ? (
+            {approve.error || reject.error || assignDelivery.error || retryDeliveryNotify.error ? (
               <DashboardErrorBanner
-                message={(approve.error ?? reject.error)?.message ?? "Action failed"}
+                message={
+                  (
+                    approve.error ??
+                    reject.error ??
+                    assignDelivery.error ??
+                    retryDeliveryNotify.error
+                  )?.message ?? t("salesOrders.details.actionFailed")
+                }
               />
+            ) : null}
+
+            {order.assignmentPendingReason ? (
+              <div
+                className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm"
+                data-testid="sales-order-assignment-pending"
+              >
+                <p className="font-medium">{t("salesOrders.details.assignmentPendingTitle")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {order.assignmentPendingReason}
+                </p>
+              </div>
             ) : null}
 
             <section className="grid gap-3 sm:grid-cols-2">
@@ -141,6 +229,13 @@ export function SalesOrderDetailsPanel({
                 <p className="text-muted-foreground" dir="ltr">
                   {order.customerPhone || "—"}
                 </p>
+                {order.customerSecondaryPhone ? (
+                  <p className="text-xs text-muted-foreground" dir="ltr">
+                    {t("salesOrders.details.secondaryPhone", {
+                      phone: order.customerSecondaryPhone,
+                    })}
+                  </p>
+                ) : null}
                 {order.customerEmail ? (
                   <p className="text-muted-foreground" dir="ltr">
                     {order.customerEmail}
@@ -151,9 +246,7 @@ export function SalesOrderDetailsPanel({
                     href={`~/dashboard/customers/${order.customerId}/orders`}
                     className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
                   >
-                    {t("salesOrders.details.openCustomer", {
-                      defaultValue: "Open CRM customer",
-                    })}
+                    {t("salesOrders.details.openCustomer")}
                   </Link>
                 ) : null}
               </div>
@@ -164,8 +257,9 @@ export function SalesOrderDetailsPanel({
                 <p>{t(`salesOrders.payment.${order.paymentMethod}`)}</p>
                 <p className="text-xs text-muted-foreground">
                   {t("salesOrders.details.paymentStatus", {
-                    defaultValue: "Payment status: {{status}}",
-                    status: order.paymentStatus,
+                    status: t(`salesOrders.paymentStatus.${order.paymentStatus}`, {
+                      defaultValue: order.paymentStatus,
+                    }),
                   })}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -179,36 +273,36 @@ export function SalesOrderDetailsPanel({
             <section className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-border/60 p-3">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("salesOrders.details.attribution", { defaultValue: "Attribution" })}
+                  {t("salesOrders.details.attribution")}
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   {t("salesOrders.details.aiEmployee", {
-                    defaultValue: "AI employee: {{id}}",
                     id: order.aiEmployeeId || "—",
                   })}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {t("salesOrders.details.salesperson", {
-                    defaultValue: "Salesperson: {{id}}",
                     id: order.assignedSalespersonId || "—",
                   })}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {t("salesOrders.details.sourceChannel", {
-                    defaultValue: "Source: {{channel}}",
-                    channel: order.sourceChannel || "—",
+                    channel: order.sourceChannel
+                      ? t(`salesOrders.sourceChannel.${order.sourceChannel}`, {
+                          defaultValue: order.sourceChannel,
+                        })
+                      : "—",
                   })}
                 </p>
                 {order.preferredLanguage ? (
                   <p className="text-xs text-muted-foreground">
                     {t("salesOrders.details.preferredLanguage", {
-                      defaultValue: "Language: {{lang}}",
                       lang: order.preferredLanguage,
                     })}
                   </p>
                 ) : null}
               </div>
-              <div className="rounded-xl border border-border/60 p-3">
+              <div className="rounded-xl border border-border/60 p-3 sm:col-span-1">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {t("salesOrders.details.delivery")}
                 </h3>
@@ -216,6 +310,27 @@ export function SalesOrderDetailsPanel({
                   {[order.deliveryGovernorate, order.deliveryCityArea].filter(Boolean).join(" · ") || "—"}
                 </p>
                 <p className="mt-1 text-muted-foreground">{order.deliveryAddress || "—"}</p>
+                {order.etaMinSnapshot != null &&
+                order.etaMaxSnapshot != null &&
+                order.etaUnitSnapshot ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("salesOrders.details.etaSnapshot", {
+                      min: String(order.etaMinSnapshot),
+                      max: String(order.etaMaxSnapshot),
+                      unit: order.etaUnitSnapshot,
+                    })}
+                  </p>
+                ) : null}
+                {order.assignedDeliveryWorkerName ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("salesOrders.details.assignedWorker", {
+                      name: order.assignedDeliveryWorkerName,
+                    })}
+                    {order.assignedDeliveryWorkerPhone ? (
+                      <span dir="ltr"> · {order.assignedDeliveryWorkerPhone}</span>
+                    ) : null}
+                  </p>
+                ) : null}
                 {order.deliveryNotes ? (
                   <p className="mt-2 text-xs text-muted-foreground">{order.deliveryNotes}</p>
                 ) : null}
@@ -226,7 +341,7 @@ export function SalesOrderDetailsPanel({
                     rel="noreferrer"
                     className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
                   >
-                    {t("salesOrders.details.locationUrl", { defaultValue: "Open location" })}
+                    {t("salesOrders.details.locationUrl")}
                   </a>
                 ) : null}
                 {order.deliveryLat != null && order.deliveryLng != null ? (
@@ -236,6 +351,267 @@ export function SalesOrderDetailsPanel({
                 ) : null}
               </div>
             </section>
+
+            {(order.status === "confirmed" || order.status === "processing") &&
+            canAssign &&
+            user?.id &&
+            !order.assignedDeliveryWorkerId ? (
+              <div
+                className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-3"
+                data-testid="sales-order-assign-delivery"
+              >
+                <Label>{t("salesOrders.details.assignDeliverySelect")}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("salesOrders.details.assignDeliveryHelp")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("salesOrders.details.assignDeliveryNearDetails")}
+                </p>
+                {workers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("salesOrders.details.assignDeliveryEmpty")}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <select
+                      className="flex h-10 min-w-[14rem] flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                      value={workerId}
+                      onChange={(event) => setWorkerId(event.target.value)}
+                    >
+                      <option value="">—</option>
+                      {workers.map((worker) => (
+                        <option key={worker.id} value={worker.id}>
+                          {worker.fullName} ({worker.phoneE164})
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={busy || !workerId}
+                      onClick={() => {
+                        if (!user.id || !workerId) return;
+                        assignDelivery.mutate(
+                          { orderId: order.id, userId: user.id, workerId },
+                          {
+                            onSuccess: (result) => {
+                              toast({
+                                title: t("salesOrders.details.assignDeliverySuccess", {
+                                  name: result.workerName,
+                                }),
+                                description: result.notifyOk
+                                  ? t("salesOrders.details.assignDeliveryNotifyOk")
+                                  : t("salesOrders.details.assignDeliveryNotifyFailed", {
+                                      error: result.notifyError ?? "",
+                                    }),
+                              });
+                              setWorkerId("");
+                            },
+                          },
+                        );
+                      }}
+                    >
+                      {assignDelivery.isPending ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        t("salesOrders.details.assignDelivery")
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {order.assignedDeliveryWorkerId && canAssign && user?.id ? (
+              <div
+                className="space-y-3 rounded-xl border border-border/60 p-3"
+                data-testid="sales-order-reassign-delivery"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {t("salesOrders.details.assignedWorker", {
+                        name: order.assignedDeliveryWorkerName || "—",
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("salesOrders.details.notifyStatus", {
+                        status: t(`salesOrders.details.notifyStatusValue.${order.deliveryNotifyStatus}`),
+                      })}
+                      {order.deliveryAssignmentModeApplied
+                        ? ` · ${t(`salesOrders.details.assignmentModeValue.${order.deliveryAssignmentModeApplied}`)}`
+                        : null}
+                    </p>
+                    {order.deliveryNotifyError ? (
+                      <p className="text-xs text-destructive">{order.deliveryNotifyError}</p>
+                    ) : null}
+                  </div>
+                  {order.deliveryNotifyStatus === "failed" ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        retryDeliveryNotify.mutate(
+                          { orderId: order.id, userId: user.id },
+                          {
+                            onSuccess: (result) => {
+                              toast({
+                                title: result.skipped
+                                  ? t("salesOrders.details.retryNotifySkipped")
+                                  : result.notifyOk
+                                    ? t("salesOrders.details.retryNotifyOk")
+                                    : t("salesOrders.details.retryNotifyFailed"),
+                                description: result.skipped
+                                  ? result.reason ?? undefined
+                                  : result.notifyError ?? undefined,
+                              });
+                            },
+                          },
+                        )
+                      }
+                    >
+                      {retryDeliveryNotify.isPending ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        t("salesOrders.details.retryNotify")
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2 border-t border-border/40 pt-3">
+                  <Label>{t("salesOrders.details.reassignTitle")}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("salesOrders.details.reassignHelp")}
+                  </p>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={reassignWorkerId}
+                    onChange={(event) => setReassignWorkerId(event.target.value)}
+                  >
+                    <option value="">—</option>
+                    {workers
+                      .filter((worker) => worker.id !== order.assignedDeliveryWorkerId)
+                      .map((worker) => (
+                        <option key={worker.id} value={worker.id}>
+                          {worker.fullName} ({worker.phoneE164})
+                        </option>
+                      ))}
+                  </select>
+                  <Input
+                    value={reassignReason}
+                    placeholder={t("salesOrders.details.reassignReasonPlaceholder")}
+                    onChange={(event) => setReassignReason(event.target.value)}
+                  />
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={reassignConfirm}
+                      onChange={(event) => setReassignConfirm(event.target.checked)}
+                    />
+                    {t("salesOrders.details.reassignConfirm")}
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      busy ||
+                      !reassignWorkerId ||
+                      !reassignReason.trim() ||
+                      !reassignConfirm
+                    }
+                    onClick={() => {
+                      if (!user.id || !reassignWorkerId) return;
+                      assignDelivery.mutate(
+                        {
+                          orderId: order.id,
+                          userId: user.id,
+                          workerId: reassignWorkerId,
+                          reassign: true,
+                          reassignmentReason: reassignReason.trim(),
+                        },
+                        {
+                          onSuccess: (result) => {
+                            toast({
+                              title: t("salesOrders.details.reassignSuccess", {
+                                name: result.workerName,
+                              }),
+                              description: result.notifyOk
+                                ? t("salesOrders.details.assignDeliveryNotifyOk")
+                                : t("salesOrders.details.assignDeliveryNotifyFailed", {
+                                    error: result.notifyError ?? "",
+                                  }),
+                            });
+                            setReassignWorkerId("");
+                            setReassignReason("");
+                            setReassignConfirm(false);
+                          },
+                        },
+                      );
+                    }}
+                  >
+                    {assignDelivery.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      t("salesOrders.details.reassign")
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {order.deliveryAssignments.length > 0 ? (
+              <section
+                className="rounded-xl border border-border/60 p-3"
+                data-testid="sales-order-assignment-history"
+              >
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("salesOrders.details.assignmentHistory")}
+                </h3>
+                <ul className="space-y-2">
+                  {order.deliveryAssignments.map((entry) => (
+                    <li key={entry.id} className="text-xs">
+                      <span className="font-medium">
+                        {t(`salesOrders.details.assignmentOutcome.${entry.outcome}`)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" · "}
+                        {t(`salesOrders.details.assignmentModeValue.${entry.assignmentMode}`)}
+                      </span>
+                      {entry.newWorkerName ? (
+                        <span className="text-muted-foreground">
+                          {" → "}
+                          {entry.newWorkerName}
+                        </span>
+                      ) : null}
+                      {entry.previousWorkerName ? (
+                        <span className="text-muted-foreground">
+                          {" ("}
+                          {t("salesOrders.details.previousWorker", {
+                            name: entry.previousWorkerName,
+                          })}
+                          {")"}
+                        </span>
+                      ) : null}
+                      <span className="ms-2 text-muted-foreground">
+                        {new Date(entry.createdAt).toLocaleString(i18n.language)}
+                      </span>
+                      {entry.assignedByName ? (
+                        <p className="mt-0.5 text-muted-foreground">
+                          {t("salesOrders.details.assignedBy", { name: entry.assignedByName })}
+                        </p>
+                      ) : null}
+                      {entry.reassignmentReason ? (
+                        <p className="mt-0.5 text-muted-foreground">{entry.reassignmentReason}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
             <section className="rounded-xl border border-border/60 p-3">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -323,7 +699,11 @@ export function SalesOrderDetailsPanel({
                       <span className="ms-2 text-muted-foreground">
                         {new Date(event.createdAt).toLocaleString(i18n.language)}
                       </span>
-                      {event.note ? <p className="mt-0.5 text-muted-foreground">{event.note}</p> : null}
+                      {event.note ? (
+                        <p className="mt-0.5 text-muted-foreground">
+                          {translateStatusNote(event.note, event.changedByName, t)}
+                        </p>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

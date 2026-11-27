@@ -37,6 +37,7 @@ export type CreateSalesOrderFromConversationInput = {
   deliveryLocationUrl?: string;
   deliveryLat?: number | null;
   deliveryLng?: number | null;
+  customerSecondaryPhone?: string;
 };
 
 export type PreviewSalesOrderInput = Omit<
@@ -58,6 +59,9 @@ export type SalesOrderToolResult =
       paymentStatus: "unpaid";
       totalAmount: number;
       currency: string;
+      etaMin: number;
+      etaMax: number;
+      etaUnit: "hours" | "days";
       message: string;
     }
   | {
@@ -68,9 +72,11 @@ export type SalesOrderToolResult =
         | "confirmation_required"
         | "missing_required_field"
         | "zone_unsupported"
+        | "zone_ambiguous"
         | "pricing_failed"
         | "invalid_items"
         | "write_failed";
+      candidates?: Array<{ id: string; governorate: string; zoneName: string }>;
     };
 
 export type PreviewSalesOrderResult =
@@ -92,9 +98,11 @@ export type PreviewSalesOrderResult =
       code:
         | "ai_order_collection_disabled"
         | "zone_unsupported"
+        | "zone_ambiguous"
         | "pricing_failed"
         | "invalid_items"
         | "missing_required_field";
+      candidates?: Array<{ id: string; governorate: string; zoneName: string }>;
     };
 
 export type ValidateDeliveryZoneResult =
@@ -108,7 +116,12 @@ export type ValidateDeliveryZoneResult =
       ok: false;
       supported: false;
       reason: string;
-      code: "ai_order_collection_disabled" | "zone_unsupported" | "missing_required_field";
+      code:
+        | "ai_order_collection_disabled"
+        | "zone_unsupported"
+        | "zone_ambiguous"
+        | "missing_required_field";
+      candidates?: Array<{ id: string; governorate: string; zoneName: string }>;
     };
 
 function trim(value: unknown): string {
@@ -143,7 +156,23 @@ function defaultRequiredFields(): CompanyOrderSettingsSnapshot["requiredFields"]
     cityArea: true,
     detailedAddress: true,
     deliveryNotes: false,
+    deliveryLocation: false,
+    secondaryPhone: true,
   };
+}
+
+function hasDeliveryLocation(fields: {
+  deliveryLocationUrl: string;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+}): boolean {
+  if (fields.deliveryLocationUrl) return true;
+  return (
+    typeof fields.deliveryLat === "number" &&
+    Number.isFinite(fields.deliveryLat) &&
+    typeof fields.deliveryLng === "number" &&
+    Number.isFinite(fields.deliveryLng)
+  );
 }
 
 function missingRequired(
@@ -155,7 +184,11 @@ function missingRequired(
     zoneName: string;
     deliveryAddress: string;
     deliveryNotes: string;
+    deliveryLocationUrl: string;
+    deliveryLat: number | null;
+    deliveryLng: number | null;
     requireAddress: boolean;
+    requireLocation: boolean;
   },
 ): string | null {
   const req = { ...defaultRequiredFields(), ...settings.requiredFields };
@@ -165,7 +198,20 @@ function missingRequired(
   if (req.cityArea && !fields.zoneName) return "zoneName";
   if (fields.requireAddress && req.detailedAddress && !fields.deliveryAddress) return "deliveryAddress";
   if (req.deliveryNotes && !fields.deliveryNotes) return "deliveryNotes";
+  if (
+    fields.requireLocation &&
+    req.deliveryLocation &&
+    !hasDeliveryLocation(fields)
+  ) {
+    return "deliveryLocation";
+  }
   return null;
+}
+
+function formatEtaMessage(zone: { etaMin: number; etaMax: number; etaUnit: "hours" | "days" }): string {
+  const unit = zone.etaUnit === "hours" ? "hour(s)" : "day(s)";
+  if (zone.etaMin === zone.etaMax) return `${zone.etaMin} ${unit}`;
+  return `${zone.etaMin}–${zone.etaMax} ${unit}`;
 }
 
 function buildFingerprint(input: {
@@ -212,12 +258,22 @@ export async function validateDeliveryZoneForOrder(
       code: "missing_required_field",
     };
   }
-  const zone = await ports.findEnabledDeliveryZone({
+  const lookup = await ports.findEnabledDeliveryZone({
     companyId: input.companyId,
     governorate,
     zoneName,
   });
-  if (!zone) {
+  if (lookup.status === "ambiguous") {
+    return {
+      ok: false,
+      supported: false,
+      reason:
+        "Multiple delivery zones match this location. Ask the customer to clarify the exact area.",
+      code: "zone_ambiguous",
+      candidates: lookup.candidates,
+    };
+  }
+  if (lookup.status !== "ok") {
     return {
       ok: false,
       supported: false,
@@ -228,7 +284,7 @@ export async function validateDeliveryZoneForOrder(
   return {
     ok: true,
     supported: true,
-    zone,
+    zone: lookup.zone,
     message: "Zone is supported. Use only the returned fee and ETA.",
   };
 }
@@ -257,7 +313,14 @@ export async function previewSalesOrderFromConversation(
   const zoneName = trim(input.zoneName);
   // Preview totals before notes are collected; create_sales_order still enforces deliveryNotes.
   const missing = missingRequired(
-    { ...settings, requiredFields: { ...settings.requiredFields, deliveryNotes: false } },
+    {
+      ...settings,
+      requiredFields: {
+        ...settings.requiredFields,
+        deliveryNotes: false,
+        deliveryLocation: false,
+      },
+    },
     {
       customerName,
       customerPhone,
@@ -265,7 +328,11 @@ export async function previewSalesOrderFromConversation(
       zoneName,
       deliveryAddress: trim(input.deliveryAddress),
       deliveryNotes: "",
+      deliveryLocationUrl: "",
+      deliveryLat: null,
+      deliveryLng: null,
       requireAddress: false,
+      requireLocation: false,
     },
   );
   if (missing) {
@@ -276,18 +343,28 @@ export async function previewSalesOrderFromConversation(
     };
   }
 
-  const zone = await ports.findEnabledDeliveryZone({
+  const lookup = await ports.findEnabledDeliveryZone({
     companyId: input.companyId,
     governorate,
     zoneName,
   });
-  if (!zone) {
+  if (lookup.status === "ambiguous") {
+    return {
+      ok: false,
+      reason:
+        "Multiple delivery zones match this location. Ask the customer to clarify the exact area.",
+      code: "zone_ambiguous",
+      candidates: lookup.candidates,
+    };
+  }
+  if (lookup.status !== "ok") {
     return {
       ok: false,
       reason: "Delivery is not available for this governorate/area.",
       code: "zone_unsupported",
     };
   }
+  const zone = lookup.zone;
 
   const priced = await ports.priceCatalogLines({ companyId: input.companyId, items });
   if (!priced.ok) {
@@ -345,6 +422,15 @@ export async function createSalesOrderFromConfirmedConversation(
   const deliveryAddress = trim(input.deliveryAddress);
   const deliveryNotes = trim(input.deliveryNotes);
   const deliveryLocationUrl = trim(input.deliveryLocationUrl);
+  const customerSecondaryPhone = trim(input.customerSecondaryPhone);
+  const deliveryLat =
+    typeof input.deliveryLat === "number" && Number.isFinite(input.deliveryLat)
+      ? input.deliveryLat
+      : null;
+  const deliveryLng =
+    typeof input.deliveryLng === "number" && Number.isFinite(input.deliveryLng)
+      ? input.deliveryLng
+      : null;
 
   const missing = missingRequired(settings, {
     customerName,
@@ -353,7 +439,11 @@ export async function createSalesOrderFromConfirmedConversation(
     zoneName,
     deliveryAddress,
     deliveryNotes,
+    deliveryLocationUrl,
+    deliveryLat,
+    deliveryLng,
     requireAddress: true,
+    requireLocation: true,
   });
   if (missing) {
     return {
@@ -363,18 +453,28 @@ export async function createSalesOrderFromConfirmedConversation(
     };
   }
 
-  const zone = await ports.findEnabledDeliveryZone({
+  const lookup = await ports.findEnabledDeliveryZone({
     companyId: input.companyId,
     governorate,
     zoneName,
   });
-  if (!zone) {
+  if (lookup.status === "ambiguous") {
+    return {
+      ok: false,
+      reason:
+        "Multiple delivery zones match this location. Ask the customer to clarify the exact area.",
+      code: "zone_ambiguous",
+      candidates: lookup.candidates,
+    };
+  }
+  if (lookup.status !== "ok") {
     return {
       ok: false,
       reason: "Delivery is not available for this governorate/area.",
       code: "zone_unsupported",
     };
   }
+  const zone = lookup.zone;
 
   const priced = await ports.priceCatalogLines({ companyId: input.companyId, items });
   if (!priced.ok) {
@@ -395,6 +495,13 @@ export async function createSalesOrderFromConfirmedConversation(
     phone: customerPhone,
     email: customerEmail || null,
     preferredLanguage: preferredLanguage || null,
+    secondaryPhone: customerSecondaryPhone || null,
+    deliveryAddress,
+    deliveryGovernorate: governorate,
+    deliveryCityArea: zoneName,
+    deliveryLat,
+    deliveryLng,
+    deliveryLocationUrl: deliveryLocationUrl || null,
   });
 
   const requireHumanApproval = settings.requireHumanApproval !== false;
@@ -429,15 +536,13 @@ export async function createSalesOrderFromConfirmedConversation(
       deliveryCityArea: zone.zoneName,
       deliveryAddress,
       deliveryNotes,
-      deliveryLat:
-        typeof input.deliveryLat === "number" && Number.isFinite(input.deliveryLat)
-          ? input.deliveryLat
-          : null,
-      deliveryLng:
-        typeof input.deliveryLng === "number" && Number.isFinite(input.deliveryLng)
-          ? input.deliveryLng
-          : null,
+      deliveryLat,
+      deliveryLng,
       deliveryLocationUrl,
+      customerSecondaryPhone,
+      etaMinSnapshot: zone.etaMin,
+      etaMaxSnapshot: zone.etaMax,
+      etaUnitSnapshot: zone.etaUnit,
       deliveryFee: zone.deliveryFee,
       subtotal: priced.subtotal,
       totalAmount,
@@ -470,6 +575,7 @@ export async function createSalesOrderFromConfirmedConversation(
     }
   }
 
+  const etaText = formatEtaMessage(zone);
   return {
     ok: true,
     orderId: written.orderId,
@@ -481,10 +587,13 @@ export async function createSalesOrderFromConfirmedConversation(
     paymentStatus: "unpaid",
     totalAmount,
     currency: priced.currency,
+    etaMin: zone.etaMin,
+    etaMax: zone.etaMax,
+    etaUnit: zone.etaUnit,
     message: written.alreadyExisted
       ? "An identical confirmed order already exists for this conversation fingerprint. Do not claim paid or delivered."
       : requireHumanApproval
-        ? "Order created as pending_approval. A teammate must approve. Payment is unpaid COD. Never claim paid or delivered."
-        : "Order created as confirmed. Payment is unpaid COD. Never claim paid or delivered.",
+        ? `Order created as pending_approval. Expected delivery window: ${etaText}. A teammate must approve. Payment is unpaid COD. Tell the customer the ETA from this response. Never claim paid or delivered.`
+        : `Order created as confirmed. Expected delivery window: ${etaText}. Payment is unpaid COD. Tell the customer the ETA from this response. Never claim paid or delivered.`,
   };
 }

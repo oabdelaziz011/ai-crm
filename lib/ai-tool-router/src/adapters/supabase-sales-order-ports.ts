@@ -19,6 +19,10 @@ import {
   buildWhatsAppSenderPhoneLookupVariants,
   resolveWhatsAppSenderPhoneE164,
 } from "../utils/resolve-trusted-channel-customer.js";
+import {
+  findAllMatchingDeliveryZones,
+  findMatchingDeliveryZone,
+} from "../tools/delivery-zone-match.js";
 
 const DEFAULT_REQUIRED_FIELDS: CompanyOrderSettingsSnapshot["requiredFields"] = {
   customerName: true,
@@ -27,6 +31,8 @@ const DEFAULT_REQUIRED_FIELDS: CompanyOrderSettingsSnapshot["requiredFields"] = 
   cityArea: true,
   detailedAddress: true,
   deliveryNotes: false,
+  deliveryLocation: false,
+  secondaryPhone: true,
 };
 
 function readRequiredFields(raw: unknown): CompanyOrderSettingsSnapshot["requiredFields"] {
@@ -39,12 +45,11 @@ function readRequiredFields(raw: unknown): CompanyOrderSettingsSnapshot["require
     cityArea: row.cityArea !== false,
     detailedAddress: row.detailedAddress !== false,
     deliveryNotes: row.deliveryNotes === true,
+    deliveryLocation: row.deliveryLocation === true,
+    secondaryPhone: row.secondaryPhone !== false,
   };
 }
 
-function normalizeZoneKey(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
 
 async function findCustomerByPhone(
   customerService: ToolCustomerServicePort,
@@ -120,35 +125,56 @@ export function createSupabaseSalesOrderPorts(
     },
 
     async findEnabledDeliveryZone({ companyId, governorate, zoneName }) {
-      const govKey = normalizeZoneKey(governorate);
-      const zoneKey = normalizeZoneKey(zoneName);
       const { data, error } = await client
         .from("company_delivery_zones")
-        .select("id, governorate, zone_name, delivery_fee, eta_min, eta_max, eta_unit, enabled")
+        .select(
+          "id, governorate, zone_name, aliases, delivery_fee, eta_min, eta_max, eta_unit, enabled",
+        )
         .eq("company_id", companyId)
         .eq("enabled", true);
       if (error) throw new Error(error.message);
-      const match = (data ?? []).find(
-        (row) =>
-          normalizeZoneKey(String(row.governorate ?? "")) === govKey &&
-          normalizeZoneKey(String(row.zone_name ?? "")) === zoneKey,
-      );
-      if (!match) return null;
+      const candidates = (data ?? []).map((row) => ({
+        id: String(row.id),
+        governorate: String(row.governorate ?? ""),
+        zoneName: String(row.zone_name ?? ""),
+        aliases: Array.isArray(row.aliases) ? row.aliases.map(String) : [],
+        delivery_fee: row.delivery_fee,
+        eta_min: row.eta_min,
+        eta_max: row.eta_max,
+        eta_unit: row.eta_unit,
+      }));
+      const matches = findAllMatchingDeliveryZones(candidates, { governorate, zoneName });
+      if (matches.length === 0) return { status: "none" as const };
+      if (matches.length > 1) {
+        return {
+          status: "ambiguous" as const,
+          candidates: matches.map((row) => ({
+            id: row.id,
+            governorate: row.governorate,
+            zoneName: row.zoneName,
+          })),
+        };
+      }
+      const match = findMatchingDeliveryZone(candidates, { governorate, zoneName });
+      if (!match) return { status: "none" as const };
       const fee = Number(match.delivery_fee);
       const etaMin = Number(match.eta_min);
       const etaMax = Number(match.eta_max);
       const etaUnit = match.eta_unit === "hours" ? "hours" : "days";
       if (!Number.isFinite(fee) || fee < 0 || !Number.isFinite(etaMin) || !Number.isFinite(etaMax)) {
-        return null;
+        return { status: "none" as const };
       }
       return {
-        id: String(match.id),
-        governorate: String(match.governorate),
-        zoneName: String(match.zone_name),
-        deliveryFee: fee,
-        etaMin,
-        etaMax,
-        etaUnit,
+        status: "ok" as const,
+        zone: {
+          id: String(match.id),
+          governorate: String(match.governorate),
+          zoneName: String(match.zoneName),
+          deliveryFee: fee,
+          etaMin,
+          etaMax,
+          etaUnit,
+        },
       };
     },
 
@@ -402,6 +428,40 @@ export function createSupabaseSalesOrderPorts(
         stampTrustedIdentity: true,
       });
 
+      const deliveryPatch: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (input.secondaryPhone?.trim()) {
+        deliveryPatch.secondary_phone = input.secondaryPhone.trim();
+        deliveryPatch.secondary_phone_e164 = input.secondaryPhone.trim();
+      }
+      if (input.deliveryAddress?.trim()) deliveryPatch.delivery_address = input.deliveryAddress.trim();
+      if (input.deliveryGovernorate?.trim()) {
+        deliveryPatch.delivery_governorate = input.deliveryGovernorate.trim();
+      }
+      if (input.deliveryCityArea?.trim()) {
+        deliveryPatch.delivery_city_area = input.deliveryCityArea.trim();
+      }
+      if (typeof input.deliveryLat === "number" && Number.isFinite(input.deliveryLat)) {
+        deliveryPatch.delivery_lat = input.deliveryLat;
+      }
+      if (typeof input.deliveryLng === "number" && Number.isFinite(input.deliveryLng)) {
+        deliveryPatch.delivery_lng = input.deliveryLng;
+      }
+      if (input.deliveryLocationUrl?.trim()) {
+        deliveryPatch.delivery_location_url = input.deliveryLocationUrl.trim();
+      }
+      if (Object.keys(deliveryPatch).length > 1) {
+        const { error: deliveryError } = await client
+          .from("customers")
+          .update(deliveryPatch)
+          .eq("id", customerId)
+          .eq("company_id", input.companyId);
+        if (deliveryError) {
+          // Best-effort CRM enrichment; order creation must still proceed.
+        }
+      }
+
       return { customerId, created };
     },
 
@@ -458,6 +518,10 @@ export function createSupabaseSalesOrderPorts(
           delivery_lat: input.deliveryLat,
           delivery_lng: input.deliveryLng,
           delivery_location_url: input.deliveryLocationUrl,
+          customer_secondary_phone: input.customerSecondaryPhone,
+          eta_min_snapshot: input.etaMinSnapshot,
+          eta_max_snapshot: input.etaMaxSnapshot,
+          eta_unit_snapshot: input.etaUnitSnapshot,
           delivery_fee: input.deliveryFee,
           subtotal: input.subtotal,
           total_amount: input.totalAmount,

@@ -27,6 +27,8 @@ const REQUIRED_FIELD_KEYS: Array<keyof OrderRequiredFields> = [
   "cityArea",
   "detailedAddress",
   "deliveryNotes",
+  "deliveryLocation",
+  "secondaryPhone",
 ];
 
 export function SalesOrderManagementTab({

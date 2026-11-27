@@ -658,7 +658,7 @@ const CREATE_SALES_ORDER_LLM = {
   function: {
     name: "create_sales_order",
     description:
-      "Create a COD sales order ONLY after the customer explicitly confirmed the preview (customerConfirmed=true). Requires AI order collection enabled. Defaults to pending_approval when human approval is required. Never claim paid, shipped, or delivered. Distinct from quote tools.",
+      "Create a COD sales order ONLY after the customer explicitly confirmed the preview (customerConfirmed=true). Requires AI order collection enabled. Defaults to pending_approval when human approval is required. Include delivery location when required and optional secondary phone. Response includes ETA — tell the customer that window. Never claim paid, shipped, or delivered. Distinct from quote tools.",
     parameters: {
       type: "object",
       properties: {
@@ -688,9 +688,16 @@ const CREATE_SALES_ORDER_LLM = {
         zoneName: { type: "string" },
         deliveryAddress: { type: "string" },
         deliveryNotes: { type: "string" },
-        deliveryLocationUrl: { type: "string" },
+        deliveryLocationUrl: {
+          type: "string",
+          description: "Maps/share location URL when the customer provided one",
+        },
         deliveryLat: { type: "number" },
         deliveryLng: { type: "number" },
+        customerSecondaryPhone: {
+          type: "string",
+          description: "Optional second phone; omit or empty if the customer skipped",
+        },
       },
       required: [
         "customerConfirmed",

@@ -688,6 +688,7 @@
     "products": "Produkte",
     "quotes": "Angebote",
     "quoteSendRequests": "Freigaben für Angebotsversand",
+    "salesOrders": "Verkaufsaufträge",
     "communication": "Ausgehende Warteschlange",
     "campaigns": "Kampagnen",
     "invoices": "Rechnungen und Finanzabrechnungen",
@@ -4134,6 +4135,85 @@
         "unconfiguredTitle": "Die Nachverfolgung ist noch nicht konfiguriert",
         "unconfiguredBody": "Für dieses Unternehmen wurden keine Nachverfolgungseinstellungen gespeichert, daher ist die Nachverfolgung deaktiviert. Nichts wird automatisch aktiviert. Überprüfen Sie die Optionen unten, aktivieren Sie dann die Option „Aktivieren“ und speichern Sie.",
         "disabledNotice": "Die Nachverfolgung wird als deaktiviert gespeichert. Es sind keine Nachverfolgungen geplant, bis Sie es aktivieren und speichern."
+      },
+      "salesOrder": {
+        "tabs": {
+          "followUp": "Verkaufsverfolgung",
+          "orders": "Auftragsverwaltung",
+          "delivery": "Lieferungseinstellungen",
+          "approvals": "Auftragsfreigaben"
+        },
+        "save": "Auftragseinstellungen speichern",
+        "saved": "Auftragseinstellungen gespeichert",
+        "saveFailed": "Auftragseinstellungen konnten nicht gespeichert werden",
+        "readOnly": "Um diese Einstellungen zu ändern, benötigen Sie settings.edit oder leads.manage.",
+        "unconfiguredHint": "Es wurden noch keine Auftragseinstellungen gespeichert. Sichere Standardwerte lassen die KI-Auftragserfassung aus und die menschliche Freigabe an, bis Sie speichern.",
+        "orders": {
+          "subtitle": "Legen Sie fest, ob die KI Auftragsdaten erfassen darf. Zahlungsabwicklung ist in dieser Phase nicht enthalten.",
+          "aiEnabled": "KI-Auftragserfassung aktivieren",
+          "aiEnabledHelp": "Wenn aus, darf die KI keine Kundenaufträge erfassen oder bestätigen. Diese Einstellung allein erstellt keine Aufträge.",
+          "paymentMethods": "Verfügbare Zahlungsmethoden",
+          "paymentMethodsHelp": "Nachnahme ist in dieser Phase die einzige Methode. Keine Karten- oder Gateway-Belastung hier.",
+          "payment": {
+            "cash_on_delivery": "Nachnahme (COD)"
+          },
+          "requiredFields": "Erforderliche Kundendaten",
+          "requiredFieldsHelp": "Wählen Sie Felder, die vor der Auftragseinreichung in einer späteren Phase erfasst werden müssen.",
+          "fields": {
+            "customerName": "Kundenname",
+            "mobileNumber": "Handynummer",
+            "governorate": "Gouvernement",
+            "cityArea": "Stadt / Gebiet",
+            "detailedAddress": "Detaillierte Adresse",
+            "deliveryNotes": "Lieferhinweise"
+          }
+        },
+        "delivery": {
+          "subtitle": "Definieren Sie Lieferzonen für dieses Unternehmen. Verfügbarkeit und ETA kommen nur aus hier gespeicherten Zonen.",
+          "noHardcodeHint": "Gouvernements und Gebühren sind nicht fest verdrahtet. Fügen Sie nur Zonen hinzu, die Ihr Unternehmen wirklich bedient.",
+          "addZone": "Lieferzone hinzufügen",
+          "editZone": "Lieferzone bearbeiten",
+          "cancelEdit": "Bearbeitung abbrechen",
+          "governorate": "Gouvernement",
+          "zoneName": "Stadt / Gebiet / Zonenname",
+          "fee": "Liefergebühr",
+          "etaMin": "Minimale ETA",
+          "etaMax": "Maximale ETA",
+          "etaUnit": "Zeiteinheit",
+          "unitHours": "Stunden",
+          "unitDays": "Tage",
+          "enabled": "Zone aktiviert",
+          "saveZone": "Zone speichern",
+          "updateZone": "Zone aktualisieren",
+          "zonesList": "Konfigurierte Zonen",
+          "empty": "Noch keine Lieferzonen.",
+          "edit": "Bearbeiten",
+          "delete": "Zone löschen",
+          "saved": "Lieferzone gespeichert",
+          "saveFailed": "Lieferzone konnte nicht gespeichert werden",
+          "deleted": "Lieferzone gelöscht",
+          "deleteFailed": "Lieferzone konnte nicht gelöscht werden",
+          "statusEnabled": "aktiviert",
+          "statusDisabled": "deaktiviert",
+          "zoneSummary": "Gebühr {{fee}} · ETA {{min}}–{{max}} {{unit}} · {{status}}",
+          "errors": {
+            "governorateRequired": "Gouvernement ist erforderlich.",
+            "zoneNameRequired": "Stadt / Gebiet / Zonenname ist erforderlich.",
+            "etaMinExceedsMax": "Minimale ETA darf die maximale ETA nicht überschreiten.",
+            "feeInvalid": "Liefergebühr muss null oder größer sein.",
+            "duplicate": "Dieses Gouvernement und diese Zone existieren bereits für das Unternehmen."
+          }
+        },
+        "approvals": {
+          "subtitle": "Steuern Sie die menschliche Prüfung, bevor ein Auftrag bestätigt wird. Automatische Bestätigung bleibt standardmäßig aus.",
+          "requireHuman": "Menschliche Freigabe vor Auftragsbestätigung verlangen",
+          "requireHumanHelp": "Empfohlen. Lassen Sie dies aktiviert, bis Auftragsruntime und KI-Tools in einer späteren Phase geprüft sind.",
+          "defaultReviewer": "Standardprüfer",
+          "noReviewer": "Kein Standardprüfer",
+          "defaultReviewerHelp": "Optional. Wählen Sie einen aktiven Kollegen dieses Unternehmens als Standard-Auftragsprüfer.",
+          "notify": "Benachrichtigungen für wartende Freigaben bevorzugen",
+          "notifyHelp": "Speichert nur die Präferenz. Live-Benachrichtigungen sind in dieser Einstellungsphase nicht angebunden."
+        }
       },
       "security": {
         "changePassword": "Kennwort ändern",
@@ -16478,6 +16558,75 @@
           "timestamp": "Zeit"
         }
       }
+    }
+  },
+  "salesOrders": {
+    "subtitle": "Prüfen Sie Verkaufsaufträge, Lieferdetails und Freigabestatus.",
+    "noPermission": "Sie benötigen die Berechtigung orders.view, um Verkaufsaufträge zu öffnen.",
+    "emptyTitle": "Noch keine Verkaufsaufträge",
+    "emptyBody": "Aufträge erscheinen hier, sobald sie für dieses Unternehmen erstellt wurden. KI-Auftragserstellung ist in dieser Phase nicht aktiviert.",
+    "noItems": "Keine Positionen",
+    "filters": {
+      "search": "Suche",
+      "searchPlaceholder": "Auftragsnummer, Kundenname oder Telefon",
+      "status": "Status",
+      "allStatuses": "Alle Status",
+      "payment": "Zahlungsart",
+      "allPayments": "Alle Zahlungsarten",
+      "from": "Von",
+      "to": "Bis"
+    },
+    "columns": {
+      "orderNumber": "Auftragsnummer",
+      "customer": "Kunde",
+      "phone": "Telefon",
+      "items": "Produkte / Positionen",
+      "total": "Gesamt",
+      "deliveryFee": "Liefergebühr",
+      "payment": "Zahlung",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "actions": {
+      "view": "Ansehen"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "pending_approval": "Freigabe ausstehend",
+      "confirmed": "Bestätigt",
+      "processing": "In Bearbeitung",
+      "out_for_delivery": "Unterwegs",
+      "delivered": "Zugestellt",
+      "cancelled": "Storniert"
+    },
+    "payment": {
+      "cash_on_delivery": "Nachnahme"
+    },
+    "pagination": {
+      "summary": "{{from}}–{{to}} von {{total}} Aufträgen",
+      "pageSize": "Zeilen pro Seite"
+    },
+    "details": {
+      "title": "Auftrag {{number}}",
+      "loadingTitle": "Auftragsdetails",
+      "notFound": "Dieser Auftrag wurde für Ihr Unternehmen nicht gefunden.",
+      "createdAt": "Erstellt {{date}}",
+      "customer": "Kunde",
+      "payment": "Zahlung",
+      "humanApprovalRequired": "Menschliche Freigabe vor Bestätigung erforderlich.",
+      "humanApprovalOff": "Für diesen Auftrag ist keine menschliche Freigabe erforderlich.",
+      "delivery": "Lieferung",
+      "items": "Bestellte Produkte",
+      "noItems": "Keine Positionen in diesem Auftrag.",
+      "skuQty": "SKU {{sku}} · Menge {{qty}}",
+      "qtyOnly": "Menge {{qty}}",
+      "subtotal": "Zwischensumme",
+      "deliveryFee": "Liefergebühr",
+      "total": "Gesamt",
+      "openConversation": "Zugehörigen Chat öffnen",
+      "noConversation": "Kein zugehöriger Chat verknüpft.",
+      "statusHistory": "Statusverlauf",
+      "noHistory": "Noch kein Statusverlauf vorhanden."
     }
   },
   "quotes": {

@@ -724,6 +724,7 @@
     "products": "Products",
     "quotes": "Quotes",
     "quoteSendRequests": "Quote send approvals",
+    "salesOrders": "Sales Orders",
     "communication": "Outbound Queue",
     "campaigns": "Campaigns",
     "invoices": "Invoices & Financial Billing",
@@ -4278,6 +4279,85 @@
         "unconfiguredTitle": "Follow-up is not configured yet",
         "unconfiguredBody": "No follow-up settings have been saved for this company, so follow-up is off. Nothing is enabled automatically. Review the options below, then turn on the enable option and save.",
         "disabledNotice": "Follow-up is saved as disabled. No follow-ups are scheduled until you enable it and save."
+      },
+      "salesOrder": {
+        "tabs": {
+          "followUp": "Sales Follow-up",
+          "orders": "Order Management",
+          "delivery": "Delivery Settings",
+          "approvals": "Order Approvals"
+        },
+        "save": "Save order settings",
+        "saved": "Order settings saved",
+        "saveFailed": "Could not save order settings",
+        "readOnly": "You need settings.edit or leads.manage to change these settings.",
+        "unconfiguredHint": "No order settings have been saved yet. Safe defaults keep AI order collection off and human approval on until you save.",
+        "orders": {
+          "subtitle": "Configure whether AI may collect order details. Payment processing is not included in this phase.",
+          "aiEnabled": "Enable AI order collection",
+          "aiEnabledHelp": "When off, AI must not collect or confirm customer orders. This setting alone does not create orders.",
+          "paymentMethods": "Available payment methods",
+          "paymentMethodsHelp": "Cash on Delivery is the only method available in this phase. No card or gateway charging is configured here.",
+          "payment": {
+            "cash_on_delivery": "Cash on Delivery (COD)"
+          },
+          "requiredFields": "Required customer information",
+          "requiredFieldsHelp": "Choose which fields must be collected before an order can be submitted in a later phase.",
+          "fields": {
+            "customerName": "Customer name",
+            "mobileNumber": "Mobile number",
+            "governorate": "Governorate",
+            "cityArea": "City / area",
+            "detailedAddress": "Detailed address",
+            "deliveryNotes": "Delivery notes"
+          }
+        },
+        "delivery": {
+          "subtitle": "Define delivery zones for this company. Availability and ETA come only from zones you save here.",
+          "noHardcodeHint": "Governorates and fees are not hardcoded. Add only zones your company actually serves.",
+          "addZone": "Add delivery zone",
+          "editZone": "Edit delivery zone",
+          "cancelEdit": "Cancel edit",
+          "governorate": "Governorate",
+          "zoneName": "City / area / zone name",
+          "fee": "Delivery fee",
+          "etaMin": "Minimum ETA",
+          "etaMax": "Maximum ETA",
+          "etaUnit": "Time unit",
+          "unitHours": "Hours",
+          "unitDays": "Days",
+          "enabled": "Zone enabled",
+          "saveZone": "Save zone",
+          "updateZone": "Update zone",
+          "zonesList": "Configured zones",
+          "empty": "No delivery zones yet.",
+          "edit": "Edit",
+          "delete": "Delete zone",
+          "saved": "Delivery zone saved",
+          "saveFailed": "Could not save delivery zone",
+          "deleted": "Delivery zone deleted",
+          "deleteFailed": "Could not delete delivery zone",
+          "statusEnabled": "enabled",
+          "statusDisabled": "disabled",
+          "zoneSummary": "Fee {{fee}} · ETA {{min}}–{{max}} {{unit}} · {{status}}",
+          "errors": {
+            "governorateRequired": "Governorate is required.",
+            "zoneNameRequired": "City / area / zone name is required.",
+            "etaMinExceedsMax": "Minimum ETA cannot exceed maximum ETA.",
+            "feeInvalid": "Delivery fee must be zero or greater.",
+            "duplicate": "This governorate and zone already exist for the company."
+          }
+        },
+        "approvals": {
+          "subtitle": "Control human review before an order can be confirmed. Automatic confirmation stays off by default.",
+          "requireHuman": "Require human approval before confirming an order",
+          "requireHumanHelp": "Recommended. Keep this on until order runtime and AI tools are verified in a later phase.",
+          "defaultReviewer": "Default reviewer",
+          "noReviewer": "No default reviewer",
+          "defaultReviewerHelp": "Optional. Choose an active teammate from this company as the default order reviewer.",
+          "notify": "Prefer notifications for orders awaiting approval",
+          "notifyHelp": "Stores the preference only. Live notification delivery is not wired in this settings phase."
+        }
       },
       "security": {
         "changePassword": "Change Password",
@@ -16620,6 +16700,75 @@
           "timestamp": "Time"
         }
       }
+    }
+  },
+  "salesOrders": {
+    "subtitle": "Review company sales orders, delivery details, and approval status.",
+    "noPermission": "You need orders.view permission to open Sales Orders.",
+    "emptyTitle": "No sales orders yet",
+    "emptyBody": "Orders will appear here once they are created for this company. AI order creation is not enabled in this phase.",
+    "noItems": "No items",
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Order number, customer name, or phone",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "payment": "Payment method",
+      "allPayments": "All payment methods",
+      "from": "From",
+      "to": "To"
+    },
+    "columns": {
+      "orderNumber": "Order number",
+      "customer": "Customer",
+      "phone": "Phone",
+      "items": "Products / items",
+      "total": "Total",
+      "deliveryFee": "Delivery fee",
+      "payment": "Payment",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "view": "View"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending_approval": "Pending approval",
+      "confirmed": "Confirmed",
+      "processing": "Processing",
+      "out_for_delivery": "Out for delivery",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "payment": {
+      "cash_on_delivery": "Cash on Delivery"
+    },
+    "pagination": {
+      "summary": "{{from}}–{{to}} of {{total}} orders",
+      "pageSize": "Rows per page"
+    },
+    "details": {
+      "title": "Order {{number}}",
+      "loadingTitle": "Order details",
+      "notFound": "This order could not be found for your company.",
+      "createdAt": "Created {{date}}",
+      "customer": "Customer",
+      "payment": "Payment",
+      "humanApprovalRequired": "Human approval required before confirmation.",
+      "humanApprovalOff": "Human approval is not required for this order.",
+      "delivery": "Delivery",
+      "items": "Ordered products",
+      "noItems": "No line items on this order.",
+      "skuQty": "SKU {{sku}} · Qty {{qty}}",
+      "qtyOnly": "Qty {{qty}}",
+      "subtotal": "Subtotal",
+      "deliveryFee": "Delivery fee",
+      "total": "Total",
+      "openConversation": "Open related conversation",
+      "noConversation": "No related conversation linked.",
+      "statusHistory": "Status history",
+      "noHistory": "No status history recorded yet."
     }
   },
   "quotes": {

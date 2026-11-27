@@ -912,12 +912,30 @@ export function customerContinuesHumanWait(
 export type CompanyContactKind = "location" | "address" | "phone" | "hours";
 
 /** Customer asked for the place, address, phone, or hours — not a booking slot. */
+/** Customer is providing a delivery/order address, not asking for the company HQ address. */
+export function customerSuppliesDeliveryAddress(value: string): boolean {
+  const trimmed = stripTrailingChatPunctuation(value);
+  if (!trimmed) return false;
+  return (
+    /(?:validate_delivery_zone|preview_sales_order|create_sales_order|customerConfirmed)/iu.test(trimmed) ||
+    /(?:توصيل|التوصيل|محافظة|المحافظة|منطقة|المنطقة|governorate|zone\b|delivery|shipping|lieferung|liefer)/iu.test(
+      trimmed,
+    ) ||
+    (/(?:عنوان|العنوان|\baddress\b|adresse)/iu.test(trimmed) &&
+      /(?:شارع|street|strasse|straße|\d+)/iu.test(trimmed))
+  );
+}
+
 export function companyContactKind(value: string): CompanyContactKind | null {
   const trimmed = stripTrailingChatPunctuation(value);
   if (!trimmed || looksLikeCasualReply(trimmed)) return null;
   if (/(?:احجز|أحجز|حجز\s*موعد|أقرب\s*موعد|أقرب\s*ميعاد)/iu.test(trimmed)) return null;
   if (/(?:لوكيشن|اللوكيشن|الخريط|خريط(?:ة|ه)|\blocation\b|\bmaps\b)/iu.test(trimmed)) return "location";
-  if (/(?:عنوان|العنوان|\baddress\b)/iu.test(trimmed)) return "address";
+  if (/(?:عنوان|العنوان|\baddress\b)/iu.test(trimmed)) {
+    // Delivery/order address collection must reach sales tools, not the company HQ short-circuit.
+    if (customerSuppliesDeliveryAddress(trimmed)) return null;
+    return "address";
+  }
   if (/(?:تليفون|تلفون|هاتف|موبايل|موبيل|\bphone\b|رقم\s*(?:ال)?(?:تليفون|تلفون|هاتف|موبايل|موبيل))/iu.test(trimmed)) {
     // The customer's own number inside a purchase is not a request for the support phone.
     const suppliesOwnNumber =
@@ -11545,8 +11563,15 @@ export class ToolCallLoopService {
           toolExecutions,
         };
       }
+      // Order-collection turns must reach validate/preview/create tools, not catalog short-circuits.
+      const salesOrderCollectionTurn =
+        customerSuppliesDeliveryAddress(latestCustomerText) ||
+        /(?:validate_delivery_zone|preview_sales_order|create_sales_order|customerConfirmed)/iu.test(
+          latestCustomerText,
+        );
       const tryProductLookup =
         !input.deferDeterministicSales &&
+        !salesOrderCollectionTurn &&
         productToolsOffered &&
         this.deps.tools &&
         !looksLikeCasualReply(latestCustomerText) &&

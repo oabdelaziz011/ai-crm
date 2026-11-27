@@ -87,6 +87,9 @@ export const WEBHOOK_AI_EMPLOYEE_PERMISSION_ALLOWLIST: ReadonlySet<string> = new
   "leads.merge",
   // Product catalog lookups (read-only; no create/edit/pricing)
   "products.view",
+  // COD sales orders when AI order collection is enabled (no edit/delete/approve)
+  "orders.view",
+  "orders.create",
   // Quote drafts only — never send / approve / delete via webhook AI context
   "quotes.view",
   "quotes.create",

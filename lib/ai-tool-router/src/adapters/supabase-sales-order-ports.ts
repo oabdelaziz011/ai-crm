@@ -156,26 +156,30 @@ export function createSupabaseSalesOrderPorts(
       const lines: CatalogPricedLine[] = [];
       let currency = "";
       let subtotal = 0;
+      const uuidRe =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       for (const item of items) {
-        const { data: row, error } = await client
+        const key = String(item.productId ?? "").trim();
+        let lookup = client
           .from("catalog_products")
           .select(
             "id, name, sku, base_price, currency, subscription_price, product_type, is_active, deleted_at",
           )
-          .eq("id", item.productId)
           .eq("company_id", companyId)
-          .is("deleted_at", null)
-          .maybeSingle();
+          .is("deleted_at", null);
+        lookup = uuidRe.test(key) ? lookup.eq("id", key) : lookup.eq("sku", key);
+        const { data: row, error } = await lookup.maybeSingle();
         if (error) throw new Error(error.message);
         if (!row || row.is_active !== true) {
-          return { ok: false, reason: `Product not found or inactive: ${item.productId}` };
+          return { ok: false, reason: `Product not found or inactive: ${key}` };
         }
+        const resolvedProductId = String(row.id);
 
         const { data: regionalRows, error: regionalError } = await client
           .from("product_regional_prices")
           .select("country, market, region, local_price, currency_override, is_active")
           .eq("company_id", companyId)
-          .eq("product_id", item.productId);
+          .eq("product_id", resolvedProductId);
         if (regionalError) throw new Error(regionalError.message);
 
         const basePrice =
@@ -184,7 +188,7 @@ export function createSupabaseSalesOrderPorts(
             : Number(row.base_price);
         const rowCurrency = typeof row.currency === "string" ? row.currency : "";
         if (!Number.isFinite(basePrice) || basePrice <= 0 || !rowCurrency) {
-          return { ok: false, reason: `Catalog price unavailable for product ${item.productId}` };
+          return { ok: false, reason: `Catalog price unavailable for product ${key}` };
         }
 
         const priced = resolveEffectivePrice({
@@ -193,7 +197,7 @@ export function createSupabaseSalesOrderPorts(
           regionalPrices: (regionalRows ?? []).map((r, i) => ({
             id: String(i),
             companyId,
-            productId: item.productId,
+            productId: resolvedProductId,
             country: r.country ?? null,
             market: r.market ?? null,
             region: r.region ?? null,
@@ -207,7 +211,7 @@ export function createSupabaseSalesOrderPorts(
           market: null,
         });
         if (!Number.isFinite(priced.unitPrice) || priced.unitPrice <= 0) {
-          return { ok: false, reason: `Catalog price unavailable for product ${item.productId}` };
+          return { ok: false, reason: `Catalog price unavailable for product ${key}` };
         }
         if (currency && currency !== priced.currency) {
           return { ok: false, reason: "Order items must share one currency." };
@@ -216,7 +220,7 @@ export function createSupabaseSalesOrderPorts(
         const lineTotal = Number((priced.unitPrice * item.quantity).toFixed(2));
         subtotal = Number((subtotal + lineTotal).toFixed(2));
         lines.push({
-          productId: String(row.id),
+          productId: resolvedProductId,
           productName: String(row.name ?? "").trim() || "Product",
           productSku: typeof row.sku === "string" ? row.sku : "",
           quantity: item.quantity,

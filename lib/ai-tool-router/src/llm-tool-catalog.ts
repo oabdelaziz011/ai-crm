@@ -628,11 +628,14 @@ const PREVIEW_SALES_ORDER_LLM = {
       properties: {
         items: {
           type: "array",
-          description: "Catalog lines [{productId, quantity}]",
+          description: "Catalog lines [{productId, quantity}]. productId may be catalog UUID or SKU from search_products.",
           items: {
             type: "object",
             properties: {
-              productId: { type: "string" },
+              productId: {
+                type: "string",
+                description: "Catalog product UUID or SKU returned by search_products / get_product_details",
+              },
               quantity: { type: "number" },
             },
             required: ["productId", "quantity"],
@@ -668,7 +671,10 @@ const CREATE_SALES_ORDER_LLM = {
           items: {
             type: "object",
             properties: {
-              productId: { type: "string" },
+              productId: {
+                type: "string",
+                description: "Catalog product UUID or SKU returned by search_products / get_product_details",
+              },
               quantity: { type: "number" },
             },
             required: ["productId", "quantity"],

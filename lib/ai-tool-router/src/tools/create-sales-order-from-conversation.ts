@@ -255,15 +255,19 @@ export async function previewSalesOrderFromConversation(
   const customerPhone = trim(input.customerPhone);
   const governorate = trim(input.governorate);
   const zoneName = trim(input.zoneName);
-  const missing = missingRequired(settings, {
-    customerName,
-    customerPhone,
-    governorate,
-    zoneName,
-    deliveryAddress: trim(input.deliveryAddress),
-    deliveryNotes: "",
-    requireAddress: false,
-  });
+  // Preview totals before notes are collected; create_sales_order still enforces deliveryNotes.
+  const missing = missingRequired(
+    { ...settings, requiredFields: { ...settings.requiredFields, deliveryNotes: false } },
+    {
+      customerName,
+      customerPhone,
+      governorate,
+      zoneName,
+      deliveryAddress: trim(input.deliveryAddress),
+      deliveryNotes: "",
+      requireAddress: false,
+    },
+  );
   if (missing) {
     return {
       ok: false,

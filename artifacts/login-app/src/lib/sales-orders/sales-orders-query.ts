@@ -17,6 +17,11 @@ import {
   type SalesOrdersListPage,
 } from "./sales-order-types";
 import { pickLeastLoadedDeliveryWorker } from "./delivery-assignment-picker";
+import { buildCancellationWorkerMessage as buildCancelWorkerMsg } from "./sales-order-cancellation-message";
+import {
+  buildCancellationNotificationRow,
+  insertIdempotentCancellationNotification,
+} from "@workspace/ai-tool-router";
 
 type OrderRow = {
   id: string;
@@ -65,6 +70,13 @@ type OrderRow = {
   rejected_at?: string | null;
   rejected_by?: string | null;
   cancelled_at: string | null;
+  cancellation_source?: string | null;
+  cancellation_reason?: string | null;
+  cancelled_from_status?: string | null;
+  cancellation_notify_status?: string | null;
+  cancellation_notify_message_id?: string | null;
+  cancellation_notify_error?: string | null;
+  cancellation_notify_idempotency_key?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -379,6 +391,12 @@ export async function getSalesOrderDetail(
   const deliveryAssignmentModeApplied =
     modeApplied === "manual" || modeApplied === "ai" ? modeApplied : null;
 
+  const pendingCancellationRequest = await loadPendingCancellationRequest(
+    client,
+    companyId,
+    orderId,
+  );
+
   return {
     ...list,
     customerId: row.customer_id,
@@ -427,6 +445,30 @@ export async function getSalesOrderDetail(
     rejectedAt: row.rejected_at ?? null,
     rejectedBy: row.rejected_by ?? null,
     cancelledAt: row.cancelled_at,
+    cancellationSource:
+      row.cancellation_source === "customer" ||
+      row.cancellation_source === "employee" ||
+      row.cancellation_source === "system"
+        ? row.cancellation_source
+        : null,
+    cancellationReason: row.cancellation_reason ? String(row.cancellation_reason) : null,
+    cancelledFromStatus: isSalesOrderStatus(String(row.cancelled_from_status ?? ""))
+      ? (row.cancelled_from_status as SalesOrderDetail["cancelledFromStatus"])
+      : null,
+    cancellationNotifyStatus:
+      row.cancellation_notify_status === "pending" ||
+      row.cancellation_notify_status === "sent" ||
+      row.cancellation_notify_status === "failed" ||
+      row.cancellation_notify_status === "skipped"
+        ? row.cancellation_notify_status
+        : "none",
+    cancellationNotifyMessageId: row.cancellation_notify_message_id
+      ? String(row.cancellation_notify_message_id)
+      : null,
+    cancellationNotifyError: row.cancellation_notify_error
+      ? String(row.cancellation_notify_error)
+      : null,
+    pendingCancellationRequest,
     updatedAt: row.updated_at,
     items,
     statusHistory: rawEvents.map((event) =>
@@ -435,6 +477,60 @@ export async function getSalesOrderDetail(
         event.changed_by ? identities.get(event.changed_by)?.fullName ?? null : null,
       ),
     ),
+  };
+}
+
+async function loadPendingCancellationRequest(
+  client: SupabaseClient,
+  companyId: string,
+  orderId: string,
+): Promise<SalesOrderDetail["pendingCancellationRequest"]> {
+  const { data } = await client
+    .from("sales_order_cancellation_requests")
+    .select(
+      "id, status, reason, order_status_at_request, requested_at, decided_at, decided_by, decision_reason, customer_notify_status, customer_notify_error",
+    )
+    .eq("company_id", companyId)
+    .eq("order_id", orderId)
+    .order("requested_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const status =
+    data.status === "approved" || data.status === "rejected" || data.status === "pending"
+      ? data.status
+      : "pending";
+  let decidedByName: string | null = null;
+  if (data.decided_by) {
+    const identities = await EmployeeIdentityService.getManyByIds([String(data.decided_by)]);
+    decidedByName = identities.get(String(data.decided_by))?.fullName ?? null;
+  }
+  const customerNotifyStatusRaw = String(data.customer_notify_status ?? "none");
+  const customerNotifyStatuses = [
+    "none",
+    "pending",
+    "sent",
+    "failed",
+    "skipped",
+    "dry_run",
+  ] as const;
+  const customerNotifyStatus = customerNotifyStatuses.includes(
+    customerNotifyStatusRaw as (typeof customerNotifyStatuses)[number],
+  )
+    ? (customerNotifyStatusRaw as (typeof customerNotifyStatuses)[number])
+    : "none";
+  return {
+    id: String(data.id),
+    status,
+    reason: data.reason ? String(data.reason) : null,
+    orderStatusAtRequest: String(data.order_status_at_request ?? ""),
+    requestedAt: String(data.requested_at),
+    decidedAt: data.decided_at ? String(data.decided_at) : null,
+    decidedBy: data.decided_by ? String(data.decided_by) : null,
+    decidedByName,
+    decisionReason: data.decision_reason ? String(data.decision_reason) : null,
+    customerNotifyStatus,
+    customerNotifyError: data.customer_notify_error ? String(data.customer_notify_error) : null,
   };
 }
 
@@ -688,6 +784,9 @@ export async function assignSalesOrderDelivery(
   const reassign = input.reassign === true;
   const detail = await getSalesOrderDetail(client, input.companyId, input.orderId);
   if (!detail) throw new Error("Order not found.");
+  if (detail.status === "cancelled") {
+    throw new Error("Cancelled orders cannot be assigned or dispatched.");
+  }
 
   if (reassign) {
     if (!detail.assignedDeliveryWorkerId) {
@@ -1047,4 +1146,323 @@ export async function tryAutoAssignDeliveryAfterConfirm(
     });
     return { autoAssigned: false, pendingReason: reason, error: reason };
   }
+}
+
+async function assertCanApproveCancellation(client: SupabaseClient): Promise<void> {
+  const { data: isSuper, error: superError } = await client.rpc("is_super_admin");
+  if (superError) throw new Error(superError.message);
+  if (isSuper === true) return;
+  const { data: allowed, error } = await client.rpc("user_has_permission", {
+    p_code: "orders.approve_cancellation",
+  });
+  if (error) throw new Error(error.message);
+  if (allowed !== true) {
+    throw new Error("Missing permission: orders.approve_cancellation");
+  }
+}
+
+export function buildCancellationWorkerMessage(detail: SalesOrderDetail): string {
+  return buildCancelWorkerMsg({
+    orderNumber: detail.orderNumber,
+    customerName: detail.customerName,
+    cancellationReason: detail.cancellationReason,
+  });
+}
+
+export async function recordCancellationNotifyResult(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    orderId: string;
+    idempotencyKey: string;
+    ok: boolean;
+    messageId?: string | null;
+    error?: string | null;
+  },
+): Promise<void> {
+  const now = new Date().toISOString();
+  if (input.ok) {
+    const { error } = await client
+      .from("sales_orders")
+      .update({
+        cancellation_notify_status: "sent",
+        cancellation_notify_message_id: input.messageId?.trim() || null,
+        cancellation_notify_error: null,
+        cancellation_notify_attempted_at: now,
+      })
+      .eq("company_id", input.companyId)
+      .eq("id", input.orderId)
+      .eq("cancellation_notify_idempotency_key", input.idempotencyKey);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const { error } = await client
+    .from("sales_orders")
+    .update({
+      cancellation_notify_status: "failed",
+      cancellation_notify_error: input.error?.trim() || "WhatsApp notify failed",
+      cancellation_notify_attempted_at: now,
+    })
+    .eq("company_id", input.companyId)
+    .eq("id", input.orderId)
+    .eq("cancellation_notify_idempotency_key", input.idempotencyKey);
+  if (error) throw new Error(error.message);
+}
+
+export type DecideCancellationRequestResult = {
+  cancelled: boolean;
+  notifyMessage?: string;
+  workerPhone?: string | null;
+  idempotencyKey?: string | null;
+  customerNotifyStatus?: string;
+  customerMessage?: string | null;
+};
+
+async function notifyStaffCancellationDecision(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    orderId: string;
+    orderNumber: string;
+    userId: string;
+    kind: "request_approved" | "request_rejected";
+    detail: string;
+  },
+): Promise<void> {
+  try {
+    const recipients = new Set<string>([input.userId]);
+    const { data: profiles } = await client
+      .from("profiles")
+      .select("id")
+      .eq("company_id", input.companyId)
+      .limit(5);
+    for (const p of profiles ?? []) recipients.add(String(p.id));
+    for (const userId of [...recipients].slice(0, 5)) {
+      await insertIdempotentCancellationNotification(
+        client,
+        buildCancellationNotificationRow({
+          companyId: input.companyId,
+          userId,
+          kind: input.kind,
+          detail: input.detail,
+          idempotencyKey: `order-cancel-${input.kind}:${input.orderId}:${userId}`,
+          orderId: input.orderId,
+          orderNumber: input.orderNumber,
+        }),
+      );
+    }
+  } catch {
+    /* non-blocking */
+  }
+}
+
+/**
+ * Customer proactive notify: safe path is next AI turn (tool surfaces decision).
+ * Records skipped/dry_run on the request; never rolls back the employee decision.
+ * Does not send real WhatsApp without explicit outbound opt-in (handled by callers).
+ */
+async function recordCustomerDecisionNotifySkipped(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    requestId: string;
+    orderId: string;
+    decision: "approved" | "rejected";
+  },
+): Promise<{ status: "skipped" | "dry_run"; message: string }> {
+  const idem = `order-cancel-customer-${input.decision}:${input.requestId}`;
+  const message =
+    input.decision === "approved"
+      ? `Your cancellation for order ${input.orderId} was approved. The order is now cancelled. This does not automatically process a refund.`
+      : `Your cancellation request for order ${input.orderId} was not approved. The order remains active.`;
+  const now = new Date().toISOString();
+  await client
+    .from("sales_order_cancellation_requests")
+    .update({
+      customer_notify_status: "skipped",
+      customer_notify_idempotency_key: idem,
+      customer_notify_error:
+        "Proactive customer WhatsApp not sent: awaiting verified channel consent / next AI turn.",
+      customer_notify_attempted_at: now,
+      updated_at: now,
+    })
+    .eq("id", input.requestId)
+    .eq("company_id", input.companyId);
+  return { status: "skipped", message };
+}
+
+export async function approveCancellationRequest(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    orderId: string;
+    requestId: string;
+    userId: string;
+    decisionReason?: string;
+  },
+): Promise<DecideCancellationRequestResult> {
+  await assertCanApproveCancellation(client);
+  const detail = await getSalesOrderDetail(client, input.companyId, input.orderId);
+  if (!detail) throw new Error("Order not found.");
+  const pending = detail.pendingCancellationRequest;
+  if (!pending || pending.id !== input.requestId || pending.status !== "pending") {
+    throw new Error("No pending cancellation request for this order.");
+  }
+  if (!["processing", "out_for_delivery", "confirmed", "pending_approval"].includes(detail.status)) {
+    throw new Error(`Order status ${detail.status} cannot be cancelled from this request.`);
+  }
+  const fromStatus = detail.status;
+  const now = new Date().toISOString();
+  const notifyKey = detail.assignedDeliveryWorkerId
+    ? `order-cancel:${input.orderId}:${detail.assignedDeliveryWorkerId}`
+    : null;
+
+  const { data: updated, error } = await client
+    .from("sales_orders")
+    .update({
+      status: "cancelled",
+      cancelled_at: now,
+      cancellation_source: "customer",
+      cancellation_reason: pending.reason,
+      cancelled_from_status: fromStatus,
+      updated_by: input.userId,
+      updated_at: now,
+      cancellation_notify_status: detail.assignedDeliveryWorkerId ? "pending" : "skipped",
+      cancellation_notify_idempotency_key: notifyKey,
+    })
+    .eq("company_id", input.companyId)
+    .eq("id", input.orderId)
+    .eq("status", fromStatus)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!updated?.length) throw new Error("Order status changed; refresh and try again.");
+
+  const { data: reqUpdated, error: reqError } = await client
+    .from("sales_order_cancellation_requests")
+    .update({
+      status: "approved",
+      decided_at: now,
+      decided_by: input.userId,
+      decision_reason: input.decisionReason?.trim() || null,
+      updated_at: now,
+    })
+    .eq("id", input.requestId)
+    .eq("company_id", input.companyId)
+    .eq("status", "pending")
+    .select("id");
+  if (reqError) throw new Error(reqError.message);
+  if (!reqUpdated?.length) {
+    throw new Error("Cancellation request was already decided by another employee.");
+  }
+
+  await client.from("sales_order_status_events").insert({
+    company_id: input.companyId,
+    order_id: input.orderId,
+    from_status: fromStatus,
+    to_status: "cancelled",
+    note: input.decisionReason?.trim()
+      ? `Customer cancellation approved. ${input.decisionReason.trim()}`
+      : "Customer cancellation approved by employee",
+    changed_by: input.userId,
+  });
+
+  await notifyStaffCancellationDecision(client, {
+    companyId: input.companyId,
+    orderId: input.orderId,
+    orderNumber: detail.orderNumber,
+    userId: input.userId,
+    kind: "request_approved",
+    detail: `Order ${detail.orderNumber} cancellation approved. Previous status: ${fromStatus}.`,
+  });
+
+  const customerNotify = await recordCustomerDecisionNotifySkipped(client, {
+    companyId: input.companyId,
+    requestId: input.requestId,
+    orderId: detail.orderNumber,
+    decision: "approved",
+  });
+
+  const refreshed = await getSalesOrderDetail(client, input.companyId, input.orderId);
+  return {
+    cancelled: true,
+    notifyMessage: refreshed ? buildCancellationWorkerMessage(refreshed) : undefined,
+    workerPhone: refreshed?.assignedDeliveryWorkerPhone ?? null,
+    idempotencyKey: notifyKey,
+    customerNotifyStatus: customerNotify.status,
+    customerMessage: customerNotify.message,
+  };
+}
+
+export async function rejectCancellationRequest(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    orderId: string;
+    requestId: string;
+    userId: string;
+    decisionReason?: string;
+  },
+): Promise<{ customerNotifyStatus: string; customerMessage: string }> {
+  await assertCanApproveCancellation(client);
+  const detail = await getSalesOrderDetail(client, input.companyId, input.orderId);
+  if (!detail?.pendingCancellationRequest) {
+    throw new Error("No pending cancellation request for this order.");
+  }
+  if (detail.pendingCancellationRequest.id !== input.requestId) {
+    throw new Error("Cancellation request mismatch.");
+  }
+  if (detail.pendingCancellationRequest.status !== "pending") {
+    throw new Error("Cancellation request was already decided.");
+  }
+  const now = new Date().toISOString();
+  const { data: reqUpdated, error } = await client
+    .from("sales_order_cancellation_requests")
+    .update({
+      status: "rejected",
+      decided_at: now,
+      decided_by: input.userId,
+      decision_reason: input.decisionReason?.trim() || null,
+      updated_at: now,
+    })
+    .eq("id", input.requestId)
+    .eq("company_id", input.companyId)
+    .eq("status", "pending")
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!reqUpdated?.length) {
+    throw new Error("Cancellation request was already decided by another employee.");
+  }
+
+  await client.from("sales_order_status_events").insert({
+    company_id: input.companyId,
+    order_id: input.orderId,
+    from_status: detail.status,
+    to_status: detail.status,
+    note: input.decisionReason?.trim()
+      ? `Customer cancellation rejected. ${input.decisionReason.trim()}`
+      : "Customer cancellation request rejected by employee",
+    changed_by: input.userId,
+  });
+
+  await notifyStaffCancellationDecision(client, {
+    companyId: input.companyId,
+    orderId: input.orderId,
+    orderNumber: detail.orderNumber,
+    userId: input.userId,
+    kind: "request_rejected",
+    detail: `Order ${detail.orderNumber} cancellation rejected. Order remains ${detail.status}.${
+      input.decisionReason?.trim() ? ` Reason: ${input.decisionReason.trim()}` : ""
+    }`,
+  });
+
+  const customerNotify = await recordCustomerDecisionNotifySkipped(client, {
+    companyId: input.companyId,
+    requestId: input.requestId,
+    orderId: detail.orderNumber,
+    decision: "rejected",
+  });
+  return {
+    customerNotifyStatus: customerNotify.status,
+    customerMessage: customerNotify.message,
+  };
 }

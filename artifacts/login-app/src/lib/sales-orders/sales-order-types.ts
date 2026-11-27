@@ -114,6 +114,25 @@ export type SalesOrderDetail = SalesOrderListRow & {
   rejectedAt: string | null;
   rejectedBy: string | null;
   cancelledAt: string | null;
+  cancellationSource: "customer" | "employee" | "system" | null;
+  cancellationReason: string | null;
+  cancelledFromStatus: SalesOrderStatus | null;
+  cancellationNotifyStatus: "none" | "pending" | "sent" | "failed" | "skipped";
+  cancellationNotifyMessageId: string | null;
+  cancellationNotifyError: string | null;
+  pendingCancellationRequest: {
+    id: string;
+    status: "pending" | "approved" | "rejected";
+    reason: string | null;
+    orderStatusAtRequest: string;
+    requestedAt: string;
+    decidedAt: string | null;
+    decidedBy: string | null;
+    decidedByName: string | null;
+    decisionReason: string | null;
+    customerNotifyStatus: "none" | "pending" | "sent" | "failed" | "skipped" | "dry_run";
+    customerNotifyError: string | null;
+  } | null;
   updatedAt: string;
   items: SalesOrderItem[];
   statusHistory: SalesOrderStatusEvent[];

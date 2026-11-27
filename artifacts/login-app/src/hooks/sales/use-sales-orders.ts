@@ -257,5 +257,90 @@ export function useSalesOrderApprovalActions(companyId: string | null) {
     },
   });
 
-  return { approve, reject, assignDelivery, retryDeliveryNotify };
+  const approveCancellation = useMutation({
+    mutationFn: async (input: {
+      orderId: string;
+      requestId: string;
+      userId: string;
+      decisionReason?: string;
+      dryRunNotify?: boolean;
+    }) => {
+      if (!companyId) throw new Error("Company required");
+      const { approveCancellationRequest, recordCancellationNotifyResult } = await import(
+        "@/lib/sales-orders/sales-orders-query"
+      );
+      const result = await approveCancellationRequest(supabase, { companyId, ...input });
+      if (result.cancelled && result.workerPhone && result.notifyMessage && result.idempotencyKey) {
+        if (input.dryRunNotify === true) {
+          const messageId = `dry-run-cancel-${Date.now()}`;
+          await recordCancellationNotifyResult(supabase, {
+            companyId,
+            orderId: input.orderId,
+            idempotencyKey: result.idempotencyKey,
+            ok: true,
+            messageId,
+          });
+          return { ...result, notifyOk: true as const, notifyError: null, messageId };
+        }
+        try {
+          const wa = await sendWhatsAppTextMessage(
+            companyId,
+            result.workerPhone,
+            result.notifyMessage,
+          );
+          const messageId =
+            wa && typeof wa === "object" && "messageId" in wa
+              ? String((wa as { messageId?: string }).messageId ?? "")
+              : "";
+          await recordCancellationNotifyResult(supabase, {
+            companyId,
+            orderId: input.orderId,
+            idempotencyKey: result.idempotencyKey,
+            ok: true,
+            messageId: messageId || null,
+          });
+          return { ...result, notifyOk: true as const, notifyError: null, messageId: messageId || null };
+        } catch (error) {
+          const notifyError = error instanceof Error ? error.message : String(error);
+          await recordCancellationNotifyResult(supabase, {
+            companyId,
+            orderId: input.orderId,
+            idempotencyKey: result.idempotencyKey,
+            ok: false,
+            error: notifyError,
+          });
+          return { ...result, notifyOk: false as const, notifyError, messageId: null };
+        }
+      }
+      return { ...result, notifyOk: false as const, notifyError: null, messageId: null };
+    },
+    onSuccess: async (_data, variables) => {
+      await invalidate(variables.orderId);
+    },
+  });
+
+  const rejectCancellation = useMutation({
+    mutationFn: async (input: {
+      orderId: string;
+      requestId: string;
+      userId: string;
+      decisionReason?: string;
+    }) => {
+      if (!companyId) throw new Error("Company required");
+      const { rejectCancellationRequest } = await import("@/lib/sales-orders/sales-orders-query");
+      await rejectCancellationRequest(supabase, { companyId, ...input });
+    },
+    onSuccess: async (_data, variables) => {
+      await invalidate(variables.orderId);
+    },
+  });
+
+  return {
+    approve,
+    reject,
+    assignDelivery,
+    retryDeliveryNotify,
+    approveCancellation,
+    rejectCancellation,
+  };
 }

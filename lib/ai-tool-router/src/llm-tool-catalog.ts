@@ -42,7 +42,7 @@ export type ToolRegistryEntry = {
   displayName: string;
   category: string;
   classification: ToolClassification;
-  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer" | "product_agent" | "quote_agent";
+  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer" | "product_agent" | "quote_agent" | "sales_order_agent";
   description: string;
   requiredPermissions: string[];
   llmDefinition?: LlmFunctionToolDefinition;
@@ -713,6 +713,61 @@ const CREATE_SALES_ORDER_LLM = {
   },
 } as const;
 
+const LIST_CUSTOMER_ORDERS_FOR_CANCELLATION_LLM = {
+  type: "function",
+  function: {
+    name: "list_customer_orders_for_cancellation",
+    description:
+      "List this customer's orders for cancellation (ownership verified by phone/conversation). Use when the customer wants to cancel. Never invent orders.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerPhone: { type: "string" },
+        orderNumber: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const GET_ORDER_CANCELLATION_ELIGIBILITY_LLM = {
+  type: "function",
+  function: {
+    name: "get_order_cancellation_eligibility",
+    description:
+      "Check whether an owned order can be cancelled directly, needs an employee-approved request, is already cancelled, or cannot be cancelled (e.g. delivered).",
+    parameters: {
+      type: "object",
+      properties: {
+        orderId: { type: "string" },
+        orderNumber: { type: "string" },
+        customerPhone: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const CONFIRM_ORDER_CANCELLATION_LLM = {
+  type: "function",
+  function: {
+    name: "confirm_order_cancellation",
+    description:
+      "After explicit customer confirmation only (customerConfirmed=true): directly cancel pending_approval/confirmed orders, or create a pending cancellation request for processing/out_for_delivery. Reason optional. Never claim cancelled unless the tool returns cancellation_completed.",
+    parameters: {
+      type: "object",
+      properties: {
+        orderId: { type: "string" },
+        customerConfirmed: { type: "boolean" },
+        customerPhone: { type: "string" },
+        reason: { type: "string", description: "Optional; omit or empty if customer declined to give a reason" },
+      },
+      required: ["orderId", "customerConfirmed"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   {
     key: "knowledge_lookup",
@@ -1300,6 +1355,37 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
       "Creates a COD sales order after explicit customer confirmation when AI order collection is enabled.",
     requiredPermissions: ["tools.execute", "orders.create"],
     llmDefinition: CREATE_SALES_ORDER_LLM,
+  },
+  {
+    key: "list_customer_orders_for_cancellation",
+    displayName: "List Customer Orders For Cancellation",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description: "Lists customer-owned orders for the cancellation workflow.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: LIST_CUSTOMER_ORDERS_FOR_CANCELLATION_LLM,
+  },
+  {
+    key: "get_order_cancellation_eligibility",
+    displayName: "Get Order Cancellation Eligibility",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description: "Returns direct-cancel vs request-required vs not-allowed for an owned order.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: GET_ORDER_CANCELLATION_ELIGIBILITY_LLM,
+  },
+  {
+    key: "confirm_order_cancellation",
+    displayName: "Confirm Order Cancellation",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "sales_order_agent",
+    description:
+      "Executes direct customer cancellation or creates a pending cancellation request after explicit confirmation.",
+    requiredPermissions: ["tools.execute", "orders.edit"],
+    llmDefinition: CONFIRM_ORDER_CANCELLATION_LLM,
   },
 ];
 

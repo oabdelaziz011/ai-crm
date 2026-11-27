@@ -68,6 +68,9 @@ export const FEATURE_TOOL_KEYS: Readonly<Record<AiEmployeeCapabilityFeatureCode,
     "validate_delivery_zone",
     "preview_sales_order",
     "create_sales_order",
+    "list_customer_orders_for_cancellation",
+    "get_order_cancellation_eligibility",
+    "confirm_order_cancellation",
   ],
 };
 
@@ -140,6 +143,9 @@ const TOOL_CAPABILITY_GROUP: Readonly<Record<string, AiEmployeeCapabilityGroupId
   validate_delivery_zone: "sales",
   preview_sales_order: "sales",
   create_sales_order: "sales",
+  list_customer_orders_for_cancellation: "sales",
+  get_order_cancellation_eligibility: "sales",
+  confirm_order_cancellation: "sales",
 };
 
 export const CAPABILITY_GROUP_ORDER: readonly AiEmployeeCapabilityGroupId[] = [

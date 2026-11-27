@@ -149,4 +149,66 @@ export type SalesOrderToolPorts = {
   }): Promise<void>;
 
   nextOrderNumber(companyId: string): Promise<string>;
+
+  /** Optional: resolve phone from conversation CRM link / latest order attribution. */
+  resolveConversationCustomerPhone?(input: {
+    companyId: string;
+    conversationId: string;
+  }): Promise<string | null>;
+
+  listCustomerActiveOrders(input: {
+    companyId: string;
+    customerPhone: string;
+    orderNumber?: string | null;
+    statuses: string[];
+  }): Promise<
+    Array<{
+      id: string;
+      orderNumber: string;
+      status: string;
+      totalAmount: number;
+      currency: string;
+      customerName: string;
+      customerPhone: string;
+      hasPendingCancellationRequest: boolean;
+      latestRejectionReason?: string | null;
+    }>
+  >;
+
+  executeCustomerDirectCancellation(input: {
+    companyId: string;
+    conversationId: string;
+    orderId: string;
+    reason: string | null;
+    customerPhone?: string | null;
+  }): Promise<
+    | {
+        ok: true;
+        workerNotify?: {
+          workerPhone: string;
+          message: string;
+          idempotencyKey: string;
+        } | null;
+      }
+    | { ok: false; code: string; reason: string }
+  >;
+
+  createCustomerCancellationRequest(input: {
+    companyId: string;
+    conversationId: string;
+    orderId: string;
+    reason: string | null;
+  }): Promise<
+    | { ok: true; requestId: string }
+    | { ok: false; code: string; reason: string }
+  >;
+
+  /** Best-effort worker WhatsApp; must never roll back a completed cancellation. */
+  notifyCancellationWorkerWhatsApp?(input: {
+    companyId: string;
+    orderId: string;
+    workerPhone: string;
+    message: string;
+    idempotencyKey: string;
+  }): Promise<{ ok: boolean; messageId?: string | null; error?: string | null }>;
 };

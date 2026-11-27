@@ -2,7 +2,10 @@ import type { ConversationState } from "@workspace/ai-conversation";
 import type { Tool, ToolExecutionContext } from "./tool-contract.js";
 import type { SalesOrderToolPorts } from "./sales-order-ports.js";
 import {
+  CONFIRM_ORDER_CANCELLATION_TOOL_KEY,
   CREATE_SALES_ORDER_TOOL_KEY,
+  GET_ORDER_CANCELLATION_ELIGIBILITY_TOOL_KEY,
+  LIST_CUSTOMER_ORDERS_FOR_CANCELLATION_TOOL_KEY,
   PREVIEW_SALES_ORDER_TOOL_KEY,
   SALES_ORDER_MAX_LINE_QUANTITY,
   SALES_ORDER_MAX_LINES,
@@ -14,6 +17,11 @@ import {
   previewSalesOrderFromConversation,
   validateDeliveryZoneForOrder,
 } from "./create-sales-order-from-conversation.js";
+import {
+  confirmOrderCancellation,
+  getOrderCancellationEligibility,
+  listCustomerOrdersForCancellation,
+} from "./order-cancellation-from-conversation.js";
 import { ToolInputValidationError } from "../errors.js";
 import { validateAgainstSchema } from "../utils/tool-utils.js";
 
@@ -266,10 +274,98 @@ function createCreateSalesOrderTool(ports: SalesOrderToolPorts): Tool {
   };
 }
 
+function createListCustomerOrdersForCancellationTool(ports: SalesOrderToolPorts): Tool {
+  return {
+    supports: (state) => ACTIVE_STATES.includes(state),
+    validate(input) {
+      validateAgainstSchema(
+        {
+          type: "object",
+          properties: {
+            customerPhone: { type: "string" },
+            orderNumber: { type: "string" },
+          },
+        },
+        input,
+      );
+    },
+    async execute(context, input) {
+      return listCustomerOrdersForCancellation(ports, {
+        companyId: requireCompany(context),
+        conversationId: requireConversation(context),
+        customerPhone: typeof input.customerPhone === "string" ? input.customerPhone : null,
+        orderNumber: typeof input.orderNumber === "string" ? input.orderNumber : null,
+      });
+    },
+  };
+}
+
+function createGetOrderCancellationEligibilityTool(ports: SalesOrderToolPorts): Tool {
+  return {
+    supports: (state) => ACTIVE_STATES.includes(state),
+    validate(input) {
+      validateAgainstSchema(
+        {
+          type: "object",
+          properties: {
+            orderId: { type: "string" },
+            orderNumber: { type: "string" },
+            customerPhone: { type: "string" },
+          },
+        },
+        input,
+      );
+    },
+    async execute(context, input) {
+      return getOrderCancellationEligibility(ports, {
+        companyId: requireCompany(context),
+        conversationId: requireConversation(context),
+        orderId: typeof input.orderId === "string" ? input.orderId : null,
+        orderNumber: typeof input.orderNumber === "string" ? input.orderNumber : null,
+        customerPhone: typeof input.customerPhone === "string" ? input.customerPhone : null,
+      });
+    },
+  };
+}
+
+function createConfirmOrderCancellationTool(ports: SalesOrderToolPorts): Tool {
+  return {
+    supports: (state) => ACTIVE_STATES.includes(state),
+    validate(input) {
+      validateAgainstSchema(
+        {
+          type: "object",
+          properties: {
+            orderId: { type: "string" },
+            customerConfirmed: { type: "boolean" },
+            customerPhone: { type: "string" },
+            reason: { type: "string" },
+          },
+          required: ["orderId", "customerConfirmed"],
+        },
+        input,
+      );
+    },
+    async execute(context, input) {
+      return confirmOrderCancellation(ports, {
+        companyId: requireCompany(context),
+        conversationId: requireConversation(context),
+        orderId: String(input.orderId ?? ""),
+        customerConfirmed: input.customerConfirmed === true,
+        customerPhone: typeof input.customerPhone === "string" ? input.customerPhone : null,
+        reason: typeof input.reason === "string" ? input.reason : null,
+      });
+    },
+  };
+}
+
 export function createSalesOrderAgentTools(ports: SalesOrderToolPorts): Record<string, Tool> {
   return {
     [VALIDATE_DELIVERY_ZONE_TOOL_KEY]: createValidateDeliveryZoneTool(ports),
     [PREVIEW_SALES_ORDER_TOOL_KEY]: createPreviewSalesOrderTool(ports),
     [CREATE_SALES_ORDER_TOOL_KEY]: createCreateSalesOrderTool(ports),
+    [LIST_CUSTOMER_ORDERS_FOR_CANCELLATION_TOOL_KEY]: createListCustomerOrdersForCancellationTool(ports),
+    [GET_ORDER_CANCELLATION_ELIGIBILITY_TOOL_KEY]: createGetOrderCancellationEligibilityTool(ports),
+    [CONFIRM_ORDER_CANCELLATION_TOOL_KEY]: createConfirmOrderCancellationTool(ports),
   };
 }

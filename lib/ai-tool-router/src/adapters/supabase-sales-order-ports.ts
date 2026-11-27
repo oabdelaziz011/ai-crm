@@ -23,6 +23,10 @@ import {
   findAllMatchingDeliveryZones,
   findMatchingDeliveryZone,
 } from "../tools/delivery-zone-match.js";
+import {
+  buildCancellationNotificationRow,
+  insertIdempotentCancellationNotification,
+} from "../tools/cancellation-notification-helper.js";
 
 const DEFAULT_REQUIRED_FIELDS: CompanyOrderSettingsSnapshot["requiredFields"] = {
   customerName: true,
@@ -88,6 +92,13 @@ export type CreateSupabaseSalesOrderPortsOptions = {
     companyId: string;
     leadId: string;
   }) => Promise<void>;
+  notifyCancellationWorkerWhatsApp?: (input: {
+    companyId: string;
+    orderId: string;
+    workerPhone: string;
+    message: string;
+    idempotencyKey: string;
+  }) => Promise<{ ok: boolean; messageId?: string | null; error?: string | null }>;
 };
 
 export function createSupabaseSalesOrderPorts(
@@ -95,6 +106,37 @@ export function createSupabaseSalesOrderPorts(
   options: CreateSupabaseSalesOrderPortsOptions,
 ): SalesOrderToolPorts {
   const { customerService } = options;
+
+  async function resolveConversationCustomerPhone(input: {
+    companyId: string;
+    conversationId: string;
+  }): Promise<string | null> {
+    const { data: conv } = await client
+      .from("conversations")
+      .select("customer_id, metadata")
+      .eq("id", input.conversationId)
+      .eq("company_id", input.companyId)
+      .maybeSingle();
+    if (conv?.customer_id) {
+      const { data: cust } = await client
+        .from("customers")
+        .select("phone, phone_e164")
+        .eq("id", conv.customer_id)
+        .eq("company_id", input.companyId)
+        .maybeSingle();
+      const phone = String(cust?.phone_e164 || cust?.phone || "").trim();
+      if (phone) return phone;
+    }
+    const { data: latest } = await client
+      .from("sales_orders")
+      .select("customer_phone")
+      .eq("company_id", input.companyId)
+      .eq("conversation_id", input.conversationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return latest?.customer_phone ? String(latest.customer_phone) : null;
+  }
 
   return {
     async loadOrderSettings(companyId) {
@@ -596,5 +638,380 @@ export function createSupabaseSalesOrderPorts(
     },
 
     cancelFollowUpAfterPurchase: options.cancelFollowUpAfterPurchase,
+
+    resolveConversationCustomerPhone,
+
+    async listCustomerActiveOrders(input) {
+      const phoneVariants = [
+        ...new Set(
+          [
+            input.customerPhone,
+            ...buildWhatsAppSenderPhoneLookupVariants(input.customerPhone),
+            resolveWhatsAppSenderPhoneE164(input.customerPhone) || "",
+          ]
+            .map((p) => String(p || "").trim())
+            .filter(Boolean),
+        ),
+      ];
+      let query = client
+        .from("sales_orders")
+        .select(
+          "id, order_number, status, total_amount, currency, customer_name, customer_phone",
+        )
+        .eq("company_id", input.companyId)
+        .in("customer_phone", phoneVariants.length ? phoneVariants : [input.customerPhone])
+        .in("status", input.statuses)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (input.orderNumber?.trim()) {
+        query = query.ilike("order_number", input.orderNumber.trim());
+      }
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      const rows = data ?? [];
+      const ids = rows.map((r) => String(r.id));
+      const pending = new Set<string>();
+      const rejected = new Map<string, string>();
+      if (ids.length) {
+        const { data: reqs } = await client
+          .from("sales_order_cancellation_requests")
+          .select("order_id, status, decision_reason, decided_at")
+          .eq("company_id", input.companyId)
+          .in("order_id", ids)
+          .in("status", ["pending", "rejected"])
+          .order("requested_at", { ascending: false });
+        for (const r of reqs ?? []) {
+          const oid = String(r.order_id);
+          if (r.status === "pending") pending.add(oid);
+          else if (r.status === "rejected" && !rejected.has(oid)) {
+            rejected.set(oid, String(r.decision_reason || "Cancellation was not approved."));
+          }
+        }
+      }
+      return rows.map((r) => ({
+        id: String(r.id),
+        orderNumber: String(r.order_number),
+        status: String(r.status),
+        totalAmount: Number(r.total_amount ?? 0),
+        currency: String(r.currency ?? "EGP"),
+        customerName: String(r.customer_name ?? ""),
+        customerPhone: String(r.customer_phone ?? ""),
+        hasPendingCancellationRequest: pending.has(String(r.id)),
+        latestRejectionReason: rejected.get(String(r.id)) ?? null,
+      }));
+    },
+
+    async executeCustomerDirectCancellation(input) {
+      const { data: order, error } = await client
+        .from("sales_orders")
+        .select(
+          "id, status, customer_phone, customer_name, order_number, assigned_delivery_worker_id, assigned_salesperson_id, conversation_id",
+        )
+        .eq("company_id", input.companyId)
+        .eq("id", input.orderId)
+        .maybeSingle();
+      if (error) return { ok: false as const, code: "order_not_found", reason: error.message };
+      if (!order) return { ok: false as const, code: "order_not_found", reason: "Order not found." };
+
+      const trustedPhone =
+        String(input.customerPhone || "").trim() ||
+        (await resolveConversationCustomerPhone({
+          companyId: input.companyId,
+          conversationId: input.conversationId,
+        })) ||
+        "";
+      if (trustedPhone) {
+        const orderPhone = String(order.customer_phone || "").replace(/[^\d+]/g, "");
+        const variants = new Set(
+          [
+            trustedPhone,
+            ...buildWhatsAppSenderPhoneLookupVariants(trustedPhone),
+            resolveWhatsAppSenderPhoneE164(trustedPhone) || "",
+          ]
+            .map((p) => p.replace(/[^\d+]/g, ""))
+            .filter(Boolean),
+        );
+        if (orderPhone && !variants.has(orderPhone)) {
+          return {
+            ok: false as const,
+            code: "ownership_verification_required",
+            reason: "Order does not belong to this customer.",
+          };
+        }
+      }
+
+      if (!["pending_approval", "confirmed"].includes(String(order.status))) {
+        return {
+          ok: false as const,
+          code: "order_state_changed",
+          reason: `Order status is now ${order.status}; direct cancellation is no longer available.`,
+        };
+      }
+      const fromStatus = String(order.status);
+      const now = new Date().toISOString();
+      const notifyKey = order.assigned_delivery_worker_id
+        ? `order-cancel:${input.orderId}:${order.assigned_delivery_worker_id}`
+        : null;
+      const { data: updated, error: updError } = await client
+        .from("sales_orders")
+        .update({
+          status: "cancelled",
+          cancelled_at: now,
+          cancellation_source: "customer",
+          cancellation_reason: input.reason,
+          cancelled_from_status: fromStatus,
+          updated_at: now,
+          cancellation_notify_status: order.assigned_delivery_worker_id ? "pending" : "skipped",
+          cancellation_notify_idempotency_key: notifyKey,
+        })
+        .eq("company_id", input.companyId)
+        .eq("id", input.orderId)
+        .eq("status", fromStatus)
+        .select("id");
+      if (updError) return { ok: false as const, code: "order_state_changed", reason: updError.message };
+      if (!updated?.length) {
+        return {
+          ok: false as const,
+          code: "order_state_changed",
+          reason: "Order status changed before cancellation could complete.",
+        };
+      }
+      await client.from("sales_order_status_events").insert({
+        company_id: input.companyId,
+        order_id: input.orderId,
+        from_status: fromStatus,
+        to_status: "cancelled",
+        note: input.reason
+          ? `Cancelled by customer. Reason: ${input.reason}`
+          : "Cancelled by customer",
+        changed_by: null,
+      });
+      // Best-effort idempotent in-app notification (correct schema + unique idempotency_key).
+      try {
+        const recipients: string[] = [];
+        if (order.assigned_salesperson_id) recipients.push(String(order.assigned_salesperson_id));
+        if (!recipients.length) {
+          const { data: profiles } = await client
+            .from("profiles")
+            .select("id")
+            .eq("company_id", input.companyId)
+            .limit(5);
+          for (const p of profiles ?? []) recipients.push(String(p.id));
+        }
+        const detail = `Order ${order.order_number} (${order.customer_name || "customer"}) was cancelled by the customer. Previous status: ${fromStatus}.${input.reason ? ` Reason: ${input.reason}` : ""}`;
+        for (const userId of [...new Set(recipients)].slice(0, 5)) {
+          const idem = `order-cancel-notice:${input.orderId}:${fromStatus}:${userId}`;
+          await insertIdempotentCancellationNotification(
+            client,
+            buildCancellationNotificationRow({
+              companyId: input.companyId,
+              userId,
+              kind: "completed",
+              detail,
+              idempotencyKey: idem,
+              orderId: input.orderId,
+              orderNumber: String(order.order_number),
+              extraParams: {
+                cancellationSource: "customer",
+                previousStatus: fromStatus,
+              },
+            }),
+          );
+        }
+      } catch {
+        /* non-blocking */
+      }
+
+      let workerNotify: {
+        workerPhone: string;
+        message: string;
+        idempotencyKey: string;
+      } | null = null;
+      if (order.assigned_delivery_worker_id && notifyKey) {
+        const { data: worker } = await client
+          .from("company_delivery_workers")
+          .select("phone_e164, full_name")
+          .eq("id", order.assigned_delivery_worker_id)
+          .eq("company_id", input.companyId)
+          .maybeSingle();
+        const workerPhone = String(worker?.phone_e164 || "").trim();
+        if (workerPhone) {
+          const lines = [
+            "Order Cancellation Notice",
+            "",
+            `Order: ${order.order_number}`,
+            `Customer: ${order.customer_name || "—"}`,
+            "",
+            "This order has been cancelled by the customer.",
+            "",
+            "Please do not proceed with preparation or delivery.",
+          ];
+          if (input.reason?.trim()) {
+            lines.push("", `Reason: ${input.reason.trim()}`);
+          }
+          workerNotify = {
+            workerPhone,
+            message: lines.join("\n"),
+            idempotencyKey: notifyKey,
+          };
+        }
+      }
+      return { ok: true as const, workerNotify };
+    },
+
+    notifyCancellationWorkerWhatsApp: options.notifyCancellationWorkerWhatsApp
+      ? async (input) => {
+          const result = await options.notifyCancellationWorkerWhatsApp!(input);
+          const now = new Date().toISOString();
+          try {
+            if (result.ok) {
+              await client
+                .from("sales_orders")
+                .update({
+                  cancellation_notify_status: "sent",
+                  cancellation_notify_message_id: result.messageId ?? null,
+                  cancellation_notify_error: null,
+                  cancellation_notify_attempted_at: now,
+                })
+                .eq("company_id", input.companyId)
+                .eq("id", input.orderId)
+                .eq("cancellation_notify_idempotency_key", input.idempotencyKey);
+            } else {
+              await client
+                .from("sales_orders")
+                .update({
+                  cancellation_notify_status: "failed",
+                  cancellation_notify_error: result.error || "WhatsApp notify failed",
+                  cancellation_notify_attempted_at: now,
+                })
+                .eq("company_id", input.companyId)
+                .eq("id", input.orderId)
+                .eq("cancellation_notify_idempotency_key", input.idempotencyKey);
+            }
+          } catch {
+            /* non-blocking */
+          }
+          return result;
+        }
+      : undefined,
+
+    async createCustomerCancellationRequest(input) {
+      const { data: order, error } = await client
+        .from("sales_orders")
+        .select("id, status, customer_phone, customer_name, customer_id, order_number, assigned_salesperson_id")
+        .eq("company_id", input.companyId)
+        .eq("id", input.orderId)
+        .maybeSingle();
+      if (error || !order) {
+        return { ok: false as const, code: "order_not_found", reason: "Order not found." };
+      }
+      const trustedPhone =
+        (await resolveConversationCustomerPhone({
+          companyId: input.companyId,
+          conversationId: input.conversationId,
+        })) || "";
+      if (trustedPhone) {
+        const orderPhone = String(order.customer_phone || "").replace(/[^\d+]/g, "");
+        const variants = new Set(
+          [
+            trustedPhone,
+            ...buildWhatsAppSenderPhoneLookupVariants(trustedPhone),
+            resolveWhatsAppSenderPhoneE164(trustedPhone) || "",
+          ]
+            .map((p) => p.replace(/[^\d+]/g, ""))
+            .filter(Boolean),
+        );
+        if (orderPhone && !variants.has(orderPhone)) {
+          return {
+            ok: false as const,
+            code: "ownership_verification_required",
+            reason: "Order does not belong to this customer.",
+          };
+        }
+      }
+      if (!["processing", "out_for_delivery"].includes(String(order.status))) {
+        return {
+          ok: false as const,
+          code: "order_state_changed",
+          reason: `Order status is now ${order.status}; a cancellation request is not available.`,
+        };
+      }
+      const { data: existing } = await client
+        .from("sales_order_cancellation_requests")
+        .select("id")
+        .eq("order_id", input.orderId)
+        .eq("status", "pending")
+        .maybeSingle();
+      if (existing?.id) {
+        return { ok: true as const, requestId: String(existing.id) };
+      }
+      const idem = `order-cancel-request:${input.orderId}`;
+      const conversationId =
+        typeof input.conversationId === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          input.conversationId,
+        )
+          ? input.conversationId
+          : null;
+      const { data: req, error: reqError } = await client
+        .from("sales_order_cancellation_requests")
+        .insert({
+          company_id: input.companyId,
+          order_id: input.orderId,
+          status: "pending",
+          source: "customer",
+          reason: input.reason,
+          order_status_at_request: order.status,
+          customer_id: order.customer_id,
+          customer_phone: order.customer_phone ?? "",
+          conversation_id: conversationId,
+          notification_idempotency_key: idem,
+        })
+        .select("id")
+        .single();
+      if (reqError) {
+        if (/unique|duplicate/i.test(reqError.message)) {
+          const { data: again } = await client
+            .from("sales_order_cancellation_requests")
+            .select("id")
+            .eq("order_id", input.orderId)
+            .eq("status", "pending")
+            .maybeSingle();
+          if (again?.id) return { ok: true as const, requestId: String(again.id) };
+        }
+        return { ok: false as const, code: "cancellation_not_allowed", reason: reqError.message };
+      }
+      try {
+        const recipients: string[] = [];
+        if (order.assigned_salesperson_id) recipients.push(String(order.assigned_salesperson_id));
+        if (!recipients.length) {
+          const { data: profiles } = await client
+            .from("profiles")
+            .select("id")
+            .eq("company_id", input.companyId)
+            .limit(5);
+          for (const p of profiles ?? []) recipients.push(String(p.id));
+        }
+        const detail = `Order ${order.order_number} (${order.customer_name || "customer"}) requested cancellation while status was ${order.status}.${input.reason ? ` Reason: ${input.reason}` : ""}`;
+        for (const userId of [...new Set(recipients)].slice(0, 5)) {
+          await insertIdempotentCancellationNotification(
+            client,
+            buildCancellationNotificationRow({
+              companyId: input.companyId,
+              userId,
+              kind: "request_pending",
+              detail,
+              idempotencyKey: `${idem}:${userId}`,
+              orderId: input.orderId,
+              orderNumber: String(order.order_number),
+              extraParams: { requestId: String(req.id) },
+            }),
+          );
+        }
+      } catch {
+        /* non-blocking */
+      }
+      return { ok: true as const, requestId: String(req.id) };
+    },
   };
 }

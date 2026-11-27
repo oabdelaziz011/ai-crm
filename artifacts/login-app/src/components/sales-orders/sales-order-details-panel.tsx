@@ -84,23 +84,33 @@ export function SalesOrderDetailsPanel({
   const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const detail = useSalesOrderDetail(companyId, orderId);
-  const { approve, reject, assignDelivery, retryDeliveryNotify } =
-    useSalesOrderApprovalActions(companyId);
+  const {
+    approve,
+    reject,
+    assignDelivery,
+    retryDeliveryNotify,
+    approveCancellation,
+    rejectCancellation,
+  } = useSalesOrderApprovalActions(companyId);
   const { user } = useAuthUser();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("orders.edit");
   const canAssign = hasPermission("orders.assign_delivery");
+  const canApproveCancellation = hasPermission("orders.approve_cancellation");
   const order = detail.data;
   const { workers } = useDeliveryWorkersForZone(companyId, order?.deliveryZoneId ?? null);
   const [workerId, setWorkerId] = useState("");
   const [reassignWorkerId, setReassignWorkerId] = useState("");
   const [reassignReason, setReassignReason] = useState("");
   const [reassignConfirm, setReassignConfirm] = useState(false);
+  const [cancelDecisionReason, setCancelDecisionReason] = useState("");
   const busy =
     approve.isPending ||
     reject.isPending ||
     assignDelivery.isPending ||
-    retryDeliveryNotify.isPending;
+    retryDeliveryNotify.isPending ||
+    approveCancellation.isPending ||
+    rejectCancellation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -195,18 +205,172 @@ export function SalesOrderDetailsPanel({
                 </Button>
               </div>
             ) : null}
-            {approve.error || reject.error || assignDelivery.error || retryDeliveryNotify.error ? (
+            {approve.error ||
+            reject.error ||
+            assignDelivery.error ||
+            retryDeliveryNotify.error ||
+            approveCancellation.error ||
+            rejectCancellation.error ? (
               <DashboardErrorBanner
                 message={
                   (
                     approve.error ??
                     reject.error ??
                     assignDelivery.error ??
-                    retryDeliveryNotify.error
+                    retryDeliveryNotify.error ??
+                    approveCancellation.error ??
+                    rejectCancellation.error
                   )?.message ?? t("salesOrders.details.actionFailed")
                 }
               />
             ) : null}
+
+            {(order.cancellationSource ||
+              order.pendingCancellationRequest ||
+              order.status === "cancelled") && (
+              <section
+                className="rounded-xl border border-border/60 p-3"
+                data-testid="sales-order-cancellation-panel"
+              >
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("salesOrders.details.cancellation.title", {
+                    defaultValue: "Cancellation",
+                  })}
+                </h3>
+                <dl className="grid gap-1 text-sm">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      {t("salesOrders.details.cancellation.source", { defaultValue: "Source" })}
+                    </dt>
+                    <dd>{order.cancellationSource || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      {t("salesOrders.details.cancellation.reason", { defaultValue: "Reason" })}
+                    </dt>
+                    <dd>{order.cancellationReason || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      {t("salesOrders.details.cancellation.previousStatus", {
+                        defaultValue: "Previous status",
+                      })}
+                    </dt>
+                    <dd>{order.cancelledFromStatus || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      {t("salesOrders.details.cancellation.workerNotify", {
+                        defaultValue: "Worker WhatsApp",
+                      })}
+                    </dt>
+                    <dd data-testid="sales-order-cancel-worker-notify">
+                      {order.cancellationNotifyStatus}
+                    </dd>
+                  </div>
+                  {order.pendingCancellationRequest ? (
+                    <div>
+                      <dt className="text-xs text-muted-foreground">
+                        {t("salesOrders.details.cancellation.customerNotify", {
+                          defaultValue: "Customer notify",
+                        })}
+                      </dt>
+                      <dd data-testid="sales-order-cancel-customer-notify">
+                        {order.pendingCancellationRequest.customerNotifyStatus}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {order.pendingCancellationRequest ? (
+                    <>
+                      <div>
+                        <dt className="text-xs text-muted-foreground">
+                          {t("salesOrders.details.cancellation.requestStatus", {
+                            defaultValue: "Request status",
+                          })}
+                        </dt>
+                        <dd data-testid="sales-order-cancel-request-status">
+                          {order.pendingCancellationRequest.status}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-muted-foreground">
+                          {t("salesOrders.details.cancellation.requestedAt", {
+                            defaultValue: "Requested at",
+                          })}
+                        </dt>
+                        <dd>{order.pendingCancellationRequest.requestedAt}</dd>
+                      </div>
+                      {order.pendingCancellationRequest.decidedByName ? (
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            {t("salesOrders.details.cancellation.decidedBy", {
+                              defaultValue: "Decided by",
+                            })}
+                          </dt>
+                          <dd>{order.pendingCancellationRequest.decidedByName}</dd>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                </dl>
+                {canApproveCancellation &&
+                order.pendingCancellationRequest?.status === "pending" &&
+                user?.id ? (
+                  <div className="mt-3 space-y-2">
+                    <Label htmlFor="cancel-decision-reason">
+                      {t("salesOrders.details.cancellation.decisionReason", {
+                        defaultValue: "Decision reason (optional)",
+                      })}
+                    </Label>
+                    <Input
+                      id="cancel-decision-reason"
+                      value={cancelDecisionReason}
+                      onChange={(e) => setCancelDecisionReason(e.target.value)}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={busy}
+                        data-testid="sales-order-approve-cancellation"
+                        onClick={() =>
+                          approveCancellation.mutate({
+                            orderId: order.id,
+                            requestId: order.pendingCancellationRequest!.id,
+                            userId: user.id,
+                            decisionReason: cancelDecisionReason || undefined,
+                            dryRunNotify: import.meta.env.DEV === true,
+                          })
+                        }
+                      >
+                        {t("salesOrders.details.cancellation.approve", {
+                          defaultValue: "Approve cancellation",
+                        })}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        data-testid="sales-order-reject-cancellation"
+                        onClick={() =>
+                          rejectCancellation.mutate({
+                            orderId: order.id,
+                            requestId: order.pendingCancellationRequest!.id,
+                            userId: user.id,
+                            decisionReason: cancelDecisionReason || undefined,
+                          })
+                        }
+                      >
+                        {t("salesOrders.details.cancellation.reject", {
+                          defaultValue: "Reject cancellation",
+                        })}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            )}
 
             {order.assignmentPendingReason ? (
               <div

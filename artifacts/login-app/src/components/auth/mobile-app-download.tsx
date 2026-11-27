@@ -63,19 +63,21 @@ export function MobileAppDownload() {
 
   return (
     <section
-      className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-start"
+      className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-start"
       data-testid="mobile-app-download"
     >
-      <h2 className="text-sm font-semibold text-slate-800">{t("auth.login.mobileApps.title")}</h2>
-      <div className="mt-3 space-y-4 text-sm text-slate-600">
-        <div data-testid="mobile-app-android">
-          <div className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-              <AndroidIcon className="size-6" />
+      <h2 className="text-[11px] font-semibold text-slate-800">{t("auth.login.mobileApps.title")}</h2>
+      <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[10px] leading-snug text-slate-600">
+        <div className="min-w-0 rounded-lg border border-slate-200/80 bg-white/80 p-2" data-testid="mobile-app-android">
+          <div className="flex items-center gap-1.5">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white shadow-sm">
+              <AndroidIcon className="size-3.5" />
             </span>
-            <h3 className="font-medium text-slate-700">{t("auth.login.mobileApps.androidTitle")}</h3>
+            <h3 className="truncate text-[11px] font-medium text-slate-700">
+              {t("auth.login.mobileApps.androidTitle")}
+            </h3>
           </div>
-          <div className="mt-2 space-y-2 ps-11">
+          <div className="mt-1 space-y-0.5">
             {model.androidStatus === "ready" && model.androidUrl ? (
               <>
                 <a className="font-semibold text-[#0D9488]" href={model.androidUrl}>
@@ -84,24 +86,32 @@ export function MobileAppDownload() {
                 {model.androidVersion ? (
                   <p>{t("auth.login.mobileApps.version", { version: model.androidVersion })}</p>
                 ) : null}
-                {qr ? <img alt={t("auth.login.mobileApps.qrAlt")} className="h-40 w-40" src={qr} /> : null}
-                <p>{t("auth.login.mobileApps.androidInstall")}</p>
+                {qr ? (
+                  <img
+                    alt={t("auth.login.mobileApps.qrAlt")}
+                    className="h-12 w-12 rounded-md"
+                    src={qr}
+                  />
+                ) : null}
+                <p className="line-clamp-2">{t("auth.login.mobileApps.androidInstall")}</p>
               </>
             ) : (
-              <p>{t("auth.login.mobileApps.androidPending")}</p>
+              <p className="line-clamp-2">{t("auth.login.mobileApps.androidPending")}</p>
             )}
           </div>
         </div>
 
-        <div data-testid="mobile-app-ios">
-          <div className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm">
-              <AppleIcon className="size-5" />
+        <div className="min-w-0 rounded-lg border border-slate-200/80 bg-white/80 p-2" data-testid="mobile-app-ios">
+          <div className="flex items-center gap-1.5">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-900 shadow-sm">
+              <AppleIcon className="size-3" />
             </span>
-            <h3 className="font-medium text-slate-700">{t("auth.login.mobileApps.iosTitle")}</h3>
+            <h3 className="truncate text-[11px] font-medium text-slate-700">
+              {t("auth.login.mobileApps.iosTitle")}
+            </h3>
           </div>
-          <div className="mt-2 ps-11">
-            <p>{t("auth.login.mobileApps.iosPending")}</p>
+          <div className="mt-1">
+            <p className="line-clamp-2">{t("auth.login.mobileApps.iosPending")}</p>
           </div>
         </div>
       </div>

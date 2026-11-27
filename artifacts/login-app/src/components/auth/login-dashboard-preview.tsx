@@ -211,16 +211,16 @@ export function LoginDashboardPreview() {
               </ol>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-[1.15fr_0.85fr] gap-2.5">
-              <div className="flex min-h-0 flex-col gap-2.5">
-                <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="grid min-h-0 flex-1 grid-cols-[1.15fr_0.85fr] gap-2.5 overflow-hidden">
+              <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                  <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
                     <p className="text-[11px] font-semibold text-white/70">
                       {t("auth.login.experience.preview.charts.pipeline")}
                     </p>
                     <p className="text-[10px] font-medium tabular-nums text-teal-300">+12%</p>
                   </div>
-                  <div className="flex min-h-[88px] flex-1 items-end gap-1.5">
+                  <div className="flex h-[72px] max-h-full min-h-0 items-end gap-1.5 overflow-hidden">
                     {[38, 58, 44, 72, 50, 68, 55, 82, 64, 90].map((h, i) => (
                       <span
                         key={i}
@@ -231,20 +231,20 @@ export function LoginDashboardPreview() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="mb-2 text-[11px] font-semibold text-white/70">
+                <div className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
+                  <p className="mb-1.5 text-[11px] font-semibold text-white/70">
                     {t("auth.login.experience.preview.charts.channels")}
                   </p>
-                  <div className="mb-2 flex h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className="mb-1.5 flex h-1.5 overflow-hidden rounded-full bg-white/10">
                     {CHANNEL_MIX.map(({ key, pct, color }) => (
                       <span key={key} className={cn("h-full", color)} style={{ width: `${pct}%` }} />
                     ))}
                   </div>
-                  <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                  <ul className="flex flex-wrap gap-x-2.5 gap-y-0.5">
                     {CHANNEL_MIX.map(({ key, pct, color }) => (
-                      <li key={key} className="flex items-center gap-1.5 text-[10px] text-white/65">
-                        <span className={cn("size-1.5 rounded-full", color)} />
-                        <span>{t(`auth.login.experience.preview.channelMix.${key}`)}</span>
+                      <li key={key} className="flex items-center gap-1 text-[9px] text-white/65">
+                        <span className={cn("size-1.5 shrink-0 rounded-full", color)} />
+                        <span className="truncate">{t(`auth.login.experience.preview.channelMix.${key}`)}</span>
                         <span className="tabular-nums text-white/40">{pct}%</span>
                       </li>
                     ))}

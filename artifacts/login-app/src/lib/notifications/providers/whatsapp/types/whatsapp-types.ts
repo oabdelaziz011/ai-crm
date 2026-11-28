@@ -12,8 +12,10 @@ export type MetaWhatsAppConfig = {
 
 export type WhatsAppOutboundMessage = {
   to: string;
-  templateKey: string;
-  templateId: string;
+  /** Null when sending session freeform text (Meta type: text). */
+  templateKey: string | null;
+  /** Null/empty → Meta type: text using fallbackText. Non-empty → type: template. */
+  templateId: string | null;
   languageCode: string;
   bodyParameters: string[];
   fallbackText: string;
@@ -39,8 +41,8 @@ export interface WhatsAppTransport {
 }
 
 export type RenderedWhatsAppMessage = {
-  templateKey: string;
-  templateId: string;
+  templateKey: string | null;
+  templateId: string | null;
   languageCode: string;
   bodyParameters: string[];
   fallbackText: string;
@@ -77,6 +79,11 @@ export type CompanyWhatsAppSettings = {
   webhookCallbackUrl: string;
   defaultLanguage: string;
   maxRetryCount: number;
+  /**
+   * Purpose → Meta template binding. Only bindings with approvalStatus "approved"
+   * may be sent. Empty object means no transactional templates configured.
+   */
+  templateBindings: import("@/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates").CompanyWhatsAppTemplateBindings;
   hasAccessToken: boolean;
   hasWebhookVerifyToken: boolean;
   hasAppSecret: boolean;

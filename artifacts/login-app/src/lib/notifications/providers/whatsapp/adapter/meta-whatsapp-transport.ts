@@ -91,13 +91,14 @@ export class MetaWhatsAppTransport implements WhatsAppTransport {
   }
 
   private buildPayload(message: WhatsAppOutboundMessage): Record<string, unknown> {
-    if (message.templateId) {
+    const templateId = message.templateId?.trim() ?? "";
+    if (templateId) {
       return {
         messaging_product: "whatsapp",
         to: message.to,
         type: "template",
         template: {
-          name: message.templateId,
+          name: templateId,
           language: { code: message.languageCode },
           components: message.bodyParameters.length
             ? [

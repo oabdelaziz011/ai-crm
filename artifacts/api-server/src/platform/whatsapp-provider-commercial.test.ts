@@ -49,8 +49,10 @@ function enabledSettings(companyId: string): CompanyWhatsAppSettings {
     webhookVerifyToken: "verify",
     apiVersion: "v21.0",
     appSecret: "",
+    webhookCallbackUrl: "",
     defaultLanguage: "en",
     maxRetryCount: 3,
+    templateBindings: {},
     hasAccessToken: true,
     hasWebhookVerifyToken: true,
     hasAppSecret: false,
@@ -75,7 +77,16 @@ function queueItem(companyId: string, id = "queue-1"): NotificationQueueItem {
     scheduledAt: new Date().toISOString(),
     processedAt: null,
     lastError: null,
-    payload: { event: "generic_system", params: { phone_e164: "+966500000001" } },
+    payload: {
+      event: "appointment_created",
+      params: {
+        phone_e164: "+966500000001",
+        customerName: "Omar",
+        service: "Consult",
+        date: "2026-11-28",
+        time: "10:00",
+      },
+    },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -116,6 +127,9 @@ function buildProvider(input: {
     async markCompleted(companyId: string, queueId: string) {
       updates.push({ companyId, queueId, status: "completed" });
     },
+    async noteAmbiguousHold(companyId: string, queueId: string, _error: string) {
+      updates.push({ companyId, queueId, status: "processing" });
+    },
     async markFailed(
       companyId: string,
       queueId: string,
@@ -146,10 +160,10 @@ function buildProvider(input: {
   const renderer = {
     renderEvent() {
       return {
-        templateKey: "generic_system",
-        templateId: "generic_system",
+        templateKey: "appointment_confirmation",
+        templateId: "appointment_confirmation",
         languageCode: "en",
-        bodyParameters: [],
+        bodyParameters: ["Omar", "Consult", "2026-11-28", "10:00"],
         fallbackText: "hello",
       };
     },

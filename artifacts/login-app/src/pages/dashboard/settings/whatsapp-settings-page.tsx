@@ -46,6 +46,7 @@ import { WebhookVerifyTokenField } from "@/components/channels/webhook-verify-to
 import { generateWhatsAppVerifyToken } from "@workspace/channel-registry";
 import { WhatsAppConnectionLifecyclePanel } from "@/components/channels/whatsapp-connection-lifecycle-panel";
 import { WhatsAppBusinessProfilePanel } from "@/components/channels/whatsapp-business-profile-panel";
+import { WhatsAppMessageTemplatesPanel } from "@/components/channels/whatsapp-message-templates-panel";
 import {
   disconnectWhatsAppConnection,
   isWhatsAppLifecycleApiConfigured,
@@ -63,6 +64,7 @@ const EMPTY_SETTINGS: WhatsAppSettingsDraft = {
   webhookCallbackUrl: "",
   defaultLanguage: "en",
   maxRetryCount: 3,
+  templateBindings: {},
 };
 
 function defaultWebhookCallbackUrl(): string {
@@ -146,6 +148,7 @@ export function SettingsWhatsAppPage() {
       webhookCallbackUrl: callbackUrl,
       defaultLanguage: settings.defaultLanguage,
       maxRetryCount: settings.maxRetryCount,
+      templateBindings: settings.templateBindings ?? prev.templateBindings ?? {},
     }));
   }, [settings]);
 
@@ -418,6 +421,13 @@ export function SettingsWhatsAppPage() {
           (settings?.phoneNumberId ?? "").trim() || settings?.hasAccessToken,
         )}
         phoneNumberId={settings?.phoneNumberId ?? null}
+      />
+
+      <WhatsAppMessageTemplatesPanel
+        companyId={companyId}
+        hasBusinessAccountId={Boolean((settings?.businessAccountId ?? "").trim())}
+        hasAccessToken={Boolean(settings?.hasAccessToken)}
+        messagingEnabled={Boolean(settings?.enabled ?? draft.enabled)}
       />
 
       <DashboardCard className="p-6 space-y-5">

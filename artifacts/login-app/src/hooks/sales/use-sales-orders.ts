@@ -13,7 +13,7 @@ import {
   updateSalesOrderLifecycleStatus,
 } from "@/lib/sales-orders/sales-orders-query";
 import { notifyCustomerOrderStatusOnWhatsApp } from "@/lib/sales-orders/sales-order-customer-status-notify";
-import { sendWhatsAppTextMessage } from "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client";
+import { sendWhatsAppPurposeMessage } from "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client";
 import type { SalesOrdersListFilters } from "@/lib/sales-orders/sales-order-types";
 
 async function dispatchCustomerStatusWhatsApp(input: {
@@ -144,10 +144,27 @@ async function dispatchWorkerWhatsApp(input: {
   }
 
   try {
-    const result = await sendWhatsAppTextMessage(
+    const detail = await getSalesOrderDetail(supabase, input.companyId, input.orderId);
+    const address = [
+      detail?.deliveryGovernorate,
+      detail?.deliveryCityArea,
+      detail?.deliveryAddress,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const result = await sendWhatsAppPurposeMessage(
       input.companyId,
       input.workerPhone,
-      input.notifyMessage,
+      "delivery_worker_dispatch",
+      {
+        orderNumber: detail?.orderNumber ?? input.orderId,
+        customerName: detail?.customerName ?? "customer",
+        deliveryAddress: address || "—",
+        customerPhone: detail?.customerPhone ?? "—",
+        totalAmount: detail
+          ? `${detail.totalAmount} ${detail.currency}`
+          : input.notifyMessage.slice(0, 60),
+      },
     );
     const messageId =
       result && typeof result === "object" && "messageId" in result
@@ -374,10 +391,15 @@ export function useSalesOrderApprovalActions(companyId: string | null) {
           return { ...result, notifyOk: true as const, notifyError: null, messageId };
         }
         try {
-          const wa = await sendWhatsAppTextMessage(
+          const detail = await getSalesOrderDetail(supabase, companyId, input.orderId);
+          const wa = await sendWhatsAppPurposeMessage(
             companyId,
             result.workerPhone,
-            result.notifyMessage,
+            "delivery_worker_cancellation",
+            {
+              orderNumber: detail?.orderNumber ?? input.orderId,
+              customerName: detail?.customerName ?? "customer",
+            },
           );
           const messageId =
             wa && typeof wa === "object" && "messageId" in wa

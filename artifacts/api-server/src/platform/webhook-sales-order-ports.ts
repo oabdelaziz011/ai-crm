@@ -65,10 +65,21 @@ export function createWebhookSalesOrderPorts(
         const provider = createWhatsAppProvider(client, new MetaWhatsAppTransport(), renderer, {
           whatsappMessagesCommercial: createWhatsAppMessagesCommercialPort(client),
         });
-        const result = await provider.sendFreeformText(
+        const { data: orderRow } = await client
+          .from("sales_orders")
+          .select("order_number, customer_name")
+          .eq("company_id", input.companyId)
+          .eq("id", input.orderId)
+          .maybeSingle();
+        const result = await provider.sendPurposeTemplate(
           input.companyId,
           input.workerPhone,
-          input.message,
+          "delivery_worker_cancellation",
+          {
+            orderNumber: String(orderRow?.order_number ?? input.orderId),
+            customerName: String(orderRow?.customer_name ?? "customer"),
+          },
+          { freeformText: input.message },
         );
         return {
           ok: true,
@@ -97,7 +108,8 @@ export function createWebhookSalesOrderPorts(
           };
         }
 
-        // WhatsApp-only: require a WhatsApp channel session on the conversation (no Email fallback).
+        // WhatsApp-only: require a WhatsApp channel session (no Email fallback).
+        let sessionWindowOpen = false;
         if (input.conversationId) {
           const { data: session } = await client
             .from("channel_sessions")
@@ -121,20 +133,64 @@ export function createWebhookSalesOrderPorts(
               .eq("id", input.orderId);
             return { ok: true, skipped: true, error: "channel_not_whatsapp" };
           }
+          const { isWithinMessagingResponseWindow } = await import(
+            "@login-app/lib/campaigns/thread-eligibility.js"
+          );
+          sessionWindowOpen = isWithinMessagingResponseWindow(
+            session?.last_inbound_at ? String(session.last_inbound_at) : null,
+          );
         }
 
+        const { buildCustomerOrderStatusMessage } = await import(
+          "@login-app/lib/sales-orders/sales-order-customer-status-notify.js"
+        );
+        const { customerStatusToWhatsAppPurpose } = await import(
+          "@login-app/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates.js"
+        );
         const name = input.customerName.trim() || "there";
-        const message = `Hi ${name}, we received order ${input.orderNumber}. It is pending team approval. We will update you once it is confirmed.`;
+        const message = buildCustomerOrderStatusMessage({
+          orderNumber: input.orderNumber,
+          status: input.status,
+          customerName: name,
+        });
+        const purpose = customerStatusToWhatsAppPurpose(String(input.status));
         const t = i18next.getFixedT("en", "common");
         const renderer = WhatsAppRenderer.fromI18n(t);
         const provider = createWhatsAppProvider(client, new MetaWhatsAppTransport(), renderer, {
           whatsappMessagesCommercial: createWhatsAppMessagesCommercialPort(client),
         });
-        const result = await provider.sendFreeformText(
-          input.companyId,
-          input.customerPhone,
-          message,
-        );
+
+        let result;
+        if (sessionWindowOpen) {
+          result = await provider.sendFreeformText(
+            input.companyId,
+            input.customerPhone,
+            message,
+            { sessionWindowOpen: true },
+          );
+        } else if (!purpose) {
+          await client
+            .from("sales_orders")
+            .update({
+              customer_status_notify_status: "skipped",
+              customer_status_notify_error: "messaging_window_closed_no_purpose_template",
+              customer_status_notify_idempotency_key: input.idempotencyKey,
+              customer_status_notify_for_status: input.status,
+              customer_status_notify_attempted_at: new Date().toISOString(),
+            })
+            .eq("company_id", input.companyId)
+            .eq("id", input.orderId);
+          return { ok: true, skipped: true, error: "messaging_window_closed_no_purpose_template" };
+        } else {
+          result = await provider.sendPurposeTemplate(
+            input.companyId,
+            input.customerPhone,
+            purpose,
+            { customerName: name, orderNumber: input.orderNumber },
+            { freeformText: message },
+          );
+        }
+
         const messageId =
           result && typeof result === "object" && "messageId" in result
             ? String((result as { messageId?: string }).messageId ?? "") || null

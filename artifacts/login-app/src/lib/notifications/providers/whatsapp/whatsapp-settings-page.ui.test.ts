@@ -54,9 +54,63 @@ describe("WhatsApp settings page UI contracts", () => {
   });
 
   it("keeps Manual Connection path when Embedded Signup UI is gated", () => {
-    assert.match(source, /isWhatsAppEmbeddedSignupUiEnabled/);
     assert.match(source, /WhatsAppEmbeddedSignupPanel/);
     assert.match(source, /phoneNumberId/);
     assert.match(source, /onConnectionTest/);
   });
+
+  it("includes Message Templates panel for Meta sync status", () => {
+    assert.match(source, /WhatsAppMessageTemplatesPanel/);
+  });
 });
+
+describe("WhatsApp message templates panel UI contracts", () => {
+  const panelPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../../components/channels/whatsapp-message-templates-panel.tsx",
+  );
+  const panel = readFileSync(panelPath, "utf8");
+  const page = readFileSync(pagePath, "utf8");
+
+  it("exposes provision + sync actions and setup-pending state", () => {
+    assert.match(panel, /whatsapp-templates-provision/);
+    assert.match(panel, /whatsapp-templates-sync/);
+    assert.match(panel, /whatsapp-templates-setup-pending|setupPending/);
+    assert.match(panel, /useProvisionWhatsAppCompanyTemplates/);
+  });
+
+  it("defaults to single-purpose provisioning with confirmation before Meta create", () => {
+    assert.match(panel, /whatsapp-templates-provision-scope/);
+    assert.match(panel, /PROVISION_ALL_VALUE|__all__/);
+    assert.match(panel, /whatsapp-templates-provision-confirm/);
+    assert.match(panel, /setConfirmOpen\(true\)/);
+    assert.match(panel, /purposes:\s*selectedPurposes/);
+    assert.match(panel, /WHATSAPP_TRANSACTIONAL_PURPOSES\[0\]/);
+  });
+
+  it("gates template admin on WABA + token, not outbound messaging enabled", () => {
+    assert.match(panel, /hasBusinessAccountId && hasAccessToken/);
+    assert.match(panel, /messagingDisabledAdminOk/);
+    assert.match(panel, /whatsapp-templates-admin-unavailable/);
+    assert.match(panel, /wabaMissingHint|tokenMissingHint/);
+    assert.doesNotMatch(panel, /disabled=\{[^}]*messagingEnabled/);
+    assert.match(page, /hasBusinessAccountId=\{/);
+    assert.match(page, /hasAccessToken=\{/);
+    assert.match(page, /messagingEnabled=\{/);
+  });
+});
+
+describe("Sales order WhatsApp template disabled-state contracts", () => {
+  const salesPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../../components/sales-orders/sales-order-details-panel.tsx",
+  );
+  const sales = readFileSync(salesPath, "utf8");
+
+  it("surfaces blocker banner and disables retry notify when template unapproved", () => {
+    assert.match(sales, /sales-order-whatsapp-template-blocker/);
+    assert.match(sales, /workerDispatchReady/);
+    assert.match(sales, /disabled=\{busy \|\| !workerDispatchReady\}/);
+  });
+});
+

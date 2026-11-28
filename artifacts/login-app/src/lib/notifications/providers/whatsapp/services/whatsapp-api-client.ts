@@ -126,12 +126,166 @@ export function sendWhatsAppTextMessage(
   companyId: string,
   recipientPhone: string,
   text: string,
+  options?: { sessionWindowOpen?: boolean },
 ) {
-  return postWhatsAppApi("/whatsapp/send-text", { companyId, recipientPhone, text });
+  return postWhatsAppApi("/whatsapp/send-text", {
+    companyId,
+    recipientPhone,
+    text,
+    sessionWindowOpen: options?.sessionWindowOpen === true,
+  });
+}
+
+export function sendWhatsAppPurposeMessage(
+  companyId: string,
+  recipientPhone: string,
+  purpose: string,
+  params: Record<string, string>,
+) {
+  return postWhatsAppApi("/whatsapp/send-purpose", {
+    companyId,
+    recipientPhone,
+    purpose,
+    params,
+  });
 }
 
 export function processWhatsAppQueue(companyId: string) {
   return postWhatsAppApi("/whatsapp/process-queue", { companyId });
+}
+
+export type WhatsAppTemplateCatalogEntry = {
+  purpose: string;
+  recommendedMetaName: string;
+  language: string;
+  category: string;
+  recipient: string;
+  body: string;
+  variableKeys: string[];
+  examples: Record<string, string>;
+  allowsHelloWorld: boolean;
+  description: string;
+};
+
+export type WhatsAppCompanyTemplateRow = {
+  id: string;
+  companyId: string;
+  purposeKey: string;
+  languageCode: string;
+  metaTemplateName: string;
+  metaTemplateId: string | null;
+  metaStatus: string;
+  category: string | null;
+  recipient: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  lastErrorCode: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WhatsAppTemplateReadinessPayload = import("@/lib/notifications/providers/whatsapp/services/whatsapp-template-readiness").WhatsAppTemplateSetupReadiness;
+
+export type WhatsAppTemplatesListResponse = {
+  companyId: string;
+  setupPending?: boolean;
+  connection: {
+    enabled: boolean;
+    phoneNumberId: string | null;
+    businessAccountId: string | null;
+    tokenStatus: string;
+    defaultLanguage: string;
+  };
+  lastSyncedAt: string | null;
+  catalog: WhatsAppTemplateCatalogEntry[];
+  templates: WhatsAppCompanyTemplateRow[];
+  readiness?: WhatsAppTemplateReadinessPayload;
+};
+
+export type WhatsAppTemplatesSyncResponse = {
+  companyId: string;
+  syncedAt: string;
+  listedFromMeta: number;
+  upserted: number;
+  notCreated: number;
+  approved: number;
+  templates: WhatsAppCompanyTemplateRow[];
+};
+
+export type WhatsAppTemplatesProvisionResponse = {
+  companyId: string;
+  languageCode: string;
+  listedFromMeta: number;
+  created: number;
+  reused: number;
+  failed: number;
+  purposes: Array<{
+    purpose: string;
+    action: string;
+    metaTemplateName: string;
+    languageCode: string;
+    metaStatus: string;
+    metaTemplateId: string | null;
+    error: string | null;
+    errorCode: string | null;
+  }>;
+  templates: WhatsAppCompanyTemplateRow[];
+};
+
+async function getWhatsAppApi<T>(path: string, query: Record<string, string>): Promise<T> {
+  const base = resolveAuthenticatedApiBase();
+  if (!base) {
+    throw new Error("VITE_API_SERVER_URL is not configured");
+  }
+  const params = new URLSearchParams(query);
+  const url = `${base}${path}?${params.toString()}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "GET",
+      headers: await buildAuthHeaders(),
+      credentials: "include",
+    });
+  } catch (error) {
+    throw mapWhatsAppNetworkError(error, base);
+  }
+  let payload: T & { error?: string; message?: string };
+  try {
+    payload = (await response.json()) as T & { error?: string; message?: string };
+  } catch {
+    throw new Error(`WhatsApp API returned non-JSON (${response.status}) from ${url}`);
+  }
+  if (!response.ok) {
+    throw new Error(payload.message ?? payload.error ?? `WhatsApp API failed (${response.status})`);
+  }
+  return payload;
+}
+
+export function fetchWhatsAppTemplateCatalog(companyId: string) {
+  return getWhatsAppApi<{ companyId: string; catalog: WhatsAppTemplateCatalogEntry[] }>(
+    "/whatsapp/templates/catalog",
+    { companyId },
+  );
+}
+
+export function fetchWhatsAppCompanyTemplates(companyId: string) {
+  return getWhatsAppApi<WhatsAppTemplatesListResponse>("/whatsapp/templates", { companyId });
+}
+
+export function syncWhatsAppCompanyTemplates(companyId: string) {
+  return postWhatsAppApi<WhatsAppTemplatesSyncResponse>("/whatsapp/templates/sync", { companyId });
+}
+
+export function provisionWhatsAppCompanyTemplates(
+  companyId: string,
+  options?: { purposes?: string[] },
+) {
+  const purposes =
+    options?.purposes?.map((p) => String(p).trim()).filter(Boolean) ?? undefined;
+  return postWhatsAppApi<WhatsAppTemplatesProvisionResponse>("/whatsapp/templates/provision", {
+    companyId,
+    ...(purposes && purposes.length > 0 ? { purposes } : {}),
+  });
 }
 
 export function isWhatsAppApiConfigured(): boolean {

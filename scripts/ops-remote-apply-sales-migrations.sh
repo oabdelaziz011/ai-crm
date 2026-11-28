@@ -52,6 +52,7 @@ echo "database_url=present len=${#DATABASE_URL}"
 export DATABASE_URL
 export MODE="${MODE:-inspect}"
 export SEED_WORKER="${SEED_WORKER:-false}"
+export SEED_FOLLOW_UP="${SEED_FOLLOW_UP:-false}"
 export WORKER_NAME="${WORKER_NAME:-Omar Abdelaziz}"
 export WORKER_PHONE="${WORKER_PHONE:-+201011404109}"
 export MIG_DIR="${MIG_DIR:-$REMOTE_DIR/migrations}"

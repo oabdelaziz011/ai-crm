@@ -9,6 +9,7 @@ import psycopg2.extras
 
 mig_dir = pathlib.Path(os.environ["MIG_DIR"])
 versions = [
+    ("421", "421_sales_follow_up.sql"),
     ("470", "470_company_order_delivery_settings.sql"),
     ("471", "471_sales_orders.sql"),
     ("472", "472_sales_orders_journey_enrichment.sql"),
@@ -23,6 +24,7 @@ versions = [
 ]
 mode = os.environ.get("MODE", "inspect").strip().lower()
 seed = os.environ.get("SEED_WORKER", "false").strip().lower() in ("1", "true", "yes")
+seed_follow_up = os.environ.get("SEED_FOLLOW_UP", "false").strip().lower() in ("1", "true", "yes")
 worker_name = os.environ.get("WORKER_NAME", "Omar Abdelaziz").strip()
 worker_phone = os.environ.get("WORKER_PHONE", "+201011404109").strip()
 
@@ -80,7 +82,9 @@ cur.execute(
     select to_regclass('public.sales_orders') as sales_orders,
            to_regclass('public.company_delivery_workers') as workers,
            to_regclass('public.company_order_settings') as settings,
-           to_regclass('public.sales_order_cancellation_requests') as cancel_requests
+           to_regclass('public.sales_order_cancellation_requests') as cancel_requests,
+           to_regclass('public.sales_follow_up_settings') as follow_up_settings,
+           to_regclass('public.sales_follow_up_jobs') as follow_up_jobs
     """
 )
 regs = dict(cur.fetchone())
@@ -192,6 +196,48 @@ if seed and regs.get("workers") and regs.get("settings"):
         )
 elif seed:
     print(json.dumps({"phase": "seed_worker", "ok": False, "error": "tables_missing"}))
+
+if seed_follow_up:
+    if not regs.get("follow_up_settings"):
+        print(json.dumps({"phase": "seed_follow_up", "ok": False, "error": "table_missing"}))
+    else:
+        cur.execute(
+            """
+            select p.company_id::text as company_id
+            from public.profiles p
+            where lower(coalesce(p.email,'')) = lower(%s) and p.company_id is not null
+            limit 1
+            """,
+            ("oabdelaziz011@gmail.com",),
+        )
+        row = cur.fetchone()
+        if not row:
+            print(json.dumps({"phase": "seed_follow_up", "ok": False, "error": "no_company"}))
+        else:
+            company_id = row["company_id"]
+            try:
+                cur.execute(
+                    """
+                    insert into public.sales_follow_up_settings (company_id, enabled)
+                    values (%s::uuid, true)
+                    on conflict (company_id) do update set enabled = true
+                    """,
+                    (company_id,),
+                )
+                conn.commit()
+                print(json.dumps({"phase": "seed_follow_up", "ok": True, "company_id": company_id, "enabled": True}))
+            except Exception as e:
+                conn.rollback()
+                print(
+                    json.dumps(
+                        {
+                            "phase": "seed_follow_up",
+                            "ok": False,
+                            "error": type(e).__name__,
+                            "detail": str(e)[:300],
+                        }
+                    )
+                )
 
 cur.close()
 conn.close()

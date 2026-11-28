@@ -156,7 +156,7 @@ export function startSalesFollowUpWorker(
           ((job, settings) => loadSalesFollowUpEligibility(client, job, settings));
         const result = await processSalesFollowUpTick({
           client,
-          delivery: createOmnichannelSalesFollowUpDelivery(serviceContext),
+          delivery: createOmnichannelSalesFollowUpDelivery(serviceContext, { supabase: client }),
           attempts: createSupabaseSalesFollowUpAttemptStore(client),
           allowProviderSend,
           claimOwner: `sales-follow-up-worker:${process.pid}`,

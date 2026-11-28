@@ -575,6 +575,28 @@ export async function createSalesOrderFromConfirmedConversation(
     }
   }
 
+  if (
+    !written.alreadyExisted &&
+    written.status === "pending_approval" &&
+    settings.notifyOnPendingApproval !== false &&
+    ports.notifyCustomerOrderStatusWhatsApp
+  ) {
+    try {
+      await ports.notifyCustomerOrderStatusWhatsApp({
+        companyId: input.companyId,
+        orderId: written.orderId,
+        orderNumber: written.orderNumber,
+        status: "pending_approval",
+        customerPhone,
+        customerName,
+        conversationId: input.conversationId,
+        idempotencyKey: `customer-status:${written.orderId}:pending_approval`,
+      });
+    } catch {
+      // Customer notify is best-effort; order already exists.
+    }
+  }
+
   const etaText = formatEtaMessage(zone);
   return {
     ok: true,

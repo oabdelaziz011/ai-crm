@@ -84,5 +84,89 @@ export function createWebhookSalesOrderPorts(
         };
       }
     },
+    async notifyCustomerOrderStatusWhatsApp(input) {
+      try {
+        const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+        try {
+          assertLocalExternalOutboundAllowed("order-customer-status-whatsapp");
+        } catch {
+          return {
+            ok: true,
+            skipped: true,
+            messageId: `dry-run-customer-status-${input.idempotencyKey}`,
+          };
+        }
+
+        // WhatsApp-only: require a WhatsApp channel session on the conversation (no Email fallback).
+        if (input.conversationId) {
+          const { data: session } = await client
+            .from("channel_sessions")
+            .select("channel_key, last_inbound_at")
+            .eq("conversation_id", input.conversationId)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const channelKey = String(session?.channel_key ?? "").toLowerCase();
+          if (channelKey !== "whatsapp") {
+            await client
+              .from("sales_orders")
+              .update({
+                customer_status_notify_status: "skipped",
+                customer_status_notify_error: `channel_not_whatsapp:${channelKey || "unknown"}`,
+                customer_status_notify_idempotency_key: input.idempotencyKey,
+                customer_status_notify_for_status: input.status,
+                customer_status_notify_attempted_at: new Date().toISOString(),
+              })
+              .eq("company_id", input.companyId)
+              .eq("id", input.orderId);
+            return { ok: true, skipped: true, error: "channel_not_whatsapp" };
+          }
+        }
+
+        const name = input.customerName.trim() || "there";
+        const message = `Hi ${name}, we received order ${input.orderNumber}. It is pending team approval. We will update you once it is confirmed.`;
+        const t = i18next.getFixedT("en", "common");
+        const renderer = WhatsAppRenderer.fromI18n(t);
+        const provider = createWhatsAppProvider(client, new MetaWhatsAppTransport(), renderer, {
+          whatsappMessagesCommercial: createWhatsAppMessagesCommercialPort(client),
+        });
+        const result = await provider.sendFreeformText(
+          input.companyId,
+          input.customerPhone,
+          message,
+        );
+        const messageId =
+          result && typeof result === "object" && "messageId" in result
+            ? String((result as { messageId?: string }).messageId ?? "") || null
+            : null;
+        await client
+          .from("sales_orders")
+          .update({
+            customer_status_notify_status: "sent",
+            customer_status_notify_message_id: messageId,
+            customer_status_notify_error: null,
+            customer_status_notify_idempotency_key: input.idempotencyKey,
+            customer_status_notify_for_status: input.status,
+            customer_status_notify_attempted_at: new Date().toISOString(),
+          })
+          .eq("company_id", input.companyId)
+          .eq("id", input.orderId);
+        return { ok: true, messageId };
+      } catch (error) {
+        const err = error instanceof Error ? error.message : String(error);
+        await client
+          .from("sales_orders")
+          .update({
+            customer_status_notify_status: "failed",
+            customer_status_notify_error: err,
+            customer_status_notify_idempotency_key: input.idempotencyKey,
+            customer_status_notify_for_status: input.status,
+            customer_status_notify_attempted_at: new Date().toISOString(),
+          })
+          .eq("company_id", input.companyId)
+          .eq("id", input.orderId);
+        return { ok: false, error: err };
+      }
+    },
   });
 }

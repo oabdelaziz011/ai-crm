@@ -143,7 +143,7 @@ export function createSupabaseSalesOrderPorts(
       const { data, error } = await client
         .from("company_order_settings")
         .select(
-          "ai_order_collection_enabled, require_human_approval, payment_methods, required_fields",
+          "ai_order_collection_enabled, require_human_approval, notify_on_pending_approval, payment_methods, required_fields",
         )
         .eq("company_id", companyId)
         .maybeSingle();
@@ -152,6 +152,7 @@ export function createSupabaseSalesOrderPorts(
         return {
           aiOrderCollectionEnabled: false,
           requireHumanApproval: true,
+          notifyOnPendingApproval: true,
           paymentMethods: ["cash_on_delivery"],
           requiredFields: { ...DEFAULT_REQUIRED_FIELDS },
         };
@@ -159,6 +160,7 @@ export function createSupabaseSalesOrderPorts(
       return {
         aiOrderCollectionEnabled: data.ai_order_collection_enabled === true,
         requireHumanApproval: data.require_human_approval !== false,
+        notifyOnPendingApproval: data.notify_on_pending_approval !== false,
         paymentMethods: Array.isArray(data.payment_methods)
           ? data.payment_methods.map(String)
           : ["cash_on_delivery"],

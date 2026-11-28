@@ -713,6 +713,41 @@ const CREATE_SALES_ORDER_LLM = {
   },
 } as const;
 
+const LIST_CUSTOMER_ORDERS_LLM = {
+  type: "function",
+  function: {
+    name: "list_customer_orders",
+    description:
+      "List this customer's sales orders with current backend statuses (ownership verified by phone/conversation). Use for status questions. Never invent orders or statuses.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerPhone: { type: "string" },
+        orderNumber: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const GET_CUSTOMER_ORDER_STATUS_LLM = {
+  type: "function",
+  function: {
+    name: "get_customer_order_status",
+    description:
+      "Get the current status of one owned sales order from backend data. Use when the customer asks about a specific order. Never invent status.",
+    parameters: {
+      type: "object",
+      properties: {
+        orderId: { type: "string" },
+        orderNumber: { type: "string" },
+        customerPhone: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 const LIST_CUSTOMER_ORDERS_FOR_CANCELLATION_LLM = {
   type: "function",
   function: {
@@ -1355,6 +1390,28 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
       "Creates a COD sales order after explicit customer confirmation when AI order collection is enabled.",
     requiredPermissions: ["tools.execute", "orders.create"],
     llmDefinition: CREATE_SALES_ORDER_LLM,
+  },
+  {
+    key: "list_customer_orders",
+    displayName: "List Customer Orders",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description:
+      "Lists ownership-verified customer sales orders with backend statuses for Q&A. Never invents orders.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: LIST_CUSTOMER_ORDERS_LLM,
+  },
+  {
+    key: "get_customer_order_status",
+    displayName: "Get Customer Order Status",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description:
+      "Returns the current backend status for one ownership-verified sales order. Never invents status.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: GET_CUSTOMER_ORDER_STATUS_LLM,
   },
   {
     key: "list_customer_orders_for_cancellation",

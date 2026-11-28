@@ -693,6 +693,66 @@ export async function rejectSalesOrder(
   if (eventError) throw new Error(eventError.message);
 }
 
+const LIFECYCLE_TRANSITIONS: Record<string, SalesOrderStatus[]> = {
+  confirmed: ["processing"],
+  // out_for_delivery is set only via assignSalesOrderDelivery (worker dispatch).
+  processing: ["delivered"],
+  out_for_delivery: ["delivered"],
+};
+
+/**
+ * Advance order through processing / delivered (employee-driven lifecycle).
+ * Assignment remains the path that sets out_for_delivery with a worker.
+ */
+export async function updateSalesOrderLifecycleStatus(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    orderId: string;
+    userId: string;
+    toStatus: "processing" | "delivered";
+    note?: string;
+  },
+): Promise<SalesOrderDetail> {
+  const detail = await getSalesOrderDetail(client, input.companyId, input.orderId);
+  if (!detail) throw new Error("Order not found.");
+  if (detail.status === "cancelled") {
+    throw new Error("Cancelled orders cannot change lifecycle status.");
+  }
+  const allowed = LIFECYCLE_TRANSITIONS[detail.status] ?? [];
+  if (!allowed.includes(input.toStatus)) {
+    throw new Error(`Cannot move order from ${detail.status} to ${input.toStatus}.`);
+  }
+  const now = new Date().toISOString();
+  const { data: updated, error } = await client
+    .from("sales_orders")
+    .update({
+      status: input.toStatus,
+      updated_by: input.userId,
+      updated_at: now,
+    })
+    .eq("company_id", input.companyId)
+    .eq("id", input.orderId)
+    .eq("status", detail.status)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!updated?.length) throw new Error("Order status changed; refresh and try again.");
+
+  const { error: eventError } = await client.from("sales_order_status_events").insert({
+    company_id: input.companyId,
+    order_id: input.orderId,
+    from_status: detail.status,
+    to_status: input.toStatus,
+    note: input.note?.trim() || `Status set to ${input.toStatus}`,
+    changed_by: input.userId,
+  });
+  if (eventError) throw new Error(eventError.message);
+
+  const next = await getSalesOrderDetail(client, input.companyId, input.orderId);
+  if (!next) throw new Error("Order not found after status update.");
+  return next;
+}
+
 export function buildDeliveryWorkerDispatchMessage(detail: SalesOrderDetail, workerName: string): string {
   const lines = [
     `طلب توصيل جديد: ${detail.orderNumber}`,

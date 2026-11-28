@@ -10,9 +10,41 @@ import {
   prepareDeliveryNotifyRetry,
   recordDeliveryNotifyResult,
   rejectSalesOrder,
+  updateSalesOrderLifecycleStatus,
 } from "@/lib/sales-orders/sales-orders-query";
+import { notifyCustomerOrderStatusOnWhatsApp } from "@/lib/sales-orders/sales-order-customer-status-notify";
 import { sendWhatsAppTextMessage } from "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client";
 import type { SalesOrdersListFilters } from "@/lib/sales-orders/sales-order-types";
+
+async function dispatchCustomerStatusWhatsApp(input: {
+  companyId: string;
+  orderId: string;
+  status: string;
+  dryRun?: boolean;
+}) {
+  const detail = await getSalesOrderDetail(supabase, input.companyId, input.orderId);
+  if (!detail) {
+    return { customerNotifyOutcome: "skipped" as const, customerNotifyReason: "order_not_found" };
+  }
+  const idempotencyKey = `customer-status:${input.orderId}:${input.status}`;
+  const result = await notifyCustomerOrderStatusOnWhatsApp({
+    client: supabase,
+    companyId: input.companyId,
+    orderId: input.orderId,
+    orderNumber: detail.orderNumber,
+    status: input.status,
+    conversationId: detail.conversationId,
+    customerPhone: detail.customerPhone,
+    customerName: detail.customerName,
+    idempotencyKey,
+    dryRun: input.dryRun === true,
+  });
+  return {
+    customerNotifyOutcome: result.outcome,
+    customerNotifyReason: result.reason,
+    customerNotifyMessageId: result.messageId,
+  };
+}
 
 export const SALES_ORDERS_LIST_KEY = ["sales", "orders", "list"] as const;
 export const SALES_ORDER_DETAIL_KEY = ["sales", "orders", "detail"] as const;
@@ -161,6 +193,12 @@ export function useSalesOrderApprovalActions(companyId: string | null) {
     }) => {
       if (!companyId) throw new Error("Company required");
       const result = await approveSalesOrder(supabase, { companyId, ...input });
+      const customerNotify = await dispatchCustomerStatusWhatsApp({
+        companyId,
+        orderId: input.orderId,
+        status: "confirmed",
+        dryRun: input.dryRunNotify === true,
+      });
       if (result.autoAssigned && result.assignResult) {
         const notify = await dispatchWorkerWhatsApp({
           companyId,
@@ -170,9 +208,15 @@ export function useSalesOrderApprovalActions(companyId: string | null) {
           idempotencyKey: result.assignResult.idempotencyKey,
           dryRun: input.dryRunNotify === true,
         });
-        return { ...result, ...notify };
+        return { ...result, ...notify, ...customerNotify };
       }
-      return { ...result, notifyOk: false as const, notifyError: null, messageId: null };
+      return {
+        ...result,
+        notifyOk: false as const,
+        notifyError: null,
+        messageId: null,
+        ...customerNotify,
+      };
     },
     onSuccess: async (_data, variables) => {
       await invalidate(variables.orderId);
@@ -180,9 +224,21 @@ export function useSalesOrderApprovalActions(companyId: string | null) {
   });
 
   const reject = useMutation({
-    mutationFn: async (input: { orderId: string; userId: string; note?: string }) => {
+    mutationFn: async (input: {
+      orderId: string;
+      userId: string;
+      note?: string;
+      dryRunNotify?: boolean;
+    }) => {
       if (!companyId) throw new Error("Company required");
       await rejectSalesOrder(supabase, { companyId, ...input });
+      const customerNotify = await dispatchCustomerStatusWhatsApp({
+        companyId,
+        orderId: input.orderId,
+        status: "cancelled",
+        dryRun: input.dryRunNotify === true,
+      });
+      return customerNotify;
     },
     onSuccess: async (_data, variables) => {
       await invalidate(variables.orderId);
@@ -218,7 +274,42 @@ export function useSalesOrderApprovalActions(companyId: string | null) {
         dryRun: input.dryRunNotify === true,
         dryRunFail: input.dryRunFail === true,
       });
-      return { ...assigned, ...notify };
+      const customerNotify = await dispatchCustomerStatusWhatsApp({
+        companyId,
+        orderId: input.orderId,
+        status: "out_for_delivery",
+        dryRun: input.dryRunNotify === true,
+      });
+      return { ...assigned, ...notify, ...customerNotify };
+    },
+    onSuccess: async (_data, variables) => {
+      await invalidate(variables.orderId);
+    },
+  });
+
+  const updateLifecycleStatus = useMutation({
+    mutationFn: async (input: {
+      orderId: string;
+      userId: string;
+      toStatus: "processing" | "delivered";
+      note?: string;
+      dryRunNotify?: boolean;
+    }) => {
+      if (!companyId) throw new Error("Company required");
+      const detail = await updateSalesOrderLifecycleStatus(supabase, {
+        companyId,
+        orderId: input.orderId,
+        userId: input.userId,
+        toStatus: input.toStatus,
+        note: input.note,
+      });
+      const customerNotify = await dispatchCustomerStatusWhatsApp({
+        companyId,
+        orderId: input.orderId,
+        status: input.toStatus,
+        dryRun: input.dryRunNotify === true,
+      });
+      return { detail, ...customerNotify };
     },
     onSuccess: async (_data, variables) => {
       await invalidate(variables.orderId);
@@ -339,6 +430,7 @@ export function useSalesOrderApprovalActions(companyId: string | null) {
     approve,
     reject,
     assignDelivery,
+    updateLifecycleStatus,
     retryDeliveryNotify,
     approveCancellation,
     rejectCancellation,

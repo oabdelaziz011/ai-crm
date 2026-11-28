@@ -229,7 +229,7 @@ router.post(
       actorUserId,
       messageText: typeof req.body?.messageText === "string" ? req.body.messageText : null,
       allowProviderSend: isSalesFollowUpProviderSendAllowed(),
-      delivery: createOmnichannelSalesFollowUpDelivery(serviceContext),
+      delivery: createOmnichannelSalesFollowUpDelivery(serviceContext, { supabase: client }),
       attempts: createSupabaseSalesFollowUpAttemptStore(client),
       loadEligibility: (job, settings) => loadSalesFollowUpEligibility(client, job, settings),
     });

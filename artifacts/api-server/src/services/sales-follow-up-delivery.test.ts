@@ -46,6 +46,42 @@ describe("createOmnichannelSalesFollowUpDelivery", () => {
     );
   });
 
+  it("refuses WhatsApp delivery when company channel type mismatches (no dispatch)", async () => {
+    let calls = 0;
+    const dispatch: OmnichannelSalesFollowUpDispatch = async () => {
+      calls += 1;
+      return {
+        deliveryStatus: "sent",
+        deliveryEventId: "evt-1",
+        externalMessageId: "should-not-send",
+      } as Awaited<ReturnType<OmnichannelSalesFollowUpDispatch>>;
+    };
+    const delivery = createOmnichannelSalesFollowUpDelivery(ctx, {
+      dispatch,
+      assertChannelCompatible: async () => ({
+        canSend: false,
+        reason: "channel_type_mismatch",
+        channelKey: "email",
+      }),
+    });
+
+    const result = await delivery.deliver({
+      companyId: "co-1",
+      leadId: "lead-1",
+      channel: "whatsapp",
+      conversationId: "conv-1",
+      companyChannelId: "email-ch-1",
+      externalThreadId: "201000000000",
+      text: "Follow-up reminder",
+      idempotencyKey: "co-1:lead-1:1:mismatch",
+    });
+
+    assert.equal(calls, 0);
+    assert.equal(result.status, "failed");
+    assert.equal(result.retryable, false);
+    assert.match(String(result.error ?? ""), /channel_type_mismatch/);
+  });
+
   it("maps provider failure status to retryable failed without claiming delivered", async () => {
     let calls = 0;
     const dispatch: OmnichannelSalesFollowUpDispatch = async () => {

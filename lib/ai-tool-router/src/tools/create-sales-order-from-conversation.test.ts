@@ -22,6 +22,7 @@ function createPorts(overrides: Partial<SalesOrderToolPorts> = {}): SalesOrderTo
       return {
         aiOrderCollectionEnabled: true,
         requireHumanApproval: true,
+        notifyOnPendingApproval: true,
         paymentMethods: ["cash_on_delivery"],
         requiredFields: {
           customerName: true,
@@ -107,6 +108,7 @@ describe("createSalesOrderFromConfirmedConversation", () => {
         return {
           aiOrderCollectionEnabled: false,
           requireHumanApproval: true,
+        notifyOnPendingApproval: true,
           paymentMethods: ["cash_on_delivery"],
           requiredFields: {
             customerName: true,

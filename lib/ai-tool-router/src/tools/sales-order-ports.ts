@@ -12,6 +12,7 @@ export type SalesOrderRequiredFields = {
 export type CompanyOrderSettingsSnapshot = {
   aiOrderCollectionEnabled: boolean;
   requireHumanApproval: boolean;
+  notifyOnPendingApproval: boolean;
   paymentMethods: string[];
   requiredFields: SalesOrderRequiredFields;
 };
@@ -211,4 +212,16 @@ export type SalesOrderToolPorts = {
     message: string;
     idempotencyKey: string;
   }): Promise<{ ok: boolean; messageId?: string | null; error?: string | null }>;
+
+  /** Best-effort customer WhatsApp status follow-up; never rolls back order writes. */
+  notifyCustomerOrderStatusWhatsApp?(input: {
+    companyId: string;
+    orderId: string;
+    orderNumber: string;
+    status: string;
+    customerPhone: string;
+    customerName: string;
+    conversationId: string | null;
+    idempotencyKey: string;
+  }): Promise<{ ok: boolean; skipped?: boolean; messageId?: string | null; error?: string | null }>;
 };

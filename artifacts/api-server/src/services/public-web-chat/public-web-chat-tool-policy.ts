@@ -29,6 +29,8 @@ export const PUBLIC_WEB_CHAT_ALLOWED_TOOL_KEYS = Object.freeze([
   "validate_delivery_zone",
   "preview_sales_order",
   "create_sales_order",
+  "list_customer_orders",
+  "get_customer_order_status",
   "list_customer_orders_for_cancellation",
   "get_order_cancellation_eligibility",
   "confirm_order_cancellation",

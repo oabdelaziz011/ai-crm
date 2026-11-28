@@ -78,6 +78,7 @@ export async function loadSalesFollowUpEligibility(
     loadSalesFollowUpChannelReadiness(client, {
       companyId: job.companyId,
       companyChannelId: job.companyChannelId,
+      expectedChannel: job.channel,
     }),
     job.conversationId
       ? client

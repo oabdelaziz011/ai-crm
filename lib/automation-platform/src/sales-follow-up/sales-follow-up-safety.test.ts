@@ -154,6 +154,37 @@ describe("sales follow-up channel readiness", () => {
       false,
     );
   });
+
+  it("blocks WhatsApp expected key when company channel is email", () => {
+    const result = evaluateCompanyChannelRow(
+      {
+        status: "active",
+        health_status: "connected",
+        is_enabled: true,
+        deleted_at: null,
+        channel_key: "email",
+      },
+      "whatsapp",
+    );
+    assert.equal(result.canSend, false);
+    assert.equal(result.reason, "channel_type_mismatch");
+    assert.equal(result.channelKey, "email");
+  });
+
+  it("allows WhatsApp expected key when company channel key is whatsapp", () => {
+    const result = evaluateCompanyChannelRow(
+      {
+        status: "active",
+        health_status: "connected",
+        is_enabled: true,
+        deleted_at: null,
+        channel_key: "whatsapp",
+      },
+      "whatsapp",
+    );
+    assert.equal(result.canSend, true);
+    assert.equal(result.reason, "ready");
+  });
 });
 
 describe("sales follow-up send idempotency under concurrency / restart", () => {

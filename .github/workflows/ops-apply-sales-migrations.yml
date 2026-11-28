@@ -99,7 +99,32 @@ jobs:
 
           DATABASE_URL="$(resolve_database_url || true)"
           if [[ -z "${DATABASE_URL}" ]]; then
+            echo "trying_sudo_env_resolve=1"
+            if sudo -n true 2>/dev/null; then
+              for f in /opt/valueor/.env /opt/valueor/deploy/vps/production.env; do
+                if sudo -n test -r "$f"; then
+                  echo "env_source=sudo:$f"
+                  DATABASE_URL="$(sudo -n awk -F= '
+                    /^[[:space:]]*#/ {next}
+                    $1=="DATABASE_URL" {
+                      v=substr($0, index($0,"=")+1)
+                      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+                      gsub(/^"/, "", v); gsub(/"$/, "", v)
+                      gsub(/^'\''/, "", v); gsub(/'\''$/, "", v)
+                      print v
+                      exit
+                    }' "$f")"
+                  [[ -n "$DATABASE_URL" ]] && break
+                fi
+              done
+            else
+              echo "sudo_n_unavailable=1"
+            fi
+          fi
+          if [[ -z "${DATABASE_URL}" ]]; then
             echo "database_url=missing"
+            ls -la /opt/valueor /opt/valueor/.env 2>&1 | head -n 40 || true
+            id; groups || true
             exit 4
           fi
           echo "database_url=present len=${#DATABASE_URL}"

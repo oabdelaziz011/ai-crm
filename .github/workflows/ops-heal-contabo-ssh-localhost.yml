@@ -1,0 +1,71 @@
+name: Ops heal Contabo via localhost SSH
+
+# Uses production VPS_SSH_KEY against 127.0.0.1 to restore dirty apply-helper as a privileged user.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type heal-contabo-ssh-localhost
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  heal:
+    if: github.event.inputs.confirm == 'heal-contabo-ssh-localhost'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Localhost SSH heal dirty apply helper
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "vps_user_present=$([ -n "${VPS_USER:-}" ] && echo yes || echo no)"
+          echo "vps_key_present=$([ -n "${VPS_SSH_KEY:-}" ] && echo yes || echo no)"
+          test -n "${VPS_USER:-}" && test -n "${VPS_SSH_KEY:-}"
+
+          WORK=/tmp/valueor-heal-ssh-$$
+          mkdir -p "$WORK"
+          # Normalize key: strip CR, ensure trailing newline
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > "$WORK/id_vps"
+          chmod 600 "$WORK/id_vps"
+          echo "key_bytes=$(wc -c <"$WORK/id_vps")"
+          echo "key_lines=$(wc -l <"$WORK/id_vps")"
+          ssh-keygen -lf "$WORK/id_vps" 2>&1 | sed 's/SHA256:[A-Za-z0-9+/=]*/SHA256:(redacted)/' || true
+          head -n 1 "$WORK/id_vps" | tr -d '\n'; echo
+          tail -n 1 "$WORK/id_vps" | tr -d '\n'; echo
+
+          HEAL_CMD='set -euo pipefail; id; ls -la /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh; git -C /opt/valueor checkout -- deploy/vps/apply-sales-followup-migrations.sh; git -C /opt/valueor status --short; ls -la /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh; echo HEAL_OK'
+
+          tried=0
+          ok=0
+          for u in "$VPS_USER" valueor root ubuntu admin; do
+            tried=$((tried+1))
+            echo "=== try user=$u ==="
+            if ssh -i "$WORK/id_vps" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=8 \
+              "${u}@127.0.0.1" "$HEAL_CMD"; then
+              echo "ssh_user_ok=$u"
+              ok=1
+              break
+            else
+              echo "ssh_user_fail=$u exit=$?"
+            fi
+          done
+
+          # Also try with ssh-agent and explicit rsa/ed25519 types
+          if [[ "$ok" != "1" ]]; then
+            echo "=== retry VPS_USER with PubkeyAcceptedAlgorithms=+ssh-rsa ==="
+            ssh -i "$WORK/id_vps" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=8 \
+              -o PubkeyAcceptedAlgorithms=+ssh-rsa -o HostkeyAlgorithms=+ssh-rsa \
+              "${VPS_USER}@127.0.0.1" "$HEAL_CMD" && ok=1 || echo "rsa_fallback_fail=$?"
+          fi
+
+          rm -rf "$WORK"
+          echo "tried=$tried ok=$ok"
+          [[ "$ok" == "1" ]]

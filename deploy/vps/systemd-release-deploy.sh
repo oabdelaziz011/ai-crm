@@ -41,6 +41,10 @@ if [[ -z "$ROOT_PREFIX" ]]; then
   fi
   # Keep deploy scripts on the approved SHA. Never print env or secret files.
   git -C "$APP_DIR" fetch --prune origin
+  # Heal benign executable-bit drift from prior migration helper runs (invoked via bash).
+  if [[ -f "${APP_DIR}/deploy/vps/apply-sales-followup-migrations.sh" ]]; then
+    git -C "$APP_DIR" checkout -- deploy/vps/apply-sales-followup-migrations.sh 2>/dev/null || true
+  fi
   if [[ -n "$(git -C "$APP_DIR" status --porcelain)" ]]; then
     echo "Server worktree is dirty. Refusing to deploy."
     git -C "$APP_DIR" status --short
@@ -128,7 +132,6 @@ if [[ -n "$MIG_MARKER" && -f "$MIG_MARKER" ]]; then
     echo "Missing ${APPLY_SH}"
     exit 2
   fi
-  chmod +x "$APPLY_SH" || true
   APP_DIR="$APP_DIR" ENV_FILE="$ENV_FILE" MODE="$MODE" SEED_WORKER="$SEED_WORKER" \
     SEED_FOLLOW_UP="$SEED_FOLLOW_UP" WORKER_NAME="$WORKER_NAME" WORKER_PHONE="$WORKER_PHONE" \
     /bin/bash "$APPLY_SH"

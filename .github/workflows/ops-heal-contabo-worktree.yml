@@ -1,0 +1,50 @@
+name: Ops heal Contabo worktree
+
+# One-shot: diagnose/clean /opt/valueor dirty state blocking valueor-prod-deploy.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type heal-contabo-worktree
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  heal:
+    if: github.event.inputs.confirm == 'heal-contabo-worktree'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 5
+    steps:
+      - name: Diagnose and heal apply-helper drift
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          id; groups || true
+          echo "=== sbin deploy wrapper ==="
+          ls -la /usr/local/sbin/valueor-prod-deploy /usr/local/sbin/valueor-prod-rollback 2>&1 || true
+          echo "=== status before ==="
+          git -C /opt/valueor status --short || true
+          git -C /opt/valueor rev-parse HEAD || true
+          ls -la /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh 2>&1 || true
+          ls -la /opt/valueor/.git 2>&1 | head -n 5 || true
+          echo "=== try gha-runner checkout heal ==="
+          if git -C /opt/valueor checkout -- deploy/vps/apply-sales-followup-migrations.sh 2> /tmp/heal.err; then
+            echo "heal=gha_checkout_ok"
+          else
+            echo "heal=gha_checkout_failed"
+            cat /tmp/heal.err || true
+          fi
+          echo "=== try chmod restore as gha-runner ==="
+          chmod a-x /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh 2> /tmp/chmod.err && echo chmod_ok=1 || cat /tmp/chmod.err || true
+          echo "=== reinstall sbin wrapper from worktree if writable (usually not) ==="
+          if [[ -w /usr/local/sbin/valueor-prod-deploy ]]; then
+            cp /opt/valueor/deploy/vps/valueor-prod-deploy.sh /usr/local/sbin/valueor-prod-deploy && echo sbin_cp_ok=1 || true
+          else
+            echo sbin_not_writable=1
+          fi
+          echo "=== status after ==="
+          git -C /opt/valueor status --short || true
+          ls -la /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh 2>&1 || true

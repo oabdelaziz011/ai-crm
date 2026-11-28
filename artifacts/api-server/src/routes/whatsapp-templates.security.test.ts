@@ -113,4 +113,13 @@ describe("whatsapp template routes (security contracts)", () => {
   it("rejects GET template companyId mismatch between query and body", () => {
     assert.match(source, /companyId_mismatch/);
   });
+
+  it("copies query companyId onto body for all GET routes before requireCompanyScope", () => {
+    const scopeIdx = source.indexOf('requireCompanyScope("companyId")');
+    const copyIdx = source.indexOf("req.body = { ...body, companyId: queryCompanyId }");
+    assert.ok(copyIdx >= 0 && scopeIdx > copyIdx);
+    // Must not path-gate the copy — mount path shapes vary in production.
+    const middlewareSlice = source.slice(copyIdx - 500, scopeIdx);
+    assert.doesNotMatch(middlewareSlice, /path\.includes\("\/whatsapp\/templates"\)/);
+  });
 });

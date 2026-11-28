@@ -26,5 +26,10 @@ if [[ ! -f "$APP_DIR/deploy/vps/systemd-release-deploy.sh" ]]; then
   exit 2
 fi
 
+# Heal executable-bit drift on migration helper before dirty check in deploy script.
+if [[ -f "$APP_DIR/deploy/vps/apply-sales-followup-migrations.sh" ]]; then
+  git -C "$APP_DIR" checkout -- deploy/vps/apply-sales-followup-migrations.sh 2>/dev/null || true
+fi
+
 export VALUEOR_ARTIFACTS_DIR="$ARTIFACTS_DIR"
 exec /bin/bash "$APP_DIR/deploy/vps/systemd-release-deploy.sh" "$SHA"

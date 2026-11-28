@@ -1,0 +1,90 @@
+name: Ops apply sales+followup migrations
+
+# Contabo self-hosted + localhost SSH as VPS deploy user (can read /opt/valueor/.env).
+# Applies 421 + 470–480. Never prints secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type apply-sales-followup-migrations
+        required: true
+        type: string
+      mode:
+        type: choice
+        options: [inspect, apply]
+        default: inspect
+      seed_delivery_worker:
+        type: boolean
+        default: true
+      seed_follow_up:
+        type: boolean
+        default: true
+      worker_name:
+        type: string
+        default: Omar Abdelaziz
+      worker_phone_e164:
+        type: string
+        default: "+201011404109"
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.event.inputs.confirm == 'apply-sales-followup-migrations'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    environment: production
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Localhost SSH apply as VPS user
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          SEED_WORKER: ${{ github.event.inputs.seed_delivery_worker }}
+          SEED_FOLLOW_UP: ${{ github.event.inputs.seed_follow_up }}
+          WORKER_NAME: ${{ github.event.inputs.worker_name }}
+          WORKER_PHONE: ${{ github.event.inputs.worker_phone_e164 }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) utc=$(date -u +%Y-%m-%dT%H:%M:%SZ) mode=${MODE}"
+          echo "vps_user_present=$([ -n "${VPS_USER:-}" ] && echo yes || echo no)"
+          echo "vps_key_present=$([ -n "${VPS_SSH_KEY:-}" ] && echo yes || echo no)"
+          test -n "${VPS_USER:-}" && test -n "${VPS_SSH_KEY:-}"
+
+          WORK="/tmp/valueor-sales-fu-${GITHUB_SHA}"
+          rm -rf "$WORK"
+          mkdir -p "$WORK/migrations" "$WORK/.ssh"
+          for f in \
+            421_sales_follow_up.sql \
+            470_company_order_delivery_settings.sql \
+            471_sales_orders.sql \
+            472_sales_orders_journey_enrichment.sql \
+            473_sales_orders_role_permissions_backfill.sql \
+            474_update_my_profile_allow_german.sql \
+            475_delivery_workers_and_order_enrichment.sql \
+            476_delivery_zone_aliases_and_assignment_mode.sql \
+            477_delivery_assignment_audit_and_notify.sql \
+            478_orders_assign_delivery_role_backfill.sql \
+            479_sales_order_customer_cancellation.sql \
+            480_cancellation_notification_idempotency.sql
+          do
+            cp "supabase/migrations/$f" "$WORK/migrations/"
+          done
+          cp scripts/ops-remote-apply-sales-migrations.py "$WORK/remote_apply.py"
+          cp scripts/ops-remote-apply-sales-migrations.sh "$WORK/run.sh"
+          # Ensure run.sh exports SEED_FOLLOW_UP
+          if ! grep -q SEED_FOLLOW_UP "$WORK/run.sh"; then
+            sed -i 's/export MODE=.*/export MODE="${MODE:-inspect}"\nexport SEED_FOLLOW_UP="${SEED_FOLLOW_UP:-false}"/' "$WORK/run.sh" || true
+          fi
+          chmod +x "$WORK/run.sh"
+          printf '%s\n' "$VPS_SSH_KEY" > "$WORK/.ssh/id_vps"
+          chmod 600 "$WORK/.ssh/id_vps"
+
+          ssh -i "$WORK/.ssh/id_vps" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 \
+            "${VPS_USER}@127.0.0.1" \
+            "export MODE='${MODE}' SEED_WORKER='${SEED_WORKER}' SEED_FOLLOW_UP='${SEED_FOLLOW_UP}' WORKER_NAME='${WORKER_NAME}' WORKER_PHONE='${WORKER_PHONE}' MIG_DIR='${WORK}/migrations'; bash '${WORK}/run.sh' '${WORK}'"
+
+          rm -rf "$WORK"

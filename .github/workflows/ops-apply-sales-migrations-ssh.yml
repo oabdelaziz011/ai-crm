@@ -1,0 +1,94 @@
+name: Ops apply sales migrations (SSH)
+
+# Applies additive migrations 470–480 via Contabo SSH using production VPS secrets.
+# Never prints DATABASE_URL, keys, or connection strings.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type apply-sales-migrations-ssh
+        required: true
+        type: string
+      mode:
+        description: inspect or apply
+        type: choice
+        options: [inspect, apply]
+        default: inspect
+      seed_delivery_worker:
+        type: boolean
+        default: false
+      worker_name:
+        type: string
+        default: Omar Abdelaziz
+      worker_phone_e164:
+        type: string
+        default: "+201011404109"
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.event.inputs.confirm == 'apply-sales-migrations-ssh'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          echo "vps_host_present=$([ -n "${VPS_HOST:-}" ] && echo yes || echo no)"
+          echo "vps_user_present=$([ -n "${VPS_USER:-}" ] && echo yes || echo no)"
+          echo "vps_key_present=$([ -n "${VPS_SSH_KEY:-}" ] && echo yes || echo no)"
+          test -n "${VPS_HOST:-}" && test -n "${VPS_USER:-}" && test -n "${VPS_SSH_KEY:-}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_vps
+          chmod 600 ~/.ssh/id_vps
+          if [[ -n "${VPS_KNOWN_HOSTS:-}" ]]; then
+            printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          fi
+          chmod 644 ~/.ssh/known_hosts
+          echo "VPS_HOST=$VPS_HOST" >> "$GITHUB_ENV"
+          echo "VPS_USER=$VPS_USER" >> "$GITHUB_ENV"
+
+      - name: Upload payload and run remote migration
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          SEED_WORKER: ${{ github.event.inputs.seed_delivery_worker }}
+          WORKER_NAME: ${{ github.event.inputs.worker_name }}
+          WORKER_PHONE: ${{ github.event.inputs.worker_phone_e164 }}
+        run: |
+          set -euo pipefail
+          REMOTE_DIR="/tmp/valueor-sales-mig-${GITHUB_SHA}"
+          ssh -i ~/.ssh/id_vps -o IdentitiesOnly=yes "${VPS_USER}@${VPS_HOST}" "rm -rf '$REMOTE_DIR' && mkdir -p '$REMOTE_DIR/migrations'"
+          scp -i ~/.ssh/id_vps -o IdentitiesOnly=yes \
+            supabase/migrations/470_company_order_delivery_settings.sql \
+            supabase/migrations/471_sales_orders.sql \
+            supabase/migrations/472_sales_orders_journey_enrichment.sql \
+            supabase/migrations/473_sales_orders_role_permissions_backfill.sql \
+            supabase/migrations/474_update_my_profile_allow_german.sql \
+            supabase/migrations/475_delivery_workers_and_order_enrichment.sql \
+            supabase/migrations/476_delivery_zone_aliases_and_assignment_mode.sql \
+            supabase/migrations/477_delivery_assignment_audit_and_notify.sql \
+            supabase/migrations/478_orders_assign_delivery_role_backfill.sql \
+            supabase/migrations/479_sales_order_customer_cancellation.sql \
+            supabase/migrations/480_cancellation_notification_idempotency.sql \
+            "${VPS_USER}@${VPS_HOST}:${REMOTE_DIR}/migrations/"
+          scp -i ~/.ssh/id_vps -o IdentitiesOnly=yes \
+            scripts/ops-remote-apply-sales-migrations.py \
+            "${VPS_USER}@${VPS_HOST}:${REMOTE_DIR}/remote_apply.py"
+          scp -i ~/.ssh/id_vps -o IdentitiesOnly=yes \
+            scripts/ops-remote-apply-sales-migrations.sh \
+            "${VPS_USER}@${VPS_HOST}:${REMOTE_DIR}/run.sh"
+          ssh -i ~/.ssh/id_vps -o IdentitiesOnly=yes "${VPS_USER}@${VPS_HOST}" \
+            "chmod +x '${REMOTE_DIR}/run.sh' && MODE='${MODE}' SEED_WORKER='${SEED_WORKER}' WORKER_NAME='${WORKER_NAME}' WORKER_PHONE='${WORKER_PHONE}' MIG_DIR='${REMOTE_DIR}/migrations' '${REMOTE_DIR}/run.sh' '${REMOTE_DIR}'"

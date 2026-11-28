@@ -1,0 +1,39 @@
+name: Ops cat Contabo deploy script
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type cat-deploy-script
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  cat:
+    if: github.event.inputs.confirm == 'cat-deploy-script'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 3
+    steps:
+      - name: Show on-disk deploy scripts and git porcelain
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname)"
+          echo "=== HEAD ==="
+          # root-owned HEAD file is readable
+          cat /opt/valueor/.git/HEAD 2>&1 || true
+          echo "=== sbin wrapper ==="
+          cat /usr/local/sbin/valueor-prod-deploy 2>&1 || true
+          echo "=== dirty check snippet from systemd-release-deploy.sh ==="
+          # print lines around dirty / marker without dumping whole if huge
+          nl -ba /opt/valueor/deploy/vps/systemd-release-deploy.sh | sed -n '1,80p'
+          echo "=== marker section ==="
+          nl -ba /opt/valueor/deploy/vps/systemd-release-deploy.sh | sed -n '95,160p'
+          echo "=== apply helper ==="
+          cat /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh
+          echo "=== try git with safe.directory for porcelain ==="
+          git -c safe.directory=/opt/valueor -C /opt/valueor status --porcelain 2>&1 || true
+          git -c safe.directory=/opt/valueor -C /opt/valueor rev-parse HEAD 2>&1 || true
+          echo DONE

@@ -98,6 +98,49 @@ fi
 # Validate env for the real production topology (no ACME_EMAIL required).
 /usr/bin/node "${APP_DIR}/scripts/validate-vps-config.mjs" --env "$ENV_FILE" --topology nginx-systemd
 
+# Migrations-only corrective path (no API/FE switch). Marker staged by Contabo Actions.
+# Tooling SHA is checked out above so migration SQL + apply helper come from that SHA.
+MIG_MARKER=""
+if [[ -n "${ARTIFACTS_DIR:-}" ]]; then
+  MIG_MARKER="${ARTIFACTS_DIR}/.apply-sales-followup-migrations"
+fi
+if [[ -n "$MIG_MARKER" && -f "$MIG_MARKER" ]]; then
+  MODE_RAW="$(tr -d '[:space:]' <"$MIG_MARKER" | tr '[:upper:]' '[:lower:]' || true)"
+  case "${MODE_RAW}" in
+    apply|inspect) MODE="$MODE_RAW" ;;
+    *) MODE=apply ;;
+  esac
+  SEED_WORKER=false
+  SEED_FOLLOW_UP=false
+  [[ -f "${ARTIFACTS_DIR}/.seed-delivery-worker" ]] && SEED_WORKER=true
+  [[ -f "${ARTIFACTS_DIR}/.seed-follow-up" ]] && SEED_FOLLOW_UP=true
+  WORKER_NAME="Omar Abdelaziz"
+  WORKER_PHONE="+201011404109"
+  if [[ -f "${ARTIFACTS_DIR}/.worker-name" ]]; then
+    WORKER_NAME="$(tr -d '\r\n' <"${ARTIFACTS_DIR}/.worker-name")"
+  fi
+  if [[ -f "${ARTIFACTS_DIR}/.worker-phone" ]]; then
+    WORKER_PHONE="$(tr -d '\r\n' <"${ARTIFACTS_DIR}/.worker-phone")"
+  fi
+  echo "[deploy] mode=apply-sales-followup-migrations tooling_sha=${SHA} sql_mode=${MODE} seed_worker=${SEED_WORKER} seed_follow_up=${SEED_FOLLOW_UP}"
+  APPLY_SH="${APP_DIR}/deploy/vps/apply-sales-followup-migrations.sh"
+  if [[ ! -f "$APPLY_SH" ]]; then
+    echo "Missing ${APPLY_SH}"
+    exit 2
+  fi
+  chmod +x "$APPLY_SH" || true
+  APP_DIR="$APP_DIR" ENV_FILE="$ENV_FILE" MODE="$MODE" SEED_WORKER="$SEED_WORKER" \
+    SEED_FOLLOW_UP="$SEED_FOLLOW_UP" WORKER_NAME="$WORKER_NAME" WORKER_PHONE="$WORKER_PHONE" \
+    /bin/bash "$APPLY_SH"
+  rm -f "$MIG_MARKER" \
+    "${ARTIFACTS_DIR}/.seed-delivery-worker" \
+    "${ARTIFACTS_DIR}/.seed-follow-up" \
+    "${ARTIFACTS_DIR}/.worker-name" \
+    "${ARTIFACTS_DIR}/.worker-phone" || true
+  echo "[deploy] ok"
+  exit 0
+fi
+
 if [[ -z "$ARTIFACTS_DIR" ]]; then
   echo "VALUEOR_ARTIFACTS_DIR is required (staged api/ + frontend/ artifacts)."
   exit 2

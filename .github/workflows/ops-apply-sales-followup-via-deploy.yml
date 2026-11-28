@@ -1,0 +1,92 @@
+name: Ops apply sales+followup via deploy
+
+# Contabo self-hosted: stage marker + sudo valueor-prod-deploy (root reads /opt/valueor/.env).
+# Applies 421 + 470–480. Does not switch API/frontend. Never prints secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type apply-sales-followup-migrations
+        required: true
+        type: string
+      mode:
+        description: inspect or apply
+        type: choice
+        options:
+          - apply
+          - inspect
+        default: apply
+      seed_delivery_worker:
+        type: boolean
+        default: true
+      seed_follow_up:
+        type: boolean
+        default: true
+      worker_name:
+        type: string
+        default: Omar Abdelaziz
+      worker_phone_e164:
+        type: string
+        default: "+201011404109"
+      tooling_sha:
+        description: Optional full SHA (default = workflow SHA / main HEAD)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.event.inputs.confirm == 'apply-sales-followup-migrations'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Stage marker and apply via valueor-prod-deploy
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          SEED_WORKER: ${{ github.event.inputs.seed_delivery_worker }}
+          SEED_FOLLOW_UP: ${{ github.event.inputs.seed_follow_up }}
+          WORKER_NAME: ${{ github.event.inputs.worker_name }}
+          WORKER_PHONE: ${{ github.event.inputs.worker_phone_e164 }}
+          TOOLING_SHA_INPUT: ${{ github.event.inputs.tooling_sha }}
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          SHA="$(printf '%s' "${TOOLING_SHA_INPUT:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          if [[ -z "$SHA" ]]; then
+            SHA="$(printf '%s' "${GITHUB_SHA}" | tr '[:upper:]' '[:lower:]')"
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid tooling sha"
+            exit 2
+          fi
+          echo "tooling_sha=${SHA}"
+          echo "mode=${MODE} seed_worker=${SEED_WORKER} seed_follow_up=${SEED_FOLLOW_UP}"
+          echo "worker_name_len=${#WORKER_NAME} worker_phone_len=${#WORKER_PHONE}"
+
+          STAGE="/tmp/valueor-incoming-sales-mig-${SHA}"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          printf '%s\n' "$MODE" > "${STAGE}/.apply-sales-followup-migrations"
+          if [[ "${SEED_WORKER}" == "true" ]]; then
+            : > "${STAGE}/.seed-delivery-worker"
+          fi
+          if [[ "${SEED_FOLLOW_UP}" == "true" ]]; then
+            : > "${STAGE}/.seed-follow-up"
+          fi
+          printf '%s\n' "$WORKER_NAME" > "${STAGE}/.worker-name"
+          printf '%s\n' "$WORKER_PHONE" > "${STAGE}/.worker-phone"
+          echo "stage=${STAGE}"
+          ls -la "$STAGE"
+
+          if [[ ! -x /usr/local/sbin/valueor-prod-deploy ]]; then
+            echo "Missing /usr/local/sbin/valueor-prod-deploy"
+            exit 3
+          fi
+
+          sudo -n /usr/local/sbin/valueor-prod-deploy "$SHA" "$STAGE"
+          echo "DONE"

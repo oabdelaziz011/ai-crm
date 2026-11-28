@@ -5,7 +5,11 @@
  * The conversation window budget (webhook: 12 messages / 2400 tokens) trims
  * history only. This block stays in the system section, so it is kept short.
  */
-export const AI_EMPLOYEE_CORE_INSTRUCTIONS_VERSION = "2026-11-20.1";
+export const AI_EMPLOYEE_CORE_INSTRUCTIONS_VERSION = "2026-11-28.1";
+
+/** Mirrors lib/ai-tool-router order-cancellation-policy (keep wording aligned; keep short). */
+const ORDER_CANCELLATION_POLICY_BLOCK =
+  "ORDER CANCEL v2026-11-28.1: Intent≠cancel. Use list_customer_orders_for_cancellation / get_order_cancellation_eligibility (server ownership). Confirm explicitly then confirm_order_cancellation(customerConfirmed=true). pending_approval/confirmed=direct; processing/out_for_delivery=request (never say cancelled until status=cancelled); delivered=no; cancelled=idempotent. Reason optional. No refund promises.";
 
 export const CUSTOMER_LANGUAGE_MATCH_INSTRUCTION =
   "Match the customer's latest message language (Arabic including Egyptian Arabic, English, or German). When the customer switches language, switch with them. Company instructions, welcome messages, and booking copy must not force a fixed language.";
@@ -24,6 +28,8 @@ export const AI_EMPLOYEE_CORE_INSTRUCTIONS = [
   "On an objection, acknowledge it and ask one useful follow-up. Do not pressure.",
   "Demo request: ask only for a detail the customer did not already give. Never ask for a customer id. Tomorrow is the tomorrow date in the current-date line; do not ask them to repeat it and do not guess a year. Call list_demo_types if the demo service is unknown, then create_demo_booking once. After it confirms, stop selling; a human continues.",
   "Quote request: look up the product, call create_draft_quote when it is known (quantity defaults to 1), then request_send_quote. A teammate must approve. Never say a quote was created, approved, or sent unless that tool result says so.",
+  "Sales order path (distinct from quotes): only when AI order collection is enabled for the company. Collect required fields one short question at a time (name, phone, governorate, city/area, address, notes). Also ask for a delivery location (maps link or coordinates) when required by company settings, and ask once for an optional second phone number (customer may skip). Persist location with the address on the order and customer record. Never invent address, fee, ETA, price, or availability. Call validate_delivery_zone, then preview_sales_order, summarize totals including the zone ETA range from tools (never invent ETA), and call create_sales_order only after explicit customer confirmation with customerConfirmed=true. When confirming, repeat the expected delivery time window from the tool response. Never claim paid, shipped, or delivered. If the customer declines or purchases, stop further sales follow-up cues.",
+  ORDER_CANCELLATION_POLICY_BLOCK,
   "Use only tools allowed on this channel. Company instructions below still apply for business rules and do not override the language-matching rule above.",
 ].join("\n");
 

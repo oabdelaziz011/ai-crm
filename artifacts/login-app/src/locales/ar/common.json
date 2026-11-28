@@ -405,6 +405,7 @@
     "products": "المنتجات",
     "quotes": "عروض الأسعار",
     "quoteSendRequests": "موافقات إرسال العروض",
+    "salesOrders": "طلبات المبيعات",
     "communication": "قائمة الإرسال",
     "campaigns": "الحملات",
     "invoices": "الفواتير والفاتورة المالية",
@@ -1582,7 +1583,8 @@
       "expiredLink": "انتهت صلاحية هذا الرابط. اطلب رابطاً جديداً ثم حاول مرة أخرى.",
       "invalidResetLink": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية.",
       "networkError": "خطأ في الشبكة. تحقق من اتصالك ثم حاول مرة أخرى.",
-      "rateLimitExceeded": "تم إرسال عدد كبير من رسائل البريد الإلكتروني. يرجى الانتظار بضع دقائق ثم المحاولة مرة أخرى.",
+      "rateLimitExceeded": "تم إرسال عدد كبير من الطلبات. يرجى الانتظار بضع دقائق ثم المحاولة مرة أخرى.",
+      "loginRateLimited": "محاولات تسجيل دخول فاشلة كثيرة. يرجى الانتظار {{minutes}} دقيقة ثم المحاولة مرة أخرى.",
       "unknownServerError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
     }
   },
@@ -2902,6 +2904,7 @@
         "email": "البريد الإلكتروني",
         "sms": "الرسائل النصية",
         "bookings": "الحجوزات",
+        "orders": "الطلبات",
         "invoices": "الفواتير",
         "payments": "المدفوعات",
         "commerce": "التجارة",
@@ -2911,6 +2914,15 @@
         "history": "السجل",
         "campaigns": "الحملات",
         "more": "المزيد"
+      },
+      "orders": {
+        "subtitle": "طلبات المبيعات المرتبطة بهذا العميل في CRM (وليست الحجوزات).",
+        "totalOrders": "إجمالي الطلبات",
+        "totalValue": "إجمالي القيمة",
+        "firstOrder": "أول طلب",
+        "lastOrder": "آخر طلب",
+        "created": "تاريخ الإنشاء",
+        "empty": "لا توجد طلبات مبيعات لهذا العميل بعد."
       },
       "bookingStatus": {
         "checkedIn": "تم الحضور",
@@ -3965,6 +3977,140 @@
         "unconfiguredTitle": "متابعة المبيعات غير مُعدّة بعد",
         "unconfiguredBody": "لم تُحفظ أي إعدادات متابعة لهذه الشركة، لذلك المتابعة متوقفة. لا يتم تفعيل شيء تلقائيًا. راجع الخيارات أدناه ثم فعّل خيار التفعيل واحفظ.",
         "disabledNotice": "المتابعة محفوظة كمعطّلة. لن تُجدول أي متابعات حتى تفعّلها وتحفظ."
+      },
+      "salesOrder": {
+        "tabs": {
+          "followUp": "متابعة المبيعات",
+          "orders": "إدارة الطلبات",
+          "delivery": "إعدادات التوصيل",
+          "workers": "عمال التوصيل",
+          "approvals": "موافقات الطلبات"
+        },
+        "save": "حفظ إعدادات الطلبات",
+        "saved": "تم حفظ إعدادات الطلبات",
+        "saveFailed": "تعذر حفظ إعدادات الطلبات",
+        "readOnly": "تحتاج صلاحية settings.edit أو leads.manage لتعديل هذه الإعدادات.",
+        "unconfiguredHint": "لم تُحفظ إعدادات الطلبات بعد. الإعدادات الآمنة تبقي جمع الطلبات بالذكاء الاصطناعي متوقفًا والموافقة البشرية مفعّلة حتى تحفظ.",
+        "orders": {
+          "subtitle": "اضبط ما إذا كان للذكاء الاصطناعي جمع تفاصيل الطلب. معالجة الدفع غير مشمولة في هذه المرحلة.",
+          "aiEnabled": "تفعيل جمع الطلبات بالذكاء الاصطناعي",
+          "aiEnabledHelp": "عند الإيقاف، يجب ألا يجمع الذكاء الاصطناعي طلبات العملاء أو يؤكدها. هذا الإعداد وحده لا ينشئ طلبات.",
+          "paymentMethods": "طرق الدفع المتاحة",
+          "paymentMethodsHelp": "الدفع عند الاستلام هي الطريقة الوحيدة المتاحة في هذه المرحلة. لا يوجد شحن بطاقة أو بوابة دفع هنا.",
+          "payment": {
+            "cash_on_delivery": "الدفع عند الاستلام (COD)"
+          },
+          "requiredFields": "بيانات العميل المطلوبة",
+          "requiredFieldsHelp": "اختر الحقول التي يجب جمعها قبل تقديم الطلب في مرحلة لاحقة.",
+          "fields": {
+            "customerName": "اسم العميل",
+            "mobileNumber": "رقم الموبايل",
+            "governorate": "المحافظة",
+            "cityArea": "المدينة / المنطقة",
+            "detailedAddress": "العنوان التفصيلي",
+            "deliveryNotes": "ملاحظات التوصيل",
+            "deliveryLocation": "موقع التوصيل (رابط خرائط / إحداثيات)",
+            "secondaryPhone": "السؤال عن رقم هاتف ثانٍ (يمكن تخطيه)"
+          }
+        },
+        "workers": {
+          "subtitle": "أضف عمال التوصيل بأرقام هواتفهم واربطهم بالمناطق التي يخدمونها.",
+          "addWorker": "إضافة عامل توصيل",
+          "editWorker": "تعديل عامل التوصيل",
+          "cancelEdit": "إلغاء التعديل",
+          "fullName": "الاسم الكامل",
+          "phone": "رقم واتساب",
+          "phoneHelp": "اختر كود البلد ثم أدخل الرقم المحلي، أو الصق رقمًا بصيغة دولية.",
+          "active": "العامل نشط",
+          "activeHelp": "العامل غير النشط لا يظهر عند إسناد الطلبات ولا يستقبل إشعارات أوردرات جديدة.",
+          "assignmentModeTitle": "من يسند الطلبات لعمال التوصيل؟",
+          "assignmentModeHelp": "اختر إن كان الإسناد يدويًا من تفاصيل الأوردر أو تلقائيًا بعد التأكيد.",
+          "assignmentModeManual": "إسناد بشري",
+          "assignmentModeManualHelp": "من صفحة Sales Orders → تفاصيل الأوردر تختار العامل بنفسك.",
+          "assignmentModeAi": "إسناد تلقائي (AI)",
+          "assignmentModeAiHelp": "بعد تأكيد الأوردر يُسند تلقائيًا لأول عامل نشط يغطي منطقة الطلب.",
+          "assignmentModeManualSaved": "تم ضبط الإسناد على الوضع البشري",
+          "assignmentModeAiSaved": "تم ضبط الإسناد على الوضع التلقائي",
+          "zones": "مناطق الخدمة",
+          "zonesHelp": "فعّل كل المناطق التي يغطيها هذا العامل. يمكنك اختيار أكثر من منطقة.",
+          "openDeliverySettings": "إضافة / تعديل المناطق",
+          "addZonesHint": "لإضافة منطقة جديدة افتح تبويب إعدادات التوصيل من الزر أعلاه.",
+          "oneZoneHint": "يوجد منطقة واحدة فقط. أضف مناطق إضافية من تبويب إعدادات التوصيل لتتمكن من اختيار أكثر من منطقة.",
+          "selectedZones": "المناطق المختارة: {{zones}}",
+          "noZones": "لا توجد مناطق توصيل بعد. أضف مناطق من إعدادات التوصيل أولاً.",
+          "noZonesAssigned": "لا توجد مناطق مربوطة",
+          "saveWorker": "حفظ العامل",
+          "updateWorker": "تحديث العامل",
+          "listTitle": "عمال التوصيل",
+          "empty": "لا يوجد عمال توصيل بعد.",
+          "edit": "تعديل",
+          "deleted": "تم حذف عامل التوصيل",
+          "deleteFailed": "تعذر حذف عامل التوصيل",
+          "saved": "تم حفظ عامل التوصيل",
+          "saveFailed": "تعذر حفظ عامل التوصيل",
+          "activated": "تم تفعيل العامل",
+          "deactivated": "تم إيقاف العامل — لن يظهر في إسناد الأوردرات",
+          "statusActive": "نشط",
+          "statusInactive": "غير نشط",
+          "zoneCount": "{{count}} منطقة",
+          "errors": {
+            "nameRequired": "الاسم الكامل مطلوب.",
+            "phoneRequired": "رقم الهاتف مطلوب.",
+            "phoneRegionRequired": "اختر كود البلد أولًا.",
+            "phoneInvalid": "رقم الهاتف غير صالح.",
+            "duplicate": "يوجد عامل بنفس الرقم لهذه الشركة."
+          }
+        },
+        "delivery": {
+          "subtitle": "عرّف مناطق التوصيل لهذه الشركة. التوفر ووقت الوصول يأتيان فقط من المناطق التي تحفظها هنا.",
+          "noHardcodeHint": "المحافظات والرسوم غير ثابتة في النظام. أضف فقط المناطق التي تخدمها شركتك فعليًا.",
+          "addZone": "إضافة منطقة توصيل",
+          "editZone": "تعديل منطقة التوصيل",
+          "cancelEdit": "إلغاء التعديل",
+          "governorate": "المحافظة",
+          "zoneName": "المدينة / المنطقة / اسم النطاق",
+          "aliases": "أسماء بديلة (عربي / إنجليزي)",
+          "aliasesPlaceholder": "مثال: مدينة نصر، مدينه نصر",
+          "aliasesHelp": "أدخل الأسماء اللي العميل ممكن يكتبها بالعربي أو بصيغ مختلفة، مفصولة بفاصلة. الـ AI هيستخدمها للمطابقة.",
+          "aliasesList": "بدائل: {{aliases}}",
+          "fee": "رسوم التوصيل",
+          "etaMin": "أقل مدة متوقعة",
+          "etaMax": "أقصى مدة متوقعة",
+          "etaUnit": "وحدة الوقت",
+          "unitHours": "ساعات",
+          "unitDays": "أيام",
+          "enabled": "المنطقة مفعّلة",
+          "saveZone": "حفظ المنطقة",
+          "updateZone": "تحديث المنطقة",
+          "zonesList": "المناطق المضبوطة",
+          "empty": "لا توجد مناطق توصيل بعد.",
+          "edit": "تعديل",
+          "delete": "حذف المنطقة",
+          "saved": "تم حفظ منطقة التوصيل",
+          "saveFailed": "تعذر حفظ منطقة التوصيل",
+          "deleted": "تم حذف منطقة التوصيل",
+          "deleteFailed": "تعذر حذف منطقة التوصيل",
+          "statusEnabled": "مفعّلة",
+          "statusDisabled": "معطّلة",
+          "zoneSummary": "الرسوم {{fee}} · المدة {{min}}–{{max}} {{unit}} · {{status}}",
+          "errors": {
+            "governorateRequired": "المحافظة مطلوبة.",
+            "zoneNameRequired": "اسم المدينة / المنطقة مطلوب.",
+            "etaMinExceedsMax": "أقل مدة لا يمكن أن تتجاوز أقصى مدة.",
+            "feeInvalid": "رسوم التوصيل يجب أن تكون صفرًا أو أكثر.",
+            "duplicate": "هذه المحافظة والمنطقة موجودتان بالفعل لهذه الشركة."
+          }
+        },
+        "approvals": {
+          "subtitle": "تحكم في المراجعة البشرية قبل تأكيد الطلب. التأكيد التلقائي يبقى متوقفًا افتراضيًا.",
+          "requireHuman": "طلب موافقة بشرية قبل تأكيد الطلب",
+          "requireHumanHelp": "موصى به. أبقِ هذا مفعّلًا حتى يتم التحقق من تشغيل الطلبات وأدوات الذكاء الاصطناعي في مرحلة لاحقة.",
+          "defaultReviewer": "المراجع الافتراضي",
+          "noReviewer": "بدون مراجع افتراضي",
+          "defaultReviewerHelp": "اختياري. اختر زميلًا نشطًا من هذه الشركة كمراجع افتراضي للطلبات.",
+          "notify": "تفضيل الإشعارات للطلبات بانتظار الموافقة",
+          "notifyHelp": "يحفظ التفضيل فقط. إرسال الإشعارات الفعلي غير موصول في مرحلة الإعدادات هذه."
+        }
       },
       "tickets": {
         "sla": {
@@ -16131,6 +16277,150 @@
           "timestamp": "الوقت"
         }
       }
+    }
+  },
+  "salesOrders": {
+    "subtitle": "راجع طلبات المبيعات وتفاصيل التوصيل وحالة الموافقة.",
+    "noPermission": "تحتاج صلاحية orders.view لفتح طلبات المبيعات.",
+    "emptyTitle": "لا توجد طلبات مبيعات بعد",
+    "emptyBody": "ستظهر الطلبات هنا عند إنشائها لهذه الشركة. إنشاء الطلبات بالذكاء الاصطناعي غير مفعّل في هذه المرحلة.",
+    "noItems": "لا توجد عناصر",
+    "filters": {
+      "search": "بحث",
+      "searchPlaceholder": "رقم الطلب أو اسم العميل أو الهاتف",
+      "status": "الحالة",
+      "allStatuses": "كل الحالات",
+      "payment": "طريقة الدفع",
+      "allPayments": "كل طرق الدفع",
+      "from": "من",
+      "to": "إلى"
+    },
+    "columns": {
+      "orderNumber": "رقم الطلب",
+      "customer": "العميل",
+      "phone": "الهاتف",
+      "items": "المنتجات / العناصر",
+      "total": "الإجمالي",
+      "deliveryFee": "رسوم التوصيل",
+      "payment": "الدفع",
+      "status": "الحالة",
+      "actions": "إجراءات"
+    },
+    "actions": {
+      "view": "عرض"
+    },
+    "status": {
+      "draft": "مسودة",
+      "pending_approval": "بانتظار الموافقة",
+      "confirmed": "مؤكد",
+      "processing": "قيد التجهيز",
+      "out_for_delivery": "خارج للتوصيل",
+      "delivered": "تم التسليم",
+      "cancelled": "ملغى"
+    },
+    "payment": {
+      "cash_on_delivery": "الدفع عند الاستلام"
+    },
+    "pagination": {
+      "summary": "{{from}}–{{to}} من {{total}} طلب",
+      "pageSize": "عدد الصفوف"
+    },
+    "details": {
+      "title": "طلب {{number}}",
+      "loadingTitle": "تفاصيل الطلب",
+      "notFound": "تعذر العثور على هذا الطلب لهذه الشركة.",
+      "createdAt": "تاريخ الإنشاء {{date}}",
+      "updatedAt": "آخر تحديث {{date}}",
+      "approve": "موافقة",
+      "reject": "رفض",
+      "assignDelivery": "إسناد للتوصيل",
+      "assignDeliveryHelp": "اختر عاملًا يغطي منطقة هذا الطلب. سيصله ملخص الطلب على واتساب.",
+      "assignDeliveryNearDetails": "الإسناد من هنا، جنب تفاصيل التوصيل في نفس صفحة الأوردر.",
+      "assignDeliverySelect": "عامل التوصيل",
+      "assignDeliveryEmpty": "لا يوجد عمال نشطون مربوطون بهذه المنطقة.",
+      "assignDeliverySuccess": "تم الإسناد إلى {{name}}",
+      "assignDeliveryNotifyOk": "تم إرسال إشعار واتساب.",
+      "assignDeliveryNotifyFailed": "تم الإسناد، لكن فشل إشعار واتساب: {{error}}",
+      "assignmentPendingTitle": "بانتظار الإسناد",
+      "notifyStatus": "حالة الإشعار: {{status}}",
+      "notifyStatusValue": {
+        "none": "لا يوجد",
+        "pending": "قيد الإرسال",
+        "sent": "تم الإرسال",
+        "failed": "فشل"
+      },
+      "assignmentModeValue": {
+        "manual": "يدوي",
+        "ai": "تلقائي"
+      },
+      "retryNotify": "إعادة إرسال إشعار واتساب",
+      "retryNotifyOk": "تم إعادة إرسال إشعار واتساب",
+      "retryNotifyFailed": "فشلت إعادة إرسال الإشعار",
+      "retryNotifySkipped": "الإشعار مُرسل مسبقًا",
+      "reassignTitle": "إعادة إسناد عامل التوصيل",
+      "reassignHelp": "استبدال العامل الحالي. يلزم التأكيد وسبب الإعادة.",
+      "reassignReasonPlaceholder": "سبب إعادة الإسناد",
+      "reassignConfirm": "أؤكد استبدال عامل التوصيل الحالي",
+      "reassign": "إعادة إسناد",
+      "reassignSuccess": "تمت إعادة الإسناد إلى {{name}}",
+      "assignmentHistory": "سجل الإسناد",
+      "assignmentOutcome": {
+        "assigned": "إسناد",
+        "reassigned": "إعادة إسناد",
+        "failed": "فشل"
+      },
+      "previousWorker": "كان {{name}}",
+      "assignedBy": "بواسطة {{name}}",
+      "assignedWorker": "عامل التوصيل: {{name}}",
+      "etaSnapshot": "وقت التوصيل المتوقع: {{min}}–{{max}} {{unit}}",
+      "secondaryPhone": "رقم بديل: {{phone}}",
+      "actionFailed": "تعذّر تنفيذ الإجراء",
+      "customer": "العميل",
+      "openCustomer": "فتح صفحة العميل",
+      "payment": "الدفع",
+      "paymentStatus": "حالة الدفع: {{status}}",
+      "humanApprovalRequired": "الموافقة البشرية مطلوبة قبل التأكيد.",
+      "humanApprovalOff": "الموافقة البشرية غير مطلوبة لهذا الطلب.",
+      "attribution": "المصدر والتعيين",
+      "aiEmployee": "موظف الذكاء الاصطناعي: {{id}}",
+      "salesperson": "مندوب المبيعات: {{id}}",
+      "sourceChannel": "القناة: {{channel}}",
+      "preferredLanguage": "اللغة: {{lang}}",
+      "delivery": "التوصيل",
+      "locationUrl": "فتح الموقع",
+      "items": "المنتجات المطلوبة",
+      "noItems": "لا توجد بنود في هذا الطلب.",
+      "skuQty": "SKU {{sku}} · الكمية {{qty}}",
+      "qtyOnly": "الكمية {{qty}}",
+      "subtotal": "المجموع الفرعي",
+      "deliveryFee": "رسوم التوصيل",
+      "total": "الإجمالي",
+      "openConversation": "فتح المحادثة المرتبطة",
+      "noConversation": "لا توجد محادثة مرتبطة.",
+      "statusHistory": "سجل الحالة",
+      "noHistory": "لا يوجد سجل حالات بعد.",
+      "notes": {
+        "createdByAi": "أنشأه الذكاء الاصطناعي بعد تأكيد صريح من العميل",
+        "approvedByHuman": "تمت الموافقة بواسطة {{name}}",
+        "rejectedByHuman": "تم الرفض بواسطة {{name}}",
+        "approvedByHumanFallback": "تمت الموافقة بواسطة مراجع بشري",
+        "rejectedByHumanFallback": "تم الرفض بواسطة مراجع بشري"
+      }
+    },
+    "paymentStatus": {
+      "unpaid": "غير مدفوع",
+      "pending": "قيد الانتظار",
+      "paid": "مدفوع",
+      "refunded": "مسترد",
+      "failed": "فشل"
+    },
+    "sourceChannel": {
+      "web_chat": "محادثة الويب",
+      "whatsapp": "واتساب",
+      "email": "البريد الإلكتروني",
+      "messenger": "ماسنجر",
+      "instagram": "إنستغرام",
+      "sms": "رسائل قصيرة"
     }
   },
   "quotes": {

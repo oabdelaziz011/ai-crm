@@ -122,6 +122,14 @@ export function sendWhatsAppTestMessage(companyId: string, recipientPhone: strin
   return postWhatsAppApi("/whatsapp/test-message", { companyId, recipientPhone });
 }
 
+export function sendWhatsAppTextMessage(
+  companyId: string,
+  recipientPhone: string,
+  text: string,
+) {
+  return postWhatsAppApi("/whatsapp/send-text", { companyId, recipientPhone, text });
+}
+
 export function processWhatsAppQueue(companyId: string) {
   return postWhatsAppApi("/whatsapp/process-queue", { companyId });
 }

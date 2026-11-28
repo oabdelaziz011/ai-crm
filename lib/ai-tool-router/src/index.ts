@@ -108,6 +108,14 @@ export * from "./tools/quote-agent-tools.js";
 export * from "./tools/lead-merge-identity.js";
 export * from "./adapters/supabase-product-agent-tool-ports.js";
 export * from "./adapters/supabase-quote-agent-ports.js";
+export * from "./tools/sales-order-tool-definitions.js";
+export * from "./tools/sales-order-ports.js";
+export * from "./tools/create-sales-order-from-conversation.js";
+export * from "./tools/sales-order-agent-tools.js";
+export * from "./tools/order-cancellation-policy.js";
+export * from "./tools/order-cancellation-from-conversation.js";
+export * from "./tools/cancellation-notification-helper.js";
+export * from "./adapters/supabase-sales-order-ports.js";
 export {
   bridgeCreateDemoBooking,
   bridgeFindNextDemo,

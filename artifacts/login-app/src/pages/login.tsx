@@ -13,12 +13,17 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useAuthErrorMessage } from "@/hooks/use-auth-error-message";
 import { hasPendingPasswordSetupIntent, RESET_PASSWORD_PATH } from "@/lib/auth-redirect";
+import {
+  clearLoginFailures,
+  getLoginRateLimitStatus,
+  recordLoginFailure,
+} from "@/lib/auth/login-rate-limiter";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
-/** Login-panel controls — scaled for premium desktop proportions. */
+/** Compact controls so the login card fits without an inner scrollbar. */
 const LOGIN_CONTROL_CLASS =
-  "h-14 rounded-[11px] border-slate-200 bg-white px-4 text-[15px] text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#0D9488]/35 focus-visible:border-[#0D9488]/50";
+  "h-11 rounded-[11px] border-slate-200 bg-white px-4 text-[14px] text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#0D9488]/35 focus-visible:border-[#0D9488]/50";
 
 
 type LoginFormValues = {
@@ -55,10 +60,30 @@ export default function Login() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
+    const gate = getLoginRateLimitStatus(values.email);
+    if (!gate.allowed) {
+      form.setError("root", {
+        message: t("auth.errors.loginRateLimited", {
+          minutes: Math.max(1, Math.ceil(gate.retryAfterSeconds / 60)),
+        }),
+      });
+      return;
+    }
+
     const { error } = await signIn(values.email, values.password);
     if (error) {
+      const afterFail = recordLoginFailure(values.email);
+      if (!afterFail.allowed) {
+        form.setError("root", {
+          message: t("auth.errors.loginRateLimited", {
+            minutes: Math.max(1, Math.ceil(afterFail.retryAfterSeconds / 60)),
+          }),
+        });
+        return;
+      }
       form.setError("root", { message: authErrorMessage(error) });
     } else {
+      clearLoginFailures(values.email);
       toast({
         title: t("auth.login.successTitle"),
         description: t("auth.login.successDescription"),
@@ -78,9 +103,9 @@ export default function Login() {
   return (
     <LoginExperienceLayout subtitle={t("auth.login.subtitle")}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
           {form.formState.errors.root && (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-center text-sm font-medium text-destructive">
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-2.5 text-center text-sm font-medium text-destructive">
               {form.formState.errors.root.message}
             </div>
           )}
@@ -89,19 +114,19 @@ export default function Login() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[15px] font-medium text-slate-600">
+                <FormLabel className="text-[13px] font-medium text-slate-600">
                   {t("auth.login.identity")}
                 </FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Mail
-                      className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                       aria-hidden
                     />
                     <Input
                       type="email"
                       placeholder="you@company.com"
-                      className={cn(LOGIN_CONTROL_CLASS, "ps-11")}
+                      className={cn(LOGIN_CONTROL_CLASS, "ps-10")}
                       autoComplete="email"
                       {...field}
                     />
@@ -116,19 +141,19 @@ export default function Login() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[15px] font-medium text-slate-600">
+                <FormLabel className="text-[13px] font-medium text-slate-600">
                   {t("auth.login.passkey")}
                 </FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Lock
-                      className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                       aria-hidden
                     />
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder={t("auth.placeholders.password")}
-                      className={cn(LOGIN_CONTROL_CLASS, "ps-11 pe-11")}
+                      className={cn(LOGIN_CONTROL_CLASS, "ps-10 pe-10")}
                       autoComplete="current-password"
                       {...field}
                     />
@@ -140,7 +165,7 @@ export default function Login() {
                         showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")
                       }
                     >
-                      {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                   </div>
                 </FormControl>
@@ -149,11 +174,11 @@ export default function Login() {
             )}
           />
 
-          <div className="flex items-center justify-between gap-3 pt-0.5 text-[15px]">
-            <label className="inline-flex cursor-pointer items-center gap-2.5 text-slate-600 select-none">
+          <div className="flex items-center justify-between gap-3 pt-0.5 text-[13px]">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-slate-600 select-none">
               <input
                 type="checkbox"
-                className="size-4 rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]/40"
+                className="size-3.5 rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]/40"
                 checked={rememberMe}
                 onChange={(event) => setRememberMe(event.target.checked)}
               />
@@ -169,11 +194,11 @@ export default function Login() {
 
           <Button
             type="submit"
-            className="h-14 w-full rounded-[11px] bg-[#0D9488] text-[16px] font-semibold text-white shadow-sm transition-all hover:bg-[#0f766e] group"
+            className="h-11 w-full rounded-[11px] bg-[#0D9488] text-[15px] font-semibold text-white shadow-sm transition-all hover:bg-[#0f766e] group"
             disabled={form.formState.isSubmitting}
           >
             {form.formState.isSubmitting ? (
-              <Loader2 className="size-5 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : (
               <>
                 {t("auth.login.submit")}
@@ -184,7 +209,7 @@ export default function Login() {
         </form>
       </Form>
 
-      <div className="mt-5 text-center text-[15px] text-slate-500">
+      <div className="mt-3 text-center text-[13px] text-slate-500">
         {t("auth.login.noAccess")}{" "}
         <Link
           href="/register"

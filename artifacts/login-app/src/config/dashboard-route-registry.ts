@@ -8,6 +8,7 @@ import {
   Calendar,
   CalendarDays,
   CalendarRange,
+  ClipboardList,
   CreditCard,
   FileText,
   LayoutGrid,
@@ -64,6 +65,7 @@ export type DashboardSectionId =
   | "products"
   | "quotes"
   | "quotes-send-requests"
+  | "sales-orders"
   | "communication"
   | "campaigns"
   | "email"
@@ -177,6 +179,7 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
       "product-demos",
       "quotes",
       "quotes-send-requests",
+      "sales-orders",
     ],
   },
 ] as const;
@@ -436,6 +439,16 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
       () => import("@/pages/dashboard/quotes-send-requests-page"),
       "QuotesSendRequestsPage",
     ),
+  },
+  {
+    id: "sales-orders",
+    path: "/dashboard/sales-orders",
+    nestedPath: "/sales-orders",
+    titleKey: "navigation.salesOrders",
+    icon: ClipboardList,
+    permission: "orders.view",
+    commercialFeatureCode: "opportunities",
+    Page: lazyNamed(() => import("@/pages/dashboard/sales-orders-page"), "SalesOrdersPage"),
   },
   {
     id: "invoices",

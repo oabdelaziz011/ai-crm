@@ -2,6 +2,7 @@ export type CustomerProfileTab =
   | "overview"
   | "timeline"
   | "bookings"
+  | "orders"
   | "invoices"
   | "payments"
   | "communication"
@@ -41,6 +42,7 @@ export const CUSTOMER_PROFILE_TABS: CustomerProfileTab[] = [
   "timeline",
   "tickets",
   "bookings",
+  "orders",
   "invoices",
   "payments",
   "communication",

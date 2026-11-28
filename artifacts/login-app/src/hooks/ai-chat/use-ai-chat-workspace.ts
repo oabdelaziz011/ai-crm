@@ -394,6 +394,8 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
             // Support and clinic chats keep their deterministic turns.
             deferDeterministicSales: enabledToolKeys.some((key) =>
               key === "create_draft_quote" ||
+              key === "create_sales_order" ||
+              key === "preview_sales_order" ||
               key === "qualify_lead" ||
               key === "list_demo_types" ||
               key === "create_demo_booking",

@@ -45,6 +45,23 @@ describe("company contact replies", () => {
     assert.equal(companyContactKind("ممكن رقم التليفون"), "phone");
   });
 
+  it("does not answer the company address when the customer supplies a delivery address for an order", () => {
+    const arDelivery =
+      "التوصيل: المحافظة Cairo والمنطقة Nasr City والعنوان شارع 10 التجربى والملاحظات LOCAL-E2E-AR";
+    const enDelivery =
+      "Delivery: governorate Cairo, zone Nasr City, address 10 Lab Street, notes LOCAL-E2E-EN";
+    assert.equal(companyContactKind(arDelivery), null);
+    assert.equal(companyContactKind(enDelivery), null);
+    assert.equal(
+      companyContactReply([
+        { role: "system", content: FACTS },
+        { role: "user", content: arDelivery },
+      ]),
+      null,
+    );
+    assert.equal(companyContactKind("ممكن العنوان"), "address");
+  });
+
   it("answers the support phone and does not reuse the WhatsApp sender number", () => {
     assert.equal(companyContactKind("ممكن رقم التليفون"), "phone");
     const reply = companyContactReply([

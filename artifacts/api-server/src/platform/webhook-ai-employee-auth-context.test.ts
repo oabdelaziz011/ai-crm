@@ -149,6 +149,10 @@ describe("Phase 5E webhook AI Employee auth context", () => {
     assert.equal(ctx.hasPermission("products.pricing"), false);
     assert.equal(ctx.hasPermission("products.create"), false);
     assert.equal(ctx.hasPermission("products.delete"), false);
+    assert.equal(ctx.hasPermission("orders.view"), true);
+    assert.equal(ctx.hasPermission("orders.create"), true);
+    assert.equal(ctx.hasPermission("orders.edit"), false);
+    assert.equal(ctx.hasPermission("orders.delete"), false);
     assert.equal(ctx.hasPermission("quotes.view"), true);
     assert.equal(ctx.hasPermission("quotes.create"), true);
     assert.equal(ctx.hasPermission("quotes.edit"), true);

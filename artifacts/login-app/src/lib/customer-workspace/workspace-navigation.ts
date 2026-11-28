@@ -10,6 +10,7 @@ export type WorkspaceTopTab =
   | "overview"
   | "activity"
   | "bookings"
+  | "orders"
   | "invoices"
   | "communication"
   | "tickets"
@@ -34,6 +35,7 @@ export const WORKSPACE_TOP_TABS: WorkspaceTopTab[] = [
   "overview",
   "activity",
   "bookings",
+  "orders",
   "invoices",
   "communication",
   "tickets",
@@ -75,6 +77,7 @@ export function profileTabToWorkspaceTopTab(tab: CustomerProfileTab): WorkspaceT
       return "ai";
     case "overview":
     case "bookings":
+    case "orders":
     case "invoices":
     case "communication":
     case "tickets":
@@ -103,6 +106,7 @@ export function normalizeWorkspaceRouteTab(tab: string | undefined): CustomerPro
     "email",
     "sms",
     "bookings",
+    "orders",
     "invoices",
     "payments",
     "communication",

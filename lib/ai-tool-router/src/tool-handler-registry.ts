@@ -8,6 +8,7 @@ import { createHandoffAgentTools } from "./tools/handoff-agent-tools.js";
 import { createWorkflowTransferTools } from "./tools/workflow-transfer-tools.js";
 import { createProductAgentTools } from "./tools/product-agent-tools.js";
 import { createQuoteAgentTools } from "./tools/quote-agent-tools.js";
+import { createSalesOrderAgentTools } from "./tools/sales-order-agent-tools.js";
 import type { ToolCustomerServicePort } from "./tools/customer-service-port.js";
 import type { CrmAgentToolPorts } from "./tools/crm-agent-ports.js";
 import type { SchedulingToolPorts } from "./tools/scheduling-agent-ports.js";
@@ -17,6 +18,7 @@ import type { HandoffAgentToolPorts } from "./tools/handoff-agent-ports.js";
 import type { WorkflowTransferToolPorts } from "./tools/workflow-transfer-tools.js";
 import type { ProductAgentToolPorts } from "./tools/product-agent-ports.js";
 import type { QuoteAgentToolPorts } from "./tools/quote-agent-ports.js";
+import type { SalesOrderToolPorts } from "./tools/sales-order-ports.js";
 import type { Tool } from "./tools/tool-contract.js";
 import { createToolHandlerRegistry } from "./tools/tool-contract.js";
 
@@ -30,6 +32,7 @@ export type CreateToolRouterServicesOptions = {
   workflowTransferPorts?: WorkflowTransferToolPorts;
   productAgentPorts?: ProductAgentToolPorts;
   quoteAgentPorts?: QuoteAgentToolPorts;
+  salesOrderPorts?: SalesOrderToolPorts;
   /** When false (default), mock builtin tools are excluded from production registration. */
   includeMockTools?: boolean;
 };
@@ -62,6 +65,9 @@ export function buildToolHandlers(options?: CreateToolRouterServicesOptions) {
   }
   if (options?.quoteAgentPorts) {
     Object.assign(handlers, createQuoteAgentTools(options.quoteAgentPorts));
+  }
+  if (options?.salesOrderPorts) {
+    Object.assign(handlers, createSalesOrderAgentTools(options.salesOrderPorts));
   }
   return handlers;
 }

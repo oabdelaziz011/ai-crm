@@ -13,7 +13,11 @@ import { useUpdateMyProfile } from "@/hooks/use-my-profile";
 import type { MyProfile } from "@/lib/types";
 import { DashboardCard } from "@/components/dashboard/ui";
 import { PROFILE_TIMEZONE_OPTIONS } from "@/lib/profile-timezones";
-import { isAppLanguage, resolveAppLanguage } from "@/lib/i18n/resolve-app-language";
+import {
+  SUPPORTED_APP_LANGUAGES,
+  isAppLanguage,
+  resolveAppLanguage,
+} from "@/lib/i18n/resolve-app-language";
 import { isValidAvatarUrl } from "@/lib/avatar-url";
 import { AvatarUploadError, uploadProfileAvatar } from "@/lib/profile/avatar-upload";
 import { ProfileCurrencyField } from "@/components/profile/profile-currency-field";
@@ -50,7 +54,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         avatar_url: z
           .string()
           .refine((value) => isValidAvatarUrl(value), t("profiles.avatar.invalidUrl")),
-        preferred_language: z.enum(["en", "ar"]),
+        preferred_language: z.enum(SUPPORTED_APP_LANGUAGES),
         timezone: z.string().min(1),
         job_title: z.string().max(120).optional(),
         department_id: z.string().uuid().optional().or(z.literal("")),
@@ -364,6 +368,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
             >
               <option value="en">{t("languages.english")}</option>
               <option value="ar">{t("languages.arabic")}</option>
+              <option value="de">{t("languages.german")}</option>
             </select>
           </div>
 

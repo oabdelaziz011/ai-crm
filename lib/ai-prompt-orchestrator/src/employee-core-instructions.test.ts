@@ -23,7 +23,8 @@ describe("AI employee core instructions", () => {
     assert.match(parts[3] ?? "", /Widget lasts 2 years/);
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /do not guess a year/);
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /list_demo_types/);
-    assert.ok(AI_EMPLOYEE_CORE_INSTRUCTIONS.length < 2400);
+    // Character budget (system section stays outside history trim). Sales-order + cancel policy need room.
+    assert.ok(AI_EMPLOYEE_CORE_INSTRUCTIONS.length < 3600);
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /search_products/);
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /create_demo_booking/);
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /request_send_quote/);
@@ -33,6 +34,9 @@ describe("AI employee core instructions", () => {
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /Do not translate product names/);
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /not_listed/);
     assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /latest message language/);
+    assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /ORDER CANCEL v2026-11-28\.1/);
+    assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /confirm_order_cancellation/);
+    assert.match(AI_EMPLOYEE_CORE_INSTRUCTIONS, /No refund promises/);
   });
 
   it("omits an empty company block instead of erasing the core", () => {

@@ -138,49 +138,54 @@ export function LoginExperienceLayout({
           </p>
         </div>
 
-        <div className="pointer-events-auto flex max-h-[100dvh] min-h-0 w-full items-center justify-center overflow-y-auto px-5 py-4 sm:px-8 lg:px-10 lg:py-4 xl:px-14">
-          <aside className="flex w-full max-w-[440px] flex-col">
-            <div className="mb-4 flex justify-center lg:mb-5 lg:justify-end">
+        {/* Language + legal stay pinned outside the scroll area; only the card scrolls. */}
+        <div className="pointer-events-auto flex h-[100dvh] max-h-[100dvh] min-h-0 w-full flex-col overflow-hidden px-5 py-3 sm:px-8 sm:py-4 lg:px-10 xl:px-14">
+          <aside className="mx-auto flex h-full w-full max-w-[440px] min-h-0 flex-col overflow-hidden">
+            <div className="mb-2 flex shrink-0 justify-center sm:mb-3 lg:justify-end">
               <LoginLanguageToggle />
             </div>
 
-            <div
-              dir={formDir}
-              className="rounded-[1.35rem] border border-white/45 bg-white/97 px-7 py-8 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-sm sm:px-8 sm:py-9"
-            >
-              <div className="mb-6 flex flex-col items-center text-center">
-                <div dir="ltr" className="mb-5 w-full max-w-[260px]">
-                  <ValueOrLogo className="w-full" />
-                </div>
-                <h1 className="text-[2rem] font-extrabold leading-tight tracking-tight text-slate-900">
-                  {t("auth.login.experience.welcomeTitle")}
-                </h1>
-                <p className="mt-2 text-[15px] text-slate-500">
-                  {t("auth.login.experience.welcomeSubtitle", { defaultValue: subtitle })}
-                </p>
-              </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1 [scrollbar-gutter:stable]">
+              <div className="flex min-h-full flex-col justify-center">
+                <div
+                  dir={formDir}
+                  className="w-full rounded-[1.25rem] border border-white/45 bg-white/97 px-5 py-5 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-sm sm:px-6 sm:py-6"
+                >
+                  <div className="mb-3 flex flex-col items-center text-center">
+                    <div dir="ltr" className="mb-2.5 w-full max-w-[190px]">
+                      <ValueOrLogo className="w-full" />
+                    </div>
+                    <h1 className="text-[1.55rem] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[1.7rem]">
+                      {t("auth.login.experience.welcomeTitle")}
+                    </h1>
+                    <p className="mt-1 text-[13px] text-slate-500">
+                      {t("auth.login.experience.welcomeSubtitle", { defaultValue: subtitle })}
+                    </p>
+                  </div>
 
-              {children}
+                  {children}
 
-              <div
-                className="mt-5 flex items-start gap-3 rounded-xl bg-[#EEF6F8] px-4 py-4 text-start"
-                role="note"
-              >
-                <Lock className="mt-0.5 size-4 shrink-0 text-slate-700" aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-[14px] font-semibold text-slate-800">
-                    {t("auth.login.experience.securityTitle")}
-                  </p>
-                  <p className="mt-0.5 text-[12px] leading-snug text-slate-500">
-                    {t("auth.login.experience.securityBody")}
-                  </p>
+                  <div
+                    className="mt-3 flex items-start gap-2 rounded-xl bg-[#EEF6F8] px-3 py-2.5 text-start"
+                    role="note"
+                  >
+                    <Lock className="mt-0.5 size-3.5 shrink-0 text-slate-700" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-slate-800">
+                        {t("auth.login.experience.securityTitle")}
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                        {t("auth.login.experience.securityBody")}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <nav
               dir={formDir}
-              className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pb-1 text-center text-[13px]"
+              className="mt-2 flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-1 text-center text-[13px] sm:mt-3"
               aria-label={t("legal.navLabel")}
             >
               <Link

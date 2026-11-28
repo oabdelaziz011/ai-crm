@@ -42,7 +42,7 @@ export type ToolRegistryEntry = {
   displayName: string;
   category: string;
   classification: ToolClassification;
-  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer" | "product_agent" | "quote_agent";
+  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer" | "product_agent" | "quote_agent" | "sales_order_agent";
   description: string;
   requiredPermissions: string[];
   llmDefinition?: LlmFunctionToolDefinition;
@@ -594,6 +594,175 @@ const GET_QUOTE_DELIVERY_STATUS_LLM = {
       properties: {
         quoteId: { type: "string", description: "Optional quote id; defaults to the conversation quote" },
       },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const VALIDATE_DELIVERY_ZONE_LLM = {
+  type: "function",
+  function: {
+    name: "validate_delivery_zone",
+    description:
+      "Check whether an enabled company delivery zone covers the customer's governorate and city/area. Returns fee and ETA only from saved zones. Never invent fees or ETAs. Call before previewing or creating a sales order.",
+    parameters: {
+      type: "object",
+      properties: {
+        governorate: { type: "string", description: "Customer governorate" },
+        zoneName: { type: "string", description: "City or area / delivery zone name" },
+      },
+      required: ["governorate", "zoneName"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const PREVIEW_SALES_ORDER_LLM = {
+  type: "function",
+  function: {
+    name: "preview_sales_order",
+    description:
+      "Compute subtotal, delivery fee, and total from catalog prices and an enabled delivery zone. Does NOT create an order. Use only when AI order collection is enabled. After preview, summarize and ask the customer to explicitly confirm before create_sales_order.",
+    parameters: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          description: "Catalog lines [{productId, quantity}]. productId may be catalog UUID or SKU from search_products.",
+          items: {
+            type: "object",
+            properties: {
+              productId: {
+                type: "string",
+                description: "Catalog product UUID or SKU returned by search_products / get_product_details",
+              },
+              quantity: { type: "number" },
+            },
+            required: ["productId", "quantity"],
+          },
+        },
+        governorate: { type: "string" },
+        zoneName: { type: "string" },
+        customerName: { type: "string" },
+        customerPhone: { type: "string" },
+        deliveryAddress: { type: "string" },
+      },
+      required: ["items", "governorate", "zoneName", "customerName", "customerPhone"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const CREATE_SALES_ORDER_LLM = {
+  type: "function",
+  function: {
+    name: "create_sales_order",
+    description:
+      "Create a COD sales order ONLY after the customer explicitly confirmed the preview (customerConfirmed=true). Requires AI order collection enabled. Defaults to pending_approval when human approval is required. Include delivery location when required and optional secondary phone. Response includes ETA — tell the customer that window. Never claim paid, shipped, or delivered. Distinct from quote tools.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerConfirmed: {
+          type: "boolean",
+          description: "Must be true only after the customer explicitly confirmed the order summary",
+        },
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              productId: {
+                type: "string",
+                description: "Catalog product UUID or SKU returned by search_products / get_product_details",
+              },
+              quantity: { type: "number" },
+            },
+            required: ["productId", "quantity"],
+          },
+        },
+        customerName: { type: "string" },
+        customerPhone: { type: "string" },
+        customerEmail: { type: "string" },
+        preferredLanguage: { type: "string" },
+        governorate: { type: "string" },
+        zoneName: { type: "string" },
+        deliveryAddress: { type: "string" },
+        deliveryNotes: { type: "string" },
+        deliveryLocationUrl: {
+          type: "string",
+          description: "Maps/share location URL when the customer provided one",
+        },
+        deliveryLat: { type: "number" },
+        deliveryLng: { type: "number" },
+        customerSecondaryPhone: {
+          type: "string",
+          description: "Optional second phone; omit or empty if the customer skipped",
+        },
+      },
+      required: [
+        "customerConfirmed",
+        "items",
+        "customerName",
+        "customerPhone",
+        "governorate",
+        "zoneName",
+        "deliveryAddress",
+      ],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const LIST_CUSTOMER_ORDERS_FOR_CANCELLATION_LLM = {
+  type: "function",
+  function: {
+    name: "list_customer_orders_for_cancellation",
+    description:
+      "List this customer's orders for cancellation (ownership verified by phone/conversation). Use when the customer wants to cancel. Never invent orders.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerPhone: { type: "string" },
+        orderNumber: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const GET_ORDER_CANCELLATION_ELIGIBILITY_LLM = {
+  type: "function",
+  function: {
+    name: "get_order_cancellation_eligibility",
+    description:
+      "Check whether an owned order can be cancelled directly, needs an employee-approved request, is already cancelled, or cannot be cancelled (e.g. delivered).",
+    parameters: {
+      type: "object",
+      properties: {
+        orderId: { type: "string" },
+        orderNumber: { type: "string" },
+        customerPhone: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const CONFIRM_ORDER_CANCELLATION_LLM = {
+  type: "function",
+  function: {
+    name: "confirm_order_cancellation",
+    description:
+      "After explicit customer confirmation only (customerConfirmed=true): directly cancel pending_approval/confirmed orders, or create a pending cancellation request for processing/out_for_delivery. Reason optional. Never claim cancelled unless the tool returns cancellation_completed.",
+    parameters: {
+      type: "object",
+      properties: {
+        orderId: { type: "string" },
+        customerConfirmed: { type: "boolean" },
+        customerPhone: { type: "string" },
+        reason: { type: "string", description: "Optional; omit or empty if customer declined to give a reason" },
+      },
+      required: ["orderId", "customerConfirmed"],
       additionalProperties: false,
     },
   },
@@ -1154,6 +1323,69 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
       "Reads real quote delivery state from quote status, send attempts, and AI send-request metadata.",
     requiredPermissions: ["tools.execute", "quotes.view"],
     llmDefinition: GET_QUOTE_DELIVERY_STATUS_LLM,
+  },
+  {
+    key: "validate_delivery_zone",
+    displayName: "Validate Delivery Zone",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description: "Looks up an enabled company delivery zone for fee/ETA. Fail-closed when unsupported.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: VALIDATE_DELIVERY_ZONE_LLM,
+  },
+  {
+    key: "preview_sales_order",
+    displayName: "Preview Sales Order",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description:
+      "Computes order totals from catalog prices and delivery zones without writing. Requires AI order collection.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: PREVIEW_SALES_ORDER_LLM,
+  },
+  {
+    key: "create_sales_order",
+    displayName: "Create Sales Order",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "sales_order_agent",
+    description:
+      "Creates a COD sales order after explicit customer confirmation when AI order collection is enabled.",
+    requiredPermissions: ["tools.execute", "orders.create"],
+    llmDefinition: CREATE_SALES_ORDER_LLM,
+  },
+  {
+    key: "list_customer_orders_for_cancellation",
+    displayName: "List Customer Orders For Cancellation",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description: "Lists customer-owned orders for the cancellation workflow.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: LIST_CUSTOMER_ORDERS_FOR_CANCELLATION_LLM,
+  },
+  {
+    key: "get_order_cancellation_eligibility",
+    displayName: "Get Order Cancellation Eligibility",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "sales_order_agent",
+    description: "Returns direct-cancel vs request-required vs not-allowed for an owned order.",
+    requiredPermissions: ["tools.execute", "orders.view"],
+    llmDefinition: GET_ORDER_CANCELLATION_ELIGIBILITY_LLM,
+  },
+  {
+    key: "confirm_order_cancellation",
+    displayName: "Confirm Order Cancellation",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "sales_order_agent",
+    description:
+      "Executes direct customer cancellation or creates a pending cancellation request after explicit confirmation.",
+    requiredPermissions: ["tools.execute", "orders.edit"],
+    llmDefinition: CONFIRM_ORDER_CANCELLATION_LLM,
   },
 ];
 

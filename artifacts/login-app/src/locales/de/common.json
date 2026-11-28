@@ -688,6 +688,7 @@
     "products": "Produkte",
     "quotes": "Angebote",
     "quoteSendRequests": "Freigaben für Angebotsversand",
+    "salesOrders": "Verkaufsaufträge",
     "communication": "Ausgehende Warteschlange",
     "campaigns": "Kampagnen",
     "invoices": "Rechnungen und Finanzabrechnungen",
@@ -1762,7 +1763,8 @@
       "expiredLink": "Dieser Link ist abgelaufen. Fordern Sie ein neues an und versuchen Sie es erneut.",
       "invalidResetLink": "Dieser Reset-Link ist ungültig oder abgelaufen.",
       "networkError": "Netzwerkfehler. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-      "rateLimitExceeded": "Zu viele E-Mail-Anfragen. Bitte warten Sie ein paar Minuten, bevor Sie es erneut versuchen.",
+      "rateLimitExceeded": "Zu viele Anfragen. Bitte warten Sie ein paar Minuten, bevor Sie es erneut versuchen.",
+      "loginRateLimited": "Zu viele fehlgeschlagene Anmeldeversuche. Bitte warten Sie {{minutes}} Minute(n) und versuchen Sie es erneut.",
       "unknownServerError": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut."
     }
   },
@@ -3054,6 +3056,7 @@
         "email": "E-Mail",
         "sms": "SMS",
         "bookings": "Buchungen",
+        "orders": "Aufträge",
         "invoices": "Rechnungen",
         "payments": "Zahlungen",
         "commerce": "Handel",
@@ -3063,6 +3066,15 @@
         "history": "Geschichte",
         "campaigns": "Kampagnen",
         "more": "Mehr"
+      },
+      "orders": {
+        "subtitle": "Verkaufsaufträge dieses CRM-Kunden (keine Buchungen).",
+        "totalOrders": "Aufträge gesamt",
+        "totalValue": "Gesamtwert",
+        "firstOrder": "Erster Auftrag",
+        "lastOrder": "Letzter Auftrag",
+        "created": "Erstellt",
+        "empty": "Für diesen Kunden gibt es noch keine Verkaufsaufträge."
       },
       "bookingStatus": {
         "checkedIn": "Eingecheckt",
@@ -4134,6 +4146,140 @@
         "unconfiguredTitle": "Die Nachverfolgung ist noch nicht konfiguriert",
         "unconfiguredBody": "Für dieses Unternehmen wurden keine Nachverfolgungseinstellungen gespeichert, daher ist die Nachverfolgung deaktiviert. Nichts wird automatisch aktiviert. Überprüfen Sie die Optionen unten, aktivieren Sie dann die Option „Aktivieren“ und speichern Sie.",
         "disabledNotice": "Die Nachverfolgung wird als deaktiviert gespeichert. Es sind keine Nachverfolgungen geplant, bis Sie es aktivieren und speichern."
+      },
+      "salesOrder": {
+        "tabs": {
+          "followUp": "Verkaufsverfolgung",
+          "orders": "Auftragsverwaltung",
+          "delivery": "Lieferungseinstellungen",
+          "workers": "Lieferfahrer",
+          "approvals": "Auftragsfreigaben"
+        },
+        "save": "Auftragseinstellungen speichern",
+        "saved": "Auftragseinstellungen gespeichert",
+        "saveFailed": "Auftragseinstellungen konnten nicht gespeichert werden",
+        "readOnly": "Um diese Einstellungen zu ändern, benötigen Sie settings.edit oder leads.manage.",
+        "unconfiguredHint": "Es wurden noch keine Auftragseinstellungen gespeichert. Sichere Standardwerte lassen die KI-Auftragserfassung aus und die menschliche Freigabe an, bis Sie speichern.",
+        "orders": {
+          "subtitle": "Legen Sie fest, ob die KI Auftragsdaten erfassen darf. Zahlungsabwicklung ist in dieser Phase nicht enthalten.",
+          "aiEnabled": "KI-Auftragserfassung aktivieren",
+          "aiEnabledHelp": "Wenn aus, darf die KI keine Kundenaufträge erfassen oder bestätigen. Diese Einstellung allein erstellt keine Aufträge.",
+          "paymentMethods": "Verfügbare Zahlungsmethoden",
+          "paymentMethodsHelp": "Nachnahme ist in dieser Phase die einzige Methode. Keine Karten- oder Gateway-Belastung hier.",
+          "payment": {
+            "cash_on_delivery": "Nachnahme (COD)"
+          },
+          "requiredFields": "Erforderliche Kundendaten",
+          "requiredFieldsHelp": "Wählen Sie Felder, die vor der Auftragseinreichung in einer späteren Phase erfasst werden müssen.",
+          "fields": {
+            "customerName": "Kundenname",
+            "mobileNumber": "Handynummer",
+            "governorate": "Gouvernement",
+            "cityArea": "Stadt / Gebiet",
+            "detailedAddress": "Detaillierte Adresse",
+            "deliveryNotes": "Lieferhinweise",
+            "deliveryLocation": "Lieferstandort (Kartenlink / Koordinaten)",
+            "secondaryPhone": "Nach zweiter Telefonnummer fragen (Überspringen erlaubt)"
+          }
+        },
+        "workers": {
+          "subtitle": "Fügen Sie Lieferfahrer mit Telefonnummern hinzu und ordnen Sie sie den Zonen zu, die sie bedienen.",
+          "addWorker": "Lieferfahrer hinzufügen",
+          "editWorker": "Lieferfahrer bearbeiten",
+          "cancelEdit": "Bearbeitung abbrechen",
+          "fullName": "Vollständiger Name",
+          "phone": "WhatsApp-Telefon",
+          "phoneHelp": "Ländervorwahl wählen, dann die lokale Nummer eingeben — oder eine internationale Nummer einfügen.",
+          "active": "Fahrer ist aktiv",
+          "activeHelp": "Inaktive Fahrer erscheinen nicht bei der Auftragszuweisung und erhalten keine neuen Auftragsbenachrichtigungen.",
+          "assignmentModeTitle": "Wer weist Aufträge den Lieferfahrern zu?",
+          "assignmentModeHelp": "Wählen Sie manuelle Zuweisung in den Auftragsdetails oder automatische Zuweisung nach Bestätigung.",
+          "assignmentModeManual": "Menschliche Zuweisung",
+          "assignmentModeManualHelp": "Unter Sales Orders → Auftragsdetails wählen Sie den Fahrer selbst.",
+          "assignmentModeAi": "Automatisch (AI)",
+          "assignmentModeAiHelp": "Nach Auftragsbestätigung wird der erste aktive Fahrer der Zone zugewiesen.",
+          "assignmentModeManualSaved": "Zuweisungsmodus: manuell",
+          "assignmentModeAiSaved": "Zuweisungsmodus: automatisch",
+          "zones": "Servicezonen",
+          "zonesHelp": "Aktivieren Sie alle Lieferzonen dieses Fahrers. Mehrfachauswahl ist möglich.",
+          "openDeliverySettings": "Zonen hinzufügen / bearbeiten",
+          "addZonesHint": "Neue Zonen legen Sie unter Lieferungseinstellungen über den Button oben an.",
+          "oneZoneHint": "Es gibt nur eine Zone. Fügen Sie unter Lieferungseinstellungen weitere Zonen hinzu.",
+          "selectedZones": "Ausgewählte Zonen: {{zones}}",
+          "noZones": "Noch keine Lieferzonen. Fügen Sie zuerst Zonen unter Lieferungseinstellungen hinzu.",
+          "noZonesAssigned": "Keine Zonen zugewiesen",
+          "saveWorker": "Fahrer speichern",
+          "updateWorker": "Fahrer aktualisieren",
+          "listTitle": "Lieferfahrer",
+          "empty": "Noch keine Lieferfahrer.",
+          "edit": "Bearbeiten",
+          "deleted": "Lieferfahrer gelöscht",
+          "deleteFailed": "Lieferfahrer konnte nicht gelöscht werden",
+          "saved": "Lieferfahrer gespeichert",
+          "saveFailed": "Lieferfahrer konnte nicht gespeichert werden",
+          "activated": "Fahrer aktiviert",
+          "deactivated": "Fahrer deaktiviert — ausgeblendet bei der Auftragszuweisung",
+          "statusActive": "Aktiv",
+          "statusInactive": "Inaktiv",
+          "zoneCount": "{{count}} Zone(n)",
+          "errors": {
+            "nameRequired": "Vollständiger Name ist erforderlich.",
+            "phoneRequired": "Telefonnummer ist erforderlich.",
+            "phoneRegionRequired": "Bitte zuerst die Ländervorwahl wählen.",
+            "phoneInvalid": "Telefonnummer ist ungültig.",
+            "duplicate": "Ein Fahrer mit dieser Nummer existiert bereits für das Unternehmen."
+          }
+        },
+        "delivery": {
+          "subtitle": "Definieren Sie Lieferzonen für dieses Unternehmen. Verfügbarkeit und ETA kommen nur aus hier gespeicherten Zonen.",
+          "noHardcodeHint": "Gouvernements und Gebühren sind nicht fest verdrahtet. Fügen Sie nur Zonen hinzu, die Ihr Unternehmen wirklich bedient.",
+          "addZone": "Lieferzone hinzufügen",
+          "editZone": "Lieferzone bearbeiten",
+          "cancelEdit": "Bearbeitung abbrechen",
+          "governorate": "Gouvernement",
+          "zoneName": "Stadt / Gebiet / Zonenname",
+          "aliases": "Alternative Namen (Arabisch / Englisch)",
+          "aliasesPlaceholder": "z. B. مدينة نصر, مدينه نصر",
+          "aliasesHelp": "Kommagetrennte Schreibweisen, die Kunden nutzen können. Die AI matcht darüber.",
+          "aliasesList": "Aliase: {{aliases}}",
+          "fee": "Liefergebühr",
+          "etaMin": "Minimale ETA",
+          "etaMax": "Maximale ETA",
+          "etaUnit": "Zeiteinheit",
+          "unitHours": "Stunden",
+          "unitDays": "Tage",
+          "enabled": "Zone aktiviert",
+          "saveZone": "Zone speichern",
+          "updateZone": "Zone aktualisieren",
+          "zonesList": "Konfigurierte Zonen",
+          "empty": "Noch keine Lieferzonen.",
+          "edit": "Bearbeiten",
+          "delete": "Zone löschen",
+          "saved": "Lieferzone gespeichert",
+          "saveFailed": "Lieferzone konnte nicht gespeichert werden",
+          "deleted": "Lieferzone gelöscht",
+          "deleteFailed": "Lieferzone konnte nicht gelöscht werden",
+          "statusEnabled": "aktiviert",
+          "statusDisabled": "deaktiviert",
+          "zoneSummary": "Gebühr {{fee}} · ETA {{min}}–{{max}} {{unit}} · {{status}}",
+          "errors": {
+            "governorateRequired": "Gouvernement ist erforderlich.",
+            "zoneNameRequired": "Stadt / Gebiet / Zonenname ist erforderlich.",
+            "etaMinExceedsMax": "Minimale ETA darf die maximale ETA nicht überschreiten.",
+            "feeInvalid": "Liefergebühr muss null oder größer sein.",
+            "duplicate": "Dieses Gouvernement und diese Zone existieren bereits für das Unternehmen."
+          }
+        },
+        "approvals": {
+          "subtitle": "Steuern Sie die menschliche Prüfung, bevor ein Auftrag bestätigt wird. Automatische Bestätigung bleibt standardmäßig aus.",
+          "requireHuman": "Menschliche Freigabe vor Auftragsbestätigung verlangen",
+          "requireHumanHelp": "Empfohlen. Lassen Sie dies aktiviert, bis Auftragsruntime und KI-Tools in einer späteren Phase geprüft sind.",
+          "defaultReviewer": "Standardprüfer",
+          "noReviewer": "Kein Standardprüfer",
+          "defaultReviewerHelp": "Optional. Wählen Sie einen aktiven Kollegen dieses Unternehmens als Standard-Auftragsprüfer.",
+          "notify": "Benachrichtigungen für wartende Freigaben bevorzugen",
+          "notifyHelp": "Speichert nur die Präferenz. Live-Benachrichtigungen sind in dieser Einstellungsphase nicht angebunden."
+        }
       },
       "security": {
         "changePassword": "Kennwort ändern",
@@ -16478,6 +16624,150 @@
           "timestamp": "Zeit"
         }
       }
+    }
+  },
+  "salesOrders": {
+    "subtitle": "Prüfen Sie Verkaufsaufträge, Lieferdetails und Freigabestatus.",
+    "noPermission": "Sie benötigen die Berechtigung orders.view, um Verkaufsaufträge zu öffnen.",
+    "emptyTitle": "Noch keine Verkaufsaufträge",
+    "emptyBody": "Aufträge erscheinen hier, sobald sie für dieses Unternehmen erstellt wurden. KI-Auftragserstellung ist in dieser Phase nicht aktiviert.",
+    "noItems": "Keine Positionen",
+    "filters": {
+      "search": "Suche",
+      "searchPlaceholder": "Auftragsnummer, Kundenname oder Telefon",
+      "status": "Status",
+      "allStatuses": "Alle Status",
+      "payment": "Zahlungsart",
+      "allPayments": "Alle Zahlungsarten",
+      "from": "Von",
+      "to": "Bis"
+    },
+    "columns": {
+      "orderNumber": "Auftragsnummer",
+      "customer": "Kunde",
+      "phone": "Telefon",
+      "items": "Produkte / Positionen",
+      "total": "Gesamt",
+      "deliveryFee": "Liefergebühr",
+      "payment": "Zahlung",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "actions": {
+      "view": "Ansehen"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "pending_approval": "Freigabe ausstehend",
+      "confirmed": "Bestätigt",
+      "processing": "In Bearbeitung",
+      "out_for_delivery": "Unterwegs",
+      "delivered": "Zugestellt",
+      "cancelled": "Storniert"
+    },
+    "payment": {
+      "cash_on_delivery": "Nachnahme"
+    },
+    "pagination": {
+      "summary": "{{from}}–{{to}} von {{total}} Aufträgen",
+      "pageSize": "Zeilen pro Seite"
+    },
+    "details": {
+      "title": "Auftrag {{number}}",
+      "loadingTitle": "Auftragsdetails",
+      "notFound": "Dieser Auftrag wurde für Ihr Unternehmen nicht gefunden.",
+      "createdAt": "Erstellt {{date}}",
+      "updatedAt": "Aktualisiert {{date}}",
+      "approve": "Freigeben",
+      "reject": "Ablehnen",
+      "assignDelivery": "Lieferung zuweisen",
+      "assignDeliveryHelp": "Wählen Sie einen Fahrer für diese Zone. WhatsApp erhält die Auftragsdaten.",
+      "assignDeliveryNearDetails": "Die Zuweisung erfolgt hier, direkt neben den Lieferdetails dieses Auftrags.",
+      "assignDeliverySelect": "Lieferfahrer",
+      "assignDeliveryEmpty": "Keine aktiven Fahrer für diese Zone.",
+      "assignDeliverySuccess": "Zugewiesen an {{name}}",
+      "assignDeliveryNotifyOk": "WhatsApp-Benachrichtigung gesendet.",
+      "assignDeliveryNotifyFailed": "Zugewiesen, aber WhatsApp fehlgeschlagen: {{error}}",
+      "assignmentPendingTitle": "Zuweisung ausstehend",
+      "notifyStatus": "Benachrichtigungsstatus: {{status}}",
+      "notifyStatusValue": {
+        "none": "keine",
+        "pending": "ausstehend",
+        "sent": "gesendet",
+        "failed": "fehlgeschlagen"
+      },
+      "assignmentModeValue": {
+        "manual": "Manuell",
+        "ai": "Automatisch"
+      },
+      "retryNotify": "WhatsApp erneut senden",
+      "retryNotifyOk": "WhatsApp erneut gesendet",
+      "retryNotifyFailed": "WhatsApp-Retry fehlgeschlagen",
+      "retryNotifySkipped": "Benachrichtigung bereits gesendet",
+      "reassignTitle": "Lieferfahrer neu zuweisen",
+      "reassignHelp": "Ersetzt den aktuellen Fahrer. Bestätigung und Grund sind erforderlich.",
+      "reassignReasonPlaceholder": "Grund für die Neuzuweisung",
+      "reassignConfirm": "Ich bestätige den Austausch des aktuellen Lieferfahrers",
+      "reassign": "Neu zuweisen",
+      "reassignSuccess": "Neu zugewiesen an {{name}}",
+      "assignmentHistory": "Zuweisungshistorie",
+      "assignmentOutcome": {
+        "assigned": "Zugewiesen",
+        "reassigned": "Neu zugewiesen",
+        "failed": "Fehlgeschlagen"
+      },
+      "previousWorker": "war {{name}}",
+      "assignedBy": "Von {{name}}",
+      "assignedWorker": "Lieferfahrer: {{name}}",
+      "etaSnapshot": "ETA: {{min}}–{{max}} {{unit}}",
+      "secondaryPhone": "Zweite Nummer: {{phone}}",
+      "actionFailed": "Aktion fehlgeschlagen",
+      "customer": "Kunde",
+      "openCustomer": "CRM-Kunde öffnen",
+      "payment": "Zahlung",
+      "paymentStatus": "Zahlungsstatus: {{status}}",
+      "humanApprovalRequired": "Menschliche Freigabe vor Bestätigung erforderlich.",
+      "humanApprovalOff": "Für diesen Auftrag ist keine menschliche Freigabe erforderlich.",
+      "attribution": "Zuordnung",
+      "aiEmployee": "KI-Mitarbeiter: {{id}}",
+      "salesperson": "Verkäufer: {{id}}",
+      "sourceChannel": "Quelle: {{channel}}",
+      "preferredLanguage": "Sprache: {{lang}}",
+      "delivery": "Lieferung",
+      "locationUrl": "Standort öffnen",
+      "items": "Bestellte Produkte",
+      "noItems": "Keine Positionen in diesem Auftrag.",
+      "skuQty": "SKU {{sku}} · Menge {{qty}}",
+      "qtyOnly": "Menge {{qty}}",
+      "subtotal": "Zwischensumme",
+      "deliveryFee": "Liefergebühr",
+      "total": "Gesamt",
+      "openConversation": "Zugehörigen Chat öffnen",
+      "noConversation": "Kein zugehöriger Chat verknüpft.",
+      "statusHistory": "Statusverlauf",
+      "noHistory": "Noch kein Statusverlauf vorhanden.",
+      "notes": {
+        "createdByAi": "Von der KI nach ausdrücklicher Kundenbestätigung erstellt",
+        "approvedByHuman": "Freigegeben von {{name}}",
+        "rejectedByHuman": "Abgelehnt von {{name}}",
+        "approvedByHumanFallback": "Von einem menschlichen Prüfer freigegeben",
+        "rejectedByHumanFallback": "Von einem menschlichen Prüfer abgelehnt"
+      }
+    },
+    "paymentStatus": {
+      "unpaid": "Unbezahlt",
+      "pending": "Ausstehend",
+      "paid": "Bezahlt",
+      "refunded": "Erstattet",
+      "failed": "Fehlgeschlagen"
+    },
+    "sourceChannel": {
+      "web_chat": "Web-Chat",
+      "whatsapp": "WhatsApp",
+      "email": "E-Mail",
+      "messenger": "Messenger",
+      "instagram": "Instagram",
+      "sms": "SMS"
     }
   },
   "quotes": {

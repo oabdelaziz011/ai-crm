@@ -1,0 +1,61 @@
+name: Ops probe DB env access
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type probe-db-env-access
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.event.inputs.confirm == 'probe-db-env-access'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 5
+    steps:
+      - name: Probe readable DATABASE_URL sources (no secret values)
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          id; groups || true
+          echo "=== env file perms ==="
+          ls -la /opt/valueor/.env /opt/valueor/deploy/vps/production.env 2>&1 || true
+          echo "=== deploy script perms ==="
+          ls -la /opt/valueor/deploy/vps/systemd-release-deploy.sh /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh /usr/local/sbin/valueor-prod-deploy 2>&1 || true
+          echo "=== valueor-api ==="
+          systemctl is-active valueor-api 2>&1 || true
+          pid="$(systemctl show -p MainPID --value valueor-api 2>/dev/null || true)"
+          echo "pid=${pid}"
+          if [[ -n "${pid:-}" && "$pid" != "0" ]]; then
+            ls -la "/proc/${pid}/environ" 2>&1 || true
+            if [[ -r "/proc/${pid}/environ" ]]; then
+              echo "environ_readable=1"
+              # presence only
+              if tr '\0' '\n' <"/proc/${pid}/environ" | awk -F= '$1=="DATABASE_URL"{found=1} END{exit found?0:1}'; then
+                echo "database_url_in_environ=1"
+                tr '\0' '\n' <"/proc/${pid}/environ" | awk -F= '$1=="DATABASE_URL"{print "database_url_len=" length($0)-length($1)-1; exit}'
+              else
+                echo "database_url_in_environ=0"
+              fi
+            else
+              echo "environ_readable=0"
+            fi
+            # cmdline / cwd
+            ls -la "/proc/${pid}/cwd" 2>&1 || true
+            tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null | head -c 200; echo
+          fi
+          echo "=== systemctl Environment keys (names only) ==="
+          systemctl show valueor-api -p Environment -p EnvironmentFiles 2>&1 | sed -E 's/(DATABASE_URL|PASSWORD|SECRET|KEY|TOKEN)=[^ ]+/\1=(redacted)/g' || true
+          echo "=== sudoers deploy dry touch ==="
+          # Can we sudo -n true? expect fail
+          sudo -n true 2>&1 | head -n 2 || true
+          echo "=== git status as root via deploy? skip ==="
+          echo "=== home keys ==="
+          ls -la /home/gha-runner/.ssh 2>&1 | head || true
+          ls -la /home/valueor/.ssh 2>&1 | head || true
+          ls -la /root/.ssh 2>&1 | head || true
+          echo DONE

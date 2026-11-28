@@ -1,0 +1,51 @@
+name: Ops probe writable paths
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type probe-writable-paths
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.event.inputs.confirm == 'probe-writable-paths'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 5
+    steps:
+      - name: Probe writable paths and production.env readability
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          id; groups || true
+          for p in \
+            /opt/valueor \
+            /opt/valueor/.env \
+            /opt/valueor/deploy/vps/production.env \
+            /opt/valueor/deploy/vps/systemd-release-deploy.sh \
+            /opt/valueor/deploy/vps/apply-sales-followup-migrations.sh \
+            /opt/valueor-current \
+            /tmp \
+            /var/lib/valueor \
+            /home/gha-runner
+          do
+            echo "--- $p ---"
+            ls -lad "$p" 2>&1 || true
+            if [[ -r "$p" ]]; then echo readable=1; else echo readable=0; fi
+            if [[ -w "$p" ]]; then echo writable=1; else echo writable=0; fi
+          done
+          echo "=== production.env DATABASE_URL presence ==="
+          if [[ -r /opt/valueor/deploy/vps/production.env ]]; then
+            awk -F= '$1=="DATABASE_URL"{print "production_env_database_url_len=" length($0)-length($1)-1; found=1} END{if(!found) print "production_env_database_url=missing"}' /opt/valueor/deploy/vps/production.env
+          else
+            echo production_env_unreadable=1
+            # getfacl if available
+            command -v getfacl >/dev/null && getfacl /opt/valueor/deploy/vps/production.env 2>&1 | head -n 20 || true
+          fi
+          echo "=== try sg valueor ==="
+          sg valueor -c 'id; test -r /opt/valueor/deploy/vps/production.env && echo sg_readable=1 || echo sg_readable=0' 2>&1 || echo sg_failed=1
+          echo DONE

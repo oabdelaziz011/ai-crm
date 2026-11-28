@@ -1,0 +1,25 @@
+name: Ops probe sudo -l
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type probe-sudo-l
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.event.inputs.confirm == 'probe-sudo-l'
+    runs-on: [self-hosted, linux, x64, valueor-production]
+    timeout-minutes: 3
+    steps:
+      - name: List passwordless sudo rules
+        run: |
+          set -euo pipefail
+          echo "host=$(hostname) utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          sudo -n -l 2>&1 || sudo -l 2>&1 || true
+          echo DONE

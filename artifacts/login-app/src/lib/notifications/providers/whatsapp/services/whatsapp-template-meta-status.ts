@@ -25,8 +25,6 @@ const ALIASES: Record<string, CompanyWhatsAppTemplateMetaStatus> = {
   DELETED: "DELETED",
   NOT_CREATED: "NOT_CREATED",
   UNKNOWN: "UNKNOWN",
-  // Meta occasionally surfaces quality/paused variants
-  FLAGSHIP: "APPROVED",
 };
 
 export function mapMetaWhatsAppTemplateStatus(

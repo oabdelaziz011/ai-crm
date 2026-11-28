@@ -167,7 +167,21 @@ export async function listMetaWhatsAppMessageTemplates(
           category: row.category != null ? String(row.category) : null,
         });
       }
-      url = body.paging?.next?.trim() ? body.paging.next : null;
+      const next = body.paging?.next?.trim() ?? "";
+      if (!next) {
+        url = null;
+      } else {
+        let nextHost = "";
+        try {
+          nextHost = new URL(next).hostname.toLowerCase();
+        } catch {
+          throw new Error("Meta template list returned an invalid paging URL");
+        }
+        if (nextHost !== "graph.facebook.com") {
+          throw new Error("Meta template list paging host is not graph.facebook.com");
+        }
+        url = next;
+      }
     }
     return out;
   });

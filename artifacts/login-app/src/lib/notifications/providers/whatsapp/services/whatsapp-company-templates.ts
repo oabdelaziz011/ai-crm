@@ -98,11 +98,8 @@ export function matchMetaTemplateForPurpose(
   const wantedLang = normalizeWhatsAppTemplateLanguage(languageCode ?? spec.language);
   const sameName = listed.filter((t) => t.name.trim().toLowerCase() === wantedName);
   if (sameName.length === 0) return null;
-  return (
-    sameName.find((t) => whatsappTemplateLanguagesMatch(t.language, wantedLang)) ??
-    sameName[0] ??
-    null
-  );
+  // Exact language match only — never inherit APPROVED status from another language.
+  return sameName.find((t) => whatsappTemplateLanguagesMatch(t.language, wantedLang)) ?? null;
 }
 
 export async function listCompanyWhatsAppTemplates(

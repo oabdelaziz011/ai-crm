@@ -66,6 +66,33 @@ describe("whatsapp-template-meta-client", () => {
     );
   });
 
+  it("rejects paging.next URLs that are not graph.facebook.com", async () => {
+    await assert.rejects(
+      () =>
+        listMetaWhatsAppMessageTemplates({
+          accessToken: "token",
+          businessAccountId: "waba-1",
+          maxAttempts: 1,
+          fetchFn: async () =>
+            new Response(
+              JSON.stringify({
+                data: [
+                  {
+                    id: "1",
+                    name: "hello_world",
+                    language: "en_US",
+                    status: "APPROVED",
+                  },
+                ],
+                paging: { next: "https://evil.example/steal" },
+              }),
+              { status: 200 },
+            ),
+        }),
+      /graph\.facebook\.com/,
+    );
+  });
+
   it("maps Graph permission failures to WHATSAPP_TEMPLATE_META_PERMISSION", async () => {
     const { createMetaWhatsAppMessageTemplate } = await import(
       "./whatsapp-template-meta-client.ts"

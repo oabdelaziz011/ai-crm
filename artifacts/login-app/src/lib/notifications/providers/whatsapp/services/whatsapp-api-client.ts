@@ -184,24 +184,7 @@ export type WhatsAppCompanyTemplateRow = {
   updatedAt: string;
 };
 
-export type WhatsAppTemplateReadinessPayload = {
-  setupPending: boolean;
-  readyForTransactionalSends: boolean;
-  approvedCount: number;
-  pendingCount: number;
-  rejectedCount: number;
-  pausedCount: number;
-  notCreatedCount: number;
-  purposes: Array<{
-    purpose: string;
-    recipient: string;
-    metaTemplateName: string;
-    metaStatus: string;
-    approved: boolean;
-    blockedReason: string | null;
-    blockedOperations: string[];
-  }>;
-};
+export type WhatsAppTemplateReadinessPayload = import("@/lib/notifications/providers/whatsapp/services/whatsapp-template-readiness").WhatsAppTemplateSetupReadiness;
 
 export type WhatsAppTemplatesListResponse = {
   companyId: string;

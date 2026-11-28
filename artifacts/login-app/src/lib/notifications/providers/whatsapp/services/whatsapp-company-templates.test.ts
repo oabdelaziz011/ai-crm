@@ -123,6 +123,20 @@ describe("whatsapp-company-templates", () => {
     assert.equal(match?.status, "APPROVED");
   });
 
+  it("does not fall back to another language when exact language is missing", () => {
+    const arabicOnly: MetaListedWhatsAppTemplate[] = [
+      {
+        id: "tpl-ar",
+        name: "valueor_delivery_worker_dispatch",
+        language: "ar",
+        status: "APPROVED",
+        category: "UTILITY",
+      },
+    ];
+    const match = matchMetaTemplateForPurpose("delivery_worker_dispatch", arabicOnly, "en_US");
+    assert.equal(match, null);
+  });
+
   it("syncs Meta statuses into company-scoped rows without creating on Meta", async () => {
     const companyA = "11111111-1111-1111-1111-111111111111";
     const companyB = "22222222-2222-2222-2222-222222222222";

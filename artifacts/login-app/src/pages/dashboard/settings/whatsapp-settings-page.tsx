@@ -64,6 +64,7 @@ const EMPTY_SETTINGS: WhatsAppSettingsDraft = {
   webhookCallbackUrl: "",
   defaultLanguage: "en",
   maxRetryCount: 3,
+  templateBindings: {},
 };
 
 function defaultWebhookCallbackUrl(): string {
@@ -147,6 +148,7 @@ export function SettingsWhatsAppPage() {
       webhookCallbackUrl: callbackUrl,
       defaultLanguage: settings.defaultLanguage,
       maxRetryCount: settings.maxRetryCount,
+      templateBindings: settings.templateBindings ?? prev.templateBindings ?? {},
     }));
   }, [settings]);
 

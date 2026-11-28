@@ -21,7 +21,10 @@ import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase
 import { confineToPathPrefixes } from "../middleware/confine-router-paths.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
-import { requireRequestCompanyPermission } from "../lib/request-company-permission.js";
+import {
+  requireRequestAnyCompanyPermission,
+  requireRequestCompanyPermission,
+} from "../lib/request-company-permission.js";
 import {
   WhatsAppConnectionLifecycleError,
   disconnectCompanyWhatsAppConnection,
@@ -40,6 +43,14 @@ import {
 
 /** Matches public.whatsapp_settings_can_manage (settings.edit). */
 const WHATSAPP_SETTINGS_MANAGE_PERMISSION = "settings.edit";
+
+/** Purpose-template sends are used by sales + settings flows. */
+const WHATSAPP_PURPOSE_SEND_PERMISSIONS = [
+  "orders.edit",
+  "orders.assign_delivery",
+  "orders.approve_cancellation",
+  "settings.edit",
+] as const;
 
 function mapBusinessProfileError(error: unknown): never {
   if (error instanceof WhatsAppBusinessProfileError) {
@@ -74,7 +85,7 @@ router.use(confineToPathPrefixes("/whatsapp"));
 router.use(providerOpsRateLimiter);
 router.use(requireSupabaseAuth);
 // GET template routes pass companyId as query; company-scope middleware reads body.
-router.use((req, _res, next) => {
+router.use((req, res, next) => {
   if (req.method !== "GET") {
     next();
     return;
@@ -85,14 +96,17 @@ router.use((req, _res, next) => {
     return;
   }
   const queryCompanyId = String(req.query.companyId ?? "").trim();
+  const body =
+    req.body && typeof req.body === "object" && !Array.isArray(req.body)
+      ? (req.body as Record<string, unknown>)
+      : {};
+  const bodyCompanyId = String(body.companyId ?? "").trim();
+  if (queryCompanyId && bodyCompanyId && queryCompanyId !== bodyCompanyId) {
+    res.status(400).json({ error: "companyId_mismatch" });
+    return;
+  }
   if (queryCompanyId) {
-    const body =
-      req.body && typeof req.body === "object" && !Array.isArray(req.body)
-        ? (req.body as Record<string, unknown>)
-        : {};
-    if (!String(body.companyId ?? "").trim()) {
-      req.body = { ...body, companyId: queryCompanyId };
-    }
+    req.body = { ...body, companyId: queryCompanyId };
   }
   next();
 });
@@ -237,7 +251,15 @@ router.post("/whatsapp/send-purpose", async (req, res, next) => {
       res.status(400).json({ error: "invalid_purpose", purpose });
       return;
     }
+    if (purpose === "connection_test") {
+      res.status(400).json({
+        error: "connection_test_not_allowed",
+        message: "connection_test cannot be sent via send-purpose; use the connection test endpoint.",
+      });
+      return;
+    }
     await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    await requireRequestAnyCompanyPermission(req, companyId, WHATSAPP_PURPOSE_SEND_PERMISSIONS);
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.sendPurposeTemplate(companyId, recipientPhone, purpose, params);

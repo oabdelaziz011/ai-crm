@@ -99,4 +99,18 @@ describe("whatsapp template routes (security contracts)", () => {
     assert.match(slice, /connection_test/);
     assert.match(slice, /purposes_invalid|isWhatsAppMessagePurpose/);
   });
+
+  it("gates send-purpose with sales/settings permission and rejects connection_test", () => {
+    const idx = source.indexOf('router.post("/whatsapp/send-purpose"');
+    assert.ok(idx >= 0);
+    const slice = source.slice(idx, idx + 2200);
+    assert.match(slice, /requireRequestAnyCompanyPermission/);
+    assert.match(slice, /WHATSAPP_PURPOSE_SEND_PERMISSIONS|orders\.edit/);
+    assert.match(slice, /connection_test_not_allowed|purpose === "connection_test"/);
+    assert.match(slice, /assertRouteCommercialFeature\(companyId, "whatsapp_channel"\)/);
+  });
+
+  it("rejects GET template companyId mismatch between query and body", () => {
+    assert.match(source, /companyId_mismatch/);
+  });
 });

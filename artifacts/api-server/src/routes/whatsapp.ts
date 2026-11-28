@@ -84,30 +84,28 @@ void i18next.init({
 router.use(confineToPathPrefixes("/whatsapp"));
 router.use(providerOpsRateLimiter);
 router.use(requireSupabaseAuth);
-// GET template routes pass companyId as query; company-scope middleware reads body.
+// GET routes pass companyId as query; requireCompanyScope only reads body.
+// Copy for every GET on this router (path shape varies by mount: /whatsapp/... vs /...).
 router.use((req, res, next) => {
   if (req.method !== "GET") {
     next();
     return;
   }
-  const path = req.path || "";
-  if (!path.includes("/whatsapp/templates")) {
+  const queryCompanyId = String(req.query.companyId ?? "").trim();
+  if (!queryCompanyId) {
     next();
     return;
   }
-  const queryCompanyId = String(req.query.companyId ?? "").trim();
   const body =
-    req.body && typeof req.body === "object" && !Array.isArray(req.body)
+    req.body && typeof req.body === "object" && !Array.isArray(req.body) && !Buffer.isBuffer(req.body)
       ? (req.body as Record<string, unknown>)
       : {};
   const bodyCompanyId = String(body.companyId ?? "").trim();
-  if (queryCompanyId && bodyCompanyId && queryCompanyId !== bodyCompanyId) {
+  if (bodyCompanyId && queryCompanyId !== bodyCompanyId) {
     res.status(400).json({ error: "companyId_mismatch" });
     return;
   }
-  if (queryCompanyId) {
-    req.body = { ...body, companyId: queryCompanyId };
-  }
+  req.body = { ...body, companyId: queryCompanyId };
   next();
 });
 router.use(requireCompanyScope("companyId"));

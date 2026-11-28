@@ -367,6 +367,8 @@ export function SettingsWhatsAppPage() {
         hasExistingConnection={Boolean(
           (settings?.phoneNumberId ?? "").trim() || settings?.hasAccessToken,
         )}
+        currentPhoneNumberId={settings?.phoneNumberId ?? draft.phoneNumberId}
+        currentBusinessAccountId={settings?.businessAccountId ?? draft.businessAccountId}
         onCompleted={() => {
           void queryClient.invalidateQueries({ queryKey: whatsappSettingsKey(companyId) });
           void refetchHealth();

@@ -192,10 +192,30 @@ describe("whatsapp-outbound-message-policy", () => {
           templateId: "generic_system",
           event: "generic_system",
           languageCode: "en",
+          companyTemplate: {
+            purposeKey: "generic_system",
+            metaTemplateName: "generic_system",
+            languageCode: "en",
+            metaStatus: "APPROVED",
+          },
         }),
       (err: unknown) =>
         err instanceof WhatsAppTemplateConfigurationError &&
         err.code === "generic_system_blocked",
+    );
+  });
+
+  it("requires APPROVED company template for legacy registry sends", () => {
+    assert.throws(
+      () =>
+        assertLegacyRegistryTemplateSendable({
+          templateId: "appointment_confirmation",
+          event: "appointment_created",
+          languageCode: "en",
+        }),
+      (err: unknown) =>
+        err instanceof WhatsAppTemplateConfigurationError &&
+        err.code === "template_not_configured",
     );
   });
 

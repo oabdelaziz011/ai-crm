@@ -126,13 +126,13 @@ export function sendWhatsAppTextMessage(
   companyId: string,
   recipientPhone: string,
   text: string,
-  options?: { sessionWindowOpen?: boolean },
+  _options?: { sessionWindowOpen?: boolean },
 ) {
+  // sessionWindowOpen is ignored by the server (channel_sessions.last_inbound_at).
   return postWhatsAppApi("/whatsapp/send-text", {
     companyId,
     recipientPhone,
     text,
-    sessionWindowOpen: options?.sessionWindowOpen === true,
   });
 }
 

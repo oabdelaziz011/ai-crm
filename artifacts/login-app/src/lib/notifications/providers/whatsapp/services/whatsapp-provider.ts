@@ -19,7 +19,14 @@ import {
   mapMetaWhatsAppTemplateProviderError,
   WhatsAppTemplateConfigurationError,
 } from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-configuration-error";
-import { resolveCompanyWhatsAppTemplateForPurpose } from "@/lib/notifications/providers/whatsapp/services/whatsapp-company-templates";
+import {
+  resolveCompanyWhatsAppTemplateByMetaName,
+  resolveCompanyWhatsAppTemplateForPurpose,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-company-templates";
+import {
+  loadWhatsAppLastInboundAtForRecipient,
+  resolveTrustedWhatsAppSessionWindowOpen,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-session-window";
 import type { WhatsAppMessagePurpose } from "@/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates";
 import type {
   CompanyWhatsAppSettings,
@@ -94,14 +101,15 @@ export class WhatsAppProvider {
   }
 
   /**
-   * Session freeform text (Meta type: text). Caller must confirm the 24h window is open.
-   * Does not use generic_system. Does not fall back to Email.
+   * Session freeform text (Meta type: text).
+   * 24h window is derived server-side from channel_sessions.last_inbound_at —
+   * client sessionWindowOpen is ignored. Does not use generic_system. No Email fallback.
    */
   async sendFreeformText(
     companyId: string,
     recipientPhone: string,
     text: string,
-    options?: { sessionWindowOpen?: boolean },
+    _options?: { sessionWindowOpen?: boolean },
   ): Promise<WhatsAppDeliveryResult> {
     await this.assertCommercialAccess(companyId);
     const settings = await this.settingsRepository.getSecure(companyId);
@@ -110,12 +118,6 @@ export class WhatsAppProvider {
     }
     this.assertCredentialsSendable(settings);
 
-    const plan = planSessionFreeformText({
-      text,
-      sessionWindowOpen: options?.sessionWindowOpen === true,
-      languageCode: settings.defaultLanguage,
-    });
-
     const outbound = resolveWhatsAppOutboundPhone({ phone: recipientPhone });
     const phoneValidation = outbound.ok
       ? validateRecipientPhone(outbound.phone)
@@ -123,6 +125,24 @@ export class WhatsAppProvider {
     if (!phoneValidation.valid || !phoneValidation.normalized) {
       throw new Error(`Invalid recipient phone: ${phoneValidation.error ?? "invalid"}`);
     }
+
+    // Ignore client-provided sessionWindowOpen. Missing session / timestamp ⇒ closed.
+    let lastInboundAt: string | null = null;
+    try {
+      lastInboundAt = await loadWhatsAppLastInboundAtForRecipient(this.client, {
+        companyId,
+        recipientPhone: phoneValidation.normalized,
+      });
+    } catch {
+      lastInboundAt = null;
+    }
+    const sessionWindowOpen = resolveTrustedWhatsAppSessionWindowOpen(lastInboundAt);
+
+    const plan = planSessionFreeformText({
+      text,
+      sessionWindowOpen,
+      languageCode: settings.defaultLanguage,
+    });
 
     const started = Date.now();
     try {
@@ -404,10 +424,43 @@ export class WhatsAppProvider {
 
       const languageCode = params.language ?? params.locale ?? settings.defaultLanguage;
       const rendered = this.renderer.renderEvent(event, params, languageCode);
+
+      let companyTemplate: {
+        purposeKey: string;
+        metaTemplateName: string;
+        languageCode: string;
+        metaStatus: string;
+      } | null = null;
+      let companyTemplateLookupError = false;
+      const templateId = String(rendered.templateId ?? "").trim();
+      const isConnectionTestHelloWorld =
+        event === "connection_test" && templateId.toLowerCase() === "hello_world";
+      if (!isConnectionTestHelloWorld) {
+        try {
+          const row = await resolveCompanyWhatsAppTemplateByMetaName(this.client, {
+            companyId: item.companyId,
+            metaTemplateName: templateId,
+            languageCode: rendered.languageCode,
+          });
+          companyTemplate = row
+            ? {
+                purposeKey: String(row.purposeKey),
+                metaTemplateName: row.metaTemplateName,
+                languageCode: row.languageCode,
+                metaStatus: row.metaStatus,
+              }
+            : null;
+        } catch {
+          companyTemplateLookupError = true;
+        }
+      }
+
       assertLegacyRegistryTemplateSendable({
-        templateId: rendered.templateId ?? "",
+        templateId,
         event,
         languageCode: rendered.languageCode,
+        companyTemplate,
+        companyTemplateLookupError,
         approvedTemplates: null,
       });
 

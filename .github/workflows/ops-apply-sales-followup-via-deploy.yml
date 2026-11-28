@@ -83,10 +83,7 @@ jobs:
           echo "stage=${STAGE}"
           ls -la "$STAGE"
 
-          if [[ ! -x /usr/local/sbin/valueor-prod-deploy ]]; then
-            echo "Missing /usr/local/sbin/valueor-prod-deploy"
-            exit 3
-          fi
-
+          # Binary is typically root:0750 — gha-runner cannot -x it.
+          # sudoers allows only: /usr/local/sbin/valueor-prod-deploy <sha> <incoming>
           sudo -n /usr/local/sbin/valueor-prod-deploy "$SHA" "$STAGE"
           echo "DONE"

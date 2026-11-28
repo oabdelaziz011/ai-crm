@@ -59,5 +59,12 @@ export WORKER_NAME
 export WORKER_PHONE
 export MIG_DIR
 
+# Contabo root python often lacks psycopg2 (gha-runner user may have it).
+if ! python3 -c 'import psycopg2' >/dev/null 2>&1; then
+  echo "psycopg2_missing=1 installing_psycopg2_binary"
+  python3 -m pip install --quiet --disable-pip-version-check psycopg2-binary
+fi
+python3 -c 'import psycopg2; print("psycopg2_ok=1")'
+
 python3 "$APPLY_PY"
 echo "migrations_apply=ok"

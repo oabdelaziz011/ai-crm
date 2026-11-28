@@ -156,7 +156,14 @@ export function requireCompanyScope(field = "companyId") {
         return;
       }
 
-      const requestedCompanyId = String((req.body as Record<string, unknown> | undefined)?.[field] ?? "");
+      const bodyValue = String(
+        (req.body as Record<string, unknown> | undefined)?.[field] ?? "",
+      ).trim();
+      const queryValue = String(
+        (req.query as Record<string, unknown> | undefined)?.[field] ?? "",
+      ).trim();
+      // GET callers pass companyId as a query param; POST/PATCH keep it in the body.
+      const requestedCompanyId = bodyValue || queryValue;
       if (isOutboundDispatchPath(req)) {
         enterOutboundValidation({
           validationName: "middleware.requireCompanyScope",
@@ -178,10 +185,18 @@ export function requireCompanyScope(field = "companyId") {
             line: 97,
             code: "validation_error",
             message: `${field} required`,
-            rootCause: `${field} missing from request body before route handler`,
+            rootCause: `${field} missing from request body/query before route handler`,
           });
         }
         throw new HttpError(400, `${field} required`, "validation_error");
+      }
+      // Keep body-scoped handlers consistent when the caller used query.
+      if (!bodyValue && queryValue) {
+        const body =
+          req.body && typeof req.body === "object" && !Array.isArray(req.body) && !Buffer.isBuffer(req.body)
+            ? (req.body as Record<string, unknown>)
+            : {};
+        req.body = { ...body, [field]: queryValue };
       }
       if (isOutboundDispatchPath(req)) {
         passOutboundValidation("middleware.requireCompanyScope", { requestedCompanyId });

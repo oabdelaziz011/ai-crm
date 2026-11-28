@@ -67,4 +67,18 @@ describe("supabase auth middleware per-request reuse", () => {
     const error = (await runMiddleware(requireCompanyScope(), req)) as { statusCode?: number } | null;
     assert.equal(error?.statusCode, 403);
   });
+
+  it("accepts companyId from query when body is empty (GET list routes)", async () => {
+    const req = fakeRequest({
+      method: "GET",
+      query: { companyId: "company-1" },
+      body: {},
+      supabaseUser: { id: "user-1" } as Request["supabaseUser"],
+      supabaseCompanyId: "company-1",
+      supabaseIsSuperAdmin: false,
+      supabaseScopedCompanyIds: new Set(["company-1"]),
+    });
+    assert.equal(await runMiddleware(requireCompanyScope(), req), null);
+    assert.equal((req.body as { companyId?: string }).companyId, "company-1");
+  });
 });

@@ -22,6 +22,11 @@ import { useDeliveryWorkersForZone } from "@/hooks/sales/use-company-delivery-wo
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useWhatsAppTemplateReadiness } from "@/hooks/notifications/use-whatsapp-templates";
+import {
+  blockedReasonForWhatsAppPurpose,
+  isWhatsAppPurposeApprovedForSend,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-readiness";
 
 function statusClass(status: SalesOrderStatus): string {
   switch (status) {
@@ -99,6 +104,32 @@ export function SalesOrderDetailsPanel({
   const canApproveCancellation = hasPermission("orders.approve_cancellation");
   const order = detail.data;
   const { workers } = useDeliveryWorkersForZone(companyId, order?.deliveryZoneId ?? null);
+  const { readiness: waTemplateReadiness } = useWhatsAppTemplateReadiness(companyId, {
+    enabled: Boolean(companyId) && open,
+  });
+  const workerDispatchReady = isWhatsAppPurposeApprovedForSend(
+    waTemplateReadiness,
+    "delivery_worker_dispatch",
+  );
+  const workerCancelReady = isWhatsAppPurposeApprovedForSend(
+    waTemplateReadiness,
+    "delivery_worker_cancellation",
+  );
+  const customerConfirmedReady = isWhatsAppPurposeApprovedForSend(
+    waTemplateReadiness,
+    "customer_order_status_confirmed",
+  );
+  const waNotifyBlockedReasons = [
+    !workerDispatchReady
+      ? blockedReasonForWhatsAppPurpose(waTemplateReadiness, "delivery_worker_dispatch")
+      : null,
+    !customerConfirmedReady
+      ? blockedReasonForWhatsAppPurpose(waTemplateReadiness, "customer_order_status_confirmed")
+      : null,
+    !workerCancelReady
+      ? blockedReasonForWhatsAppPurpose(waTemplateReadiness, "delivery_worker_cancellation")
+      : null,
+  ].filter(Boolean);
   const [workerId, setWorkerId] = useState("");
   const [reassignWorkerId, setReassignWorkerId] = useState("");
   const [reassignReason, setReassignReason] = useState("");
@@ -133,6 +164,30 @@ export function SalesOrderDetailsPanel({
           <p className="text-sm text-muted-foreground">{t("salesOrders.details.notFound")}</p>
         ) : (
           <div className="space-y-5 text-sm">
+            {waNotifyBlockedReasons.length > 0 ? (
+              <div
+                className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100"
+                role="status"
+                data-testid="sales-order-whatsapp-template-blocker"
+              >
+                <p className="font-medium">
+                  {t("salesOrders.details.whatsappTemplatesBlockedTitle", {
+                    defaultValue: "WhatsApp notifications limited",
+                  })}
+                </p>
+                <ul className="mt-1 list-disc ps-4 space-y-0.5">
+                  {waNotifyBlockedReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-muted-foreground">
+                  {t("salesOrders.details.whatsappTemplatesBlockedHint", {
+                    defaultValue:
+                      "Approving or assigning the order still works. Proactive WhatsApp notifies stay off until templates are APPROVED in Settings → WhatsApp → Message Templates. AI chat is unaffected.",
+                  })}
+                </p>
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2">
               <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", statusClass(order.status))}>
                 {t(`salesOrders.status.${order.status}`)}
@@ -615,7 +670,16 @@ export function SalesOrderDetailsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={busy}
+                      disabled={busy || !workerDispatchReady}
+                      title={
+                        !workerDispatchReady
+                          ? blockedReasonForWhatsAppPurpose(
+                              waTemplateReadiness,
+                              "delivery_worker_dispatch",
+                            ) ?? undefined
+                          : undefined
+                      }
+                      data-testid="sales-order-retry-delivery-notify"
                       onClick={() =>
                         retryDeliveryNotify.mutate(
                           { orderId: order.id, userId: user.id },

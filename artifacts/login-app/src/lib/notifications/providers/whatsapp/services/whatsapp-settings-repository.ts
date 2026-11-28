@@ -4,10 +4,12 @@ import type {
   WhatsAppProviderKind,
   WhatsAppTokenStatus,
 } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
+import type { CompanyWhatsAppTemplateBindings } from "@/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates";
 import {
   normalizeWhatsAppSecretForUpsert,
   whatsappSecretInputMeta,
 } from "@/lib/notifications/providers/whatsapp/services/whatsapp-secret-input";
+import { parseCompanyWhatsAppTemplateBindings } from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-bindings";
 
 function mapTokenStatus(value: unknown): WhatsAppTokenStatus {
   const status = String(value ?? "unknown");
@@ -23,7 +25,10 @@ function mapTokenStatus(value: unknown): WhatsAppTokenStatus {
   return "unknown";
 }
 
-function mapPublicRecord(record: Record<string, unknown>): CompanyWhatsAppSettings {
+function mapPublicRecord(
+  record: Record<string, unknown>,
+  templateBindings: CompanyWhatsAppTemplateBindings = {},
+): CompanyWhatsAppSettings {
   return {
     companyId: String(record.company_id),
     enabled: Boolean(record.enabled),
@@ -38,6 +43,7 @@ function mapPublicRecord(record: Record<string, unknown>): CompanyWhatsAppSettin
     webhookCallbackUrl: String(record.webhook_callback_url ?? "").trim(),
     defaultLanguage: String(record.default_language ?? "en"),
     maxRetryCount: Number(record.max_retry_count ?? 3),
+    templateBindings,
     hasAccessToken: Boolean(record.has_access_token),
     hasWebhookVerifyToken: Boolean(record.has_webhook_verify_token),
     hasAppSecret: Boolean(record.has_app_secret),
@@ -76,12 +82,29 @@ export type WhatsAppSettingsDraft = Omit<
 export class WhatsAppSettingsRepository {
   constructor(private readonly client: SupabaseClient) {}
 
+  private async loadTemplateBindings(companyId: string): Promise<CompanyWhatsAppTemplateBindings> {
+    const { data, error } = await this.client
+      .from("company_whatsapp_settings")
+      .select("template_bindings")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (error) {
+      // Column may not exist until migration 482 is applied — treat as empty.
+      if (/template_bindings|column/i.test(error.message)) return {};
+      throw new Error(error.message);
+    }
+    return parseCompanyWhatsAppTemplateBindings(
+      (data as { template_bindings?: unknown } | null)?.template_bindings,
+    );
+  }
+
   async getPublic(companyId: string): Promise<CompanyWhatsAppSettings> {
     const { data, error } = await this.client.rpc("get_company_whatsapp_settings", {
       p_company_id: companyId,
     });
     if (error) throw new Error(error.message);
-    return mapPublicRecord(data as Record<string, unknown>);
+    const bindings = await this.loadTemplateBindings(companyId);
+    return mapPublicRecord(data as Record<string, unknown>, bindings);
   }
 
   /** Server-side only — includes plaintext secrets via decrypt RPC. */
@@ -113,6 +136,19 @@ export class WhatsAppSettingsRepository {
         decrypted.has_app_secret ?? String(decrypted.app_secret ?? "").trim(),
       ),
     };
+  }
+
+  async updateTemplateBindings(
+    companyId: string,
+    bindings: CompanyWhatsAppTemplateBindings,
+  ): Promise<CompanyWhatsAppTemplateBindings> {
+    const parsed = parseCompanyWhatsAppTemplateBindings(bindings);
+    const { error } = await this.client
+      .from("company_whatsapp_settings")
+      .update({ template_bindings: parsed, updated_at: new Date().toISOString() })
+      .eq("company_id", companyId);
+    if (error) throw new Error(error.message);
+    return parsed;
   }
 
   async upsert(companyId: string, settings: WhatsAppSettingsDraft): Promise<CompanyWhatsAppSettings> {
@@ -164,7 +200,12 @@ export class WhatsAppSettingsRepository {
     });
     if (error) throw new Error(error.message);
 
-    const saved = mapPublicRecord(data as Record<string, unknown>);
+    if (settings.templateBindings && Object.keys(settings.templateBindings).length > 0) {
+      await this.updateTemplateBindings(companyId, settings.templateBindings);
+    }
+
+    const bindings = await this.loadTemplateBindings(companyId);
+    const saved = mapPublicRecord(data as Record<string, unknown>, bindings);
     // Reconnect audit when a previously unbound company gains a working binding.
     if (!priorBound && nextBound && settings.enabled !== false) {
       try {

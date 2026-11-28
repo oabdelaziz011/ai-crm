@@ -6,7 +6,11 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isWithinMessagingResponseWindow } from "@/lib/campaigns/thread-eligibility";
-import { sendWhatsAppTextMessage } from "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client";
+import {
+  sendWhatsAppPurposeMessage,
+  sendWhatsAppTextMessage,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client";
+import { customerStatusToWhatsAppPurpose } from "@/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates";
 import type { SalesOrderStatus } from "./sales-order-types";
 
 export type CustomerStatusNotifyOutcome =
@@ -164,24 +168,8 @@ export async function notifyCustomerOrderStatusOnWhatsApp(input: {
     };
   }
 
-  if (!isWithinMessagingResponseWindow(windowCheck.lastInboundAt)) {
-    await recordCustomerStatusNotify(input.client, {
-      companyId: input.companyId,
-      orderId: input.orderId,
-      status: input.status,
-      idempotencyKey,
-      notifyStatus: "skipped",
-      error: "messaging_window_closed",
-      messageId: null,
-    });
-    return {
-      outcome: "skipped",
-      reason: "messaging_window_closed",
-      messageId: null,
-      messageText,
-      idempotencyKey,
-    };
-  }
+  const sessionWindowOpen = isWithinMessagingResponseWindow(windowCheck.lastInboundAt);
+  const purpose = customerStatusToWhatsAppPurpose(String(input.status));
 
   if (input.dryRun) {
     const messageId = `dry-run-customer-status-${Date.now()}`;
@@ -196,7 +184,7 @@ export async function notifyCustomerOrderStatusOnWhatsApp(input: {
     });
     return {
       outcome: "sent",
-      reason: "dry_run",
+      reason: sessionWindowOpen ? "dry_run_freeform" : "dry_run_template",
       messageId,
       messageText,
       idempotencyKey,
@@ -204,7 +192,34 @@ export async function notifyCustomerOrderStatusOnWhatsApp(input: {
   }
 
   try {
-    const result = await sendWhatsAppTextMessage(input.companyId, phone, messageText);
+    let result: unknown;
+    if (sessionWindowOpen) {
+      result = await sendWhatsAppTextMessage(input.companyId, phone, messageText, {
+        sessionWindowOpen: true,
+      });
+    } else if (!purpose) {
+      await recordCustomerStatusNotify(input.client, {
+        companyId: input.companyId,
+        orderId: input.orderId,
+        status: input.status,
+        idempotencyKey,
+        notifyStatus: "skipped",
+        error: "messaging_window_closed_no_purpose_template",
+        messageId: null,
+      });
+      return {
+        outcome: "skipped",
+        reason: "messaging_window_closed_no_purpose_template",
+        messageId: null,
+        messageText,
+        idempotencyKey,
+      };
+    } else {
+      result = await sendWhatsAppPurposeMessage(input.companyId, phone, purpose, {
+        customerName: (input.customerName ?? "").trim() || "there",
+        orderNumber: input.orderNumber.trim(),
+      });
+    }
     const messageId =
       result && typeof result === "object" && "messageId" in result
         ? String((result as { messageId?: string }).messageId ?? "") || null
@@ -220,7 +235,7 @@ export async function notifyCustomerOrderStatusOnWhatsApp(input: {
     });
     return {
       outcome: "sent",
-      reason: "delivered",
+      reason: sessionWindowOpen ? "freeform_delivered" : "template_delivered",
       messageId,
       messageText,
       idempotencyKey,

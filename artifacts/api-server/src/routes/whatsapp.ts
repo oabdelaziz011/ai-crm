@@ -73,6 +73,29 @@ void i18next.init({
 router.use(confineToPathPrefixes("/whatsapp"));
 router.use(providerOpsRateLimiter);
 router.use(requireSupabaseAuth);
+// GET template routes pass companyId as query; company-scope middleware reads body.
+router.use((req, _res, next) => {
+  if (req.method !== "GET") {
+    next();
+    return;
+  }
+  const path = req.path || "";
+  if (!path.includes("/whatsapp/templates")) {
+    next();
+    return;
+  }
+  const queryCompanyId = String(req.query.companyId ?? "").trim();
+  if (queryCompanyId) {
+    const body =
+      req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>)
+        : {};
+    if (!String(body.companyId ?? "").trim()) {
+      req.body = { ...body, companyId: queryCompanyId };
+    }
+  }
+  next();
+});
 router.use(requireCompanyScope("companyId"));
 
 function getServiceClient() {
@@ -167,6 +190,7 @@ router.post("/whatsapp/send-text", async (req, res, next) => {
     const companyId = String(req.body?.companyId ?? "");
     const recipientPhone = String(req.body?.recipientPhone ?? "");
     const text = String(req.body?.text ?? "");
+    const sessionWindowOpen = req.body?.sessionWindowOpen === true;
     if (!recipientPhone) {
       res.status(400).json({ error: "recipientPhone required" });
       return;
@@ -178,7 +202,45 @@ router.post("/whatsapp/send-text", async (req, res, next) => {
     await assertRouteCommercialFeature(companyId, "whatsapp_channel");
     const client = getServiceClient();
     const provider = createProvider(client);
-    const result = await provider.sendFreeformText(companyId, recipientPhone, text);
+    const result = await provider.sendFreeformText(companyId, recipientPhone, text, {
+      sessionWindowOpen,
+    });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/whatsapp/send-purpose", async (req, res, next) => {
+  try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("whatsapp/send-purpose");
+    const companyId = String(req.body?.companyId ?? "");
+    const recipientPhone = String(req.body?.recipientPhone ?? "");
+    const purpose = String(req.body?.purpose ?? "");
+    const params =
+      req.body?.params && typeof req.body.params === "object" && !Array.isArray(req.body.params)
+        ? (req.body.params as Record<string, string>)
+        : {};
+    if (!recipientPhone) {
+      res.status(400).json({ error: "recipientPhone required" });
+      return;
+    }
+    if (!purpose.trim()) {
+      res.status(400).json({ error: "purpose required" });
+      return;
+    }
+    const { isWhatsAppMessagePurpose } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates.js"
+    );
+    if (!isWhatsAppMessagePurpose(purpose)) {
+      res.status(400).json({ error: "invalid_purpose", purpose });
+      return;
+    }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    const client = getServiceClient();
+    const provider = createProvider(client);
+    const result = await provider.sendPurposeTemplate(companyId, recipientPhone, purpose, params);
     res.json(result);
   } catch (error) {
     next(error);
@@ -194,6 +256,226 @@ router.post("/whatsapp/process-queue", async (req, res, next) => {
     const provider = createProvider(client);
     const result = await provider.processPending(companyId);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/whatsapp/templates/catalog", async (req, res, next) => {
+  try {
+    const companyId = String(req.query.companyId ?? req.body?.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    const { getWhatsAppPurposeCatalogForApi } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-company-templates.js"
+    );
+    res.json({ companyId, catalog: getWhatsAppPurposeCatalogForApi() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/whatsapp/templates", async (req, res, next) => {
+  try {
+    const companyId = String(req.query.companyId ?? req.body?.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    await requireRequestCompanyPermission(req, companyId, WHATSAPP_SETTINGS_MANAGE_PERMISSION);
+
+    const client = getServiceClient();
+    const { WhatsAppSettingsRepository } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository.js"
+    );
+    const { listCompanyWhatsAppTemplates, getWhatsAppPurposeCatalogForApi } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-company-templates.js"
+    );
+    const { computeWhatsAppTemplateSetupReadiness } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-readiness.js"
+    );
+    const { isWhatsAppTemplateSetupError } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-setup-error.js"
+    );
+    const settingsRepo = new WhatsAppSettingsRepository(client);
+    const publicSettings = await settingsRepo.getPublic(companyId);
+
+    let templates: Awaited<ReturnType<typeof listCompanyWhatsAppTemplates>> = [];
+    let setupPending = false;
+    try {
+      templates = await listCompanyWhatsAppTemplates(client, companyId);
+    } catch (error) {
+      if (isWhatsAppTemplateSetupError(error)) {
+        setupPending = true;
+      } else {
+        throw error;
+      }
+    }
+
+    const lastSyncedAt = templates.reduce<string | null>((latest, row) => {
+      if (!row.lastSyncedAt) return latest;
+      if (!latest || row.lastSyncedAt > latest) return row.lastSyncedAt;
+      return latest;
+    }, null);
+    const readiness = computeWhatsAppTemplateSetupReadiness(templates, { setupPending });
+
+    res.json({
+      companyId,
+      setupPending,
+      connection: {
+        enabled: publicSettings.enabled,
+        phoneNumberId: publicSettings.phoneNumberId,
+        businessAccountId: publicSettings.businessAccountId,
+        tokenStatus: publicSettings.tokenStatus,
+        defaultLanguage: publicSettings.defaultLanguage,
+      },
+      lastSyncedAt,
+      catalog: getWhatsAppPurposeCatalogForApi(),
+      templates,
+      readiness,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Template admin credentials: WABA + token only.
+ * Intentionally does NOT require settings.enabled — outbound sending stays gated
+ * in createWhatsAppProvider / send paths.
+ */
+async function loadTemplateAdminCredentialsForCompany(companyId: string) {
+  const client = getServiceClient();
+  const {
+    loadWhatsAppTemplateAdminCredentials,
+    WhatsAppTemplateAdminCredentialsError,
+  } = await import("../services/whatsapp-template-admin-credentials.js");
+  try {
+    return await loadWhatsAppTemplateAdminCredentials(client, companyId);
+  } catch (error) {
+    if (error instanceof WhatsAppTemplateAdminCredentialsError) {
+      throw new HttpError(error.statusCode, error.message, error.code);
+    }
+    throw error;
+  }
+}
+
+router.post("/whatsapp/templates/sync", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    await requireRequestCompanyPermission(req, companyId, WHATSAPP_SETTINGS_MANAGE_PERMISSION);
+
+    const { client, credentials } = await loadTemplateAdminCredentialsForCompany(companyId);
+    const { syncCompanyWhatsAppTemplatesFromMeta } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-company-templates.js"
+    );
+    const { WhatsAppTemplateMetaClientError } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-meta-client.js"
+    );
+    const { isWhatsAppTemplateSetupError } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-setup-error.js"
+    );
+
+    try {
+      // Graph calls are scoped to this company's WABA only.
+      const result = await syncCompanyWhatsAppTemplatesFromMeta(client, {
+        companyId,
+        accessToken: credentials.accessToken,
+        businessAccountId: credentials.businessAccountId,
+        apiVersion: credentials.apiVersion,
+        languageCode: credentials.defaultLanguage,
+      });
+      res.json(result);
+    } catch (error) {
+      if (isWhatsAppTemplateSetupError(error)) {
+        throw new HttpError(error.statusCode, error.message, error.code);
+      }
+      if (error instanceof WhatsAppTemplateMetaClientError) {
+        throw new HttpError(error.statusCode, error.message, error.code);
+      }
+      throw error;
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/whatsapp/templates/provision", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
+    await requireRequestCompanyPermission(req, companyId, WHATSAPP_SETTINGS_MANAGE_PERMISSION);
+
+    const { client, credentials } = await loadTemplateAdminCredentialsForCompany(companyId);
+    const { provisionCompanyWhatsAppTemplates } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-provisioning.js"
+    );
+    const { WhatsAppTemplateMetaClientError } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-meta-client.js"
+    );
+    const { isWhatsAppTemplateSetupError } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-setup-error.js"
+    );
+    const { isWhatsAppMessagePurpose } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates.js"
+    );
+
+    // Optional purposes[] scopes Meta create/reuse. Omit / empty → all transactional.
+    // connection_test is never accepted for provisioning.
+    let purposes: string[] | undefined;
+    const rawPurposes = req.body?.purposes;
+    if (rawPurposes !== undefined && rawPurposes !== null) {
+      if (!Array.isArray(rawPurposes)) {
+        res.status(400).json({ error: "purposes_invalid", message: "purposes must be an array of purpose keys" });
+        return;
+      }
+      purposes = rawPurposes
+        .map((p: unknown) => String(p ?? "").trim())
+        .filter((p: string) => p && p !== "connection_test" && isWhatsAppMessagePurpose(p));
+      if (purposes.length === 0) {
+        res.status(400).json({
+          error: "purposes_invalid",
+          message: "No valid transactional WhatsApp template purposes were provided.",
+        });
+        return;
+      }
+    }
+
+    try {
+      // Graph calls are scoped to this company's WABA only.
+      const result = await provisionCompanyWhatsAppTemplates(client, {
+        companyId,
+        accessToken: credentials.accessToken,
+        businessAccountId: credentials.businessAccountId,
+        apiVersion: credentials.apiVersion,
+        languageCode: credentials.defaultLanguage,
+        purposes: purposes as
+          | import("@login-app/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates").WhatsAppMessagePurpose[]
+          | undefined,
+      });
+      res.json(result);
+    } catch (error) {
+      if (isWhatsAppTemplateSetupError(error)) {
+        throw new HttpError(error.statusCode, error.message, error.code);
+      }
+      if (error instanceof WhatsAppTemplateMetaClientError) {
+        throw new HttpError(error.statusCode, error.message, error.code);
+      }
+      throw error;
+    }
   } catch (error) {
     next(error);
   }

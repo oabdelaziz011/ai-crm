@@ -231,6 +231,116 @@ async function processWhatsAppWebhookPost(
   diag("post.payload_parsed", payloadSummary);
   trace.step("webhook.payload_parsed", payloadSummary);
 
+  // Template approval status updates are WABA-scoped (no phone_number_id).
+  // Handle before messaging routing so Meta status remains source of truth.
+  // CRITICAL: always verify x-hub-signature-256 with requireSecret:true using the
+  // platform Meta App Secret BEFORE any database update.
+  // Once message_template_status_update events are identified, never fall through
+  // to the ordinary WhatsApp messaging pipeline — return 401/503/409/500 instead.
+  {
+    const {
+      extractMetaTemplateStatusWebhookEvents,
+      processSecureWhatsAppTemplateStatusWebhook,
+      WhatsAppTemplateWebhookAuthError,
+      WhatsAppTemplateWebhookAmbiguousWabaError,
+      WhatsAppTemplateWebhookProcessingError,
+    } = await import(
+      "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-template-status-webhook.js"
+    );
+    const templateEvents = extractMetaTemplateStatusWebhookEvents(payload);
+    if (templateEvents.length > 0) {
+      const platform = getWebhookPlatform();
+      const signatureHeader = req.header("x-hub-signature-256");
+      try {
+        const handled = await processSecureWhatsAppTemplateStatusWebhook(platform.client, {
+          payload,
+          signatureHeader,
+          rawBody,
+          verifyFn: verifyWhatsAppWebhookSignature,
+        });
+        diag("post.template_status_update", {
+          events: handled.events,
+          updated: handled.updated,
+          companyIds: handled.companyIds,
+          skippedUnknownWaba: handled.skippedUnknownWaba,
+          signatureVerified: true,
+        });
+        trace.step("webhook.template_status_update", {
+          events: handled.events,
+          updated: handled.updated,
+          companyIds: handled.companyIds,
+        });
+        res.status(200).json({
+          ok: true,
+          handled: "message_template_status_update",
+          events: handled.events,
+          updated: handled.updated,
+        });
+        return;
+      } catch (secureError) {
+        if (secureError instanceof WhatsAppTemplateWebhookAuthError) {
+          diag("post.early_return", {
+            httpStatus: secureError.statusCode,
+            reason: secureError.code,
+            stage: "template_status_update",
+          });
+          trace.step("webhook.template_status_auth_rejected", {
+            code: secureError.code,
+          });
+          res.status(secureError.statusCode).json({
+            error: secureError.code,
+            message: secureError.message,
+          });
+          return;
+        }
+        if (secureError instanceof WhatsAppTemplateWebhookAmbiguousWabaError) {
+          diag("post.early_return", {
+            httpStatus: 409,
+            reason: "ambiguous_waba_mapping",
+            stage: "template_status_update",
+            wabaId: secureError.wabaId,
+            companyCount: secureError.companyIds.length,
+          });
+          res.status(409).json({
+            error: "ambiguous_waba_mapping",
+            message: secureError.message,
+            wabaId: secureError.wabaId,
+            // company ids only — never secrets
+            companyCount: secureError.companyIds.length,
+          });
+          return;
+        }
+
+        const processingMessage =
+          secureError instanceof WhatsAppTemplateWebhookProcessingError
+            ? secureError.message
+            : secureError instanceof Error
+              ? secureError.message
+              : "template_status_processing_failed";
+        logger.error(
+          {
+            err: secureError,
+            requestId,
+          },
+          "WhatsApp template status webhook handling failed",
+        );
+        diag("post.early_return", {
+          httpStatus: 500,
+          reason: "template_status_processing_failed",
+          stage: "template_status_update",
+        });
+        trace.step("webhook.template_status_processing_failed", {
+          message: processingMessage,
+        });
+        res.status(500).json({
+          error: "template_status_processing_failed",
+          message: processingMessage,
+        });
+        return;
+      }
+    }
+  }
+
   const inboundMessageCount = Number(payloadSummary.messageCount ?? 0);
   const statusCount = Number(payloadSummary.statusCount ?? 0);
   const isInboundUserMessage = inboundMessageCount > 0;

@@ -54,3 +54,29 @@ export { WhatsAppRenderer, createDefaultWhatsAppRenderer } from "@/lib/notificat
 export { WhatsAppSettingsRepository } from "@/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository";
 export { MetaWhatsAppTransport } from "@/lib/notifications/providers/whatsapp/adapter/meta-whatsapp-transport";
 export { WHATSAPP_TEMPLATE_REGISTRY } from "@/lib/notifications/providers/whatsapp/templates/whatsapp-template-registry";
+export {
+  WHATSAPP_PURPOSE_TEMPLATE_SPECS,
+  WHATSAPP_MESSAGE_PURPOSES,
+  customerStatusToWhatsAppPurpose,
+  isWhatsAppMessagePurpose,
+} from "@/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates";
+export {
+  planWhatsAppOutbound,
+  planPurposeTemplate,
+  planSessionFreeformText,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-outbound-message-policy";
+export {
+  WhatsAppTemplateConfigurationError,
+  isWhatsAppTemplateConfigurationError,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-configuration-error";
+export {
+  WhatsAppTemplateSetupError,
+  WHATSAPP_TEMPLATE_SETUP_PENDING,
+  isWhatsAppTemplateSetupError,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-setup-error";
+export {
+  provisionCompanyWhatsAppTemplates,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-provisioning";
+export {
+  computeWhatsAppTemplateSetupReadiness,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-readiness";

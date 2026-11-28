@@ -9,6 +9,18 @@ import { WhatsAppRetryPolicy } from "@/lib/notifications/providers/whatsapp/serv
 import { WhatsAppProviderRejectedError } from "@/lib/notifications/providers/whatsapp/adapter/meta-whatsapp-transport";
 import { decideWhatsAppQueueFailure } from "@/lib/notifications/providers/whatsapp/services/whatsapp-send-outcome";
 import { WhatsAppSettingsRepository } from "@/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository";
+import {
+  assertLegacyRegistryTemplateSendable,
+  planPurposeTemplate,
+  planSessionFreeformText,
+  type MetaApprovedTemplateRecord,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-outbound-message-policy";
+import {
+  mapMetaWhatsAppTemplateProviderError,
+  WhatsAppTemplateConfigurationError,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-template-configuration-error";
+import { resolveCompanyWhatsAppTemplateForPurpose } from "@/lib/notifications/providers/whatsapp/services/whatsapp-company-templates";
+import type { WhatsAppMessagePurpose } from "@/lib/notifications/providers/whatsapp/templates/whatsapp-purpose-templates";
 import type {
   CompanyWhatsAppSettings,
   MetaWhatsAppConfig,
@@ -81,10 +93,15 @@ export class WhatsAppProvider {
     return { ...result, enabled: true };
   }
 
+  /**
+   * Session freeform text (Meta type: text). Caller must confirm the 24h window is open.
+   * Does not use generic_system. Does not fall back to Email.
+   */
   async sendFreeformText(
     companyId: string,
     recipientPhone: string,
     text: string,
+    options?: { sessionWindowOpen?: boolean },
   ): Promise<WhatsAppDeliveryResult> {
     await this.assertCommercialAccess(companyId);
     const settings = await this.settingsRepository.getSecure(companyId);
@@ -93,14 +110,11 @@ export class WhatsAppProvider {
     }
     this.assertCredentialsSendable(settings);
 
-    const body = text.trim();
-    if (!body) throw new Error("Message text is required");
-
-    const rendered = this.renderer.renderEvent(
-      "generic_system",
-      { detail: body.slice(0, 900) },
-      settings.defaultLanguage,
-    );
+    const plan = planSessionFreeformText({
+      text,
+      sessionWindowOpen: options?.sessionWindowOpen === true,
+      languageCode: settings.defaultLanguage,
+    });
 
     const outbound = resolveWhatsAppOutboundPhone({ phone: recipientPhone });
     const phoneValidation = outbound.ok
@@ -115,11 +129,11 @@ export class WhatsAppProvider {
       const sendResult = await this.transport.send(
         {
           to: phoneValidation.normalized,
-          templateKey: rendered.templateKey,
-          templateId: rendered.templateId,
-          languageCode: rendered.languageCode,
-          bodyParameters: rendered.bodyParameters,
-          fallbackText: body,
+          templateKey: null,
+          templateId: null,
+          languageCode: plan.languageCode,
+          bodyParameters: [],
+          fallbackText: plan.text,
         },
         this.toMetaConfig(settings),
       );
@@ -135,11 +149,106 @@ export class WhatsAppProvider {
         lastError: null,
         recipientPhone,
         messageId: sendResult.messageId,
-        templateKey: rendered.templateKey,
+        templateKey: null,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
+      if (error instanceof WhatsAppTemplateConfigurationError) throw error;
       const message = error instanceof Error ? error.message : String(error);
+      const mapped = mapMetaWhatsAppTemplateProviderError(message);
+      if (mapped) throw mapped;
+      throw new Error(`WhatsApp dispatch failed: ${message}`);
+    }
+  }
+
+  /**
+   * Purpose-specific Meta template. Requires a synced company row with Meta status APPROVED.
+   * Never substitutes hello_world for transactional purposes. No Email fallback.
+   */
+  async sendPurposeTemplate(
+    companyId: string,
+    recipientPhone: string,
+    purpose: WhatsAppMessagePurpose,
+    params: Record<string, string>,
+    options?: {
+      approvedTemplates?: MetaApprovedTemplateRecord[] | null;
+      freeformText?: string;
+    },
+  ): Promise<WhatsAppDeliveryResult> {
+    await this.assertCommercialAccess(companyId);
+    const settings = await this.settingsRepository.getSecure(companyId);
+    if (!settings?.enabled) {
+      throw new Error("WhatsApp provider is disabled");
+    }
+    this.assertCredentialsSendable(settings);
+
+    const companyTemplate = await resolveCompanyWhatsAppTemplateForPurpose(this.client, {
+      companyId,
+      purpose,
+      languageCode: settings.defaultLanguage,
+    });
+
+    const plan = planPurposeTemplate({
+      purpose,
+      params,
+      companyTemplate: companyTemplate
+        ? {
+            purposeKey: String(companyTemplate.purposeKey),
+            metaTemplateName: companyTemplate.metaTemplateName,
+            languageCode: companyTemplate.languageCode,
+            metaStatus: companyTemplate.metaStatus,
+          }
+        : null,
+      bindings: settings.templateBindings ?? {},
+      approvedTemplates: options?.approvedTemplates,
+      text: options?.freeformText,
+    });
+
+    const outbound = resolveWhatsAppOutboundPhone({ phone: recipientPhone });
+    const phoneValidation = outbound.ok
+      ? validateRecipientPhone(outbound.phone)
+      : { valid: false as const, normalized: null, error: outbound.reason };
+    if (!phoneValidation.valid || !phoneValidation.normalized) {
+      throw new Error(`Invalid recipient phone: ${phoneValidation.error ?? "invalid"}`);
+    }
+
+    const started = Date.now();
+    try {
+      const sendResult = await this.transport.send(
+        {
+          to: phoneValidation.normalized,
+          templateKey: plan.templateKey,
+          templateId: plan.templateId,
+          languageCode: plan.languageCode,
+          bodyParameters: plan.bodyParameters,
+          fallbackText: plan.text || plan.templateId,
+        },
+        this.toMetaConfig(settings),
+      );
+
+      return {
+        queueId: "purpose-dispatch",
+        notificationId: null,
+        companyId,
+        provider: WHATSAPP_PROVIDER,
+        status: "completed",
+        durationMs: Date.now() - started,
+        attempts: 1,
+        lastError: null,
+        recipientPhone,
+        messageId: sendResult.messageId,
+        templateKey: plan.templateKey,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof WhatsAppTemplateConfigurationError) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      const mapped = mapMetaWhatsAppTemplateProviderError(message, {
+        purpose,
+        metaName: plan.templateId,
+        language: plan.languageCode,
+      });
+      if (mapped) throw mapped;
       throw new Error(`WhatsApp dispatch failed: ${message}`);
     }
   }
@@ -152,11 +261,24 @@ export class WhatsAppProvider {
     }
     this.assertCredentialsSendable(settings);
 
-    const rendered = this.renderer.renderEvent(
-      "generic_system",
-      { detail: "WhatsApp connection test" },
-      settings.defaultLanguage,
-    );
+    const companyTemplate = await resolveCompanyWhatsAppTemplateForPurpose(this.client, {
+      companyId,
+      purpose: "connection_test",
+      languageCode: "en_US",
+    });
+    const plan = planPurposeTemplate({
+      purpose: "connection_test",
+      params: {},
+      companyTemplate: companyTemplate
+        ? {
+            purposeKey: String(companyTemplate.purposeKey),
+            metaTemplateName: companyTemplate.metaTemplateName,
+            languageCode: companyTemplate.languageCode,
+            metaStatus: companyTemplate.metaStatus,
+          }
+        : null,
+      text: "WhatsApp connection test",
+    });
 
     // D5.1 — test messages use canonical outbound resolution (no Egypt-guess).
     const outbound = resolveWhatsAppOutboundPhone({ phone: recipientPhone });
@@ -172,11 +294,11 @@ export class WhatsAppProvider {
       const sendResult = await this.transport.send(
         {
           to: phoneValidation.normalized,
-          templateKey: rendered.templateKey,
-          templateId: rendered.templateId,
-          languageCode: rendered.languageCode,
-          bodyParameters: rendered.bodyParameters,
-          fallbackText: rendered.fallbackText,
+          templateKey: plan.templateKey,
+          templateId: plan.templateId,
+          languageCode: plan.languageCode,
+          bodyParameters: plan.bodyParameters,
+          fallbackText: plan.text || "WhatsApp connection test",
         },
         this.toMetaConfig(settings),
       );
@@ -192,13 +314,22 @@ export class WhatsAppProvider {
         lastError: null,
         recipientPhone,
         messageId: sendResult.messageId,
-        templateKey: rendered.templateKey,
+        templateKey: plan.templateKey,
         timestamp: new Date().toISOString(),
       };
       await this.deliveryLogRepository.append(result);
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const mapped =
+        error instanceof WhatsAppTemplateConfigurationError
+          ? error
+          : mapMetaWhatsAppTemplateProviderError(message, {
+              purpose: "connection_test",
+              metaName: plan.templateId,
+              language: plan.languageCode,
+            });
+      const failMessage = mapped?.message ?? message;
       const result: WhatsAppDeliveryResult = {
         queueId: "test",
         notificationId: null,
@@ -207,14 +338,14 @@ export class WhatsAppProvider {
         status: "failed",
         durationMs: Date.now() - started,
         attempts: 1,
-        lastError: message,
+        lastError: failMessage,
         recipientPhone,
         messageId: null,
-        templateKey: rendered.templateKey,
+        templateKey: plan.templateKey,
         timestamp: new Date().toISOString(),
       };
       await this.deliveryLogRepository.append(result);
-      throw error;
+      throw mapped ?? error;
     }
   }
 
@@ -273,6 +404,12 @@ export class WhatsAppProvider {
 
       const languageCode = params.language ?? params.locale ?? settings.defaultLanguage;
       const rendered = this.renderer.renderEvent(event, params, languageCode);
+      assertLegacyRegistryTemplateSendable({
+        templateId: rendered.templateId ?? "",
+        event,
+        languageCode: rendered.languageCode,
+        approvedTemplates: null,
+      });
 
       try {
         await this.assertCommercialAccess(item.companyId);
@@ -281,7 +418,30 @@ export class WhatsAppProvider {
           commercialError instanceof Error
             ? commercialError.message
             : "WhatsApp commercial access unavailable.";
-        throw new Error(denialMessage);
+        // Entitlement/quota denials are terminal — never reschedule Meta sends.
+        await this.queueConsumer.markFailed(
+          item.companyId,
+          item.id,
+          denialMessage,
+          item.retryCount,
+          undefined,
+        );
+        const denied: WhatsAppDeliveryResult = {
+          queueId: item.id,
+          notificationId: item.notificationId,
+          companyId: item.companyId,
+          provider: WHATSAPP_PROVIDER,
+          status: "failed",
+          durationMs: Date.now() - started,
+          attempts,
+          lastError: denialMessage,
+          recipientPhone: recipient.phone,
+          messageId: null,
+          templateKey: rendered.templateKey,
+          timestamp: new Date().toISOString(),
+        };
+        await this.deliveryLogRepository.append(denied).catch(() => undefined);
+        return denied;
       }
 
       providerAttempted = true;

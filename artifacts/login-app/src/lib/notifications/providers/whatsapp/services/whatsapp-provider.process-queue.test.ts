@@ -48,6 +48,25 @@ function queueRow(id: string): QueueRow {
   };
 }
 
+function approvedAppointmentTemplate(companyId: string) {
+  return {
+    id: "tpl-appointment",
+    company_id: companyId,
+    purpose_key: "appointment_created",
+    language_code: "en",
+    meta_template_name: "appointment_confirmation",
+    meta_template_id: null,
+    meta_status: "APPROVED",
+    category: "UTILITY",
+    recipient: null,
+    last_synced_at: null,
+    last_error: null,
+    last_error_code: null,
+    created_at: "2020-01-01T00:00:00.000Z",
+    updated_at: "2020-01-01T00:00:00.000Z",
+  };
+}
+
 function fakeClient(rows: QueueRow[], failCompletedWrites = 0) {
   let completedFailures = failCompletedWrites;
   return {
@@ -86,6 +105,25 @@ function fakeClient(rows: QueueRow[], failCompletedWrites = 0) {
         },
         maybeSingle() {
           return Promise.resolve({ data: null, error: null });
+        },
+        then(
+          resolve: (value: { data: unknown; error: null }) => unknown,
+          reject?: (reason: unknown) => unknown,
+        ) {
+          try {
+            if (table === "company_whatsapp_templates") {
+              const companyId = String(
+                state.filters.find(([column]) => column === "company_id")?.[1] ??
+                  "company-isolated",
+              );
+              return Promise.resolve(
+                resolve({ data: [approvedAppointmentTemplate(companyId)], error: null }),
+              );
+            }
+            return Promise.resolve(resolve({ data: matching(), error: null }));
+          } catch (error) {
+            return reject ? Promise.resolve(reject(error)) : Promise.reject(error);
+          }
         },
       };
 

@@ -169,17 +169,57 @@ function buildProvider(input: {
     },
   } as unknown as WhatsAppRenderer;
 
+  const approvedTemplateRow = {
+    id: "tpl-appointment",
+    company_id: "co-a",
+    purpose_key: "appointment_created",
+    language_code: "en",
+    meta_template_name: "appointment_confirmation",
+    meta_template_id: null,
+    meta_status: "APPROVED",
+    category: "UTILITY",
+    recipient: null,
+    last_synced_at: null,
+    last_error: null,
+    last_error_code: null,
+    created_at: "2020-01-01T00:00:00.000Z",
+    updated_at: "2020-01-01T00:00:00.000Z",
+  };
+
   const client = {
-    from() {
-      return {
+    from(table: string) {
+      const filters: Array<[string, unknown]> = [];
+      const builder = {
         select() {
-          return this;
+          return builder;
         },
-        eq() {
-          return this;
+        eq(column: string, value: unknown) {
+          filters.push([column, value]);
+          return builder;
         },
         maybeSingle: async () => ({ data: null, error: null }),
+        then(
+          resolve: (value: { data: unknown; error: null }) => unknown,
+          reject?: (reason: unknown) => unknown,
+        ) {
+          try {
+            if (table === "company_whatsapp_templates") {
+              const companyId = String(
+                filters.find(([column]) => column === "company_id")?.[1] ?? "",
+              );
+              const row = {
+                ...approvedTemplateRow,
+                company_id: companyId || approvedTemplateRow.company_id,
+              };
+              return Promise.resolve(resolve({ data: [row], error: null }));
+            }
+            return Promise.resolve(resolve({ data: [], error: null }));
+          } catch (error) {
+            return reject ? Promise.resolve(reject(error)) : Promise.reject(error);
+          }
+        },
       };
+      return builder;
     },
   } as never;
 

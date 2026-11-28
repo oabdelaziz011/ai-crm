@@ -309,12 +309,20 @@ export function planWhatsAppOutbound(input: {
   });
 }
 
-/** Queue / legacy registry events must not silently send generic_system. */
+/**
+ * Queue / legacy registry events must not silently send generic_system / hello_world.
+ * Transactional legacy sends require a company-scoped APPROVED template row
+ * (same Meta-status gate as purpose-specific sends). connection_test + hello_world only.
+ */
 export function assertLegacyRegistryTemplateSendable(input: {
   templateId: string;
   event: string;
-  approvedTemplates?: MetaApprovedTemplateRecord[] | null;
   languageCode: string;
+  /** Company-scoped row from company_whatsapp_templates (Meta status SoT). */
+  companyTemplate?: CompanyTemplateOutboundRecord | null;
+  /** True when the company catalog lookup threw — fail closed (do not send). */
+  companyTemplateLookupError?: boolean;
+  approvedTemplates?: MetaApprovedTemplateRecord[] | null;
 }): void {
   const metaName = input.templateId.trim();
   if (BLOCKED_TRANSACTIONAL_TEMPLATES.has(metaName.toLowerCase())) {
@@ -331,9 +339,61 @@ export function assertLegacyRegistryTemplateSendable(input: {
       { purpose: input.event, metaName },
     );
   }
+
+  // Explicit connection-test exception — never used for transactional notifications.
+  if (input.event === "connection_test" && metaName.toLowerCase() === "hello_world") {
+    return;
+  }
+
+  if (input.companyTemplateLookupError) {
+    throw new WhatsAppTemplateConfigurationError(
+      "template_not_configured",
+      `Unable to verify company WhatsApp template catalog for "${metaName}" (event "${input.event}"). Failing closed.`,
+      { purpose: input.event, metaName, language: input.languageCode },
+    );
+  }
+
+  const companyTemplate = input.companyTemplate ?? null;
+  if (!companyTemplate) {
+    throw new WhatsAppTemplateConfigurationError(
+      "template_not_configured",
+      `No company WhatsApp template record for "${metaName}" (event "${input.event}"). Sync an APPROVED Meta template for this company before queue send.`,
+      { purpose: input.event, metaName, language: input.languageCode },
+    );
+  }
+
+  if (companyTemplate.metaTemplateName.trim().toLowerCase() !== metaName.toLowerCase()) {
+    throw new WhatsAppTemplateConfigurationError(
+      "template_not_allowed",
+      `Company template name mismatch for event "${input.event}" (expected "${metaName}").`,
+      {
+        purpose: input.event,
+        metaName,
+        language: input.languageCode,
+      },
+    );
+  }
+
+  const status = String(companyTemplate.metaStatus ?? "").toUpperCase();
+  const language = normalizeLanguage(companyTemplate.languageCode || input.languageCode);
+  if (status === "PENDING" || status === "REJECTED" || status === "PAUSED" || status === "DISABLED") {
+    throw new WhatsAppTemplateConfigurationError(
+      "template_not_approved",
+      `Company template "${metaName}" for event "${input.event}" has Meta status ${status}. Only APPROVED templates may be sent.`,
+      { purpose: input.event, metaName, language },
+    );
+  }
+  if (status !== "APPROVED") {
+    throw new WhatsAppTemplateConfigurationError(
+      "template_not_configured",
+      `Company template "${metaName}" for event "${input.event}" is not APPROVED on Meta (status=${status || "UNKNOWN"}). Sync templates after Meta approval.`,
+      { purpose: input.event, metaName, language },
+    );
+  }
+
   assertApprovedAgainstMetaCatalog(
     metaName,
-    input.languageCode,
+    language,
     // connection_test is the only purpose that allows hello_world; use as stand-in for catalog check key
     input.event === "connection_test" ? "connection_test" : "delivery_worker_dispatch",
     input.approvedTemplates,

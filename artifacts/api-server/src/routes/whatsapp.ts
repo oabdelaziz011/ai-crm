@@ -202,7 +202,8 @@ router.post("/whatsapp/send-text", async (req, res, next) => {
     const companyId = String(req.body?.companyId ?? "");
     const recipientPhone = String(req.body?.recipientPhone ?? "");
     const text = String(req.body?.text ?? "");
-    const sessionWindowOpen = req.body?.sessionWindowOpen === true;
+    // sessionWindowOpen from the client is intentionally ignored — the provider
+    // derives the Meta 24h window from channel_sessions.last_inbound_at.
     if (!recipientPhone) {
       res.status(400).json({ error: "recipientPhone required" });
       return;
@@ -214,9 +215,7 @@ router.post("/whatsapp/send-text", async (req, res, next) => {
     await assertRouteCommercialFeature(companyId, "whatsapp_channel");
     const client = getServiceClient();
     const provider = createProvider(client);
-    const result = await provider.sendFreeformText(companyId, recipientPhone, text, {
-      sessionWindowOpen,
-    });
+    const result = await provider.sendFreeformText(companyId, recipientPhone, text);
     res.json(result);
   } catch (error) {
     next(error);

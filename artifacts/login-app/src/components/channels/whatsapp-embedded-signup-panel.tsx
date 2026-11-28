@@ -93,6 +93,12 @@ function loadFacebookSdk(appId: string, graphVersion: string): Promise<FacebookS
 export type WhatsAppEmbeddedSignupPanelProps = {
   companyId: string;
   hasExistingConnection?: boolean;
+  /**
+   * Authoritative connected phone / WABA from company_whatsapp_settings.
+   * Prefer these over Embedded Signup lifecycle history when displaying "current" connection.
+   */
+  currentPhoneNumberId?: string | null;
+  currentBusinessAccountId?: string | null;
   onCompleted?: () => void;
   /** Soft-disconnect: disable the company WhatsApp channel after explicit confirm. */
   onDisconnect?: () => Promise<void> | void;
@@ -108,6 +114,8 @@ export type WhatsAppEmbeddedSignupPanelProps = {
 export function WhatsAppEmbeddedSignupPanel({
   companyId,
   hasExistingConnection = false,
+  currentPhoneNumberId = null,
+  currentBusinessAccountId = null,
   onCompleted,
   onDisconnect,
 }: WhatsAppEmbeddedSignupPanelProps) {
@@ -370,10 +378,15 @@ export function WhatsAppEmbeddedSignupPanel({
 
   const busy = busyMode !== null;
   const statusLabel = statusRow?.status ? String(statusRow.status) : null;
-  const connectedPhone = statusRow?.phone_number_id ? String(statusRow.phone_number_id) : null;
-  const connectedWaba = statusRow?.business_account_id
+  const settingsPhone = (currentPhoneNumberId ?? "").trim() || null;
+  const settingsWaba = (currentBusinessAccountId ?? "").trim() || null;
+  const historicalPhone = statusRow?.phone_number_id ? String(statusRow.phone_number_id) : null;
+  const historicalWaba = statusRow?.business_account_id
     ? String(statusRow.business_account_id)
     : null;
+  const showHistoricalIds =
+    Boolean(historicalPhone || historicalWaba) &&
+    (historicalPhone !== settingsPhone || historicalWaba !== settingsWaba);
 
   return (
     <DashboardCard className="p-6 space-y-5" data-testid="whatsapp-embedded-signup-panel">
@@ -479,6 +492,21 @@ export function WhatsAppEmbeddedSignupPanel({
             <RefreshCw className={`w-3.5 h-3.5 ${statusLoading ? "animate-spin" : ""}`} />
           </Button>
         </div>
+        {settingsPhone || settingsWaba ? (
+          <p
+            className="text-sm text-foreground"
+            data-testid="whatsapp-onboarding-current-connection"
+          >
+            {t("notifications.whatsapp.settings.embeddedSignup.currentConnectionLabel")}:{" "}
+            {settingsPhone ? `phone_number_id: ${settingsPhone}` : ""}
+            {settingsPhone && settingsWaba ? " · " : ""}
+            {settingsWaba ? `WABA: ${settingsWaba}` : ""}
+          </p>
+        ) : (
+          <p className="text-muted-foreground" data-testid="whatsapp-onboarding-current-connection-empty">
+            {t("notifications.whatsapp.settings.embeddedSignup.currentConnectionEmpty")}
+          </p>
+        )}
         {statusLabel ? (
           <p className="text-muted-foreground">
             {t("notifications.whatsapp.settings.embeddedSignup.statusLabel")}: {statusLabel}
@@ -488,10 +516,15 @@ export function WhatsAppEmbeddedSignupPanel({
             {t("notifications.whatsapp.settings.embeddedSignup.statusEmpty")}
           </p>
         )}
-        {connectedPhone ? (
-          <p className="text-xs text-muted-foreground">
-            phone_number_id: {connectedPhone}
-            {connectedWaba ? ` · WABA: ${connectedWaba}` : ""}
+        {showHistoricalIds ? (
+          <p
+            className="text-xs text-muted-foreground"
+            data-testid="whatsapp-onboarding-historical-ids"
+          >
+            {t("notifications.whatsapp.settings.embeddedSignup.historicalEventIdsLabel")}:{" "}
+            {historicalPhone ? `phone_number_id: ${historicalPhone}` : ""}
+            {historicalPhone && historicalWaba ? " · " : ""}
+            {historicalWaba ? `WABA: ${historicalWaba}` : ""}
           </p>
         ) : null}
         {hasExistingConnection && onDisconnect ? (

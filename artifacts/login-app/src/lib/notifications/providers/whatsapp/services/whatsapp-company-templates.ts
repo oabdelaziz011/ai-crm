@@ -161,6 +161,47 @@ export async function resolveApprovedCompanyWhatsAppTemplate(
   return row;
 }
 
+/**
+ * Company-scoped lookup by Meta template name for legacy notification_queue sends.
+ * Never returns another company's row. Soft-fails missing table → null (caller fails closed).
+ */
+export async function resolveCompanyWhatsAppTemplateByMetaName(
+  client: SupabaseClient,
+  input: { companyId: string; metaTemplateName: string; languageCode?: string },
+): Promise<CompanyWhatsAppTemplateRecord | null> {
+  const companyId = input.companyId.trim();
+  const metaName = input.metaTemplateName.trim();
+  if (!companyId || !metaName) return null;
+
+  const { data, error } = await client
+    .from("company_whatsapp_templates")
+    .select("*")
+    .eq("company_id", companyId);
+
+  if (error) {
+    if (isMissingCompanyWhatsAppTemplatesRelation(error)) {
+      return null;
+    }
+    throw new Error(error.message);
+  }
+
+  const rows = ((data ?? []) as TemplateRow[])
+    .map(mapRow)
+    .filter((r) => r.metaTemplateName.trim().toLowerCase() === metaName.toLowerCase());
+
+  if (rows.length === 0) return null;
+
+  if (input.languageCode) {
+    const match = rows.find((r) =>
+      whatsappTemplateLanguagesMatch(r.languageCode, input.languageCode!),
+    );
+    if (match) return match;
+  }
+
+  const approved = rows.find((r) => isMetaApprovedTemplateStatus(r.metaStatus));
+  return approved ?? rows[0] ?? null;
+}
+
 export type UpsertCompanyWhatsAppTemplateInput = {
   companyId: string;
   purposeKey: string;

@@ -85,6 +85,16 @@ describe("whatsapp template routes (security contracts)", () => {
     assert.doesNotMatch(provisionSlice, /WhatsApp provider is disabled/);
   });
 
+  it("does not trust client sessionWindowOpen on /whatsapp/send-text", () => {
+    const idx = source.indexOf('"/whatsapp/send-text"');
+    assert.ok(idx >= 0);
+    const slice = source.slice(idx, idx + 1200);
+    assert.doesNotMatch(slice, /sessionWindowOpen\s*=\s*req\.body/);
+    assert.match(slice, /intentionally ignored|channel_sessions\.last_inbound_at/);
+    assert.match(providerSource, /loadWhatsAppLastInboundAtForRecipient/);
+    assert.match(providerSource, /resolveTrustedWhatsAppSessionWindowOpen/);
+  });
+
   it("documents unauthorized and cross-company denial via auth + company scope middleware", () => {
     assert.match(source, /requireSupabaseAuth/);
     assert.match(source, /requireCompanyScope\("companyId"\)/);
